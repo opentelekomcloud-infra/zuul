@@ -639,7 +639,9 @@ class SQLConnection(BaseConnection):
                 self.dburi,
                 poolclass=sqlalchemy.pool.QueuePool,
                 pool_recycle=self.connection_config.get('pool_recycle', 1),
-                future=True)
+                future=True,
+                pool_size=50
+            )
 
             self._setup_models()
 

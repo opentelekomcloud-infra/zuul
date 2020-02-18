@@ -1509,7 +1509,7 @@ class TestWebStatsReporting(BaseTestWeb):
         hostname = normalize_statsd_name(socket.getfqdn())
         self.assertReportedStat(
             f'zuul.web.server.{hostname}.threadpool.idle',
-            value='10', kind='g')
+            value='50', kind='g')
         self.assertReportedStat(
             f'zuul.web.server.{hostname}.threadpool.queue',
             value='0', kind='g')
