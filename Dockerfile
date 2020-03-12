@@ -88,10 +88,10 @@ FROM zuul-base AS zuul
 ENV DEBIAN_FRONTEND=noninteractive
 ARG IMAGE_FLAVOR=
 
-COPY --from=builder /output/ /output
-RUN /output/install-from-bindep zuul_base \
-  && rm -rf /output \
-  && useradd -u 10001 -m -d /var/lib/zuul -c "Zuul Daemon" zuul \
+RUN --mount=from=builder,source=/output,target=/output \
+  /output/install-from-bindep zuul_base
+
+RUN useradd -u 10001 -m -d /var/lib/zuul -c "Zuul Daemon" zuul \
 # This enables git protocol v2 which is more efficient at negotiating
 # refs.  This can be removed after the images are built with git 2.26
 # where it becomes the default.
