@@ -703,8 +703,8 @@ class BaseThreadPoolEventConnector:
                 if not self._event_forward_queue[0].done():
                     return
                 future = self._event_forward_queue.popleft()
-                events, connection_event = future.result()
                 try:
+                    events, connection_event = future.result(timeout=900)
                     for event in events:
                         self.connection.logEvent(event)
                         if isinstance(event, model.DequeueEvent):
