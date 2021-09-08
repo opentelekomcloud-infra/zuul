@@ -2736,6 +2736,7 @@ class AnsibleJob(object):
         raise RoleNotFoundError("Unable to find role in %s" % (path,))
 
     def selectBranchForProject(self, project, project_default_branch,
+                               alternative_branch=None,
                                consider_ref=None):
         # Find if the project is one of the job-specified projects.
         # If it is, we can honor the project checkout-override options.
@@ -2759,7 +2760,7 @@ class AnsibleJob(object):
         return self.resolveBranch(
             project.canonical_name,
             ref,
-            args['branch'],
+            args['branch'] or alternative_branch,
             self.job.override_branch,
             self.job.override_checkout,
             args_project.get('override_branch'),
@@ -2787,7 +2788,8 @@ class AnsibleJob(object):
             role_info.checkout = branch
         else:
             branch, selected_desc = self.selectBranchForProject(
-                project, role['project_default_branch'])
+                project, role['project_default_branch'],
+                alternative_branch=jobdir_playbook.branch)
             self.log.debug("Role using %s %s", selected_desc, branch)
             role_info.checkout_description = selected_desc
             role_info.checkout = branch
