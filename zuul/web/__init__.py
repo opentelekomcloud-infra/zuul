@@ -24,6 +24,7 @@ from ws4py.server.cherrypyserver import WebSocketPlugin, WebSocketTool
 from ws4py.websocket import WebSocket
 import codecs
 import copy
+import ctypes
 from datetime import datetime
 import json
 import jwt
@@ -3089,6 +3090,7 @@ class ZuulWeb(object):
     log = logging.getLogger("zuul.web")
     tracer = trace.get_tracer("zuul")
     _stats_interval = IntervalTrigger(seconds=60)
+    _malloc_trim_interval = IntervalTrigger(minutes=30, jitter=60)
 
     @staticmethod
     def generateRouteMap(api, oidc, include_auth):
@@ -3451,6 +3453,10 @@ class ZuulWeb(object):
         oidc_app = cherrypy.tree.mount(oidc, '/oidc', config=conf)
         oidc_app.log = ZuulCherrypyLogManager(appid=oidc_app.log.appid)
 
+    def _runMallocTrim(self):
+        self.log.debug("Executing malloc_trim")
+        ctypes.CDLL(None).malloc_trim(0)
+
     @property
     def port(self):
         return cherrypy.server.bound_addr[1]
@@ -3499,6 +3505,8 @@ class ZuulWeb(object):
         self.apsched.add_job(cherrypy.tools.stats.emitStats,
                              name="Regular cherrypy stats reporting",
                              trigger=self._stats_interval)
+        self.apsched.add_job(self._runMallocTrim,
+                             trigger=self._malloc_trim_interval)
 
         self.log.info("Starting HTTP listeners")
         self.stream_manager.start()
@@ -3519,9 +3527,8 @@ class ZuulWeb(object):
         self.log.info("ZuulWeb stopping")
         self.keystore.stop()
         self._running = False
-        self.component_info.state = self.component_info.STOPPED
-
         self.apsched.shutdown()
+        self.component_info.state = self.component_info.STOPPED
 
         cherrypy.engine.exit()
         # Not strictly necessary, but without this, if the server is
