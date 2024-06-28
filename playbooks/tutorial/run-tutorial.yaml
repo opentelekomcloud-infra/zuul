@@ -3,20 +3,21 @@
       package:
         name:
           - git-review
-          - podman-compose
+          # This should only be needed with the podman backend
+          - catatonit
         state: present
       become: true
   when: not local
 
 - name: Setup Tutorial Execution
-  include_role:
+  import_role:
     name: setup-tutorial
 
 - name: Run quick-start tutorial
-  include_tasks: quick-start.yaml
+  import_tasks: quick-start.yaml
 
 - name: Run admin tutorial
-  include_tasks: admin.yaml
+  import_tasks: admin.yaml
 
 - name: Run tracing tutorial
-  include_tasks: tracing.yaml
+  import_tasks: tracing.yaml
