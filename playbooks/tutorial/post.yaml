@@ -5,22 +5,22 @@
         state: directory
         path: "{{ ansible_user_dir }}/logs"
         mode: 0755
-    - name: Save podman log files
+    - name: Save container log files
       shell: |
         set +e
-        podman logs zuul-tutorial_gerrit_1 > {{ ansible_user_dir }}/logs/gerrit.log 2>&1
-        podman logs zuul-tutorial_gerritconfig_1 > {{ ansible_user_dir }}/logs/gerritconfig.log 2>&1
-        podman logs zuul-tutorial_zk_1 > {{ ansible_user_dir }}/logs/zk.log 2>&1
-        podman logs zuul-tutorial_mysql_1 > {{ ansible_user_dir }}/logs/mysql.log 2>&1
-        podman logs zuul-tutorial_scheduler_1 > {{ ansible_user_dir }}/logs/scheduler.log 2>&1
-        podman logs zuul-tutorial_web_1 > {{ ansible_user_dir }}/logs/web.log 2>&1
-        podman logs zuul-tutorial_executor_1 > {{ ansible_user_dir }}/logs/executor.log 2>&1
-        podman logs zuul-tutorial_node_1 > {{ ansible_user_dir }}/logs/node.log 2>&1
-        podman logs zuul-tutorial_launcher_1 > {{ ansible_user_dir }}/logs/launcher.log 2>&1
-        podman logs zuul-tutorial_logs_1 > {{ ansible_user_dir }}/logs/logs.log 2>&1
-        podman logs zuul-tutorial-tracing_jaeger_1 > {{ ansible_user_dir }}/logs/jaeger.log 2>&1
+        podman logs zuul-tutorial-gerrit-1 > {{ ansible_user_dir }}/logs/gerrit.log 2>&1
+        podman logs zuul-tutorial-gerritconfig-1 > {{ ansible_user_dir }}/logs/gerritconfig.log 2>&1
+        podman logs zuul-tutorial-zk-1 > {{ ansible_user_dir }}/logs/zk.log 2>&1
+        podman logs zuul-tutorial-mysql-1 > {{ ansible_user_dir }}/logs/mysql.log 2>&1
+        podman logs zuul-tutorial-scheduler-1 > {{ ansible_user_dir }}/logs/scheduler.log 2>&1
+        podman logs zuul-tutorial-web-1 > {{ ansible_user_dir }}/logs/web.log 2>&1
+        podman logs zuul-tutorial-executor-1 > {{ ansible_user_dir }}/logs/executor.log 2>&1
+        podman logs zuul-tutorial-node-1 > {{ ansible_user_dir }}/logs/node.log 2>&1
+        podman logs zuul-tutorial-launcher-1 > {{ ansible_user_dir }}/logs/launcher.log 2>&1
+        podman logs zuul-tutorial-logs-1 > {{ ansible_user_dir }}/logs/logs.log 2>&1
+        podman logs zuul-tutorial-tracing_jaeger-1 > {{ ansible_user_dir }}/logs/jaeger.log 2>&1
         exit 0
-    - name: Copy podman log files to executor
+    - name: Copy container log files to executor
       synchronize:
         mode: pull
         src: "{{ ansible_user_dir }}/logs/"

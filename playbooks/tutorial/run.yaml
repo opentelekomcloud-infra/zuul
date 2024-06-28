@@ -1,4 +1,6 @@
 - hosts: all
+  environment:
+    DOCKER_HOST: unix:///run/podman/podman.sock
   vars:
     workspace: /tmp/tutorial-zuul
     local: false
