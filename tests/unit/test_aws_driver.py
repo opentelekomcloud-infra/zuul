@@ -60,9 +60,8 @@ class TestAwsDriver(BaseCloudDriverTest):
                         'type': 'zuul_image',
                         'image_name': 'debian-local',
                         'format': 'raw',
-                        'sha256': ('59984dd82f51edb3777b969739a92780'
-                                   'a520bb314b8d64b294d5de976bd8efb9'),
-                        'md5sum': '262278e1632567a907e4604e9edd2e83',
+                        'sha256': ImageMocksFixture.raw_sha256,
+                        'md5sum': ImageMocksFixture.raw_md5sum,
                     }
                 },
             ]
@@ -78,9 +77,8 @@ class TestAwsDriver(BaseCloudDriverTest):
                         'type': 'zuul_image',
                         'image_name': 'debian-local',
                         'format': 'raw',
-                        'sha256': ('59984dd82f51edb3777b969739a92780'
-                                   'a520bb314b8d64b294d5de976bd8efb9'),
-                        'md5sum': '262278e1632567a907e4604e9edd2e83',
+                        'sha256': ImageMocksFixture.raw_sha256,
+                        'md5sum': ImageMocksFixture.raw_md5sum,
                     }
                 },
             ]
@@ -96,9 +94,8 @@ class TestAwsDriver(BaseCloudDriverTest):
                         'type': 'zuul_image',
                         'image_name': 'debian-local',
                         'format': 'raw',
-                        'sha256': ('59984dd82f51edb3777b969739a92780'
-                                   'a520bb314b8d64b294d5de976bd8efb9'),
-                        'md5sum': '262278e1632567a907e4604e9edd2e83',
+                        'sha256': ImageMocksFixture.raw_sha256,
+                        'md5sum': ImageMocksFixture.raw_md5sum,
                     }
                 },
             ]
@@ -383,7 +380,7 @@ class TestAwsDriver(BaseCloudDriverTest):
         # The ebs-direct method doesn't support an import from s3,
         # which means if we supply an s3 url, we will download it.
         bucket = self.s3.Bucket('zuul')
-        bucket.put_object(Body=b'hi',
+        bucket.put_object(Body=ImageMocksFixture.raw_body.encode('utf8'),
                           Key='image.raw')
         self._test_diskimage()
 
@@ -398,7 +395,7 @@ class TestAwsDriver(BaseCloudDriverTest):
         # The image in a bucket in a different region should be
         # downloaded without using a direct import.
         bucket = self.s3.Bucket('zuulwest')
-        bucket.put_object(Body=b'hi',
+        bucket.put_object(Body=ImageMocksFixture.raw_body.encode('utf8'),
                           Key='image.raw')
         self._test_diskimage()
 

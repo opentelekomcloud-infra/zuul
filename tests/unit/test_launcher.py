@@ -53,36 +53,43 @@ from tests.fake_nodescan import (
 
 
 class ImageMocksFixture(ResponsesFixture):
+    raw_body = 'test raw image'
+    raw_sha256 = ('d043e8080c82dbfeca3199a24d5f019'
+                  '3e66755b5ba62d6b60107a248996a6795')
+    raw_md5sum = '78d2d3ff2463bc75c7cc1d38b8df6a6b'
+    qcow2_sha256 = ('59984dd82f51edb3777b969739a92780'
+                    'a520bb314b8d64b294d5de976bd8efb9')
+    qcow2_md5sum = '262278e1632567a907e4604e9edd2e83'
+    zst_body = b'(\xb5/\xfd\x04Xq\x00\x00test raw image\xc4\xcf\x97b'
+    qcow2_body = 'test qcow2 image'
+
     def __init__(self):
         super().__init__()
-        raw_body = 'test raw image'
-        zst_body = b'(\xb5/\xfd\x04Xy\x00\x00test raw image\n\xde\x9d\x9c\xfb'
-        qcow2_body = "test qcow2 image"
         self.requests_mock.add_passthru("http://localhost")
         self.requests_mock.add(
             responses.GET,
             'http://example.com/image.raw',
-            body=raw_body)
+            body=self.raw_body)
         self.requests_mock.add(
             responses.GET,
             'http://example.com/image.raw.zst',
-            body=zst_body)
+            body=self.zst_body)
         self.requests_mock.add(
             responses.GET,
             'http://example.com/image.qcow2',
-            body=qcow2_body)
+            body=self.qcow2_body)
         self.requests_mock.add(
             responses.HEAD,
             'http://example.com/image.raw',
-            headers={'content-length': str(len(raw_body))})
+            headers={'content-length': str(len(self.raw_body))})
         self.requests_mock.add(
             responses.HEAD,
             'http://example.com/image.raw.zst',
-            headers={'content-length': str(len(zst_body))})
+            headers={'content-length': str(len(self.zst_body))})
         self.requests_mock.add(
             responses.HEAD,
             'http://example.com/image.qcow2',
-            headers={'content-length': str(len(qcow2_body))})
+            headers={'content-length': str(len(self.qcow2_body))})
         # The next three are for the signed_url test
         # Partial response
         self.requests_mock.add(
@@ -91,13 +98,14 @@ class ImageMocksFixture(ResponsesFixture):
             match=[responses.matchers.header_matcher({"Range": "bytes=0-0"})],
             status=206,
             headers={'content-length': '1',
-                     'content-range': f'bytes 0-0/{len(raw_body)}'},
+                     'content-range': f'bytes 0-0/{len(self.raw_body)}'},
         )
         # The full response
         self.requests_mock.add(
             responses.GET,
             'http://example.com/getonly.raw',
-            headers={'content-length': str(len(raw_body))})
+            headers={'content-length': str(len(self.raw_body))},
+            body=self.raw_body)
         # Head doesn't work
         self.requests_mock.add(
             responses.HEAD,
@@ -118,9 +126,8 @@ class LauncherBaseTestCase(ZuulTestCase):
                         'type': 'zuul_image',
                         'image_name': 'debian-local',
                         'format': 'raw',
-                        'sha256': ('d043e8080c82dbfeca3199a24d5f0193'
-                                   'e66755b5ba62d6b60107a248996a6795'),
-                        'md5sum': '78d2d3ff2463bc75c7cc1d38b8df6a6b',
+                        'sha256': ImageMocksFixture.raw_sha256,
+                        'md5sum': ImageMocksFixture.raw_md5sum,
                     }
                 }, {
                     'name': 'qcow2 image',
@@ -129,9 +136,8 @@ class LauncherBaseTestCase(ZuulTestCase):
                         'type': 'zuul_image',
                         'image_name': 'debian-local',
                         'format': 'qcow2',
-                        'sha256': ('59984dd82f51edb3777b969739a92780'
-                                   'a520bb314b8d64b294d5de976bd8efb9'),
-                        'md5sum': '262278e1632567a907e4604e9edd2e83',
+                        'sha256': ImageMocksFixture.qcow2_sha256,
+                        'md5sum': ImageMocksFixture.qcow2_md5sum,
                     }
                 },
             ]
@@ -147,9 +153,8 @@ class LauncherBaseTestCase(ZuulTestCase):
                         'type': 'zuul_image',
                         'image_name': 'ubuntu-local',
                         'format': 'raw',
-                        'sha256': ('d043e8080c82dbfeca3199a24d5f0193'
-                                   'e66755b5ba62d6b60107a248996a6795'),
-                        'md5sum': '78d2d3ff2463bc75c7cc1d38b8df6a6b',
+                        'sha256': ImageMocksFixture.raw_sha256,
+                        'md5sum': ImageMocksFixture.raw_md5sum,
                     }
                 }, {
                     'name': 'qcow2 image',
@@ -158,9 +163,8 @@ class LauncherBaseTestCase(ZuulTestCase):
                         'type': 'zuul_image',
                         'image_name': 'ubuntu-local',
                         'format': 'qcow2',
-                        'sha256': ('59984dd82f51edb3777b969739a92780'
-                                   'a520bb314b8d64b294d5de976bd8efb9'),
-                        'md5sum': '262278e1632567a907e4604e9edd2e83',
+                        'sha256': ImageMocksFixture.qcow2_sha256,
+                        'md5sum': ImageMocksFixture.qcow2_md5sum,
                     }
                 },
             ]
@@ -566,6 +570,8 @@ class TestLauncher(LauncherBaseTestCase):
                 canonical_name=image.canonical_name,
                 project_canonical_name=image.project_canonical_name,
                 url='http://example.com/image.raw.zst',
+                md5sum=ImageMocksFixture.raw_md5sum,
+                sha256=ImageMocksFixture.raw_sha256,
                 timestamp=time.time(),
             )
             with iba.locked(ctx):
@@ -598,9 +604,8 @@ class TestLauncher(LauncherBaseTestCase):
                         'type': 'zuul_image',
                         'image_name': 'debian-local',
                         'format': 'raw',
-                        'sha256': ('d043e8080c82dbfeca3199a24d5f0193'
-                                   'e66755b5ba62d6b60107a248996a6795'),
-                        'md5sum': '78d2d3ff2463bc75c7cc1d38b8df6a6b',
+                        'sha256': ImageMocksFixture.raw_sha256,
+                        'md5sum': ImageMocksFixture.raw_md5sum,
                     }
                 },
             ]
