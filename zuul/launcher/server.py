@@ -19,6 +19,7 @@ import collections
 from contextlib import nullcontext
 import errno
 import fcntl
+import hashlib
 import logging
 import os
 import random
@@ -295,6 +296,18 @@ class UploadJob:
                     self.log.info("Deleted %s", orig_path)
         return path
 
+    def _validateChecksum(self, path):
+        h = hashlib.sha256()
+        with open(path, 'rb') as f:
+            h.update(f.read(4096))
+        digest = h.hexdigest()
+        artifact = self.image_build_artifact
+        if digest != artifact.sha256:
+            raise Exception(
+                f"Downloaded file {path} sha256 "
+                "digest {digest} does not match "
+                "artifact {artifact} digest {artifact.sha256}")
+
     def _run(self):
         path = None
         uploads = []
@@ -326,6 +339,7 @@ class UploadJob:
                         raise Exception("Unable to download artifact %s" % (
                             self.image_build_artifact,))
                     path = self._handleCompression(path)
+                    self._validateChecksum(path)
                     self._handleUploads(
                         remaining_uploads, upload_args, futures, path)
 
