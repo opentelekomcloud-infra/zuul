@@ -1312,7 +1312,7 @@ class ProjectParser(object):
         }
 
         project = {
-            'name': str,
+            'name': vs.Any(ZUUL_REGEX, str),
             'description': str,
             'branches': to_list(vs.Any(ZUUL_REGEX, str)),
             'vars': ansible_vars_dict,
@@ -1344,9 +1344,11 @@ class ProjectParser(object):
         project_config = self.pcontext.project_template_parser. \
             fromYaml(conf, validate=False)
 
-        project_config.name = project_name
-
-        if not project_name.startswith('^'):
+        if isinstance(project_name, dict) or project_name.startswith('^'):
+            # This is a ZuulRegex which can be (de)serialized
+            project_config.name = make_regex(project_name, self.pcontext)
+        else:
+            project_config.name = project_name
             # Explicitly override this to False since we're reusing the
             # project-template loading method which sets it True.
             project_config.is_template = False
@@ -2768,12 +2770,11 @@ class TenantParser(object):
                 with pcontext.accumulator.catchErrors():
                     # we need to separate the regex projects as they are
                     # processed differently later
-                    name = config_project.get('name')
                     parsed_project = pcontext.project_parser.fromYaml(
                         config_project)
-                    if name and name.startswith('^'):
+                    if isinstance(parsed_project.name, ZuulRegex):
                         parsed_config.projects_by_regex.setdefault(
-                            name, []).append(parsed_project)
+                            parsed_project.name, []).append(parsed_project)
                     else:
                         parsed_config.projects.append(parsed_project)
 
