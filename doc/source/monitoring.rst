@@ -535,6 +535,15 @@ These metrics are emitted by the Zuul :ref:`scheduler`:
 
      The current amount of running processes on this executor.
 
+.. stat:: zuul.fingergws
+
+   Holds metrics related to the Zuul finger gateway component.
+
+   .. stat:: online
+      :type: gauge
+
+      The number of Zuul finger gateway processes online.
+
 .. stat:: zuul.nodepool.requests
 
    Holds metrics related to Zuul requests and responses from Nodepool.
@@ -776,6 +785,11 @@ These metrics are emitted by the Zuul :ref:`scheduler`:
 
    Holds metrics related to the Zuul scheduler.
 
+   .. stat:: online
+      :type: gauge
+
+      The number of Zuul scheduler processes online.
+
    .. stat:: eventqueues
 
       Holds metrics about the event queue lengths in the Zuul scheduler.
@@ -808,6 +822,11 @@ These metrics are emitted by the Zuul :ref:`scheduler`:
 .. stat:: zuul.web
 
    Holds metrics related to the Zuul web component.
+
+   .. stat:: online
+      :type: gauge
+
+      The number of Zuul web processes online.
 
    .. stat:: server.<hostname>
 
