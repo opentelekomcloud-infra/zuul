@@ -1378,14 +1378,15 @@ class PipelineManager(metaclass=ABCMeta):
             # actually run with that config.
             files = build_set.getFiles(self.current_context)
             if trusted_updates:
-                log.debug("Loading dynamic layout (phase 1)")
+                log.debug("Loading dynamic layout: "
+                          "include changes to config repos "
+                          "to validate expected landing config")
                 trusted_layout = loader.createDynamicLayout(
                     item,
                     files,
                     additional_project_branches,
                     self.sched.ansible_manager,
-                    include_config_projects=True,
-                    zuul_event_id=None)
+                    include_config_projects=True)
                 trusted_errors = len(filter_severity(
                     trusted_layout.loading_errors.errors,
                     errors=True, warnings=False)) > 0
@@ -1393,14 +1394,15 @@ class PipelineManager(metaclass=ABCMeta):
             # Then create the config a second time but without changes
             # to config repos so that we actually use this config.
             if untrusted_updates:
-                log.debug("Loading dynamic layout (phase 2)")
+                log.debug("Loading dynamic layout: "
+                          "don't include changes to config repos "
+                          "to generate buildset config")
                 untrusted_layout = loader.createDynamicLayout(
                     item,
                     files,
                     additional_project_branches,
                     self.sched.ansible_manager,
-                    include_config_projects=False,
-                    zuul_event_id=None)
+                    include_config_projects=False)
                 untrusted_errors = len(filter_severity(
                     untrusted_layout.loading_errors.errors,
                     errors=True, warnings=False)) > 0

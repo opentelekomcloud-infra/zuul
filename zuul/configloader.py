@@ -3271,6 +3271,7 @@ class ConfigLoader(object):
     def _loadDynamicProjectData(self, abide, parsed_config, project,
                                 files, additional_project_branches,
                                 trusted, item, pcontext):
+        log = get_annotated_logger(self.log, item.event)
         tenant = item.manager.tenant
         tpc = tenant.project_configs[project.canonical_name]
         if trusted:
@@ -3344,7 +3345,7 @@ class ConfigLoader(object):
                         # project-branch (unless an "extra" file/dir).
                         if (conf_root in ZUUL_CONF_ROOT):
                             if loaded and loaded != conf_root:
-                                self.log.warning(
+                                log.warning(
                                     "Configuration in %s ignored because "
                                     "project-branch is already configured",
                                     source_context)
@@ -3355,7 +3356,7 @@ class ConfigLoader(object):
                                 continue
                             loaded = conf_root
 
-                        self.log.info(
+                        log.info(
                             "Loading configuration dynamically from %s" %
                             (source_context,))
                         branch_config = self.tenant_parser.loadProjectYAML(
@@ -3368,11 +3369,11 @@ class ConfigLoader(object):
     def createDynamicLayout(self, item, files,
                             additional_project_branches,
                             ansible_manager,
-                            include_config_projects=False,
-                            zuul_event_id=None):
+                            include_config_projects=False):
         abide = self.scheduler.abide
         tenant = item.manager.tenant
-        log = get_annotated_logger(self.log, zuul_event_id)
+        event_id = item.event
+        log = get_annotated_logger(self.log, event_id)
         pcontext = ParseContext(self.connections, self.scheduler,
                                 ansible_manager)
         config = model.ParsedConfig()
