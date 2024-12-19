@@ -44,7 +44,10 @@ POSTGRES_STATEMENT_TIMEOUT_RE = re.compile(
 MARIADB_STATEMENT_TIMEOUT_RE = re.compile(
     r'/\* mariadb_statement_timeout=(\d+) \*/')
 
-SQL_MAX_STRING_LENGTH = 255
+
+# FIXME? Due to import orders the SQL max string size constant
+# needs to be set in zuul.ansible.schema (it can't import from other modules)
+from zuul.ansible.schema import SQL_MAX_STRING_LENGTH
 
 
 # In Postgres we can set a per-transaction (which for us is
