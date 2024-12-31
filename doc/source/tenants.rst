@@ -671,8 +671,8 @@ will be removed in a future version of Zuul.
 
       * if the claim is a JSON list, check that the condition value is in the
         claim
-      * if the claim is a string, check that the condition value is equal to
-        the claim's value
+      * if the claim is a string or a boolean, check that the condition value is
+        equal to the claim's value
 
       The claim names can also be written in the XPath format for clarity: the
       condition
