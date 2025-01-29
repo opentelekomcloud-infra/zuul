@@ -173,6 +173,7 @@
       javascript_content_dir: "build"
       zuul_work_dir: "{{ zuul.project.src_dir }}/web"
       create_tarball_directory: build
+      node_version: 23
     run: playbooks/dashboard/run.yaml
     nodeset: ubuntu-jammy
 
@@ -398,10 +399,12 @@
         - nodejs-run-lint:
             vars:
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
+              node_version: 23
             nodeset: ubuntu-jammy
         - nodejs-run-test:
             vars:
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
+              node_version: 23
             files:
               - web/.*
             nodeset: ubuntu-jammy
@@ -428,10 +431,12 @@
         - nodejs-run-lint:
             vars:
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
+              node_version: 23
             nodeset: ubuntu-jammy
         - nodejs-run-test:
             vars:
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
+              node_version: 23
             files:
               - web/.*
             nodeset: ubuntu-jammy
