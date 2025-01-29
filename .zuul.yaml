@@ -377,7 +377,7 @@
 - project:
     queue: zuul
     vars:
-      node_version: 16
+      node_version: 23
       release_python: python3
       ensure_tox_version: "<4"
     check:
