@@ -1,5 +1,6 @@
 - hosts: all
   roles:
-    - ensure-nodejs
+    - role: ensure-nodejs
+      node_version: 23
     - role: ensure-yarn
       yarn_lock_file_path: "{{ zuul.project.src_dir }}/web/yarn.lock"
