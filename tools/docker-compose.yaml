@@ -31,11 +31,21 @@ services:
     environment:
       - ZOO_AUTOPURGE_PURGEINTERVAL=1
       - ZOO_LOG4J_PROP=WARN
-    ports:
-      - "2281:2281"
+    network_mode: host
     tmpfs:
       - /data:uid=${USER_ID}
       - /datalog:uid=${USER_ID}
     volumes:
       - "./ca:/var/certs:z"
       - "./zoo.cfg:/conf/zoo.cfg:z"
+  zuul-testing-container:
+    container_name: zuul-testing-container
+    image: testing-container
+    privileged: true
+    volumes:
+      - "../:/zuul:z"
+    stdin_open: true
+    tty: true
+    network_mode: host
+    depends_on:
+      - zookeeper
