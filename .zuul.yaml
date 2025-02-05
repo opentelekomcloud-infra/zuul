@@ -77,6 +77,13 @@
       python_version: "3.11"
 
 - job:
+    name: zuul-nox-linters
+    parent: nox-linters
+    vars:
+      nox_install_bindep: false
+    nodeset: ubuntu-jammy-4GB
+
+- job:
     name: zuul-nox-remote
     parent: nox
     nodeset: ubuntu-jammy
@@ -387,10 +394,7 @@
       jobs:
         - zuul-build-image
         - zuul-nox-docs
-        - nox-linters:
-            vars:
-              nox_install_bindep: false
-            nodeset: ubuntu-jammy
+        - zuul-nox-linters
         - zuul-nox-py311
         - zuul-nox-py312
         - zuul-nox-upgrade
@@ -422,10 +426,7 @@
       jobs:
         - zuul-upload-image
         - zuul-nox-docs
-        - nox-linters:
-            vars:
-              nox_install_bindep: false
-            nodeset: ubuntu-jammy
+        - zuul-nox-linters
         - zuul-nox-py311
         - zuul-nox-py312
         - zuul-nox-upgrade
