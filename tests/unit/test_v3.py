@@ -5636,6 +5636,19 @@ class TestOIDCSigningKeys(ZuulTestCase):
             encryption.serialize_rsa_private_key(private_key3))
         self.assertEqual(version4, 1)
 
+    def test_oidc_key_rotation_without_old_key(self):
+        # Test that when there is no old key, it will create a new one
+        keystore = self.scheds.first.sched.keystore
+        algorithm = "RS256"
+        rotation_interval = 5
+        max_ttl = 2
+
+        keystore.rotateOidcSigningKeys(algorithm, rotation_interval, max_ttl)
+        with keystore.createZKContext() as context:
+            test_keys1 = OIDCSigningKeys.loadKeys(
+                context, algorithm)
+            self.assertEqual(len(test_keys1.keys), 1)
+
 
 class TestValidateAllBroken(ZuulTestCase):
     # Test we fail while validating all tenants with one broken tenant
