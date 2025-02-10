@@ -8,6 +8,32 @@ In order to maintain the security of the data, the values are usually
 encrypted, however, data which are not sensitive may be provided
 unencrypted as well for convenience.
 
+Zuul can also act as an OpenID Connect Identity Provider which enable
+Zuul to provide an identity to a job which can be trusted by federated
+third party services. When configured in :attr:`secret.oidc`, Zuul will
+generate an OIDC ID token dynamically and make it available to the job
+that configured with the secret.
+
+The ID token will contain the following default claims:
+
+.. code-block:: yaml
+
+   # Sub is important as most third party services will likely match on
+   # this claim to determine the permissions. This is kind of an FQDN
+   # to uniquely identify the zuul secret used.
+   sub: "secret:<zuul-tenant>/<canonical-project-name>/<secret name>"
+
+   # Some information on the job's context might be useful.  Caution
+   # should be used if these are used for matching; e.g., the 
+   # "job-name" may change due to inheritance.
+   build-uuid: "<build-uuid>"
+   job-name: "<job-name>"
+   playbook: "<playbook>"
+   pipeline: "<pipeline>"
+   tenant: "<tenant>"
+
+Custom claims can be added to the ID token in :attr:`secret.oidc.claims`
+
 A Secret may only be used by jobs defined within the same project.
 Note that they can be used by any branch of that project, so if a
 project's branches have different access controls, consider whether
@@ -104,9 +130,40 @@ unsafe_var_eval.
       request the secret.
 
    .. attr:: data
-      :required:
 
+      Mutually exclusive with ``oidc``, either ``data`` or ``oidc``
+      must be supplied.
       A dictionary which will be added to the Ansible variables
-      available to the job.  The values can be any of the normal YAML
+      available to the job. The values can be any of the normal YAML
       data types (strings, integers, dictionaries or lists) or
       encrypted strings.  See :ref:`encryption` for more information.
+
+   .. attr:: oidc
+
+      Mutually exclusive with ``data``, either ``data`` or ``oidc``
+      must be supplied.
+      A string value which will be added to the Ansible variables
+      available to the job. The value is an OIDC ID token generated
+      dynamically before running the playbook. It can be used to
+      authenticate to external services that trust Zuul.
+
+      .. attr:: ttl
+
+         TTL (Time-To-Live) of the ID token in seconds, it is used to
+         calculate exp claim. It must not be greater than the
+         :attr:`tenant.max-oidc-ttl` in the tenant configuration. If not
+         specified, the default value would be :attr:`tenant.default-oidc-ttl`.
+
+      .. attr:: algorithm
+
+         Specify the signing algorithm of the ID token. It must be one of
+         :attr:`oidc.supported_signing_algorithms` and if not specified,
+         the default value would be :attr:`oidc.default_signing_algorithm` in
+         zuul configuration.
+
+      .. attr:: claims
+
+         A dictionary of custom claims to be added to the ID token. For example,
+         Usually the ``aud`` claim can be specified here. The custom claims are
+         not abele to overwrite the Zuul default claims mentioned above. 
+         
