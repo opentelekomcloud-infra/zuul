@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Implemented OIDC compatible Workload Identity Federation in Zuul.
+    When configured in ``secret``, Zuul will generate an OIDC ID token
+    and supply it to the job, which can be used to authenticate to
+    external services that trust Zuul as an OIDC Identity Provider.
