@@ -104,9 +104,40 @@ unsafe_var_eval.
       request the secret.
 
    .. attr:: data
-      :required:
 
+      Mutually exclusive with ``oidc``, either ``data`` or ``oidc``
+      must be supplied.
       A dictionary which will be added to the Ansible variables
-      available to the job.  The values can be any of the normal YAML
+      available to the job. The values can be any of the normal YAML
       data types (strings, integers, dictionaries or lists) or
       encrypted strings.  See :ref:`encryption` for more information.
+
+   .. attr:: oidc
+
+      Mutually exclusive with ``data``, either ``data`` or ``oidc``
+      must be supplied.
+      A string value which will be added to the Ansible variables
+      available to the job. The value is an OIDC ID token generated
+      dynamically before running the playbook. It can be used to
+      authenticate to external services that trust Zuul.
+
+      .. attr:: ttl
+
+         TTL (Time-To-Live) of the ID token in seconds, it is used to
+         calculate exp claim. It must not be greater than the
+         :attr:`tenant.max-oidc-ttl` in the tenant configuration. If not
+         specified, the default value would be :attr:`tenant.default-oidc-ttl`.
+
+      .. attr:: algorithm
+
+         Specify the signing algorithm of the ID token. It must be one of
+         :attr:`oidc.supported_signing_algorithms` and if not specified,
+         the default value would be :attr:`oidc.default_signing_algorithm` in
+         zuul configuration.
+
+      .. attr:: claims
+
+         A dictionary of custom claims to be added to the ID token. For example,
+         Usually the ``aud`` claim can be specified here. The custom claims are
+         not abele to overwrite the Zuul default claims mentioned above. 
+         
