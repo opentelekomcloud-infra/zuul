@@ -102,6 +102,15 @@ Example::
 
   zuul-admin delete-keys gerrit old_project
 
+delete-oidc-signing-keys
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. program-output:: zuul-admin delete-oidc-signing-keys --help
+
+Example::
+
+  zuul-admin delete-oidc-signing-keys RS256
+
 delete-state
 ^^^^^^^^^^^^
 
