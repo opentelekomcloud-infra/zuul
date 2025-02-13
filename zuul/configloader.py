@@ -1751,6 +1751,9 @@ class ParseContext(object):
         # refactor so that the workers branch it whenever they start
         # work.
         self._thread_local = threading.local()
+        self.resetErrorContext(acc)
+
+    def resetErrorContext(self, acc):
         self._thread_local.accumulators = [acc]
 
     @property
@@ -1957,6 +1960,8 @@ class TenantParser(object):
                 tpc.project.connection_name, None, None)
             with pcontext.errorContext(source_context=source_context):
                 with pcontext.accumulator.catchErrors():
+                    # Call GPB again for the side effect of throwing
+                    # exceptions if the project/branch is inacessible
                     self._getProjectBranches(tenant, tpc,
                                              branch_cache_min_ltimes)
                     self._resolveShadowProjects(tenant, tpc)
@@ -1978,26 +1983,10 @@ class TenantParser(object):
         self._cacheTenantYAML(abide, tenant, pcontext,
                               min_ltimes, executor, ignore_cat_exception)
 
-        # Then collect the appropriate YAML based on this tenant
-        # config.
-        config_projects_config, untrusted_projects_config = \
-            self._loadTenantYAML(abide, tenant, pcontext)
-
-        # Then convert the YAML to configuration objects which we
-        # cache on the tenant.
-        tenant.config_projects_config = self.parseConfig(
-            tenant, config_projects_config, pcontext)
-        tenant.untrusted_projects_config = self.parseConfig(
-            tenant, untrusted_projects_config, pcontext)
-
-        # Combine the trusted and untrusted config objects
-        parsed_config = model.ParsedConfig()
-        parsed_config.extend(tenant.config_projects_config)
-        parsed_config.extend(tenant.untrusted_projects_config)
-
-        # Cache all of the objects on the individual project-branches
-        # for later use during dynamic reconfigurations.
-        self.cacheConfig(tenant, parsed_config)
+        # Then collect the appropriate config objects based on this
+        # tenant config.
+        parsed_config = self._loadTenantParsedConfig(
+            abide, tenant, pcontext)
 
         tenant.layout = self._parseLayout(
             tenant, parsed_config, pcontext, layout_uuid)
@@ -2214,20 +2203,18 @@ class TenantParser(object):
         for source_name, conf_source in conf_tenant.get('source', {}).items():
             source = self.connections.getSource(source_name)
 
-            current_include = default_include
             for conf_repo in conf_source.get('config-projects', []):
                 # tpcs = TenantProjectConfigs
-                tpcs = self._getProjects(source, conf_repo, current_include)
+                tpcs = self._getProjects(source, conf_repo, default_include)
                 for tpc in tpcs:
                     tpc.trusted = True
                     futures.append(executor.submit(
                         self._loadProjectKeys, source_name, tpc.project))
                     config_projects.append(tpc)
 
-            current_include = frozenset(default_include - set(['pipeline']))
             for conf_repo in conf_source.get('untrusted-projects', []):
                 tpcs = self._getProjects(source, conf_repo,
-                                         current_include)
+                                         default_include)
                 for tpc in tpcs:
                     tpc.trusted = False
                     futures.append(executor.submit(
@@ -2326,8 +2313,12 @@ class TenantParser(object):
                     # If all config classes are excluded then do not
                     # request any getFiles jobs.
                     continue
+                # In the submit call below, we dereference the
+                # accumulator outside the threadpool since it won't be
+                # able to get it once it starts.
                 futures.append(executor.submit(self._cacheTenantYAMLBranch,
                                                abide, tenant,
+                                               parse_context,
                                                parse_context.accumulator,
                                                min_ltimes, tpc, project,
                                                branch, jobs))
@@ -2355,38 +2346,40 @@ class TenantParser(object):
                                 "Unable to cancel job %s", cancel_job)
                     raise
 
-    def _cacheTenantYAMLBranch(self, abide, tenant, error_accumulator,
-                               min_ltimes, tpc, project, branch, jobs):
+    def _cacheTenantYAMLBranch(
+            self, abide, tenant, parse_context, error_accumulator,
+            min_ltimes, tpc, project, branch, jobs):
+        # We're inside of a threadpool, which means we have no
+        # existing accumulator stack.  Start a new one.
+        source_context = model.SourceContext(
+            project.canonical_name, project.name,
+            project.connection_name, branch, '')
+        local_accumulator = error_accumulator.extend(
+            source_context=source_context)
+        parse_context.resetErrorContext(local_accumulator)
         # This is the middle section of _cacheTenantYAML, called for
         # each project-branch.  It's a separate method so we can
         # execute it in parallel.  The "jobs" argument is mutated and
         # accumulates a list of all merger jobs submitted.
-        source_context = model.SourceContext(
-            project.canonical_name, project.name,
-            project.connection_name, branch, '')
-        # We keep a local accumulator here because we're in a
-        # threadpool so we can't use the parse context stack.
-        error_accumulator = error_accumulator.extend(
-            source_context=source_context)
         if min_ltimes is not None:
-            files_cache = self.unparsed_config_cache.getFilesCache(
-                project.canonical_name, branch)
-            branch_cache = abide.getUnparsedBranchCache(
+            config_object_cache = abide.getConfigObjectCache(
                 project.canonical_name, branch)
             try:
                 pb_ltime = min_ltimes[project.canonical_name][branch]
-                # If our unparsed branch cache is valid for the
-                # time, then we don't need to do anything else.
-                bc_ltime = branch_cache.getValidFor(tpc, ZUUL_CONF_ROOT,
-                                                    pb_ltime)
-                if bc_ltime is not None:
-                    min_ltimes[project.canonical_name][branch] = bc_ltime
+                # If our config object cache is valid for the time,
+                # then we don't need to do anything else.
+                coc_ltime = config_object_cache.getValidFor(
+                    tpc, ZUUL_CONF_ROOT, pb_ltime)
+                if coc_ltime is not None:
+                    min_ltimes[project.canonical_name][branch] = coc_ltime
                     return
             except KeyError:
                 self.log.exception(
                     "Min. ltime missing for project/branch")
                 pb_ltime = -1
 
+            files_cache = self.unparsed_config_cache.getFilesCache(
+                project.canonical_name, branch)
             with self.unparsed_config_cache.readLock(
                     project.canonical_name):
                 if files_cache.isValidFor(tpc, pb_ltime):
@@ -2395,9 +2388,9 @@ class TenantParser(object):
                         "%s @%s: %s",
                         project.canonical_name, branch,
                         list(files_cache.keys()))
-                    self._updateUnparsedBranchCache(
+                    self._updateConfigObjectCache(
                         abide, tenant, source_context, files_cache,
-                        error_accumulator, files_cache.ltime,
+                        parse_context, files_cache.ltime,
                         min_ltimes)
                     return
 
@@ -2407,7 +2400,7 @@ class TenantParser(object):
             err = Exception(
                 "Configuration files missing from cache. "
                 "Check Zuul scheduler logs for more information.")
-            error_accumulator.addError(err)
+            parse_context.accumulator.addError(err)
             return
         ltime = self.zk_client.getCurrentLtime()
         job = self.merger.getFiles(
@@ -2440,9 +2433,9 @@ class TenantParser(object):
                        (job, job.files.keys()))
 
         with parse_context.errorContext(source_context=job.source_context):
-            self._updateUnparsedBranchCache(
+            self._updateConfigObjectCache(
                 abide, tenant, job.source_context,
-                job.files, parse_context.accumulator,
+                job.files, parse_context,
                 job.ltime, min_ltimes)
 
         # Save all config files in Zookeeper (not just for the current tpc)
@@ -2470,11 +2463,13 @@ class TenantParser(object):
                                     job.extra_config_dirs,
                                     job.ltime)
 
-    def _updateUnparsedBranchCache(self, abide, tenant, source_context, files,
-                                   error_accumulator, ltime, min_ltimes):
+    def _updateConfigObjectCache(self, abide, tenant, source_context, files,
+                                 parse_context, ltime, min_ltimes):
+        # Read YAML from the file cache, parse it into objects, then
+        # update the ConfigObjectCache.
         loaded = False
         tpc = tenant.project_configs[source_context.project_canonical_name]
-        branch_cache = abide.getUnparsedBranchCache(
+        config_object_cache = abide.getConfigObjectCache(
             source_context.project_canonical_name,
             source_context.branch)
         valid_dirs = ("zuul.d", ".zuul.d") + tpc.extra_config_dirs
@@ -2496,7 +2491,7 @@ class TenantParser(object):
                 if (fn_root in ZUUL_CONF_ROOT):
                     if (loaded and loaded != conf_root):
                         err = MultipleProjectConfigurations(source_context)
-                        error_accumulator.addError(err)
+                        parse_context.accumulator.addError(err)
                     loaded = conf_root
                 # Create a new source_context so we have unique filenames.
                 source_context = source_context.copy()
@@ -2506,77 +2501,143 @@ class TenantParser(object):
                     (source_context,))
                 # Make a new error accumulator; we may be in a threadpool
                 # so we can't use the stack.
-                local_accumulator = error_accumulator.extend(
-                    source_context=source_context)
-                incdata = self.loadProjectYAML(
-                    file_data, source_context, local_accumulator)
-                branch_cache.put(source_context.path, incdata, ltime)
-        branch_cache.setValidFor(tpc, ZUUL_CONF_ROOT, ltime)
+                with parse_context.errorContext(source_context=source_context):
+                    incdata = self.loadProjectYAML(
+                        file_data, source_context, parse_context)
+                config_object_cache.put(source_context.path, incdata, ltime)
+        config_object_cache.setValidFor(tpc, ZUUL_CONF_ROOT, ltime)
         if min_ltimes is not None:
             min_ltimes[source_context.project_canonical_name][
                 source_context.branch] = ltime
 
-    def _loadTenantYAML(self, abide, tenant, parse_context):
-        config_projects_config = model.UnparsedConfig()
-        untrusted_projects_config = model.UnparsedConfig()
+    def loadProjectYAML(self, data, source_context, parse_context):
+        unparsed_config = model.UnparsedConfig()
+        with parse_context.accumulator.catchErrors():
+            r = safe_load_yaml(data, source_context)
+            unparsed_config.extend(r)
+        parsed_config = self.parseConfig(unparsed_config, parse_context)
+        return parsed_config
+
+    def _loadTenantParsedConfig(self, abide, tenant, parse_context):
+        parsed_config = model.ParsedConfig()
 
         for project in tenant.config_projects:
             tpc = tenant.project_configs.get(project.canonical_name)
             branch = tpc.load_branch if tpc.load_branch else 'master'
-            branch_cache = abide.getUnparsedBranchCache(
-                project.canonical_name, branch)
-            tpc = tenant.project_configs[project.canonical_name]
-            unparsed_branch_config = branch_cache.get(tpc, ZUUL_CONF_ROOT)
-
-            if unparsed_branch_config:
-                unparsed_branch_config = self.filterConfigProjectYAML(
-                    unparsed_branch_config)
-
-                config_projects_config.extend(unparsed_branch_config)
+            config_object_cache = abide.getConfigObjectCache(
+                project.canonical_name,
+                branch)
+            branch_config = config_object_cache.get(tpc, ZUUL_CONF_ROOT)
+            if branch_config:
+                self.addProjectBranchConfig(
+                    parse_context, parsed_config,
+                    tenant, tpc, branch_config, trusted=True)
 
         for project in tenant.untrusted_projects:
+            tpc = tenant.project_configs.get(project.canonical_name)
             branches = tenant.getProjectBranches(project.canonical_name)
             for branch in branches:
-                branch_cache = abide.getUnparsedBranchCache(
-                    project.canonical_name, branch)
-                tpc = tenant.project_configs[project.canonical_name]
-                unparsed_branch_config = branch_cache.get(tpc, ZUUL_CONF_ROOT)
-                if unparsed_branch_config:
-                    unparsed_branch_config = self.filterUntrustedProjectYAML(
-                        unparsed_branch_config, parse_context)
+                config_object_cache = abide.getConfigObjectCache(
+                    project.canonical_name,
+                    branch)
+                branch_config = config_object_cache.get(tpc, ZUUL_CONF_ROOT)
+                if branch_config:
+                    self.addProjectBranchConfig(
+                        parse_context, parsed_config, tenant, tpc,
+                        branch_config, trusted=False)
 
-                    untrusted_projects_config.extend(unparsed_branch_config)
-        return config_projects_config, untrusted_projects_config
+        return parsed_config
 
-    def loadProjectYAML(self, data, source_context, error_accumulator):
-        config = model.UnparsedConfig()
-        with error_accumulator.catchErrors():
-            r = safe_load_yaml(data, source_context)
-            config.extend(r)
-        return config
+    def addProjectBranchConfig(self, parse_context, parsed_config,
+                               tenant, tpc, branch_config, trusted):
+        # Add items from branch_config to parsed_config as appropriate
+        # for this tpc.
+        classes = tpc.load_classes
 
-    def filterConfigProjectYAML(self, data):
-        # Any config object may appear in a config project.
-        return data
+        # It is not necessary to copy pragmas, but do copy the errors
+        parsed_config.pragma_errors.extend(branch_config.pragma_errors)
 
-    def filterUntrustedProjectYAML(self, data, parse_context):
-        if data and data.pipelines:
-            with parse_context.errorContext(stanza='pipeline',
-                                            conf=data.pipelines[0]):
-                parse_context.accumulator.addError(PipelineNotPermittedError())
-        return data
+        if 'pipeline' in classes:
+            if not trusted and branch_config.pipelines:
+                with parse_context.errorContext(
+                        stanza='pipeline',
+                        conf=branch_config.pipelines[0]):
+                    parse_context.accumulator.addError(
+                        PipelineNotPermittedError())
+            else:
+                parsed_config.pipeline_errors.extend(
+                    branch_config.pipeline_errors)
+                parsed_config.pipelines.extend(branch_config.pipelines)
 
-    def _getLoadClasses(self, tenant, conf_object):
-        project = conf_object.get('_source_context').project_canonical_name
-        tpc = tenant.project_configs[project]
-        return tpc.load_classes
+        if 'job' in classes:
+            parsed_config.job_errors.extend(
+                branch_config.job_errors)
+            parsed_config.jobs.extend(
+                branch_config.jobs)
+        if 'project-template' in classes:
+            parsed_config.project_template_errors.extend(
+                branch_config.project_template_errors)
+            parsed_config.project_templates.extend(
+                branch_config.project_templates)
+        if 'project' in classes:
+            parsed_config.project_errors.extend(
+                branch_config.project_errors)
+            parsed_config.projects.extend(
+                branch_config.projects)
+            for regex, projects in branch_config.projects_by_regex.items():
+                parsed_config.projects_by_regex.setdefault(
+                    regex, []).extend(projects)
+        if 'nodeset' in classes:
+            parsed_config.nodeset_errors.extend(
+                branch_config.nodeset_errors)
+            parsed_config.nodesets.extend(
+                branch_config.nodesets)
+        if 'secret' in classes:
+            parsed_config.secret_errors.extend(
+                branch_config.secret_errors)
+            parsed_config.secrets.extend(
+                branch_config.secrets)
+        if 'semaphore' in classes:
+            parsed_config.semaphore_errors.extend(
+                branch_config.semaphore_errors)
+            parsed_config.semaphores.extend(
+                branch_config.semaphores)
+        if 'queue' in classes:
+            parsed_config.queue_errors.extend(
+                branch_config.queue_errors)
+            parsed_config.queues.extend(
+                branch_config.queues)
+        if 'image' in classes:
+            parsed_config.image_errors.extend(
+                branch_config.image_errors)
+            parsed_config.images.extend(
+                branch_config.images)
+        if 'flavor' in classes:
+            parsed_config.flavor_errors.extend(
+                branch_config.flavor_errors)
+            parsed_config.flavors.extend(
+                branch_config.flavors)
+        if 'label' in classes:
+            parsed_config.label_errors.extend(
+                branch_config.label_errors)
+            parsed_config.labels.extend(
+                branch_config.labels)
+        if 'section' in classes:
+            parsed_config.section_errors.extend(
+                branch_config.section_errors)
+            parsed_config.sections.extend(
+                branch_config.sections)
+        if 'provider' in classes:
+            parsed_config.provider_errors.extend(
+                branch_config.provider_errors)
+            parsed_config.providers.extend(
+                branch_config.providers)
 
-    def parseConfig(self, tenant, unparsed_config, pcontext):
+    def parseConfig(self, unparsed_config, pcontext):
         parsed_config = model.ParsedConfig()
 
         # Handle pragma items first since they modify the source
-        # context used by other classes.  Note that we do not check
-        # pragma against load classes -- they are always read.
+        # context used by other classes.
         for config_pragma in unparsed_config.pragmas:
             with pcontext.errorContext(
                     error_list=parsed_config.pragma_errors,
@@ -2586,9 +2647,6 @@ class TenantParser(object):
                     pcontext.pragma_parser.fromYaml(config_pragma)
 
         for config_pipeline in unparsed_config.pipelines:
-            classes = self._getLoadClasses(tenant, config_pipeline)
-            if 'pipeline' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.pipeline_errors,
                     stanza='pipeline',
@@ -2598,9 +2656,6 @@ class TenantParser(object):
                         pcontext.pipeline_parser.fromYaml(config_pipeline))
 
         for config_image in unparsed_config.images:
-            classes = self._getLoadClasses(tenant, config_image)
-            if 'image' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.image_errors,
                     stanza='image',
@@ -2610,9 +2665,6 @@ class TenantParser(object):
                         pcontext.image_parser.fromYaml(config_image))
 
         for config_flavor in unparsed_config.flavors:
-            classes = self._getLoadClasses(tenant, config_flavor)
-            if 'flavor' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.flavor_errors,
                     stanza='flavor',
@@ -2622,9 +2674,6 @@ class TenantParser(object):
                         pcontext.flavor_parser.fromYaml(config_flavor))
 
         for config_label in unparsed_config.labels:
-            classes = self._getLoadClasses(tenant, config_label)
-            if 'label' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.label_errors,
                     stanza='label',
@@ -2634,9 +2683,6 @@ class TenantParser(object):
                         pcontext.label_parser.fromYaml(config_label))
 
         for config_section in unparsed_config.sections:
-            classes = self._getLoadClasses(tenant, config_section)
-            if 'section' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.section_errors,
                     stanza='section',
@@ -2646,9 +2692,6 @@ class TenantParser(object):
                         pcontext.section_parser.fromYaml(config_section))
 
         for config_provider in unparsed_config.providers:
-            classes = self._getLoadClasses(tenant, config_provider)
-            if 'provider' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.provider_errors,
                     stanza='provider',
@@ -2658,9 +2701,6 @@ class TenantParser(object):
                         pcontext.provider_parser.fromYaml(config_provider))
 
         for config_nodeset in unparsed_config.nodesets:
-            classes = self._getLoadClasses(tenant, config_nodeset)
-            if 'nodeset' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.nodeset_errors,
                     stanza='nodeset',
@@ -2670,9 +2710,6 @@ class TenantParser(object):
                         pcontext.nodeset_parser.fromYaml(config_nodeset))
 
         for config_secret in unparsed_config.secrets:
-            classes = self._getLoadClasses(tenant, config_secret)
-            if 'secret' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.secret_errors,
                     stanza='secret',
@@ -2682,9 +2719,6 @@ class TenantParser(object):
                         pcontext.secret_parser.fromYaml(config_secret))
 
         for config_job in unparsed_config.jobs:
-            classes = self._getLoadClasses(tenant, config_job)
-            if 'job' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.job_errors,
                     stanza='job',
@@ -2694,9 +2728,6 @@ class TenantParser(object):
                         pcontext.job_parser.fromYaml(config_job))
 
         for config_semaphore in unparsed_config.semaphores:
-            classes = self._getLoadClasses(tenant, config_semaphore)
-            if 'semaphore' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.semaphore_errors,
                     stanza='semaphore',
@@ -2706,9 +2737,6 @@ class TenantParser(object):
                         pcontext.semaphore_parser.fromYaml(config_semaphore))
 
         for config_queue in unparsed_config.queues:
-            classes = self._getLoadClasses(tenant, config_queue)
-            if 'queue' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.queue_errors,
                     stanza='queue',
@@ -2718,9 +2746,6 @@ class TenantParser(object):
                         pcontext.queue_parser.fromYaml(config_queue))
 
         for config_template in unparsed_config.project_templates:
-            classes = self._getLoadClasses(tenant, config_template)
-            if 'project-template' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.project_template_errors,
                     stanza='project-template',
@@ -2731,9 +2756,6 @@ class TenantParser(object):
                             config_template))
 
         for config_project in unparsed_config.projects:
-            classes = self._getLoadClasses(tenant, config_project)
-            if 'project' not in classes:
-                continue
             with pcontext.errorContext(
                     error_list=parsed_config.project_errors,
                     stanza='project',
@@ -2752,61 +2774,6 @@ class TenantParser(object):
 
         return parsed_config
 
-    def cacheConfig(self, tenant, parsed_config):
-        def _cache(attr, obj):
-            tpc = tenant.project_configs[
-                obj.source_context.project_canonical_name]
-            branch_cache = tpc.parsed_branch_config.get(
-                obj.source_context.branch)
-            if branch_cache is None:
-                branch_cache = tpc.parsed_branch_config.setdefault(
-                    obj.source_context.branch,
-                    model.ParsedConfig())
-            lst = getattr(branch_cache, attr)
-            lst.append(obj)
-
-        # We don't cache pragma objects as they are acted on when
-        # parsed.
-
-        for pipeline in parsed_config.pipelines:
-            _cache('pipelines', pipeline)
-
-        for nodeset in parsed_config.nodesets:
-            _cache('nodesets', nodeset)
-
-        for secret in parsed_config.secrets:
-            _cache('secrets', secret)
-
-        for job in parsed_config.jobs:
-            _cache('jobs', job)
-
-        for queue in parsed_config.queues:
-            _cache('queues', queue)
-
-        for semaphore in parsed_config.semaphores:
-            _cache('semaphores', semaphore)
-
-        for template in parsed_config.project_templates:
-            _cache('project_templates', template)
-
-        for project_config in parsed_config.projects:
-            _cache('projects', project_config)
-
-        for image in parsed_config.images:
-            _cache('images', image)
-
-        for flavor in parsed_config.flavors:
-            _cache('flavors', flavor)
-
-        for label in parsed_config.labels:
-            _cache('labels', label)
-
-        for section in parsed_config.sections:
-            _cache('sections', section)
-
-        for provider in parsed_config.providers:
-            _cache('providers', provider)
-
     def _addLayoutItems(self, layout, tenant, parsed_config,
                         parse_context, dynamic_layout=False):
         # TODO(jeblair): make sure everything needing
@@ -2815,6 +2782,9 @@ class TenantParser(object):
         # In this method we are adding items to a layout, so the error
         # accumulator is the tenant error list, not the parsed_config
         # per-object error lists.
+        for e in parsed_config.pragma_errors:
+            layout.loading_errors.addError(e)
+
         if not dynamic_layout:
             for e in parsed_config.pipeline_errors:
                 layout.loading_errors.addError(e)
@@ -3298,9 +3268,9 @@ class ConfigLoader(object):
                 self.log.warning(err.error)
         return new_tenant
 
-    def _loadDynamicProjectData(self, config, project, files,
-                                additional_project_branches, trusted,
-                                item, pcontext):
+    def _loadDynamicProjectData(self, abide, parsed_config, project,
+                                files, additional_project_branches,
+                                trusted, item, pcontext):
         tenant = item.manager.tenant
         tpc = tenant.project_configs[project.canonical_name]
         if trusted:
@@ -3334,9 +3304,13 @@ class ConfigLoader(object):
             # If there is no files entry at all for this
             # project-branch, then use the cached config.
             if files_entry is None:
-                incdata = tpc.parsed_branch_config.get(branch)
-                if incdata:
-                    config.extend(incdata)
+                config_object_cache = abide.getConfigObjectCache(
+                    project.canonical_name, branch)
+                branch_config = config_object_cache.get(tpc, ZUUL_CONF_ROOT)
+                if branch_config:
+                    self.tenant_parser.addProjectBranchConfig(
+                        pcontext, parsed_config,
+                        tenant, tpc, branch_config, trusted=trusted)
                 continue
             # Otherwise, do not use the cached config (even if the
             # files are empty as that likely means they were deleted).
@@ -3354,7 +3328,6 @@ class ConfigLoader(object):
                         fns4.append(fn)
             fns = (["zuul.yaml"] + sorted(fns1) + [".zuul.yaml"] +
                    sorted(fns2) + fns3 + sorted(fns4))
-            incdata = None
             loaded = None
             for fn in fns:
                 data = files.getFile(project.source.connection.connection_name,
@@ -3385,39 +3358,40 @@ class ConfigLoader(object):
                         self.log.info(
                             "Loading configuration dynamically from %s" %
                             (source_context,))
-                        incdata = self.tenant_parser.loadProjectYAML(
-                            data, source_context, pcontext.accumulator)
+                        branch_config = self.tenant_parser.loadProjectYAML(
+                            data, source_context, pcontext)
 
-                        if trusted:
-                            incdata = self.tenant_parser.\
-                                filterConfigProjectYAML(incdata)
-                        else:
-                            incdata = self.tenant_parser.\
-                                filterUntrustedProjectYAML(incdata, pcontext)
-
-                        config.extend(self.tenant_parser.parseConfig(
-                            tenant, incdata, pcontext))
+                        self.tenant_parser.addProjectBranchConfig(
+                            pcontext, parsed_config,
+                            tenant, tpc, branch_config, trusted=trusted)
 
     def createDynamicLayout(self, item, files,
                             additional_project_branches,
                             ansible_manager,
                             include_config_projects=False,
                             zuul_event_id=None):
+        abide = self.scheduler.abide
         tenant = item.manager.tenant
         log = get_annotated_logger(self.log, zuul_event_id)
         pcontext = ParseContext(self.connections, self.scheduler,
                                 ansible_manager)
-        if include_config_projects:
-            config = model.ParsedConfig()
-            for project in tenant.config_projects:
-                self._loadDynamicProjectData(config, project, files,
-                                             additional_project_branches,
-                                             True, item, pcontext)
-        else:
-            config = tenant.config_projects_config.copy()
+        config = model.ParsedConfig()
 
+        if include_config_projects:
+            include_files = files
+        else:
+            # If we are not performing dynamic inclusion on
+            # config_projects, then pass an empty files object in so
+            # it is not used and all configuration comes from the
+            # cache.
+            include_files = None
+
+        for project in tenant.config_projects:
+            self._loadDynamicProjectData(abide, config, project, include_files,
+                                         additional_project_branches,
+                                         True, item, pcontext)
         for project in tenant.untrusted_projects:
-            self._loadDynamicProjectData(config, project, files,
+            self._loadDynamicProjectData(abide, config, project, files,
                                          additional_project_branches,
                                          False, item, pcontext)
 
