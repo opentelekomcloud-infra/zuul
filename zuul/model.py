@@ -8648,7 +8648,6 @@ class TenantProjectConfig(object):
         self.include_branches = None
         self.exclude_branches = None
         self.always_dynamic_branches = None
-        self.parsed_branch_config = {}  # branch -> ParsedConfig
         # The list of paths to look for extra zuul config files
         self.extra_config_files = ()
         # The list of paths to look for extra zuul config dirs
@@ -10329,119 +10328,6 @@ class Tenant(object):
 
 # data can be None here to mean "this path has been checked and as of
 # ltime there was nothing in the repo at that path".
-UnparsedBranchCacheEntry = namedtuple("UnparsedBranchCacheEntry",
-                                      ["ltime", "data"])
-
-
-class UnparsedBranchCache:
-    """Cache information about a single branch"""
-    def __init__(self):
-        # This is a dict of path -> UnparsedBranchCacheEntry items.
-        # If a path exists here, it means it has been checked as of
-        # UnparsedBranchCacheEntry.ltime if anything was found, then
-        # UnparsedBranchCacheEntry.data will have the contents.  If it
-        # was checked and no data was found, then
-        # UnparsedBranchCacheEntry.data well be None.
-        # If it has not been checked, then there will be no entry.
-        self.entries = {}
-
-    def _getPaths(self, tpc):
-        # Return a list of paths we have entries for that match the TPC.
-        files_list = self.entries.keys()
-        fns1 = []
-        fns2 = []
-        fns3 = []
-        fns4 = []
-        for fn in files_list:
-            if fn.startswith("zuul.d/"):
-                fns1.append(fn)
-            if fn.startswith(".zuul.d/"):
-                fns2.append(fn)
-            for ef in tpc.extra_config_files:
-                if fn.startswith(ef):
-                    fns3.append(fn)
-            for ed in tpc.extra_config_dirs:
-                if fn.startswith(ed):
-                    fns4.append(fn)
-        fns = (["zuul.yaml"] + sorted(fns1) + [".zuul.yaml"] +
-               sorted(fns2) + fns3 + sorted(fns4))
-        return fns
-
-    def getValidFor(self, tpc, conf_root, min_ltime):
-        """Return the oldest ltime if this has valid cache results for the
-        extra files/dirs in the tpc.  Otherwise, return None.
-
-        """
-        oldest_ltime = None
-        for path in conf_root + tpc.extra_config_files + tpc.extra_config_dirs:
-            entry = self.entries.get(path)
-            if entry is None:
-                return None
-            if entry.ltime < min_ltime:
-                return None
-            if oldest_ltime is None or entry.ltime < oldest_ltime:
-                oldest_ltime = entry.ltime
-        return oldest_ltime
-
-    def setValidFor(self, tpc, conf_root, ltime):
-        """Indicate that the cache has just been made current for the given
-        TPC as of ltime"""
-
-        seen = set()
-        # Identify any entries we have that match the TPC, and remove
-        # them if they are not up to date.
-        for path in self._getPaths(tpc):
-            entry = self.entries.get(path)
-            if entry is None:
-                # Probably "zuul.yaml" or similar hardcoded path that
-                # is unused.
-                continue
-            else:
-                # If this is a real entry (i.e., actually has data
-                # from the file cache), then mark it as seen so we
-                # don't create a dummy entry for it later, and also
-                # check to see if it can be pruned.
-                if entry.data is not None:
-                    seen.add(path)
-                    if entry.ltime < ltime:
-                        # This is an old entry which is not in the present
-                        # update but should have been if it existed in the
-                        # repo.  That means it was deleted and we can
-                        # remove it.
-                        del self.entries[path]
-        # Set the ltime for any paths that did not appear in our list
-        # (so that we know they have been checked and the cache is
-        # valid for that path+ltime).
-        for path in conf_root + tpc.extra_config_files + tpc.extra_config_dirs:
-            if path in seen:
-                continue
-            self.entries[path] = UnparsedBranchCacheEntry(ltime, None)
-
-    def put(self, path, data, ltime):
-        entry = self.entries.get(path)
-        if entry is not None:
-            if ltime < entry.ltime:
-                # We don't want the entry to go backward
-                return
-        self.entries[path] = UnparsedBranchCacheEntry(ltime, data)
-
-    def get(self, tpc, conf_root):
-        ret = UnparsedConfig()
-        loaded = False
-        for fn in self._getPaths(tpc):
-            entry = self.entries.get(fn)
-            if entry is not None and entry.data is not None:
-                # Don't load from more than one configuration in a
-                # project-branch (unless an "extra" file/dir).
-                fn_root = fn.split('/')[0]
-                if (fn_root in conf_root):
-                    if (loaded and loaded != fn_root):
-                        # "Multiple configuration files in source_context"
-                        continue
-                    loaded = fn_root
-                ret.extend(entry.data)
-        return ret
-
 
 class ConfigObjectCacheEntry:
     """A cache entry holding config objects for a given project-branch-path"""
@@ -10540,10 +10426,10 @@ class ConfigObjectCache:
             if ltime < entry.ltime:
                 # We don't want the entry to go backward
                 return
-        self.entries[path] = ConfigObjectCcacheEntry(ltime, parsed_config)
+        self.entries[path] = ConfigObjectCacheEntry(ltime, parsed_config)
 
     def get(self, tpc, conf_root):
-        ret = UnparsedConfig()
+        ret = ParsedConfig()
         loaded = False
         for fn in self._getPaths(tpc):
             entry = self.entries.get(fn)
@@ -10590,8 +10476,6 @@ class Abide(object):
         self.tenant_lock = threading.Lock()
         # tenant -> TenantTPCRegistry
         self.tpc_registry = defaultdict(TenantTPCRegistry)
-        # project -> branch -> UnparsedBranchCache
-        self.unparsed_project_branch_cache = {}
         # project -> branch -> ConfigObjectCache
         self.config_object_cache = {}
         self.api_root = None
@@ -10643,21 +10527,8 @@ class Abide(object):
             tpc.extra_config_dirs
             for tpc in self._allProjectTPCs(project_name)))
 
-    def hasUnparsedBranchCache(self, canonical_project_name, branch):
-        project_branch_cache = self.unparsed_project_branch_cache.setdefault(
-            canonical_project_name, {})
-        cache = project_branch_cache.get(branch)
-        if cache is None:
-            return False
-        return True
-
-    def getUnparsedBranchCache(self, canonical_project_name, branch):
-        project_branch_cache = self.unparsed_project_branch_cache.setdefault(
-            canonical_project_name, {})
-        return project_branch_cache.setdefault(branch, UnparsedBranchCache())
-
     def hasConfigObjectCache(self, canonical_project_name, branch):
-        project_branch_cache = self.config_object_cache.setdefault(
+        config_object_cache = self.config_object_cache.setdefault(
             canonical_project_name, {})
         cache = config_object_cache.get(branch)
         if cache is None:
@@ -10665,7 +10536,7 @@ class Abide(object):
         return True
 
     def getConfigObjectCache(self, canonical_project_name, branch):
-        project_branch_cache = self.config_object_cache.setdefault(
+        config_object_cache = self.config_object_cache.setdefault(
             canonical_project_name, {})
         return config_object_cache.setdefault(branch, ConfigObjectCache())
 
