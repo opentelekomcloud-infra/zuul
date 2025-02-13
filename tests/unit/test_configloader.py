@@ -72,7 +72,7 @@ class TenantParserTestCase(ZuulTestCase):
 
     CONFIG_SET = set(['pipeline', 'job', 'semaphore', 'project',
                       'project-template', 'nodeset', 'secret', 'queue'])
-    UNTRUSTED_SET = CONFIG_SET - set(['pipeline'])
+    UNTRUSTED_SET = CONFIG_SET
 
     def setupAllProjectKeys(self, config: ConfigParser):
         for project in ['common-config', 'org/project1', 'org/project2']:
@@ -827,25 +827,25 @@ class TestUnparsedConfigCache(ZuulTestCase):
 
         common_cache = cache.getFilesCache("review.example.com/common-config",
                                            "master")
-        upb_common_cache = sched.abide.getUnparsedBranchCache(
+        object_common_cache = sched.abide.getConfigObjectCache(
             "review.example.com/common-config", "master")
         tpc = tenant.project_configs["review.example.com/common-config"]
         self.assertTrue(common_cache.isValidFor(tpc, min_ltime=-1))
         self.assertEqual(len(common_cache), 1)
         self.assertIn("zuul.yaml", common_cache)
         self.assertTrue(len(common_cache["zuul.yaml"]) > 0)
-        self.assertEqual(upb_common_cache.entries['zuul.yaml'].ltime,
+        self.assertEqual(object_common_cache.entries['zuul.yaml'].ltime,
                          common_cache.ltime)
 
         project_cache = cache.getFilesCache("review.example.com/org/project",
                                             "master")
-        upb_project_cache = sched.abide.getUnparsedBranchCache(
+        object_project_cache = sched.abide.getConfigObjectCache(
             "review.example.com/org/project", "master")
         # Cache of org/project should be valid but empty (no in-repo config)
         tpc = tenant.project_configs["review.example.com/org/project"]
         self.assertTrue(project_cache.isValidFor(tpc, min_ltime=-1))
         self.assertEqual(len(project_cache), 0)
-        self.assertEqual(upb_project_cache.entries['zuul.yaml'].ltime,
+        self.assertEqual(object_project_cache.entries['zuul.yaml'].ltime,
                          project_cache.ltime)
 
     def test_cache_use(self):
@@ -860,24 +860,24 @@ class TestUnparsedConfigCache(ZuulTestCase):
         files_cache = cache.getFilesCache(
             "review.example.com/org/project2", "master")
         zk_initial_ltime = files_cache.ltime
-        upb_cache = sched.abide.getUnparsedBranchCache(
+        config_object_cache = sched.abide.getConfigObjectCache(
             "review.example.com/org/project2", "master")
         self.assertEqual(zk_initial_ltime,
-                         upb_cache.entries['zuul.yaml'].ltime)
+                         config_object_cache.entries['zuul.yaml'].ltime)
 
         # Get the current ltime from Zookeeper and run a full reconfiguration,
         # so that we know all items in the cache have a larger ltime.
         ltime = self.zk_client.getCurrentLtime()
         self.scheds.first.fullReconfigure()
         self.assertGreater(files_cache.ltime, zk_initial_ltime)
-        upb_cache = sched.abide.getUnparsedBranchCache(
+        config_object_cache = sched.abide.getConfigObjectCache(
             "review.example.com/org/project2", "master")
         self.assertEqual(files_cache.ltime,
-                         upb_cache.entries['zuul.yaml'].ltime)
+                         config_object_cache.entries['zuul.yaml'].ltime)
 
         # Clear the unparsed branch cache so all projects (except for
         # org/project2) are retrieved from the cache in Zookeeper.
-        sched.abide.unparsed_project_branch_cache.clear()
+        sched.abide.config_object_cache.clear()
         del self.merge_job_history
 
         # Create a tenant reconfiguration event with a known ltime that is
@@ -907,11 +907,11 @@ class TestUnparsedConfigCache(ZuulTestCase):
         sched.management_events[tenant.name].put(event, needs_result=False)
         self.waitUntilSettled()
 
-        upb_cache = sched.abide.getUnparsedBranchCache(
+        config_object_cache = sched.abide.getConfigObjectCache(
             "review.example.com/common-config", "master")
         self.assertEqual(common_cache.ltime,
-                         upb_cache.entries['zuul.yaml'].ltime)
-        self.assertNotIn("CANARY", upb_cache.entries)
+                         config_object_cache.entries['zuul.yaml'].ltime)
+        self.assertNotIn("CANARY", config_object_cache.entries)
 
         # As the cache should be valid (cache ltime of org/project2 newer than
         # event ltime) we don't expect any cat jobs.
