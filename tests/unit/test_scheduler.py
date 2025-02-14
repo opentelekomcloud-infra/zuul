@@ -7470,11 +7470,15 @@ class TestExecutor(ZuulTestCase):
         # so skip these checks.
         pass
 
+    def cleanupTestServers(self):
+        pass
+
     def assertCleanShutdown(self):
         self.log.debug("Assert clean shutdown")
 
         # After shutdown, make sure no jobs are running
         self.assertEqual({}, self.executor_server.job_workers)
+        super().cleanupTestServers()
 
         # Make sure that git.Repo objects have been garbage collected.
         gc.disable()

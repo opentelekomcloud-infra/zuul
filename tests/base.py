@@ -2800,7 +2800,7 @@ class ZuulTestCase(BaseTestCase):
 
         password = self.config.get("keystore", "password")
         keystore = zuul.lib.keystorage.KeyStorage(
-            self.zk_client, password=password)
+            self.zk_client, password=password, start_cache=False)
         import_keys = {}
         import_data = {'keys': import_keys}
 
@@ -2814,6 +2814,7 @@ class ZuulTestCase(BaseTestCase):
             import_keys[path] = json.load(i)
 
         keystore.importKeys(import_data, False)
+        keystore.stop()
 
     def copyDirToRepo(self, project, source_path):
         self.init_repo(project)
@@ -3004,6 +3005,14 @@ class ZuulTestCase(BaseTestCase):
                 log_str += "".join(traceback.format_stack(stack_frame))
             self.log.debug(log_str)
             raise Exception("More than one thread is running: %s" % threads)
+        self.cleanupTestServers()
+
+    def cleanupTestServers(self):
+        del self.executor_server
+        del self.scheds
+        del self.launcher
+        del self.fake_nodepool
+        del self.zk_client
 
     def assertCleanShutdown(self):
         pass
