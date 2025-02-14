@@ -25,9 +25,33 @@ import paramiko
 from zuul.exceptions import AlgorithmNotSupportedException
 from zuul.lib import encryption, strings
 from zuul.zk import ZooKeeperBase
+from zuul.zk.cache import ZuulTreeCache
 from zuul.zk.zkobject import ZKContext, ZKObject
 
 RSA_KEY_SIZE = 2048
+
+
+class OIDCSigningKeysCache(ZuulTreeCache):
+
+    def __init__(self, client):
+        super().__init__(
+            client, OIDCSigningKeys.OIDC_ROOT_PATH, async_worker=False)
+
+    def objectFromRaw(self, key, data, zstat):
+        return OIDCSigningKeys._fromRaw(data, zstat, None)
+
+    def updateFromRaw(self, obj, key, data, zstat):
+        obj._updateFromRaw(data, zstat, None)
+
+    def parsePath(self, path):
+        return self._formatKey(path.split('/')[-1])
+
+    def getSigningKeys(self, algorithm):
+        return self._cached_objects.get(self._formatKey(algorithm))
+
+    def _formatKey(self, algorithm):
+        # key format: ("oidc_keys", algorithm)
+        return ('oidc_keys', algorithm)
 
 
 class OIDCSigningKeys(ZKObject):
@@ -173,6 +197,11 @@ class KeyStorage(ZooKeeperBase):
 
     def createZKContext(self):
         return ZKContext(self.client, None, None, self.log)
+
+        self.oidc_signing_keys_cache = OIDCSigningKeysCache(self.client)
+
+    def __del__(self):
+        self.oidc_signing_keys_cache.stop()
 
     def _walk(self, root):
         ret = []
@@ -406,20 +435,35 @@ class KeyStorage(ZooKeeperBase):
                 rotation_interval, max_ttl)
 
     def getOidcSigningKeyData(self, algorithm):
-        """Return the key data of an algorithm of OIDC singing keys"""
-        with self.createZKContext() as context:
-            oidc_signing_keys = OIDCSigningKeys.loadKeys(
-                context, algorithm)
-            if not oidc_signing_keys:
-                OIDCSigningKeys.createAndStoreKeys(
-                    context, algorithm, self.password_bytes)
+        """
+        Return the key data of an algorithm of OIDC singing keys
+        The data rerunted is from ZuulTreeCache, could be not in sync with
+        the actual data in Zookeeper.
+        """
+
+        oidc_signing_keys = self.oidc_signing_keys_cache.getSigningKeys(
+            algorithm)
+        # If it is not found in cache, it could be the cache hasn't
+        # been synced or the key has not been created yet. We need to
+        # check both.
+        if not oidc_signing_keys:
+            with self.createZKContext() as context:
                 oidc_signing_keys = OIDCSigningKeys.loadKeys(
                     context, algorithm)
+                if not oidc_signing_keys:
+                    OIDCSigningKeys.createAndStoreKeys(
+                        context, algorithm, self.password_bytes)
+                    oidc_signing_keys = OIDCSigningKeys.loadKeys(
+                        context, algorithm)
 
         return oidc_signing_keys
 
     def getLatestOidcSigningKeys(self, algorithm):
-        """Return the latest key pair of an algorithm of OIDC singing keys"""
+        """
+        Return the latest key pair of an algorithm of OIDC singing keys
+        The data rerunted is from ZuulTreeCache, could be not in sync with
+        the actual data in Zookeeper.
+        """
         signing_key_data = self.getOidcSigningKeyData(algorithm=algorithm)
         latest_key = signing_key_data.keys[-1]
         pem_private_key = latest_key["private_key"].encode("utf-8")
