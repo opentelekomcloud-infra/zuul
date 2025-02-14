@@ -2811,6 +2811,7 @@ class ZuulTestCase(BaseTestCase):
             import_keys[path] = json.load(i)
 
         keystore.importKeys(import_data, False)
+        keystore.stop()
 
     def copyDirToRepo(self, project, source_path):
         self.init_repo(project)
