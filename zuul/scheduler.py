@@ -446,6 +446,7 @@ class Scheduler(threading.Thread):
         self.executor.stop()
         if self.statsd:
             self.statsd.close()
+        self.keystore.stop()
 
     def runCommand(self):
         while self._command_running:
