@@ -400,6 +400,7 @@ class Scheduler(threading.Thread):
 
     def stop(self):
         self.log.debug("Stopping scheduler")
+        self.keystore.stop()
         self._stopped = True
         self.wake_event.set()
         # Main thread, connections and layout update may be waiting

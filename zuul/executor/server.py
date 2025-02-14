@@ -3955,6 +3955,7 @@ class ExecutorServer(BaseMergeServer):
     def stop(self):
         self.log.debug("Stopping executor")
         self.component_info.state = self.component_info.STOPPED
+        self.keystore.stop()
         self.connections.stop()
         self.disk_accountant.stop()
         # The governor can change function registration, so make sure
