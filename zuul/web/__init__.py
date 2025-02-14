@@ -3137,6 +3137,7 @@ class ZuulWeb(object):
 
     def stop(self):
         self.log.info("ZuulWeb stopping")
+        self.keystore.stop()
         self._running = False
         self.component_info.state = self.component_info.STOPPED
         cherrypy.engine.exit()
