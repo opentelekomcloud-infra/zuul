@@ -13,6 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import copy
 import io
 import json
 import logging
@@ -5586,8 +5587,12 @@ class TestOIDCSigningKeys(ZuulTestCase):
         # a new key should be appended
         time.sleep(rotation_interval + 1)
         keystore.rotateOidcSigningKeys(algorithm, rotation_interval, max_ttl)
-        test_keys3 = keystore.getOidcSigningKeyData(algorithm)
-        self.assertEqual(len(test_keys3.keys), 2)
+        for _ in iterate_timeout(10, 'cache to sync'):
+            test_keys3 = keystore.getOidcSigningKeyData(algorithm)
+            if len(test_keys3.keys) == 2:
+                # avoid test_keys3 being modified in place by cache update
+                test_keys3 = copy.deepcopy(test_keys3)
+                break
         private_key3, _, version3 = keystore.getLatestOidcSigningKeys(
             algorithm)
         self.assertEqual(
@@ -5609,8 +5614,10 @@ class TestOIDCSigningKeys(ZuulTestCase):
         # the old key should be removed
         time.sleep(max_ttl + 1)
         keystore.rotateOidcSigningKeys(algorithm, rotation_interval, max_ttl)
-        test_keys4 = keystore.getOidcSigningKeyData(algorithm)
-        self.assertEqual(len(test_keys4.keys), 1)
+        for _ in iterate_timeout(10, 'cache to sync'):
+            test_keys4 = keystore.getOidcSigningKeyData(algorithm)
+            if len(test_keys4.keys) == 1:
+                break
         private_key4, _, version4 = keystore.getLatestOidcSigningKeys(
             algorithm)
         self.assertEqual(
