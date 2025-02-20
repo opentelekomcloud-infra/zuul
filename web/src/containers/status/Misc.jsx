@@ -161,15 +161,15 @@ const JOB_STATE_ICON_CONFIGS = {
   },
   POST_FAILURE: {
     icon: TimesIcon,
-    color: 'var(--zuul-color-warning)',
-    variant: 'warning',
-    labelColor: 'orange',
+    color: 'var(--zuul-color-danger)',
+    variant: 'danger',
+    labelColor: 'red',
   },
   NODE_FAILURE: {
     icon: TimesIcon,
-    color: 'var(--zuul-color-warning)',
-    variant: 'warning',
-    labelColor: 'orange',
+    color: 'var(--zuul-color-danger)',
+    variant: 'danger',
+    labelColor: 'red',
   },
   TIMED_OUT: {
     icon: TimesIcon,
@@ -179,15 +179,21 @@ const JOB_STATE_ICON_CONFIGS = {
   },
   RETRY_LIMIT: {
     icon: TimesIcon,
-    color: 'var(--zuul-color-warning)',
-    variant: 'warning',
-    labelColor: 'orange',
+    color: 'var(--zuul-color-danger)',
+    variant: 'danger',
+    labelColor: 'red',
   },
   UNSTABLE: {
     icon: TimesIcon,
     color: 'var(--zuul-color-warning)',
     variant: 'warning',
     labelColor: 'orange',
+  },
+  MERGE_CONFLICT: {
+    icon: TimesIcon,
+    color: 'var(--zuul-color-danger)',
+    variant: 'danger',
+    labelColor: 'red',
   },
 }
 
