@@ -89,7 +89,7 @@ def tests(session):
     session.install('-r', 'requirements.txt',
                     '-r', 'test-requirements.txt')
     session.install('-e', '.')
-    session.run_always('tools/yarn-build.sh', external=True)
+    #session.run_always('tools/yarn-build.sh', external=True)
     session.run_always('zuul-manage-ansible', '-v')
     procs = max(int(multiprocessing.cpu_count() * 0.7), 1)
     session.run('stestr', 'run', '--slowest', f'--concurrency={procs}',

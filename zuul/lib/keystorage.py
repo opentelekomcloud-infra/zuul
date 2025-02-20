@@ -36,6 +36,14 @@ class OIDCSigningKeysCache(ZuulTreeCache):
     def __init__(self, client):
         super().__init__(
             client, OIDCSigningKeys.OIDC_ROOT_PATH, async_worker=False)
+        self.cache_updated_listeners = []
+
+    def addCacheUpdatedListener(self, listener):
+        self.cache_updated_listeners.append(listener)
+
+    def postCacheHook(self, event, data, stat, key, obj):
+        for listener in self.cache_updated_listeners:
+            listener.onCacheUpdated()
 
     def objectFromRaw(self, key, data, zstat):
         return OIDCSigningKeys._fromRaw(data, zstat, None)
