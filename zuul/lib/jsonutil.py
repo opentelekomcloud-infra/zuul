@@ -16,6 +16,10 @@ import types
 import zuul.model
 
 
+class JSONDecodeError(ValueError):
+    pass
+
+
 class ZuulJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, types.MappingProxyType):
@@ -31,5 +35,13 @@ class ZuulJSONEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 
-def json_dumps(obj, **kw):
-    return json.dumps(obj, cls=ZuulJSONEncoder, **kw)
+def json_dumpb(obj, sort_keys=False):
+    return json.dumps(
+        obj, cls=ZuulJSONEncoder, sort_keys=sort_keys).encode("utf8")
+
+
+def json_loadb(data):
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError as exc:
+        raise JSONDecodeError from exc

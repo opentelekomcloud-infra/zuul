@@ -14,10 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import re
 
 import re2
+
+from zuul.lib.jsonutil import json_dumpb
 
 
 def filter_allowed_disallowed(
@@ -81,7 +82,7 @@ class ZuulRegex:
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash(json.dumps(self.toDict(), sort_keys=True))
+        return hash(json_dumpb(self.toDict(), sort_keys=True))
 
     def match(self, subject):
         if self.negate:
