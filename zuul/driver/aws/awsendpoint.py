@@ -19,7 +19,6 @@ import copy
 import functools
 import hashlib
 import uuid
-import json
 import logging
 import math
 import queue
@@ -47,6 +46,7 @@ from zuul.driver.util import (
     LazyExecutorTTLCache,
     RateLimiter,
 )
+from zuul.lib.jsonutil import json_dumpb
 from zuul.model import QuotaInformation
 from zuul.provider import (
     BaseProviderEndpoint,
@@ -1277,7 +1277,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         # Normally we would decorate this method, but our cache key is
         # complex, so we serialize it to JSON and manage the cache
         # ourselves.
-        cache_key = json.dumps(image_filters)
+        cache_key = json_dumpb(image_filters)
         val = self.image_id_by_filter_cache.get(cache_key)
         if val:
             return val
@@ -1523,7 +1523,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
     def _getLaunchTemplateName(self, args):
         hasher = hashlib.sha256()
-        hasher.update(json.dumps(args, sort_keys=True).encode('utf8'))
+        hasher.update(json_dumpb(args, sort_keys=True))
         sha = hasher.hexdigest()
         return (f'{self.LAUNCH_TEMPLATE_PREFIX}-{sha}')
 

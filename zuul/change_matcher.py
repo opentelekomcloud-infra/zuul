@@ -18,8 +18,7 @@ This module defines classes used in matching changes based on job
 configuration.
 """
 
-import json
-
+from zuul.lib.jsonutil import json_dumpb
 from zuul.lib.re2util import ZuulRegex
 
 COMMIT_MSG = '/COMMIT_MSG'
@@ -57,7 +56,7 @@ class AbstractChangeMatcher(object):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash(json.dumps(self.regex.toDict(), sort_keys=True))
+        return hash(json_dumpb(self.regex.toDict(), sort_keys=True))
 
     def __str__(self):
         return '{%s:%s}' % (self.__class__.__name__, self._regex)
