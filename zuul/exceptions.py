@@ -95,6 +95,10 @@ class QuotaException(Exception):
     pass
 
 
+class JSONDecodeError(Exception):
+    pass
+
+
 # Authentication Exceptions
 class AuthTokenException(Exception):
     defaultMsg = 'Unknown Error'

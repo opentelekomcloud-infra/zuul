@@ -13,24 +13,24 @@
 # under the License.
 
 import collections
-import json
 import logging
 import threading
 
 import mmh3
 from kazoo.exceptions import NoNodeError
 
+from zuul.lib.jsonutil import json_dumpb, json_loadb
 from zuul.model import NodesetRequest, ProviderNode, QuotaInformation
 from zuul.zk.cache import ZuulTreeCache
 from zuul.zk.zkobject import ZKContext
 
 
 def _dictToBytes(data):
-    return json.dumps(data).encode("utf-8")
+    return json_dumpb(data)
 
 
 def _bytesToDict(raw_data):
-    return json.loads(raw_data.decode("utf-8"))
+    return json_loadb(raw_data)
 
 
 def launcher_score(name, item):
