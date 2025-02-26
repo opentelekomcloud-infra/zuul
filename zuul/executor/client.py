@@ -65,6 +65,12 @@ class ExecutorClient(object):
             uuid, self.sched.connections,
             job, item, pipeline, dependent_changes, merger_items,
             redact_secrets_and_keys=False)
+
+        # Pass webroot to the executor for generating oidc token
+        web_root = self.sched.abide.tenants[pipeline.tenant.name].web_root
+        if web_root:
+            params["zuul_root_url"] = web_root.split("/t/")[0].rstrip("/")
+
         # TODO: deprecate and remove this variable?
         params["zuul"]["_inheritance_path"] = list(job.inheritance_path)
 
