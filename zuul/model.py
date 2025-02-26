@@ -41,6 +41,7 @@ from zuul.exceptions import (
     SEVERITY_ERROR,
     SEVERITY_WARNING,
     LabelForbiddenError,
+    MaxOIDCTTLError,
     MaxTimeoutError,
     NodesetNotFoundError,
     ProjectNotFoundError,
@@ -2753,6 +2754,9 @@ class Secret(ConfigObject):
         # is named 'secret_data' to make it easy to search for and
         # spot where it is directly used.
         self.secret_data = {}
+        # This attribute stores the oidc token configuration for the
+        # oidc secrets. Mutually exclusive with secret_data.
+        self.secret_oidc = {}
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -2761,7 +2765,8 @@ class Secret(ConfigObject):
         if not isinstance(other, Secret):
             return False
         return (self.name == other.name and
-                self.secret_data == other.secret_data)
+                self.secret_data == other.secret_data and
+                self.secret_oidc == other.secret_oidc)
 
     def __repr__(self):
         return '<Secret %s>' % (self.name,)
@@ -2793,8 +2798,26 @@ class Secret(ConfigObject):
         r.secret_data = self._decrypt(private_key, self.secret_data)
         return r
 
-    def serialize(self):
-        return yaml.encrypted_dump(self.secret_data, default_flow_style=False)
+    def serialize(self, layout):
+        # The output of this method is used by the executor
+        # Set the ttl for this tenant
+        if self.secret_oidc:
+            secret_oidc = self.secret_oidc.copy()
+            # We previously checked that it's not greater than the tenant
+            # max.
+            secret_oidc['ttl'] = secret_oidc.get(
+                'ttl', layout.tenant.default_oidc_ttl)
+        else:
+            secret_oidc = {}
+
+        if COMPONENT_REGISTRY.model_api >= 34:
+            data = {
+                "secret_data": self.secret_data,
+                "secret_oidc": secret_oidc
+            }
+        else:
+            data = self.secret_data
+        return yaml.encrypted_dump(data, default_flow_style=False)
 
 
 class SecretUse(ConfigObject):
@@ -3017,7 +3040,7 @@ class PlaybookContext(ConfigObject):
         for secret_use in self.secrets:
             secret = layout.secrets.get(secret_use.name)
             secret_name = secret_use.alias
-            encrypted_secret_data = secret.serialize()
+            encrypted_secret_data = secret.serialize(layout)
             # Use *our* project, not the secret's, because we want to decrypt
             # with *our* key.
             project = layout.tenant.getProject(
@@ -4558,7 +4581,7 @@ class Job(ConfigObject):
                     raise SecretNotFoundError(
                         "Secret %s not found" % (secret_use.name,))
                 secret_name = secret_use.alias
-                encrypted_secret_data = secret.serialize()
+                encrypted_secret_data = secret.serialize(layout)
                 # Use the other project, not the secret's, because we
                 # want to decrypt with the other project's key key.
                 connection_name = other.source_context.project_connection_name
@@ -9581,7 +9604,14 @@ class Layout(object):
         self._checkAddNodeset(nodeset)
         self._addIdenticalObject('Nodeset', self.nodesets, nodeset)
 
+    def _checkAddSecret(self, secret):
+        if secret.secret_oidc:
+            ttl = secret.secret_oidc.get('ttl', self.tenant.default_oidc_ttl)
+            if int(ttl) > self.tenant.max_oidc_ttl:
+                raise MaxOIDCTTLError(secret, self.tenant)
+
     def addSecret(self, secret):
+        self._checkAddSecret(secret)
         self._addIdenticalObject('Secret', self.secrets, secret)
 
     def addSemaphore(self, semaphore):
@@ -10146,6 +10176,7 @@ class Tenant(object):
         self.max_nodes_per_job = 5
         self.max_job_timeout = 10800
         self.max_oidc_ttl = 10800
+        self.default_oidc_ttl = 3600
         self.max_changes_per_pipeline = None
         self.max_dependencies = None
         self.exclude_unprotected_branches = False
