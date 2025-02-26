@@ -683,12 +683,15 @@ class FakeBuild(object):
         return False
 
     def writeReturnData(self):
-        changes = self.executor_server.return_data.get(self.name, {})
-        data = changes.get(self.parameters['zuul']['ref'])
-        if data is None:
+        data_changes = self.executor_server.return_data.get(self.name, {})
+        secret_data_changes = self.executor_server.return_secret_data.get(
+            self.name, {})
+        data = data_changes.get(self.parameters['zuul']['ref'])
+        secret_data = secret_data_changes.get(self.parameters['zuul']['ref'])
+        if data is None and secret_data is None:
             return
         with open(self.jobdir.result_data_file, 'w') as f:
-            f.write(json.dumps({'data': data}))
+            f.write(json.dumps({'data': data, 'secret_data': secret_data}))
 
     def hasChanges(self, *changes):
         """Return whether this build has certain changes in its git repos.
@@ -1033,6 +1036,7 @@ class RecordingExecutorServer(zuul.executor.server.ExecutorServer):
         self.fail_tests = {}
         self.retry_tests = {}
         self.return_data = {}
+        self.return_secret_data = {}
         self.job_builds = {}
 
     def failJob(self, name, change):
@@ -1061,7 +1065,7 @@ class RecordingExecutorServer(zuul.executor.server.ExecutorServer):
             dict(change=change,
                  retries=retries))
 
-    def returnData(self, name, change, data):
+    def returnData(self, name, change, data, secret_data={}):
         """Instruct the executor to return data for this build.
 
         :arg str name: The name of the job to return data.
@@ -1071,7 +1075,8 @@ class RecordingExecutorServer(zuul.executor.server.ExecutorServer):
         :arg dict data: The data to return
 
         """
-        changes = self.return_data.setdefault(name, {})
+        data_changes = self.return_data.setdefault(name, {})
+        secret_data_changes = self.return_secret_data.setdefault(name, {})
         if hasattr(change, 'number'):
             cid = change.data['currentPatchSet']['ref']
         elif isinstance(change, str):
@@ -1080,7 +1085,8 @@ class RecordingExecutorServer(zuul.executor.server.ExecutorServer):
             # Not actually a change, but a ref update event for tags/etc
             # In this case a key of None is used by writeReturnData
             cid = None
-        changes[cid] = data
+        data_changes[cid] = data
+        secret_data_changes[cid] = secret_data
 
     def release(self, regex=None, change=None):
         """Release a held build.
