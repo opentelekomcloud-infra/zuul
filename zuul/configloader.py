@@ -42,6 +42,7 @@ from zuul.lib.varnames import check_varnames
 from zuul.zk.components import COMPONENT_REGISTRY
 from zuul.zk.semaphore import SemaphoreHandler
 from zuul.exceptions import (
+    AlgorithmNotSupportedException,
     CleanupRunDeprecation,
     DuplicateGroupError,
     DuplicateNodeError,
@@ -638,12 +639,25 @@ class SecretParser(object):
         self.pcontext = pcontext
         self.schema = self.getSchema()
 
+    def _checkMissingAttribute(self, secret):
+        if 'data' not in secret and 'oidc' not in secret:
+            raise vs.Invalid("Either 'data' or 'oidc' must be present.")
+        return secret
+
     def getSchema(self):
-        secret = {vs.Required('name'): str,
-                  vs.Required('data'): dict,
-                  '_source_context': model.SourceContext,
-                  '_start_mark': model.ZuulMark,
-                  }
+        oidc_schema = {
+            'algorithm': str,
+            'ttl': int,
+            'claims': dict,
+        }
+
+        secret = vs.All({
+            vs.Required('name'): str,
+            vs.Exclusive('data', 'secret_type'): dict,
+            vs.Exclusive('oidc', 'secret_type'): oidc_schema,
+            '_source_context': model.SourceContext,
+            '_start_mark': model.ZuulMark,
+        }, self._checkMissingAttribute)
 
         return vs.Schema(secret)
 
@@ -652,7 +666,23 @@ class SecretParser(object):
         s = model.Secret(conf['name'], conf['_source_context'])
         s.source_context = conf['_source_context']
         s.start_mark = conf['_start_mark']
-        s.secret_data = conf['data']
+        if 'data' in conf:
+            s.secret_data = conf['data']
+        else:
+            # TODO: A change to the global config would require
+            # reloading the file where the secret is defined; this may
+            # not be obvious to users, but it's also probably not
+            # something we need to immediately solve.  It probably
+            # would be fixed by a full reconfiguration.
+            glbl = self.pcontext.scheduler.globals
+            algorithm = conf['oidc'].get('algorithm')
+            if not algorithm:
+                conf['oidc']['algorithm'] = glbl.oidc_default_signing_algorithm
+            elif algorithm not in glbl.oidc_supported_signing_algorithms:
+                raise AlgorithmNotSupportedException(
+                    f"Algorithm '{algorithm}' is not supported")
+
+            s.secret_oidc = conf['oidc']
         return s
 
 
@@ -1923,6 +1953,8 @@ class TenantParser(object):
             tenant.max_job_timeout = int(conf['max-job-timeout'])
         if conf.get('max-oidc-ttl') is not None:
             tenant.max_oidc_ttl = int(conf['max-oidc-ttl'])
+        if conf.get('default-oidc-ttl') is not None:
+            tenant.default_oidc_ttl = int(conf['default-oidc-ttl'])
         if conf.get('exclude-unprotected-branches') is not None:
             tenant.exclude_unprotected_branches = \
                 conf['exclude-unprotected-branches']
