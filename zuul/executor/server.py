@@ -18,6 +18,7 @@ import collections
 import copy
 import datetime
 import json
+import jwt
 import logging
 import multiprocessing
 import os
@@ -547,6 +548,7 @@ class JobDirPlaybook(object):
         self.secrets = os.path.join(self.secrets_root, 'all.yaml')
         self.secrets_content = None
         self.secrets_keys = set()
+        self.secrets_oidc = {}
         self.semaphores = []
         self.nesting_level = None
         self.cleanup = False
@@ -2417,14 +2419,18 @@ class AnsibleJob(object):
         for role in playbook['roles']:
             self.prepareRole(jobdir_playbook, role, args)
 
-        secrets = self.decryptSecrets(playbook['secrets'])
-        secrets = self.mergeSecretVars(secrets)
+        secrets, jobdir_playbook.secrets_oidc = \
+            self.decryptSecrets(playbook['secrets'])
+        secrets = self.mergeSecretVars(secrets, jobdir_playbook.secrets_oidc)
         if secrets:
             check_varnames(secrets)
             secrets = yaml.mark_strings_unsafe(secrets)
             jobdir_playbook.secrets_content = yaml.ansible_unsafe_dump(
                 secrets, default_flow_style=False)
             jobdir_playbook.secrets_keys = set(secrets.keys())
+        if jobdir_playbook.secrets_oidc:
+            jobdir_playbook.secrets_keys.update(
+                jobdir_playbook.secrets_oidc.keys())
 
         self.writeAnsibleConfig(jobdir_playbook)
 
@@ -2440,10 +2446,11 @@ class AnsibleJob(object):
         :param dict secrets: The playbook secrets dictionary from the
             scheduler
 
-        :returns: A decrypted secrets dictionary
+        :returns: Tuple of decrypted secrets dictionary and oidc dictionary
 
         """
-        ret = {}
+        ret_secret_data = {}
+        ret_secret_oidc = {}
         with self.executor_server.zk_context as ctx:
             blobstore = BlobStore(ctx)
             for secret_name, secret_index in secrets.items():
@@ -2454,15 +2461,26 @@ class AnsibleJob(object):
                 else:
                     frozen_secret = self.job.secrets[secret_index]
                 secret = zuul.model.Secret(secret_name, None)
-                secret.secret_data = yaml.encrypted_load(
+                decrypted_dict = yaml.encrypted_load(
                     frozen_secret['encrypted_data'])
-                private_secrets_key, public_secrets_key = \
-                    self.executor_server.keystore.getProjectSecretsKeys(
-                        frozen_secret['connection_name'],
-                        frozen_secret['project_name'])
-                secret = secret.decrypt(private_secrets_key)
-                ret[secret_name] = secret.secret_data
-        return ret
+                if "secret_oidc" not in decrypted_dict:
+                    # MODEL_API < 34
+                    secret.secret_data = decrypted_dict
+                else:
+                    secret.secret_data = decrypted_dict['secret_data']
+                    secret.secret_oidc = decrypted_dict['secret_oidc']
+
+                if secret.secret_data:
+                    private_secrets_key, public_secrets_key = \
+                        self.executor_server.keystore.getProjectSecretsKeys(
+                            frozen_secret['connection_name'],
+                            frozen_secret['project_name'])
+                    secret = secret.decrypt(private_secrets_key)
+                    ret_secret_data[secret_name] = secret.secret_data
+                else:
+                    ret_secret_oidc[secret_name] = secret.secret_oidc
+
+        return ret_secret_data, ret_secret_oidc
 
     def checkoutTrustedProject(self, project, branch, args):
         pi = self.jobdir.getTrustedProject(project.canonical_name,
@@ -2584,11 +2602,12 @@ class AnsibleJob(object):
                             project.name)
         return path
 
-    def mergeSecretVars(self, secrets):
+    def mergeSecretVars(self, secrets, secrets_oidc):
         '''
         Merge secret return data with secrets.
 
         :arg secrets dict: Actual Zuul secrets.
+        :arg secrets_oidc dict: Actual Zuul oidc secrets.
         '''
 
         secret_vars = self.secret_vars
@@ -2607,6 +2626,7 @@ class AnsibleJob(object):
             other_vars.update(host_vars.keys())
         other_vars.update(self.job.extra_variables.keys())
         other_vars.update(secrets.keys())
+        other_vars.update(secrets_oidc.keys())
 
         ret = secret_vars.copy()
         for key in other_vars:
@@ -3561,9 +3581,64 @@ class AnsibleJob(object):
                 now=datetime.datetime.now(),
                 msg=msg))
 
+    def _generateOidcTokens(self, playbook):
+        # In case web_root is not configured in zuul and tenant,
+        # 'zuul_root_url' would not be available in the arguments,
+        # just log a warning and skip generating oidc tokens
+        if 'zuul_root_url' not in self.arguments:
+            self.log.warning(
+                "web_root is not configured in zuul, "
+                "skipping oidc token generation")
+            return
+        oidc_tokens = {}
+        for oidc_name, oidc_config in playbook.secrets_oidc.items():
+            algorithm = oidc_config['algorithm']
+            private_secrets_key, _, version = \
+                self.executor_server.keystore.getLatestOidcSigningKeys(
+                    algorithm=algorithm)
+            iat = int(time.time())
+            ttl = oidc_config['ttl']
+            exp = iat + ttl
+            tenant = self.arguments['zuul']['tenant']
+            canonical_project_name = \
+                self.arguments['zuul']['project']['canonical_name']
+            sub = f'secret:{tenant}/{canonical_project_name}/{oidc_name}'
+            payload = {
+                "iss": self.arguments["zuul_root_url"],
+                'sub': sub,
+                'build-uuid': self.arguments["zuul"]["build"],
+                'job-name': self.arguments['zuul']['job'],
+                'playbook': playbook.canonical_name_and_path,
+                'pipeline': self.arguments['zuul']['pipeline'],
+                'tenant': tenant,
+                'iat': iat,
+                'exp': exp,
+            }
+            custom_claims = oidc_config.get('claims', {})
+            for key, value in custom_claims.items():
+                # custom claims should not overwrite the default claims
+                if key not in payload:
+                    payload[key] = value
+
+            token = jwt.encode(
+                payload, private_secrets_key, algorithm=algorithm,
+                headers={"kid": f"{algorithm}-{version}"})
+            oidc_tokens[oidc_name] = token
+
+        oidc_tokens_content = yaml.ansible_unsafe_dump(
+            yaml.mark_strings_unsafe(oidc_tokens), default_flow_style=False)
+
+        if playbook.secrets_content:
+            playbook.secrets_content += oidc_tokens_content
+        else:
+            playbook.secrets_content = oidc_tokens_content
+
     def runAnsiblePlaybook(self, playbook, timeout, ansible_version,
                            success=None, phase=None, index=None,
                            will_retry=None):
+        if playbook.secrets_oidc:
+            self._generateOidcTokens(playbook)
+
         if playbook.trusted or playbook.secrets_content:
             self.writeInventory(playbook, self.frozen_hostvars)
         else:
