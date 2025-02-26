@@ -246,3 +246,9 @@ Version 34
 :Prior Zuul version: 11.3.0
 :Description: Don't store deprecated web ``status_url`` in system attributes anymore.
               Affects schedulers and web.
+
+Version 35
+----------
+:Prior Zuul version: 11.3.0
+:Description: Updated Secret configuration foramat to support OIDC token.
+              Affects schedulers and executors.
