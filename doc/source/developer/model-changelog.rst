@@ -240,3 +240,9 @@ Version 33
 :Description: Send SemaphoreReleaseEvents to the tenant management event queue
               instead of the pipeline trigger event queue.
               Affects schedulers and executors.
+
+Version 34
+----------
+:Prior Zuul version: 11.3.0
+:Description: Updated Secret configuration foramat to support OIDC token.
+              Affects schedulers and executors.
