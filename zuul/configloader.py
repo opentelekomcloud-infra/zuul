@@ -37,7 +37,7 @@ import zuul.manager.independent
 import zuul.manager.supercedent
 import zuul.manager.serial
 from zuul.lib.logutil import get_annotated_logger
-from zuul.lib.re2util import filter_allowed_disallowed, ZuulRegex
+from zuul.lib.re2util import ZuulRegex
 from zuul.lib.varnames import check_varnames
 from zuul.zk.components import COMPONENT_REGISTRY
 from zuul.zk.semaphore import SemaphoreHandler
@@ -46,7 +46,6 @@ from zuul.exceptions import (
     DuplicateGroupError,
     DuplicateNodeError,
     GlobalSemaphoreNotFoundError,
-    LabelForbiddenError,
     MaxTimeoutError,
     MultipleProjectConfigurations,
     NodeFromGroupNotFoundError,
@@ -603,18 +602,7 @@ class NodeSetParser(object):
         ns.start_mark = conf.get('_start_mark')
         node_names = set()
         group_names = set()
-        allowed_labels = self.pcontext.tenant.allowed_labels
-        disallowed_labels = self.pcontext.tenant.disallowed_labels
 
-        requested_labels = [n['label'] for n in as_list(conf['nodes'])]
-        filtered_labels = filter_allowed_disallowed(
-            requested_labels, allowed_labels, disallowed_labels)
-        rejected_labels = set(requested_labels) - set(filtered_labels)
-        for name in rejected_labels:
-            raise LabelForbiddenError(
-                label=name,
-                allowed_labels=allowed_labels,
-                disallowed_labels=disallowed_labels)
         for conf_node in as_list(conf['nodes']):
             if "localhost" in as_list(conf_node['name']):
                 raise Exception("Nodes named 'localhost' are not allowed.")
