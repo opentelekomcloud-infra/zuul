@@ -52,7 +52,6 @@ from zuul.exceptions import (
     NodeFromGroupNotFoundError,
     PipelineNotPermittedError,
     ProjectNotFoundError,
-    ProjectNotPermittedError,
     RegexDeprecation,
     SEVERITY_ERROR,
     TemplateNotFoundError,
@@ -380,6 +379,13 @@ class PragmaParser(object):
                 source_context.implied_branches = [
                     change_matcher.BranchMatcher(make_regex(x, self.pcontext))
                     for x in as_list(branches)]
+                source_context.implied_branch_matcher = \
+                    change_matcher.MatchAny(source_context.implied_branches)
+
+        if source_context.implied_branch_matcher is None:
+            source_context.implied_branch_matcher =\
+                change_matcher.ImpliedBranchMatcher(
+                    ZuulRegex(source_context.branch))
 
 
 class ImageParser(object):
@@ -1327,7 +1333,7 @@ class ProjectTemplateParser(object):
 
         # If this project definition is in a place where it
         # should get implied branch matchers, set it.
-        branches = self.pcontext.getImpliedBranches(source_context)
+        branches = self.pcontext.getImpliedBranches_new(source_context)
         if branches:
             project_template.setImpliedBranchMatchers(branches)
 
@@ -1403,58 +1409,17 @@ class ProjectParser(object):
             # of the project where it is defined.
             project_name = (source_context.project_canonical_name)
 
-        source_tpc = self.pcontext.tenant.getTPC(
-            source_context.project_canonical_name)
-        if project_name.startswith('^'):
-            for other_tpc in \
-                self.pcontext.tenant.getTPCsByRegex(project_name):
-                if not source_tpc.canConfigureProject(other_tpc):
-                    raise ProjectNotPermittedError()
+        # Parse the project as a template since they're mostly the
+        # same.
+        project_config = self.pcontext.project_template_parser. \
+            fromYaml(conf, validate=False)
 
-            # Parse the project as a template since they're mostly the
-            # same.
-            project_config = self.pcontext.project_template_parser. \
-                fromYaml(conf, validate=False)
+        project_config.name = project_name
 
-            project_config.name = project_name
-        else:
-            other_tpc = self.pcontext.tenant.getTPC(project_name)
-            if other_tpc is None:
-                raise ProjectNotFoundError(project_name)
-            project = other_tpc.project
-
-            same_project = (project.canonical_name ==
-                            source_context.project_canonical_name)
-            if not (
-                    same_project or
-                    source_tpc.canConfigureProject(other_tpc)
-            ):
-                raise ProjectNotPermittedError()
-
-            # Parse the project as a template since they're mostly the
-            # same.
-            project_config = self.pcontext.project_template_parser.\
-                fromYaml(conf, validate=False)
-
-            project_config.name = project.canonical_name
-
+        if not project_name.startswith('^'):
             # Explicitly override this to False since we're reusing the
             # project-template loading method which sets it True.
             project_config.is_template = False
-
-            # Pragmas can cause templates to end up with implied
-            # branch matchers for arbitrary branches, but project
-            # stanzas should not.  They should either have the current
-            # branch or no branch matcher.  But if we're configuring a
-            # different project, then we'll allow the pragma-supplied
-            # branch matchers.
-            if same_project:
-                if source_context.trusted:
-                    project_config.setImpliedBranchMatchers([])
-                else:
-                    project_config.setImpliedBranchMatchers(
-                        [change_matcher.ImpliedBranchMatcher(
-                            ZuulRegex(source_context.branch))])
 
         branches = None
         if 'branches' in conf:
@@ -1465,7 +1430,13 @@ class ProjectParser(object):
                     for x in as_list(conf_branches)
                 ]
         if branches:
-            project_config.setImpliedBranchMatchers(branches)
+            project_config.setExplicitBranchMatchers(branches)
+
+        # Always set the source implied branch matcher so it's
+        # available if needed.
+        project_config.setSourceImpliedBranchMatchers(
+            [change_matcher.ImpliedBranchMatcher(
+                ZuulRegex(source_context.branch))])
 
         # Add templates
         for name in conf.get('templates', []):
@@ -1912,7 +1883,7 @@ class ParseContext(object):
 
     def getImpliedBranches(self, source_context):
         # If the user has set a pragma directive for this, use the
-        # value (ixf unset, the value is None).
+        # value (if unset, the value is None).
         if source_context.implied_branch_matchers is True:
             if source_context.implied_branches is not None:
                 return source_context.implied_branches
@@ -1933,6 +1904,14 @@ class ParseContext(object):
         if len(branches) == 1:
             return None
 
+        if source_context.implied_branches is not None:
+            return source_context.implied_branches
+        return [change_matcher.ImpliedBranchMatcher(
+            ZuulRegex(source_context.branch))]
+
+    # TODO: this will replace getImpliedBranches as we remove all
+    # tenant references during object parsing.
+    def getImpliedBranches_new(self, source_context):
         if source_context.implied_branches is not None:
             return source_context.implied_branches
         return [change_matcher.ImpliedBranchMatcher(
@@ -2722,8 +2701,9 @@ class TenantParser(object):
     def parseConfig(self, tenant, unparsed_config, pcontext):
         parsed_config = model.ParsedConfig()
 
-        # Handle pragma items first since they modify the source context
-        # used by other classes.
+        # Handle pragma items first since they modify the source
+        # context used by other classes.  Note that we do not check
+        # pragma against load classes -- they are always read.
         for config_pragma in unparsed_config.pragmas:
             with pcontext.errorContext(stanza='pragma', conf=config_pragma):
                 with pcontext.accumulator.catchErrors():
@@ -3056,7 +3036,9 @@ class TenantParser(object):
                     parsed_config.projects.append(conf)
 
         for project in parsed_config.projects:
-            layout.addProjectConfig(project)
+            with parse_context.errorContext(stanza='project', conf=project):
+                with parse_context.accumulator.catchErrors():
+                    layout.addProjectConfig(project)
 
         # Now that all the project pipelines are loaded, fixup and
         # verify references to other config objects.
