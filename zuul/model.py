@@ -40,9 +40,11 @@ from zuul import change_matcher
 from zuul.exceptions import (
     SEVERITY_ERROR,
     SEVERITY_WARNING,
+    LabelForbiddenError,
     NodesetNotFoundError,
     ProjectNotPermittedError,
 )
+from zuul.lib.re2util import filter_allowed_disallowed
 from zuul.lib import tracing
 from zuul.lib import yamlutil as yaml
 from zuul.lib.capabilities import capabilities_registry
@@ -2224,6 +2226,20 @@ class NodeSet(ConfigObject):
 
     def addAlternative(self, alt):
         self.alternatives.append(alt)
+
+    def flattenAlternativeLabels(self, results=None):
+        # Get the complete list of labels referenced by this nodeset
+        # and any alternatives for validation purposes.  This does not
+        # dereference other nodesets by name (it only looks at this
+        # nodeset).
+        if results is None:
+            results = set()
+        for n in self.nodes.values():
+            results.add(n.label)
+        for alt in self.alternatives:
+            if isinstance(alt, NodeSet):
+                alt.flattenAlternativeLabels(results)
+        return results
 
     def flattenAlternatives(self, layout):
         alts = []
@@ -8640,6 +8656,15 @@ class ProjectConfig(ConfigObject):
         return '<ProjectConfig %s source: %s>' % (
             self.name, self.source_context)
 
+    def embeddedJobs(self):
+        # Return all embedded job definitions in this project config
+        # for validation purposes.
+        for ppc in self.pipelines.values():
+            for jobs in ppc.job_list.jobs.values():
+                for job in jobs:
+                    if isinstance(job, Job):
+                        yield job
+
     def _makeBranchMatcher(self, matchers):
         if len(matchers) == 0:
             return None
@@ -9256,6 +9281,8 @@ class Layout(object):
         return self.jobs.get(name, [])
 
     def addJob(self, job):
+        if isinstance(job.nodeset, NodeSet):
+            self._checkAddNodeset(job.nodeset)
         # We can have multiple variants of a job all with the same
         # name, but these variants must all be defined in the same repo.
         # Unless the repo is permitted to shadow another.  If so, and
@@ -9323,7 +9350,24 @@ class Layout(object):
             return
         obj_dict[new_obj.name] = new_obj
 
+    def _checkAddNodeset(self, nodeset):
+        # Verify that we can add a nodeset; used by top-level nodeset
+        # objects as well as nested nodesets.
+        allowed_labels = self.tenant.allowed_labels
+        disallowed_labels = self.tenant.disallowed_labels
+
+        requested_labels = nodeset.flattenAlternativeLabels()
+        filtered_labels = set(filter_allowed_disallowed(
+            requested_labels, allowed_labels, disallowed_labels))
+        rejected_labels = requested_labels - filtered_labels
+        for name in rejected_labels:
+            raise LabelForbiddenError(
+                label=name,
+                allowed_labels=allowed_labels,
+                disallowed_labels=disallowed_labels)
+
     def addNodeSet(self, nodeset):
+        self._checkAddNodeset(nodeset)
         self._addIdenticalObject('Nodeset', self.nodesets, nodeset)
 
     def addSecret(self, secret):
@@ -9385,6 +9429,10 @@ class Layout(object):
         self.pipelines[pipeline.name] = pipeline
 
     def addProjectTemplate(self, project_template):
+        for job in project_template.embeddedJobs():
+            if isinstance(job.nodeset, NodeSet):
+                self._checkAddNodeset(job.nodeset)
+
         template_list = self.project_templates.get(project_template.name)
         if template_list is not None:
             reference = template_list[0]
@@ -9404,6 +9452,10 @@ class Layout(object):
         return pt
 
     def addProjectConfig(self, project_canonical_name, project_config):
+        for job in project_config.embeddedJobs():
+            if isinstance(job.nodeset, NodeSet):
+                self._checkAddNodeset(job.nodeset)
+
         source_tpc = self.tenant.getTPC(
             project_config.source_context.project_canonical_name)
         this_tpc = self.tenant.getTPC(project_canonical_name)
