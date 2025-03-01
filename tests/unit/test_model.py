@@ -226,7 +226,8 @@ class TestJob(BaseTestCase):
                 ]
             }
         })
-        self.layout.addProjectConfig(project_config)
+        self.layout.addProjectConfig(self.project.canonical_name,
+                                     project_config)
 
         change = model.Change(self.project)
         change.branch = 'master'
@@ -293,7 +294,8 @@ class TestJob(BaseTestCase):
                 ]
             }
         })
-        self.layout.addProjectConfig(project_config)
+        self.layout.addProjectConfig(self.project.canonical_name,
+                                     project_config)
 
         change = model.Change(self.project)
         change.branch = 'master'
@@ -368,7 +370,8 @@ class TestJob(BaseTestCase):
             }
         })
 
-        self.layout.addProjectConfig(project_config)
+        self.layout.addProjectConfig(self.project.canonical_name,
+                                     project_config)
 
         change = model.Change(self.project)
         # Test master
@@ -447,7 +450,8 @@ class TestJob(BaseTestCase):
                 'jobs': ['python27'],
             }
         })
-        self.layout.addProjectConfig(project_config)
+        self.layout.addProjectConfig(self.project.canonical_name,
+                                     project_config)
 
         change = model.Change(self.project)
         change.branch = 'master'
@@ -1143,7 +1147,8 @@ class TestJob(BaseTestCase):
             }
         })
 
-        self.layout.addProjectConfig(project_config)
+        self.layout.addProjectConfig(job_project.canonical_name,
+                                     project_config)
 
         change = model.Change(job_project)
         # Test master
