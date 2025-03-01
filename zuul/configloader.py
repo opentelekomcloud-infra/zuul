@@ -3020,25 +3020,35 @@ class TenantParser(object):
                 with parse_context.accumulator.catchErrors():
                     layout.addProjectTemplate(template)
 
-        # The project stanzas containing a regex are separated from the normal
-        # project stanzas and organized by regex. We need to loop over each
-        # regex and copy each stanza below the regex for each matching project.
-        for regex, config_projects in parsed_config.projects_by_regex.items():
+        for parsed_project in parsed_config.projects:
+            with parse_context.errorContext(stanza='project',
+                                            conf=parsed_project):
+                with parse_context.accumulator.catchErrors():
+                    # Attempt to resolve a possibly short project name
+                    # in this tenant.
+                    this_tpc = tenant.getTPC(parsed_project.name)
+                    if this_tpc is None:
+                        raise ProjectNotFoundError(parsed_project.name)
+                    layout.addProjectConfig(this_tpc.project.canonical_name,
+                                            parsed_project)
+
+        # The project stanzas containing a regex are separated from
+        # the normal project stanzas and organized by regex. We need
+        # to loop over each regex and copy each stanza below the regex
+        # for each matching project.  These should be added to the
+        # layout after the normal projects because the first project
+        # sets the default branch, merge mode, etc; and that should be
+        # an explicit project if it exists.
+        for regex, parsed_projects in parsed_config.projects_by_regex.items():
             projects_matching_regex = tenant.getProjectsByRegex(regex)
 
             for trusted, project in projects_matching_regex:
-                for config_project in config_projects:
-                    # we just override the project name here so a simple copy
-                    # should be enough
-                    conf = config_project.copy()
-                    name = project.canonical_name
-                    conf.name = name
-                    parsed_config.projects.append(conf)
-
-        for project in parsed_config.projects:
-            with parse_context.errorContext(stanza='project', conf=project):
-                with parse_context.accumulator.catchErrors():
-                    layout.addProjectConfig(project)
+                for parsed_project in parsed_projects:
+                    with parse_context.errorContext(stanza='project',
+                                                    conf=parsed_project):
+                        with parse_context.accumulator.catchErrors():
+                            layout.addProjectConfig(project.canonical_name,
+                                                    parsed_project)
 
         # Now that all the project pipelines are loaded, fixup and
         # verify references to other config objects.
