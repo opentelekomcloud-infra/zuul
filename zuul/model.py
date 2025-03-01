@@ -41,7 +41,6 @@ from zuul.exceptions import (
     SEVERITY_ERROR,
     SEVERITY_WARNING,
     NodesetNotFoundError,
-    ProjectNotFoundError,
     ProjectNotPermittedError,
 )
 from zuul.lib import tracing
@@ -8617,6 +8616,9 @@ class ProjectConfig(ConfigObject):
     # Represents a project configuration
     def __init__(self, name):
         super(ProjectConfig, self).__init__()
+        # Note: name may not be resolved to a fully qualified project
+        # name; use the layout to get relevant project configs for a
+        # given canonical name.
         self.name = name
         self.is_template = False
         self.templates = []
@@ -8638,22 +8640,6 @@ class ProjectConfig(ConfigObject):
         return '<ProjectConfig %s source: %s>' % (
             self.name, self.source_context)
 
-    def copy(self):
-        r = self.__class__(self.name)
-        r.source_context = self.source_context
-        r.start_mark = self.start_mark
-        r.is_template = self.is_template
-        r.templates = self.templates
-        r.pipelines = self.pipelines
-        r.explicit_branch_matcher = self.explicit_branch_matcher
-        r.implied_branch_matcher = self.implied_branch_matcher
-        r.source_implied_branch_matcher = self.source_implied_branch_matcher
-        r.variables = self.variables
-        r.merge_mode = self.merge_mode
-        r.default_branch = self.default_branch
-        r.queue_name = self.queue_name
-        return r
-
     def _makeBranchMatcher(self, matchers):
         if len(matchers) == 0:
             return None
@@ -8671,7 +8657,7 @@ class ProjectConfig(ConfigObject):
     def setSourceImpliedBranchMatchers(self, matchers):
         self.source_implied_branch_matcher = self._makeBranchMatcher(matchers)
 
-    def getBranchMatcher(self, tenant):
+    def getBranchMatcher(self, tenant, project_canonical_name):
         # Explicit branch matchers always win
         if self.explicit_branch_matcher is not None:
             return self.explicit_branch_matcher
@@ -8684,7 +8670,7 @@ class ProjectConfig(ConfigObject):
         # project, then we'll allow the pragma-supplied branch
         # matchers.
         if not self.is_template:
-            this_tpc = tenant.getTPC(self.name)
+            this_tpc = tenant.getTPC(project_canonical_name)
             same_project = (this_tpc.project.canonical_name ==
                             self.source_context.project_canonical_name)
             if same_project:
@@ -8710,8 +8696,11 @@ class ProjectConfig(ConfigObject):
             return None
         return self.implied_branch_matcher
 
-    def changeMatches(self, tenant, change):
-        branch_matcher = self.getBranchMatcher(tenant)
+    def changeMatches(self, tenant, project_canonical_name, change):
+        # project_canonical_name is the name of the project that this
+        # ProjectConfig is targeting, provided by the caller since
+        # self.name is not fully resolved.
+        branch_matcher = self.getBranchMatcher(tenant, project_canonical_name)
         if branch_matcher and not branch_matcher.matches(change):
             return False
         return True
@@ -9414,35 +9403,19 @@ class Layout(object):
             raise TemplateNotFoundError("Project template %s not found" % name)
         return pt
 
-    def addProjectConfig(self, project_config):
+    def addProjectConfig(self, project_canonical_name, project_config):
         source_tpc = self.tenant.getTPC(
             project_config.source_context.project_canonical_name)
-        this_tpc = self.tenant.getTPC(project_config.name)
-        if this_tpc is None:
-            raise ProjectNotFoundError(project_config.name)
+        this_tpc = self.tenant.getTPC(project_canonical_name)
         if not source_tpc.canConfigureProject(this_tpc):
             raise ProjectNotPermittedError()
 
-        # The project_config.name must be a canonical name.  If it is
-        # already the cname of the target tpc, we're all set.
-        if this_tpc.project.canonical_name != project_config.name:
-            # Otherwise we need to set it correctly.  If it's
-            # configuring itself, then we just set the name.  But if
-            # it's configuring a different project and was referencing
-            # that project by a short name, we need to make a copy
-            # since it might resolve to a different project in a
-            # different tenant.
-            if (this_tpc.project.canonical_name !=
-                source_tpc.project.canonical_name):
-                project_config = project_config.copy()
-            project_config.name = this_tpc.project.canonical_name
-
-        if project_config.name in self.project_configs:
-            self.project_configs[project_config.name].append(project_config)
+        if project_canonical_name in self.project_configs:
+            self.project_configs[project_canonical_name].append(project_config)
         else:
-            self.project_configs[project_config.name] = [project_config]
-            self.project_metadata[project_config.name] = ProjectMetadata()
-        md = self.project_metadata[project_config.name]
+            self.project_configs[project_canonical_name] = [project_config]
+            self.project_metadata[project_canonical_name] = ProjectMetadata()
+        md = self.project_metadata[project_canonical_name]
         if md.merge_mode is None and project_config.merge_mode is not None:
             md.merge_mode = project_config.merge_mode
         if (md.default_branch is None and
@@ -9491,7 +9464,8 @@ class Layout(object):
         ppc = ProjectPipelineConfig()
         project_in_pipeline = False
         for pc in self.getProjectConfigs(change.project.canonical_name):
-            if not pc.changeMatches(self.tenant, change):
+            if not pc.changeMatches(
+                    self.tenant, change.project.canonical_name, change):
                 msg = "Project %s did not match" % (pc,)
                 ppc.addDebug(msg)
                 log.debug("%s item %s", msg, item)
@@ -9504,7 +9478,9 @@ class Layout(object):
                 for template in templates:
                     template_ppc = template.pipelines.get(item.pipeline.name)
                     if template_ppc:
-                        if not template.changeMatches(self.tenant, change):
+                        if not template.changeMatches(
+                                self.tenant, change.project.canonical_name,
+                                change):
                             msg = "Project template %s did not match" % (
                                 template,)
                             ppc.addDebug(msg)
