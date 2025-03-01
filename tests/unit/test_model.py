@@ -69,10 +69,10 @@ class TestJob(BaseTestCase):
         self.context = model.SourceContext(
             self.project.canonical_name, self.project.name,
             self.project.connection_name, 'master', 'test', True)
-        self.untrusted_context = model.SourceContext(
-            self.project.canonical_name, self.project.name,
-            self.project.connection_name, 'master', 'test', False)
         self.tpc = model.TenantProjectConfig(self.project)
+        # TODO: remove trusted flag from context.  We're only going to
+        # use the TPC in the future.
+        self.tpc.trusted = True
         self.tenant.addTPC(self.tpc)
         self.pipeline = model.Pipeline('gate', self.tenant)
         self.pipeline.source_context = self.context
