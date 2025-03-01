@@ -61,6 +61,8 @@ class TestJob(BaseTestCase):
                             connection=self.connection)
         self.abide = model.Abide()
         self.tenant = model.Tenant('tenant')
+        self.tenant.allowed_labels = None
+        self.tenant.disallowed_labels = None
         self.tenant.default_ansible_version = AnsibleManager().default_version
         self.tenant.semaphore_handler = Dummy(abide=self.abide)
         self.layout = model.Layout(self.tenant)
