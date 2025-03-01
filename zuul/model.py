@@ -41,6 +41,8 @@ from zuul.exceptions import (
     SEVERITY_ERROR,
     SEVERITY_WARNING,
     NodesetNotFoundError,
+    ProjectNotFoundError,
+    ProjectNotPermittedError,
 )
 from zuul.lib import tracing
 from zuul.lib import yamlutil as yaml
@@ -2903,6 +2905,7 @@ class SourceContext(ConfigObject):
         self.trusted = trusted
         self.implied_branch_matchers = implied_branch_matchers
         self.implied_branches = None
+        self.implied_branch_matcher = None
 
     def __str__(self):
         return '%s/%s@%s' % (
@@ -8542,6 +8545,8 @@ class TenantProjectConfig(object):
     def canConfigureProject(self, other_tpc, validation_only=False):
         if self.trusted:
             return True
+        if other_tpc.project.canonical_name == self.project.canonical_name:
+            return True
         if not self.configure_projects:
             return False
         if not validation_only and other_tpc.trusted:
@@ -8617,7 +8622,9 @@ class ProjectConfig(ConfigObject):
         self.templates = []
         # Pipeline name -> ProjectPipelineConfig
         self.pipelines = {}
-        self.branch_matcher = None
+        self.explicit_branch_matcher = None
+        self.implied_branch_matcher = None
+        self.source_implied_branch_matcher = None
         self.variables = {}
         # These represent the values from the config file, but should
         # not be used directly; instead, use the ProjectMetadata to
@@ -8628,8 +8635,8 @@ class ProjectConfig(ConfigObject):
         self.queue_name = None
 
     def __repr__(self):
-        return '<ProjectConfig %s source: %s %s>' % (
-            self.name, self.source_context, self.branch_matcher)
+        return '<ProjectConfig %s source: %s>' % (
+            self.name, self.source_context)
 
     def copy(self):
         r = self.__class__(self.name)
@@ -8638,23 +8645,74 @@ class ProjectConfig(ConfigObject):
         r.is_template = self.is_template
         r.templates = self.templates
         r.pipelines = self.pipelines
-        r.branch_matcher = self.branch_matcher
+        r.explicit_branch_matcher = self.explicit_branch_matcher
+        r.implied_branch_matcher = self.implied_branch_matcher
+        r.source_implied_branch_matcher = self.source_implied_branch_matcher
         r.variables = self.variables
         r.merge_mode = self.merge_mode
         r.default_branch = self.default_branch
         r.queue_name = self.queue_name
         return r
 
-    def setImpliedBranchMatchers(self, matchers):
+    def _makeBranchMatcher(self, matchers):
         if len(matchers) == 0:
-            self.branch_matcher = None
+            return None
         elif len(matchers) > 1:
-            self.branch_matcher = change_matcher.MatchAny(matchers)
+            return change_matcher.MatchAny(matchers)
         else:
-            self.branch_matcher = matchers[0]
+            return matchers[0]
 
-    def changeMatches(self, change):
-        if self.branch_matcher and not self.branch_matcher.matches(change):
+    def setExplicitBranchMatchers(self, matchers):
+        self.explicit_branch_matcher = self._makeBranchMatcher(matchers)
+
+    def setImpliedBranchMatchers(self, matchers):
+        self.implied_branch_matcher = self._makeBranchMatcher(matchers)
+
+    def setSourceImpliedBranchMatchers(self, matchers):
+        self.source_implied_branch_matcher = self._makeBranchMatcher(matchers)
+
+    def getBranchMatcher(self, tenant):
+        # Explicit branch matchers always win
+        if self.explicit_branch_matcher is not None:
+            return self.explicit_branch_matcher
+
+        source_tpc = tenant.getTPC(self.source_context.project_canonical_name)
+        # Pragmas can cause templates to end up with implied branch
+        # matchers for arbitrary branches, but project stanzas should
+        # not.  They should either have the current branch or no
+        # branch matcher.  But if we're configuring a different
+        # project, then we'll allow the pragma-supplied branch
+        # matchers.
+        if not self.is_template:
+            this_tpc = tenant.getTPC(self.name)
+            same_project = (this_tpc.project.canonical_name ==
+                            self.source_context.project_canonical_name)
+            if same_project:
+                if source_tpc.trusted:
+                    return None
+                else:
+                    return self.source_implied_branch_matcher
+
+        # If there was an explicit pragma to use implied branch
+        # matchers or not, honor it
+        if self.source_context.implied_branch_matchers is True:
+            return self.source_context.implied_branch_matcher
+        if self.source_context.implied_branch_matchers is False:
+            return None
+        # If we were defined in a trusted context in this tenant (and
+        # there's no pragma), then we do not use implied branch
+        # matchers.
+        if source_tpc.trusted:
+            return None
+        branches = tenant.getProjectBranches(
+            self.source_context.project_canonical_name)
+        if len(branches) == 1:
+            return None
+        return self.implied_branch_matcher
+
+    def changeMatches(self, tenant, change):
+        branch_matcher = self.getBranchMatcher(tenant)
+        if branch_matcher and not branch_matcher.matches(change):
             return False
         return True
 
@@ -9357,6 +9415,28 @@ class Layout(object):
         return pt
 
     def addProjectConfig(self, project_config):
+        source_tpc = self.tenant.getTPC(
+            project_config.source_context.project_canonical_name)
+        this_tpc = self.tenant.getTPC(project_config.name)
+        if this_tpc is None:
+            raise ProjectNotFoundError(project_config.name)
+        if not source_tpc.canConfigureProject(this_tpc):
+            raise ProjectNotPermittedError()
+
+        # The project_config.name must be a canonical name.  If it is
+        # already the cname of the target tpc, we're all set.
+        if this_tpc.project.canonical_name != project_config.name:
+            # Otherwise we need to set it correctly.  If it's
+            # configuring itself, then we just set the name.  But if
+            # it's configuring a different project and was referencing
+            # that project by a short name, we need to make a copy
+            # since it might resolve to a different project in a
+            # different tenant.
+            if (this_tpc.project.canonical_name !=
+                source_tpc.project.canonical_name):
+                project_config = project_config.copy()
+            project_config.name = this_tpc.project.canonical_name
+
         if project_config.name in self.project_configs:
             self.project_configs[project_config.name].append(project_config)
         else:
@@ -9411,7 +9491,7 @@ class Layout(object):
         ppc = ProjectPipelineConfig()
         project_in_pipeline = False
         for pc in self.getProjectConfigs(change.project.canonical_name):
-            if not pc.changeMatches(change):
+            if not pc.changeMatches(self.tenant, change):
                 msg = "Project %s did not match" % (pc,)
                 ppc.addDebug(msg)
                 log.debug("%s item %s", msg, item)
@@ -9424,7 +9504,7 @@ class Layout(object):
                 for template in templates:
                     template_ppc = template.pipelines.get(item.pipeline.name)
                     if template_ppc:
-                        if not template.changeMatches(change):
+                        if not template.changeMatches(self.tenant, change):
                             msg = "Project template %s did not match" % (
                                 template,)
                             ppc.addDebug(msg)
