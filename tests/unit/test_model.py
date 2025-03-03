@@ -139,7 +139,10 @@ class TestJob(BaseTestCase):
     def test_job_variants(self):
         # This simulates freezing a job.
 
-        secrets = ['foo']
+        secret = model.Secret('foo', self.context)
+        self.layout.addSecret(secret)
+
+        secrets = [model.SecretUse('foo', 'foo')]
         py27_pre = model.PlaybookContext(
             self.context, 'py27-pre', [], secrets, [])
         py27_run = model.PlaybookContext(
@@ -154,6 +157,7 @@ class TestJob(BaseTestCase):
         py27.post_run = (py27_post,)
 
         job = py27.copy()
+        job.setBase(self.layout, None)
         self.assertEqual(30, job.timeout)
 
         # Apply the diablo variant
@@ -497,6 +501,7 @@ class TestJob(BaseTestCase):
         parent = self.pcontext.job_parser.fromYaml(data[0]['job'])
         child = self.pcontext.job_parser.fromYaml(data[1]['job'])
         job = parent.copy()
+        job.setBase(self.layout, None)
         job.applyVariant(child, self.layout, None)
         self.assertEqual(default_value, getattr(job, job_attr))
 
@@ -505,6 +510,7 @@ class TestJob(BaseTestCase):
         parent = self.pcontext.job_parser.fromYaml(data[0]['job'])
         child = self.pcontext.job_parser.fromYaml(data[1]['job'])
         job = parent.copy()
+        job.setBase(self.layout, None)
         job.applyVariant(child, self.layout, None)
         self.assertEqual(inherit_value, getattr(job, job_attr))
 
@@ -513,6 +519,7 @@ class TestJob(BaseTestCase):
         parent = self.pcontext.job_parser.fromYaml(data[0]['job'])
         child = self.pcontext.job_parser.fromYaml(data[1]['job'])
         job = parent.copy()
+        job.setBase(self.layout, None)
         job.applyVariant(child, self.layout, None)
         self.assertEqual(override_value, getattr(job, job_attr))
 
@@ -869,6 +876,7 @@ class TestJob(BaseTestCase):
         parent = self.pcontext.job_parser.fromYaml(data[0]['job'])
         child = self.pcontext.job_parser.fromYaml(data[1]['job'])
         job = parent.copy()
+        job.setBase(self.layout, None)
         job.applyVariant(child, self.layout, None)
         self.assertEqual(default_value, getattr(job, job_attr))
 
@@ -877,6 +885,7 @@ class TestJob(BaseTestCase):
         parent = self.pcontext.job_parser.fromYaml(data[0]['job'])
         child = self.pcontext.job_parser.fromYaml(data[1]['job'])
         job = parent.copy()
+        job.setBase(self.layout, None)
         with testtools.ExpectedException(model.JobConfigurationError,
                                          ".* final attribute"):
             job.applyVariant(child, self.layout, None)
