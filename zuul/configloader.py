@@ -1034,7 +1034,6 @@ class JobParser(object):
                     conf_projects = conf_projects.value
                 new_projects = {}
                 projects = as_list(conf_projects)
-                unknown_projects = []
                 for project in projects:
                     if isinstance(project, dict):
                         project_name = project['name']
@@ -1046,21 +1045,10 @@ class JobParser(object):
                         project_name = project
                         project_override_branch = None
                         project_override_checkout = None
-                    (trusted, project) = self.pcontext.tenant.getProject(
-                        project_name)
-                    if project is None:
-                        unknown_projects.append(project_name)
-                        continue
-                    job_project = model.JobProject(project.canonical_name,
+                    job_project = model.JobProject(project_name,
                                                    project_override_branch,
                                                    project_override_checkout)
-                    new_projects[project.canonical_name] = job_project
-
-                # We accumulate all unknown projects and throw an
-                # exception only once to capture all of them in the
-                # error message.
-                if unknown_projects:
-                    raise ProjectNotFoundError(unknown_projects)
+                    new_projects[project_name] = job_project
 
                 job.required_projects = new_projects
 

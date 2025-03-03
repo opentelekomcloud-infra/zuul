@@ -43,6 +43,7 @@ from zuul.exceptions import (
     LabelForbiddenError,
     MaxTimeoutError,
     NodesetNotFoundError,
+    ProjectNotFoundError,
     ProjectNotPermittedError,
 )
 from zuul.lib.re2util import filter_allowed_disallowed
@@ -4122,7 +4123,31 @@ class Job(ConfigObject):
     def _get(self, name):
         return self.__dict__.get(name)
 
+    def _resolveRequiredProjects(self, layout):
+        # The configloader does not resolve project names in
+        # required_projects because they may resolve differently in
+        # different tenants.  This method will resolve the project
+        # names in required-projects to canonical names and return a
+        # new required_projects dict with new JobProject instances.
+        new_projects = {}
+        unknown_projects = []
+        for job_project in self.required_projects.values():
+            (trusted, project) = layout.tenant.getProject(
+                job_project.project_name)
+            if project is None:
+                unknown_projects.append(job_project.project_name)
+                continue
+            job_project = JobProject(project.canonical_name,
+                                     job_project.override_branch,
+                                     job_project.override_checkout)
+            new_projects[project.canonical_name] = job_project
+        if unknown_projects:
+            raise ProjectNotFoundError(unknown_projects)
+        return new_projects
+
     def setBase(self, layout, semaphore_handler):
+        if self._get('required_projects'):
+            self.required_projects = self._resolveRequiredProjects(layout)
         if self._get('run') is not None:
             self.run = self.freezePlaybooks(
                 self.run, layout, semaphore_handler)
@@ -4308,13 +4333,13 @@ class Job(ConfigObject):
         # variables.  Job variables override project variables.
         self.variables = Job._deepUpdate(project_vars, self.variables)
 
-    def updateProjects(self, other):
+    def updateRequiredProjects(self, other, layout):
         self._handleFinalControl(other, 'required_projects')
         if other.override_control['required_projects']:
             required_projects = {}
         else:
             required_projects = self.required_projects.copy()
-        required_projects.update(other.required_projects)
+        required_projects.update(other._resolveRequiredProjects(layout))
         self.required_projects = required_projects
 
     @staticmethod
@@ -4501,7 +4526,7 @@ class Job(ConfigObject):
                         include_vars.append(iv)
             self.include_vars = tuple(include_vars)
         if other._get('required_projects') is not None:
-            self.updateProjects(other)
+            self.updateRequiredProjects(other, layout)
         if (other._get('allowed_projects') is not None and
             self._get('allowed_projects') is not None):
             self.allowed_projects = frozenset(
@@ -9285,6 +9310,11 @@ class Layout(object):
         if isinstance(job.nodeset, NodeSet):
             self._checkAddNodeset(job.nodeset)
 
+        # Call resolveRequiredProjects for the side-effect of raising an
+        # exception; ignore the return value.
+        if job.required_projects:
+            job._resolveRequiredProjects(self)
+
         if (job.timeout and
             self.tenant.max_job_timeout != -1 and
             job.timeout > self.tenant.max_job_timeout):
@@ -9576,7 +9606,9 @@ class Layout(object):
         # in a job.  Used in collectJobVariants.
         if job.override_checkout:
             override_checkouts[None] = job.override_checkout
-        for req in job.required_projects.values():
+        # TODO: we will end up resolving these projects again if they
+        # match; consider caching the results.
+        for req in job._resolveRequiredProjects(self).values():
             if req.override_checkout:
                 override_checkouts[req.project_name] = req.override_checkout
 
