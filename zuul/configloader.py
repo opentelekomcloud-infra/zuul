@@ -1136,24 +1136,19 @@ class JobParser(object):
                 for iv in as_list(conf_include_vars):
                     if isinstance(iv, str):
                         iv = {'name': iv}
-                    project_cn = None
+                    pname = None
                     if not iv.get('zuul-project', False):
                         pname = iv.get(
                             'project',
                             conf['_source_context'].project_canonical_name)
-                        (trusted, project) = self.pcontext.tenant.getProject(
-                            pname)
-                        if project is None:
-                            raise ProjectNotFoundError(pname)
-                        project_cn = project.canonical_name
                     job_include_vars = model.JobIncludeVars(
                         iv['name'],
-                        project_cn,
+                        pname,
                         iv.get('required', True),
                         iv.get('use-ref', True),
                     )
                     include_vars.append(job_include_vars)
-                job.include_vars = tuple(include_vars)
+                job.include_vars = include_vars
 
         allowed_projects = conf.get('allowed-projects', None)
         # See note above at "post-review".

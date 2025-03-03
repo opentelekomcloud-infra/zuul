@@ -597,9 +597,9 @@ class TestJob(BaseTestCase):
         self._test_job_override_control_set(
             'include-vars',
             job_attr='include_vars',
-            value_factory=lambda values: tuple(
+            value_factory=lambda values:
                 [model.JobIncludeVars(v, 'git.example.com/project', True, True)
-                 for v in values])
+                 for v in values]
         )
 
     def test_job_override_control_dependencies(self):
