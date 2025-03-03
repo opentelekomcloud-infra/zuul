@@ -3806,7 +3806,7 @@ class Job(ConfigObject):
             extra_variables={},
             host_variables={},
             group_variables={},
-            include_vars=(),
+            include_vars=[],
             nodeset=Job.empty_nodeset,
             workspace=None,
             pre_run=(),
@@ -3894,9 +3894,9 @@ class Job(ConfigObject):
             itertools.chain(self.pre_run, run, self.post_run,
                             self.cleanup_run), with_implicit=True))
         project_canonical_names.update({
-            iv.project_canonical_name
+            iv.project_name
             for iv in self.include_vars
-            if iv.project_canonical_name
+            if iv.project_name
         })
         # Return a sorted list so the order is deterministic for
         # comparison.
@@ -3932,7 +3932,7 @@ class Job(ConfigObject):
         return d
 
     def _freezeIncludeVars(self, tenant, layout, change, include_vars):
-        project_cname = (include_vars.project_canonical_name or
+        project_cname = (include_vars.project_name or
                          change.project.canonical_name)
         (trusted, project) = tenant.getProject(project_cname)
         project_metadata = layout.getProjectMetadata(project_cname)
@@ -4145,9 +4145,27 @@ class Job(ConfigObject):
             raise ProjectNotFoundError(unknown_projects)
         return new_projects
 
+    def _resolveIncludeVars(self, layout):
+        new_include_vars = []
+        for iv in self.include_vars:
+            pname = None
+            if iv.project_name is not None:
+                (trusted, project) = layout.tenant.getProject(iv.project_name)
+                if project is None:
+                    raise ProjectNotFoundError(iv.project_name)
+                pname = project.canonical_name
+            job_include_vars = JobIncludeVars(iv.name,
+                                              pname,
+                                              iv.required,
+                                              iv.use_ref)
+            new_include_vars.append(job_include_vars)
+        return new_include_vars
+
     def setBase(self, layout, semaphore_handler):
         if self._get('required_projects'):
             self.required_projects = self._resolveRequiredProjects(layout)
+        if self._get('include_vars'):
+            self.include_vars = self._resolveIncludeVars(layout)
         if self._get('run') is not None:
             self.run = self.freezePlaybooks(
                 self.run, layout, semaphore_handler)
@@ -4333,6 +4351,17 @@ class Job(ConfigObject):
         # variables.  Job variables override project variables.
         self.variables = Job._deepUpdate(project_vars, self.variables)
 
+    def updateIncludeVars(self, other, layout):
+        self._handleFinalControl(other, 'include_vars')
+        if other.override_control['include_vars']:
+            include_vars = other._resolveIncludeVars(layout)
+        else:
+            include_vars = list(self.include_vars)
+            for iv in other._resolveIncludeVars(layout):
+                if iv not in include_vars:
+                    include_vars.append(iv)
+        self.include_vars = include_vars
+
     def updateRequiredProjects(self, other, layout):
         self._handleFinalControl(other, 'required_projects')
         if other.override_control['required_projects']:
@@ -4516,15 +4545,7 @@ class Job(ConfigObject):
             self.cleanup_run = other_cleanup_run + self.cleanup_run
         self.updateVariables(other)
         if other._get('include_vars') is not None:
-            self._handleFinalControl(other, 'include_vars')
-            if other.override_control['include_vars']:
-                include_vars = other.include_vars
-            else:
-                include_vars = list(self.include_vars)
-                for iv in other.include_vars:
-                    if iv not in include_vars:
-                        include_vars.append(iv)
-            self.include_vars = tuple(include_vars)
+            self.updateIncludeVars(other, layout)
         if other._get('required_projects') is not None:
             self.updateRequiredProjects(other, layout)
         if (other._get('allowed_projects') is not None and
@@ -4635,28 +4656,21 @@ class Job(ConfigObject):
 class JobIncludeVars(ConfigObject):
     """ A reference to a variables file from a job. """
 
-    def __init__(self, name, project_canonical_name, required, use_ref):
+    def __init__(self, name, project_name, required, use_ref):
         super().__init__()
         self.name = name
         # The repo to look for the file in, or None for the zuul project
-        self.project_canonical_name = project_canonical_name
+        self.project_name = project_name
         self.required = required
         self.use_ref = use_ref
 
     def toDict(self):
         d = dict()
         d['name'] = self.name
-        d['project_canonical_name'] = self.project_canonical_name
+        d['project_name'] = self.project_name
         d['required'] = self.required
         d['use_ref'] = self.use_ref
         return d
-
-    @classmethod
-    def fromDict(cls, data):
-        return cls(data['name'],
-                   data['canonical_project_name'],
-                   data['required'],
-                   data.get('use_ref', True))
 
     def __hash__(self):
         return hash(json.dumps(self.toDict(), sort_keys=True))
@@ -9314,6 +9328,9 @@ class Layout(object):
         # exception; ignore the return value.
         if job.required_projects:
             job._resolveRequiredProjects(self)
+
+        if job.include_vars:
+            job._resolveIncludeVars(self)
 
         if (job.timeout and
             self.tenant.max_job_timeout != -1 and
