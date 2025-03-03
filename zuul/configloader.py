@@ -46,7 +46,6 @@ from zuul.exceptions import (
     DuplicateGroupError,
     DuplicateNodeError,
     GlobalSemaphoreNotFoundError,
-    MaxTimeoutError,
     MultipleProjectConfigurations,
     NodeFromGroupNotFoundError,
     PipelineNotPermittedError,
@@ -927,16 +926,6 @@ class JobParser(object):
             job.post_review = True
             job.allowed_projects = frozenset((
                 conf['_source_context'].project_name,))
-
-        if (conf.get('timeout') and
-            self.pcontext.tenant.max_job_timeout != -1 and
-            int(conf['timeout']) > self.pcontext.tenant.max_job_timeout):
-            raise MaxTimeoutError(job, self.pcontext.tenant)
-
-        if (conf.get('post-timeout') and
-            self.pcontext.tenant.max_job_timeout != -1 and
-            int(conf['post-timeout']) > self.pcontext.tenant.max_job_timeout):
-            raise MaxTimeoutError(job, self.pcontext.tenant)
 
         if 'post-review' in conf:
             if conf['post-review']:
