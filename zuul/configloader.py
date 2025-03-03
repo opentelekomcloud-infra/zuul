@@ -1153,13 +1153,7 @@ class JobParser(object):
         allowed_projects = conf.get('allowed-projects', None)
         # See note above at "post-review".
         if allowed_projects and not job.allowed_projects:
-            allowed = []
-            for p in as_list(allowed_projects):
-                (trusted, project) = self.pcontext.tenant.getProject(p)
-                if project is None:
-                    raise ProjectNotFoundError(p)
-                allowed.append(project.name)
-            job.allowed_projects = frozenset(allowed)
+            job.allowed_projects = set(as_list(allowed_projects))
 
         branches = None
         if 'branches' in conf:
