@@ -570,7 +570,7 @@ class TestWeb(BaseTestWeb):
                 'required_projects': [
                     {'override_branch': None,
                      'override_checkout': None,
-                     'project_name': 'review.example.com/org/project'}],
+                     'project_name': 'org/project'}],
                 'requires': [],
                 'roles': [common_config_role],
                 'run': run,
