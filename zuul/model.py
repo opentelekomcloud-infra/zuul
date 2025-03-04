@@ -4185,6 +4185,18 @@ class Job(ConfigObject):
         return new_include_vars
 
     def setBase(self, layout, semaphore_handler):
+        # A job in an untrusted repo that uses secrets requires
+        # special care.  We must note this, and carry this flag
+        # through inheritance to ensure that we don't run this job in
+        # an unsafe check pipeline.  We must also set allowed-projects
+        # to only the current project, as otherwise, other projects
+        # might be able to cause something to happen with the secret
+        # by using a depends-on header.
+        if ((not self.post_review) and (
+                self.secrets and not layout.tenant.isTrusted(
+                    self.source_context.project_canonical_name))):
+            self.post_review = True
+            self.allowed_projects = set([self.source_context.project_name])
         if self._get('required_projects'):
             self.required_projects = self._resolveRequiredProjects(layout)
         if self._get('include_vars'):
@@ -4555,9 +4567,26 @@ class Job(ConfigObject):
             for pb in itertools.chain(
                     self.pre_run, self.run, self.post_run, self.cleanup_run):
                 pb.addSecrets(frozen_secrets)
-                if not pb.source_context.trusted:
+                if not layout.tenant.isTrusted(
+                        pb.source_context.project_canonical_name):
                     self.post_review = True
-
+        # A job in an untrusted repo that uses secrets requires
+        # special care.  We must note this, and carry this flag
+        # through inheritance to ensure that we don't run this job in
+        # an unsafe check pipeline.  We must also set allowed-projects
+        # to only the current project, as otherwise, other projects
+        # might be able to cause something to happen with the secret
+        # by using a depends-on header.
+        if ((not self.post_review) and (
+                other.secrets and not layout.tenant.isTrusted(
+                    other.source_context.project_canonical_name))):
+            self.post_review = True
+            other_allowed_projects = set([other.source_context.project_name])
+            if self._get('allowed_projects') is not None:
+                self.allowed_projects = self.allowed_projects.intersection(
+                    other_allowed_projects)
+            else:
+                self.allowed_projects = other_allowed_projects
         if other._get('run') is not None:
             other_run = self.freezePlaybooks(
                 other.run, layout, semaphore_handler)
@@ -9813,9 +9842,8 @@ class Layout(object):
             for variant in job_list.jobs[jobname]:
                 if variant.changeMatchesBranch(change):
                     final_job.applyVariant(variant, self, semaphore_handler)
-                    trusted, project = self.tenant.getProject(
-                        variant.source_context.project_canonical_name)
-                    if trusted:
+                    if self.tenant.isTrusted(
+                            variant.source_context.project_canonical_name):
                         # A config project has attached this job to a
                         # project-pipeline.  In this case, we can
                         # ignore allowed-projects -- the superuser has
@@ -10102,6 +10130,11 @@ class Tenant(object):
                             (project,))
         hostname_dict[project.canonical_hostname] = project
         self.project_configs[project.canonical_name] = tpc
+
+    @lru_cache()
+    def isTrusted(self, name):
+        trusted, project = self.getProject(name)
+        return trusted
 
     def getProject(self, name):
         """Return a project given its name.
