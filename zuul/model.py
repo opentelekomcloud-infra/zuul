@@ -9813,6 +9813,16 @@ class Layout(object):
             for variant in job_list.jobs[jobname]:
                 if variant.changeMatchesBranch(change):
                     final_job.applyVariant(variant, self, semaphore_handler)
+                    trusted, project = self.tenant.getProject(
+                        variant.source_context.project_canonical_name)
+                    if trusted:
+                        # A config project has attached this job to a
+                        # project-pipeline.  In this case, we can
+                        # ignore allowed-projects -- the superuser has
+                        # stated they want it to run.  This can be
+                        # useful to allow untrusted jobs with secrets
+                        # to be run in other untrusted projects.
+                        final_job.ignore_allowed_projects = True
                     matched = True
                     log.debug("Pipeline variant %s matched %s",
                               repr(variant), change)
