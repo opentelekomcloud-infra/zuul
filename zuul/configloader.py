@@ -907,18 +907,6 @@ class JobParser(object):
             secrets.append(secret_use)
         job.secrets = tuple(secrets)
 
-        # A job in an untrusted repo that uses secrets requires
-        # special care.  We must note this, and carry this flag
-        # through inheritance to ensure that we don't run this job in
-        # an unsafe check pipeline.  We must also set allowed-projects
-        # to only the current project, as otherwise, other projects
-        # might be able to cause something to happen with the secret
-        # by using a depends-on header.
-        if secrets and not conf['_source_context'].trusted:
-            job.post_review = True
-            job.allowed_projects = frozenset((
-                conf['_source_context'].project_name,))
-
         if 'post-review' in conf:
             if conf['post-review']:
                 job.post_review = True
