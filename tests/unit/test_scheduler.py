@@ -5437,7 +5437,10 @@ For CI problems and help debugging, contact ci@example.org"""
         self.waitUntilSettled()
 
         self.assertEqual(1, len(self.smtp_messages))
-        start_msg = "Jobs started in gate for 1,1."
+        start_msg = (
+            "Jobs started in gate: "
+            "https://zuul.example.com/t/tenant-one/status/change/1,1."
+        )
         self.assertTrue(self.smtp_messages[0]['body'].startswith(start_msg))
 
     @simple_layout('layouts/unmanaged-project.yaml')
