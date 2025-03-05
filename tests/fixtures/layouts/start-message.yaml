@@ -1,7 +1,7 @@
 - pipeline:
     name: gate
     manager: dependent
-    start-message: Jobs started in {pipeline.name} for {change.number},{change.patchset}.
+    start-message: "Jobs started in {pipeline.name}: {item_url}."
     trigger:
       gerrit:
         - event: comment-added
