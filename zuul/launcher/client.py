@@ -39,7 +39,8 @@ class LauncherClient:
         self.zk_client = zk_client
         self.stop_event = stop_event
 
-    def requestNodeset(self, item, job, priority, preferred_provider):
+    def requestNodeset(self, item, job, priority, relative_priority,
+                       preferred_provider):
         log = get_annotated_logger(self.log, item.event)
         labels = [n.label for n in job.nodeset.getNodes()]
 
@@ -62,13 +63,23 @@ class LauncherClient:
                 job_name=job.name,
                 labels=labels,
                 priority=priority,
-                # relative_priority,
+                _relative_priority=relative_priority,
                 request_time=request_time,
                 zuul_event_id=item.event.zuul_event_id,
                 span_info=span_info,
             )
             log.info("Submitted nodeset request %s", request)
         return request
+
+    def reviseRequest(self, request, relative_priority):
+        log = get_annotated_logger(self.log, request)
+        try:
+            with self.createZKContext(None, self.log) as ctx:
+                request.revise(ctx, relative_priority=relative_priority)
+            log.info("Revised nodeset request %s; relative_priority=%s",
+                     request, relative_priority)
+        except NoNodeError:
+            pass
 
     def getRequest(self, request_id):
         try:

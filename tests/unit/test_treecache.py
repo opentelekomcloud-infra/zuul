@@ -30,11 +30,12 @@ from kazoo.protocol.states import KazooState
 
 
 class SimpleTreeCacheObject:
-    def __init__(self, key, data, zstat):
+    def __init__(self, root, key, data, zstat):
         self.key = key
         self.data = json.loads(data)
         self._zstat = zstat
-        self.path = '/'.join(key)
+        self.path = '/'.join((root.rstrip("/"), *key))
+        self.children = {}
 
     def _updateFromRaw(self, data, zstat, context=None):
         self.data = json.loads(data)
@@ -43,13 +44,29 @@ class SimpleTreeCacheObject:
 
 class SimpleTreeCache(ZuulTreeCache):
     def objectFromRaw(self, key, data, zstat):
-        return SimpleTreeCacheObject(key, data, zstat)
+        return SimpleTreeCacheObject(self.root, key, data, zstat)
 
     def updateFromRaw(self, obj, key, data, zstat):
         obj._updateFromRaw(data, zstat, None)
 
     def parsePath(self, path):
-        return tuple(path.split('/'))
+        object_path = path[len(self.root):].strip("/")
+        parts = object_path.split('/')
+        if not parts:
+            return None
+        return tuple(parts)
+
+
+class SimpleSubnodeTreeCache(SimpleTreeCache):
+    def preCacheHook(self, event, exists, data=None, stat=None):
+        parts = self.parsePath(event.path)
+        if len(parts) > 1:
+            cache_key = (parts[0],)
+            if exists:
+                self._cached_objects[cache_key].children[parts] = data
+            else:
+                self._cached_objects[cache_key].children.pop(parts)
+            return self.STOP_OBJECT_UPDATE
 
 
 class TestTreeCache(BaseTestCase):
@@ -123,7 +140,7 @@ class TestTreeCache(BaseTestCase):
             '/test/foo': {},
         })
 
-        # Simulate a change happening while the state was suspendede
+        # Simulate a change happening while the state was suspended
         cache._cached_paths.add('/test/bar')
         cache._sessionListener(KazooState.SUSPENDED)
         cache._sessionListener(KazooState.CONNECTED)
@@ -150,6 +167,53 @@ class TestTreeCache(BaseTestCase):
             if ('/foo' in cached_paths and
                 '/foo' in object_paths):
                 break
+
+    def test_tree_cache_subnode(self):
+        client = self.zk_client.client
+        data = b'{}'
+        client.create('/test', data)
+        client.create('/test/foo', data)
+        cache = SimpleSubnodeTreeCache(self.zk_client, "/test")
+        self.waitForCache(cache, {
+            '/test/foo': {},
+        })
+        foo = cache._cached_objects[('foo',)]
+
+        # Subnode that is processed and cached as part of foo
+        oof_data = b'{"value":1}'
+        oof_key = ('foo', 'oof')
+        client.create('/test/foo/oof', oof_data)
+        for _ in iterate_timeout(10, 'cache to sync'):
+            if foo.children.get(oof_key) == oof_data:
+                break
+
+        self.assertEqual(cache._cached_paths, {'/test/foo', '/test/foo/oof'})
+
+        # Simulate a change happening while the state was suspended
+        foo.children[oof_key] = b"outdated"
+        cache._sessionListener(KazooState.SUSPENDED)
+        cache._sessionListener(KazooState.CONNECTED)
+        for _ in iterate_timeout(10, 'cache to sync'):
+            if foo.children[oof_key] == oof_data:
+                break
+
+        # Simulate a change happening while the state was lost
+        cache._cached_paths.add('/test/foo/bar')
+        bar_key = ('foo', 'bar')
+        foo.children[bar_key] = b"deleted"
+        cache._sessionListener(KazooState.LOST)
+        cache._sessionListener(KazooState.CONNECTED)
+        for _ in iterate_timeout(10, 'cache to sync'):
+            if bar_key not in foo.children:
+                break
+
+        self.assertEqual(cache._cached_paths, {'/test/foo', '/test/foo/oof'})
+
+        # Recursively delete foo and make sure the cache is empty afterwards
+        client.delete("/test/foo", recursive=True)
+        self.waitForCache(cache, {})
+        self.assertEqual(cache._cached_paths, set())
+        self.assertEqual(cache._cached_objects, {})
 
     def test_tree_cache_qsize_warning(self):
         with self.assertLogs('zuul.zk.ZooKeeper', level='DEBUG') as logs:
