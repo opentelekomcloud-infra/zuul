@@ -16,13 +16,12 @@ import collections
 import json
 import logging
 import threading
-from operator import attrgetter
 
 import mmh3
 from kazoo.exceptions import NoNodeError
 
 from zuul.model import NodesetRequest, ProviderNode, QuotaInformation
-from zuul.zk.cache import ZuulTreeCache
+from zuul.zk.cache import StopCacheUpdate, ZuulTreeCache
 from zuul.zk.zkobject import ZKContext
 
 
@@ -63,14 +62,14 @@ class LockableZKObjectCache(ZuulTreeCache):
         parts = self._parsePath(path)
         if parts is None:
             return None
-        if len(parts) != 2:
+        if len(parts) < 2:
             return None
         if parts[0] != self.items_path:
             return None
-        item_uuid = parts[-1]
+        item_uuid = parts[1]
         return (item_uuid,)
 
-    def preCacheHook(self, event, exists, stat=None):
+    def preCacheHook(self, event, exists, data=None, stat=None):
         parts = self._parsePath(event.path)
         if parts is None:
             return
@@ -116,6 +115,32 @@ class LockableZKObjectCache(ZuulTreeCache):
         return set(self._cached_objects.keys())
 
 
+class RequestCache(LockableZKObjectCache):
+
+    def preCacheHook(self, event, exists, data=None, stat=None):
+        parts = self._parsePath(event.path)
+        if parts is None:
+            return
+
+        # Expecting (<self.locks_path>, <uuid>, <lock>,)
+        # or (<self.items_path>, <uuid>, revision,)
+        if len(parts) != 3:
+            return
+
+        object_type, request_uuid, *_ = parts
+        key = (request_uuid,)
+        request = self._cached_objects.get(key)
+
+        if not request:
+            return
+
+        if object_type == self.locks_path:
+            request._set(is_locked=exists)
+        elif data is not None:
+            request._revision._updateFromRaw(data, stat, None)
+            raise StopCacheUpdate
+
+
 class NodeCache(LockableZKObjectCache):
     def __init__(self, *args, **kw):
         # Key -> quota, for each cached object
@@ -159,7 +184,7 @@ class LauncherApi:
         self.component_registry = component_registry
         self.component_info = component_info
         self.event_callback = event_callback
-        self.requests_cache = LockableZKObjectCache(
+        self.requests_cache = RequestCache(
             self.zk_client,
             self.event_callback,
             root=NodesetRequest.ROOT,
@@ -186,8 +211,7 @@ class LauncherApi:
             c.hostname: c for c in self.component_registry.all("launcher")}
         candidate_names = set(candidate_launchers.keys())
 
-        for request in sorted(self.requests_cache.getItems(),
-                              key=attrgetter("priority")):
+        for request in sorted(self.requests_cache.getItems()):
             if request.hasLock():
                 # We are holding a lock, so short-circuit here.
                 yield request
@@ -221,7 +245,7 @@ class LauncherApi:
         return self.requests_cache.getItem(request_id)
 
     def getNodesetRequests(self):
-        return self.requests_cache.getItems()
+        return sorted(self.requests_cache.getItems())
 
     def getMatchingProviderNodes(self):
         all_launchers = {

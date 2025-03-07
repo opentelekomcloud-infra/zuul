@@ -1186,7 +1186,8 @@ class PipelineManager(metaclass=ABCMeta):
         provider = self._getPausedParentProvider(build_set, job)
         priority = self._calculateNodeRequestPriority(build_set, job)
         item = build_set.item
-        req = self.sched.launcher.requestNodeset(item, job, priority, provider)
+        req = self.sched.launcher.requestNodeset(
+            item, job, priority, relative_priority, provider)
         log.debug("Adding nodeset request %s for job %s to item %s",
                   req, job, item)
         build_set.setJobNodeRequestID(job, req.uuid)
@@ -1991,23 +1992,39 @@ class PipelineManager(metaclass=ABCMeta):
                       (item, failing_reasons))
         if (item.live and not dequeued
                 and self.sched.globals.use_relative_priority):
-            for job, request_id in \
-                item.current_build_set.getNodeRequests():
-                node_request = self.sched.nodepool.zk_nodepool.getNodeRequest(
-                    request_id, cached=True)
-                if not node_request:
-                    continue
-                if node_request.state != model.STATE_REQUESTED:
-                    # If the node request was locked and accepted by a
-                    # provider, we can no longer update the relative priority.
-                    continue
-                priority = self.getNodePriority(
-                    item,
-                    item.getChangeForJob(job))
-                if node_request.relative_priority != priority:
-                    self.sched.nodepool.reviseRequest(
-                        node_request, priority)
+            for job, request_id in item.current_build_set.getNodeRequests():
+                if self.sched.nodepool.isNodeRequestID(request_id):
+                    self._reviseNodeRequest(request_id, item, job)
+                else:
+                    self._reviseNodesetRequest(request_id, item, job)
         return (changed, nnfi)
+
+    def _reviseNodeRequest(self, request_id, item, job):
+        node_request = self.sched.nodepool.zk_nodepool.getNodeRequest(
+            request_id, cached=True)
+        if not node_request:
+            return
+        if node_request.state != model.STATE_REQUESTED:
+            # If the node request was locked and accepted by a
+            # provider, we can no longer update the relative priority.
+            return
+        priority = self.getNodePriority(
+            item, item.getChangeForJob(job))
+        if node_request.relative_priority != priority:
+            self.sched.nodepool.reviseRequest(node_request, priority)
+
+    def _reviseNodesetRequest(self, request_id, item, job):
+        request = self.sched.launcher.getRequest(request_id)
+        if not request:
+            return
+        if request.state != request.State.REQUESTED:
+            # If the nodeset request was accepted by a launcher,
+            # we can no longer update the relative priority.
+            return
+        relative_priority = self.getNodePriority(
+            item, item.getChangeForJob(job))
+        if request.relative_priority != relative_priority:
+            self.sched.launcher.reviseRequest(request, relative_priority)
 
     def processQueue(self, tenant_lock):
         # Do whatever needs to be done for each change in the queue

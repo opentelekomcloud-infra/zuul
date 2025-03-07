@@ -2417,6 +2417,7 @@ class NodesetInfo:
         )
 
 
+@total_ordering
 class NodesetRequest(zkobject.LockableZKObject):
 
     class State(StrEnum):
@@ -2438,6 +2439,8 @@ class NodesetRequest(zkobject.LockableZKObject):
 
     def __init__(self):
         super().__init__()
+        revision = NodesetRequestRevision()
+        revision._set(request=self)
         self._set(
             uuid=uuid4().hex,
             state=self.State.REQUESTED,
@@ -2451,14 +2454,32 @@ class NodesetRequest(zkobject.LockableZKObject):
             request_time=time.time(),
             zuul_event_id="",
             span_info=None,
+            # Revisable attributes
+            _relative_priority=0,
             # A dict of info about the node we have assigned to each label
             provider_node_data=[],
             # Attributes that are not serialized
             lock=None,
             is_locked=False,
+            _revision=revision,
             # Attributes set by the launcher
             _lscores=None,
         )
+
+    @property
+    def relative_priority(self):
+        if self._revision.getZKVersion() is not None:
+            return self._revision.relative_priority
+        return self._relative_priority
+
+    def __lt__(self, other):
+        return (
+            (self.priority, self.relative_priority, self.request_time)
+            < (other.priority, other.relative_priority, other.request_time)
+        )
+
+    def revise(self, ctx, relative_priority):
+        self._revision.force(ctx, relative_priority=relative_priority)
 
     def addProviderNode(self, provider_node):
         self.provider_node_data.append(dict(
@@ -2493,7 +2514,11 @@ class NodesetRequest(zkobject.LockableZKObject):
         return self.request_time
 
     def getPath(self):
-        return f"{self.ROOT}/{self.REQUESTS_PATH}/{self.uuid}"
+        return self._getPath(self.uuid)
+
+    @classmethod
+    def _getPath(cls, request_id):
+        return f"{cls.ROOT}/{cls.REQUESTS_PATH}/{request_id}"
 
     def getLockPath(self):
         return f"{self.ROOT}/{self.LOCKS_PATH}/{self.uuid}"
@@ -2513,12 +2538,53 @@ class NodesetRequest(zkobject.LockableZKObject):
             zuul_event_id=self.zuul_event_id,
             span_info=self.span_info,
             provider_node_data=self.provider_node_data,
+            _relative_priority=self.relative_priority,
         )
         return json.dumps(data, sort_keys=True).encode("utf-8")
+
+    def deserialize(self, raw, context, extra=None):
+        if context is not None:
+            try:
+                self._revision.refresh(context)
+            except NoNodeError:
+                pass
+        return super().deserialize(raw, context, extra)
 
     def __repr__(self):
         return (f"<NodesetRequest uuid={self.uuid}, state={self.state},"
                 f" labels={self.labels}, path={self.getPath()}>")
+
+
+class NodesetRequestRevision(zkobject.ZKObject):
+    # We don't want to re-create the request in case it was deleted
+    makepath = False
+
+    def __init__(self):
+        super().__init__()
+        self._set(
+            relative_priority=0,
+            # Not serialized
+            request=None,
+        )
+
+    def force(self, context, **kw):
+        self._set(**kw)
+        if getattr(self, '_zstat', None) is None:
+            try:
+                return self.internalCreate(context)
+            except NodeExistsError:
+                pass
+        data = self._trySerialize(context)
+        self._save(context, data)
+
+    def getPath(self):
+        return f"{self.request.getPath()}/revision"
+
+    def serialize(self, context):
+        data = dict(
+            relative_priority=self.relative_priority,
+        )
+        return json.dumps(data, sort_keys=True).encode("utf-8")
 
 
 class ProviderNode(zkobject.PolymorphicZKObjectMixin,
