@@ -125,7 +125,7 @@ class JobRequestCache(ZuulTreeCache):
         if parts[0] == 'requests':
             return (parts[0], parts[1])
 
-    def preCacheHook(self, event, exists, stat=None):
+    def preCacheHook(self, event, exists, data=None, stat=None):
         parts = self._parsePath(event.path)
         if parts is None:
             return

@@ -42,6 +42,10 @@ class CacheSyncSentinel:
         return self.event.wait(timeout)
 
 
+class StopCacheUpdate(Exception):
+    pass
+
+
 class ZuulTreeCache(abc.ABC):
     log = logging.getLogger("zuul.zk.ZooKeeper")
     event_log = logging.getLogger("zuul.zk.cache.event")
@@ -305,18 +309,21 @@ class ZuulTreeCache(abc.ABC):
         elif (event.type == EventType.DELETED):
             exists = False
 
+        try:
+            # Some caches have special handling for certain sub-objects
+            self.preCacheHook(event, exists, data, stat)
+        except StopCacheUpdate:
+            return
+
+        # If we don't actually cache this kind of object, return now
+        if key is None:
+            return
+
         # Keep the cached paths up to date
         if exists:
             self._cached_paths.add(event.path)
         else:
             self._cached_paths.discard(event.path)
-
-        # Some caches have special handling for certain sub-objects
-        self.preCacheHook(event, exists, stat)
-
-        # If we don't actually cache this kind of object, return now
-        if key is None:
-            return
 
         obj = None
         if data:
@@ -349,7 +356,7 @@ class ZuulTreeCache(abc.ABC):
         return sentinel.wait(timeout)
 
     # Methods for subclasses:
-    def preCacheHook(self, event, exists, stat=None):
+    def preCacheHook(self, event, exists, data=None, stat=None):
         """Called before the cache is updated
 
         This is called for any add/update/remove event under the root,
@@ -364,6 +371,7 @@ class ZuulTreeCache(abc.ABC):
 
         :param EventType event: The event.
         :param bool exists: Whether the object exists in ZK.
+        :param bytes data: data when fetched, else None
         :param ZnodeStat stat: ZNode stat when the node exists, else None
 
         """
