@@ -281,7 +281,7 @@ class TestTenantSimple(TenantParserTestCase):
         project = list(tenant.config_projects)[0]
         source_context = SourceContext(
             project.canonical_name, project.name, project.connection_name,
-            'master', 'zuul.yaml', True)
+            'master', 'zuul.yaml')
 
         data = safe_load_yaml(to_parse, source_context)
         self.assertEqual(len(data), 3)
@@ -716,12 +716,16 @@ class TestSplitConfig(ZuulTestCase):
         self.assertEqual(test1.source_context.project_name, 'common-config')
         self.assertEqual(test1.source_context.branch, 'master')
         self.assertEqual(test1.source_context.path, 'zuul.d/jobs.yaml')
-        self.assertEqual(test1.source_context.trusted, True)
+        self.assertTrue(
+            tenant.isTrusted(test1.source_context.project_canonical_name),
+            True)
         test2 = tenant.layout.getJob('project-test2')
         self.assertEqual(test2.source_context.project_name, 'common-config')
         self.assertEqual(test2.source_context.branch, 'master')
         self.assertEqual(test2.source_context.path, 'zuul.d/more-jobs.yaml')
-        self.assertEqual(test2.source_context.trusted, True)
+        self.assertTrue(
+            tenant.isTrusted(test2.source_context.project_canonical_name),
+            True)
 
         self.assertNotEqual(test1.source_context, test2.source_context)
         self.assertTrue(test1.source_context.isSameProject(
