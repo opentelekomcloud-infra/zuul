@@ -1816,7 +1816,7 @@ class ZuulWebAPI(object):
                         job_variant['parent'] = str(variant.parent)
                     else:
                         job_variant['parent'] = tenant.default_base_job
-                branches = variant.getBranches()
+                branches = variant.getBranches(tenant)
                 if branches:
                     job_variant['branches'] = branches
                 if job_variant:
