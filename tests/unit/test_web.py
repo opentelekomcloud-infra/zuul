@@ -325,7 +325,7 @@ class TestWeb(BaseTestWeb):
              'ansible_split_streams': None,
              'ansible_version': None,
              'attempts': 3,
-             'branches': [],
+             'branches': None,
              'cleanup_run': [],
              'deduplicate': 'auto',
              'dependencies': [],
@@ -432,7 +432,7 @@ class TestWeb(BaseTestWeb):
                 'ansible_split_streams': None,
                 'ansible_version': None,
                 'attempts': 4,
-                'branches': [],
+                'branches': None,
                 'deduplicate': 'auto',
                 'dependencies': [],
                 'description': None,
@@ -550,7 +550,7 @@ class TestWeb(BaseTestWeb):
                 'ansible_split_streams': None,
                 'ansible_version': None,
                 'attempts': 3,
-                'branches': [],
+                'branches': None,
                 'deduplicate': 'auto',
                 'dependencies': [],
                 'description': None,
@@ -681,7 +681,7 @@ class TestWeb(BaseTestWeb):
                   'ansible_split_streams': None,
                   'ansible_version': None,
                   'attempts': 3,
-                  'branches': [],
+                  'branches': None,
                   'deduplicate': 'auto',
                   'dependencies': [],
                   'description': None,
@@ -726,7 +726,7 @@ class TestWeb(BaseTestWeb):
                   'ansible_split_streams': None,
                   'ansible_version': None,
                   'attempts': 3,
-                  'branches': [],
+                  'branches': None,
                   'deduplicate': 'auto',
                   'dependencies': [{'name': 'project-merge',
                                     'soft': False}],
@@ -772,7 +772,7 @@ class TestWeb(BaseTestWeb):
                   'ansible_split_streams': None,
                   'ansible_version': None,
                   'attempts': 3,
-                  'branches': [],
+                  'branches': None,
                   'deduplicate': 'auto',
                   'dependencies': [{'name': 'project-merge',
                                     'soft': False}],
@@ -818,7 +818,7 @@ class TestWeb(BaseTestWeb):
                   'ansible_split_streams': None,
                   'ansible_version': None,
                   'attempts': 3,
-                  'branches': [],
+                  'branches': None,
                   'deduplicate': 'auto',
                   'dependencies': [{'name': 'project-merge',
                                     'soft': False}],
@@ -893,7 +893,7 @@ class TestWeb(BaseTestWeb):
                              'ansible_split_streams': None,
                              'ansible_version': None,
                              'attempts': 3,
-                             'branches': [],
+                             'branches': None,
                              'deduplicate': 'auto',
                              'dependencies': [],
                              'description': None,
@@ -1236,11 +1236,16 @@ class TestWeb(BaseTestWeb):
             'secret_vars': None,
             'zuul': {
                 '_inheritance_path': [
-                    '<Job base branches: None source: '
-                    'common-config/zuul.yaml@master#53>',
-                    '<Job project-test1 branches: None source: '
-                    'common-config/zuul.yaml@master#66>',
-                    '<Job project-test1 branches: None source: '
+                    '<Job base explicit branches: None implied '
+                    'branches: '
+                    '{MatchAny:{ImpliedBranchMatcher:master}} '
+                    'source: common-config/zuul.yaml@master#53>',
+                    '<Job project-test1 explicit branches: None '
+                    'implied branches: '
+                    '{MatchAny:{ImpliedBranchMatcher:master}} '
+                    'source: common-config/zuul.yaml@master#66>',
+                    '<Job project-test1 explicit branches: None '
+                    'implied branches: None source: '
                     'common-config/zuul.yaml@master#138>'],
                 'build': '00000000000000000000000000000000',
                 'buildset': None,
@@ -1329,9 +1334,10 @@ class TestWeb(BaseTestWeb):
             'workspace_checkout': True,
             'zuul': {
                 '_inheritance_path': [
-                    '<Job noop branches: None source: None#0>',
-                    '<Job noop branches: None source: '
-                    'org/common-config/zuul.yaml@master#22>'],
+                    '<Job noop explicit branches: None implied branches: None '
+                    'source: None#0>',
+                    '<Job noop explicit branches: None implied branches: None '
+                    'source: org/common-config/zuul.yaml@master#22>'],
                 'branch': 'master',
                 'build': '00000000000000000000000000000000',
                 'buildset': None,
