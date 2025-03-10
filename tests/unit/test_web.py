@@ -1236,16 +1236,15 @@ class TestWeb(BaseTestWeb):
             'secret_vars': None,
             'zuul': {
                 '_inheritance_path': [
-                    '<Job base explicit branches: None implied '
-                    'branches: '
+                    '<Job base explicit: None implied: '
                     '{MatchAny:{ImpliedBranchMatcher:master}} '
                     'source: common-config/zuul.yaml@master#53>',
-                    '<Job project-test1 explicit branches: None '
-                    'implied branches: '
+                    '<Job project-test1 explicit: None '
+                    'implied: '
                     '{MatchAny:{ImpliedBranchMatcher:master}} '
                     'source: common-config/zuul.yaml@master#66>',
-                    '<Job project-test1 explicit branches: None '
-                    'implied branches: None source: '
+                    '<Job project-test1 explicit: None '
+                    'implied: None source: '
                     'common-config/zuul.yaml@master#138>'],
                 'build': '00000000000000000000000000000000',
                 'buildset': None,
@@ -1334,9 +1333,9 @@ class TestWeb(BaseTestWeb):
             'workspace_checkout': True,
             'zuul': {
                 '_inheritance_path': [
-                    '<Job noop explicit branches: None implied branches: None '
+                    '<Job noop explicit: None implied: None '
                     'source: None#0>',
-                    '<Job noop explicit branches: None implied branches: None '
+                    '<Job noop explicit: None implied: None '
                     'source: org/common-config/zuul.yaml@master#22>'],
                 'branch': 'master',
                 'build': '00000000000000000000000000000000',

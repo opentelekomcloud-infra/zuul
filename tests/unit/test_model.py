@@ -70,10 +70,8 @@ class TestJob(BaseTestCase):
         self.project = model.Project('project', self.source)
         self.context = model.SourceContext(
             self.project.canonical_name, self.project.name,
-            self.project.connection_name, 'master', 'test', True)
+            self.project.connection_name, 'master', 'test')
         self.tpc = model.TenantProjectConfig(self.project)
-        # TODO: remove trusted flag from context.  We're only going to
-        # use the TPC in the future.
         self.tpc.trusted = True
         self.tenant.addTPC(self.tpc)
         self.pipeline = model.Pipeline('gate', self.tenant)
@@ -325,7 +323,7 @@ class TestJob(BaseTestCase):
         base_project = model.Project('base_project', self.source)
         base_context = model.SourceContext(
             base_project.canonical_name, base_project.name,
-            base_project.connection_name, 'master', 'test', True)
+            base_project.connection_name, 'master', 'test')
         tpc = model.TenantProjectConfig(base_project)
         tpc.trusted = True
         self.tenant.addTPC(tpc)
@@ -341,8 +339,9 @@ class TestJob(BaseTestCase):
         other_project = model.Project('other_project', self.source)
         other_context = model.SourceContext(
             other_project.canonical_name, other_project.name,
-            other_project.connection_name, 'master', 'test', True)
+            other_project.connection_name, 'master', 'test')
         tpc = model.TenantProjectConfig(other_project)
+        tpc.trusted = True
         self.tenant.addTPC(tpc)
         base2 = self.pcontext.job_parser.fromYaml({
             '_source_context': other_context,
@@ -1135,7 +1134,7 @@ class TestJob(BaseTestCase):
         job_project = model.Project('other-project', self.source)
         job_context = model.SourceContext(
             job_project.canonical_name, job_project.name,
-            job_project.connection_name, 'master', 'test', True)
+            job_project.connection_name, 'master', 'test')
         tpc = model.TenantProjectConfig(job_project)
         tpc.trusted = True
         self.tenant.addTPC(tpc)
@@ -1539,7 +1538,7 @@ class TestSourceContext(BaseTestCase):
         self.project = model.Project('project', self.source)
         self.context = model.SourceContext(
             self.project.canonical_name, self.project.name,
-            self.project.connection_name, 'master', 'test', True)
+            self.project.connection_name, 'master', 'test')
         self.context.implied_branches = [
             change_matcher.BranchMatcher(ZuulRegex('foo')),
             change_matcher.ImpliedBranchMatcher(ZuulRegex('foo')),
