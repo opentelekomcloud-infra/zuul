@@ -926,7 +926,7 @@ class JobParser(object):
         if 'roles' in conf:
             for role in conf.get('roles', []):
                 if 'zuul' in role:
-                    r = self._makeZuulRole(job, role)
+                    r = self._makeZuulRole(role)
                     if r:
                         roles.append(r)
         # A job's repo should be an implicit role source for that job,
@@ -934,7 +934,8 @@ class JobParser(object):
         if not project_pipeline:
             r = self._makeImplicitRole(job)
             roles.insert(0, r)
-        job.addRoles(roles)
+        if roles:
+            job.roles = tuple(roles)
 
         seen_playbook_semaphores = set()
 
@@ -1188,15 +1189,10 @@ class JobParser(object):
                             job.final_control[jobattr] = True
         return job
 
-    def _makeZuulRole(self, job, role):
+    def _makeZuulRole(self, role):
         name = role['zuul'].split('/')[-1]
-
-        (trusted, project) = self.pcontext.tenant.getProject(role['zuul'])
-        if project is None:
-            return None
-
         return model.ZuulRole(role.get('name', name),
-                              project.canonical_name)
+                              role['zuul'])
 
     def _makeImplicitRole(self, job):
         project_name = job.source_context.project_name

@@ -3173,13 +3173,13 @@ class Role(ConfigObject, metaclass=abc.ABCMeta):
 class ZuulRole(Role):
     """A reference to an ansible role in a Zuul project."""
 
-    def __init__(self, target_name, project_canonical_name, implicit=False):
+    def __init__(self, target_name, project_name, implicit=False):
         super(ZuulRole, self).__init__(target_name)
-        self.project_canonical_name = project_canonical_name
+        self.project_name = project_name
         self.implicit = implicit
 
     def __repr__(self):
-        return '<ZuulRole %s %s>' % (self.project_canonical_name,
+        return '<ZuulRole %s %s>' % (self.project_name,
                                      self.target_name)
 
     def __hash__(self):
@@ -3191,13 +3191,16 @@ class ZuulRole(Role):
         # Implicit is not consulted for equality so that we can handle
         # implicit to explicit conversions.
         return (super(ZuulRole, self).__eq__(other) and
-                self.project_canonical_name == other.project_canonical_name)
+                self.project_name == other.project_name)
+
+    def copy(self):
+        return ZuulRole(self.target_name, self.project_name, self.implicit)
 
     def toDict(self):
         # Render to a dict to use in passing json to the executor
         d = super(ZuulRole, self).toDict()
         d['type'] = 'zuul'
-        d['project_canonical_name'] = self.project_canonical_name
+        d['project_canonical_name'] = self.project_name
         d['implicit'] = self.implicit
         return d
 
@@ -3910,7 +3913,7 @@ class Job(ConfigObject):
             for role in playbook.roles:
                 if role.implicit and not with_implicit:
                     continue
-                yield role.project_canonical_name
+                yield role.project_name
 
     def _freezePlaybook(self, layout, item, playbook, redact_secrets_and_keys):
         d = playbook.toDict(redact_secrets=redact_secrets_and_keys)
@@ -4184,6 +4187,25 @@ class Job(ConfigObject):
             new_include_vars.append(job_include_vars)
         return new_include_vars
 
+    def _resolveRoles(self, layout):
+        new_roles = []
+        for r in self.roles:
+            pname = None
+            if r.project_name is not None:
+                (trusted, project) = layout.tenant.getProject(r.project_name)
+                if project is None:
+                    # TODO: failure to find roles has always been
+                    # silently ignored.  Should this become an error?
+                    # Note that getProject can raise an error if the
+                    # name is ambiguous.
+                    continue
+                pname = project.canonical_name
+            # Use copy to get the appropriate Role subclass
+            role = r.copy()
+            role.project_name = pname
+            new_roles.append(role)
+        return new_roles
+
     def setBase(self, layout, semaphore_handler):
         # A job in an untrusted repo that uses secrets requires
         # special care.  We must note this, and carry this flag
@@ -4201,6 +4223,8 @@ class Job(ConfigObject):
             self.required_projects = self._resolveRequiredProjects(layout)
         if self._get('include_vars'):
             self.include_vars = self._resolveIncludeVars(layout)
+        if self._get('roles'):
+            self.roles = self._resolveRoles(layout)
         if self._get('run') is not None:
             self.run = self.freezePlaybooks(
                 self.run, layout, semaphore_handler)
@@ -4298,7 +4322,10 @@ class Job(ConfigObject):
                 f'to a pipeline in {ppc_origin} while referencing the '
                 f'image "{image_build_name}" defined in {image_origin}')
 
-    def addRoles(self, roles):
+    def addRoles(self, other, layout):
+        # Get fully qualified project names
+        roles = other._resolveRoles(layout)
+
         newroles = []
         # Start with a copy of the existing roles, but if any of them
         # are implicit roles which are identified as explicit in the
@@ -4533,7 +4560,7 @@ class Job(ConfigObject):
 
         # We must update roles before any playbook contexts
         if other._get('roles') is not None:
-            self.addRoles(other.roles)
+            self.addRoles(other, layout)
 
         # Freeze the nodeset
         self.nodeset = self.getNodeset(layout)
@@ -9389,6 +9416,9 @@ class Layout(object):
 
         if job.allowed_projects:
             job._resolveAllowedProjects(self)
+
+        if job.roles:
+            job._resolveRoles(self)
 
         if (job.timeout and
             self.tenant.max_job_timeout != -1 and
