@@ -3028,6 +3028,7 @@ class PlaybookContext(ConfigObject):
         self.cleanup = cleanup
         # Set internally after inheritance
         self.nesting_level = None
+        self.frozen_trusted = None
 
     def __repr__(self):
         return '<PlaybookContext %s %s>' % (self.source_context,
@@ -3106,6 +3107,14 @@ class PlaybookContext(ConfigObject):
                        if s.name not in current_names]
         self.frozen_secrets = self.frozen_secrets + tuple(new_secrets)
 
+    def freezeTrusted(self, layout):
+        # noop job does not have source_context
+        if self.source_context:
+            self.frozen_trusted = layout.tenant.isTrusted(
+                self.source_context.project_canonical_name)
+        else:
+            self.frozen_trusted = False
+
     def toDict(self, redact_secrets=True):
         # Render to a dict to use in passing json to the executor
         secrets = {}
@@ -3118,7 +3127,7 @@ class PlaybookContext(ConfigObject):
             connection=self.source_context.project_connection_name,
             project=self.source_context.project_name,
             branch=self.source_context.branch,
-            trusted=self.source_context.trusted,
+            trusted=self.frozen_trusted,
             roles=[r.toDict() for r in self.roles],
             secrets=secrets,
             semaphores=self.frozen_semaphores,
@@ -4481,6 +4490,7 @@ class Job(ConfigObject):
             pb = old_pb.copy()
             pb.roles = self.roles
             pb.freezeSecrets(layout)
+            pb.freezeTrusted(layout)
             pb.freezeSemaphores(layout, semaphore_handler)
             pb.nesting_level = len(self.inheritance_path)
             ret.append(pb)
