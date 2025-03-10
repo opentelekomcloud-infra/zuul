@@ -2324,7 +2324,7 @@ class TestConfigurationErrorList(ZooKeeperBaseTestCase):
         self.zk_client.client.create('/zuul/pipeline', makepath=True)
 
         source_context = model.SourceContext(
-            'cname', 'project', 'connection', 'branch', 'test', True)
+            'cname', 'project', 'connection', 'branch', 'test')
 
         m1 = yaml.Mark('name', 0, 0, 0, '', 0)
         m2 = yaml.Mark('name', 1, 0, 0, '', 0)
