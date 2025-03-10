@@ -7222,7 +7222,7 @@ class TestPragma(ZuulTestCase):
         jobs = tenant.layout.getJobs('test-job')
         self.assertEqual(len(jobs), 1)
         for job in tenant.layout.getJobs('test-job'):
-            self.assertIsNotNone(job.branch_matcher)
+            self.assertIsNotNone(job.getBranchMatcher(tenant))
 
     def test_pragma(self):
         self.create_branch('org/project', 'stable')
@@ -7250,7 +7250,7 @@ class TestPragma(ZuulTestCase):
         jobs = tenant.layout.getJobs('test-job')
         self.assertEqual(len(jobs), 1)
         for job in tenant.layout.getJobs('test-job'):
-            self.assertIsNone(job.branch_matcher)
+            self.assertIsNone(job.getBranchMatcher(tenant))
 
 
 class TestPragmaMultibranch(ZuulTestCase):
@@ -7372,7 +7372,7 @@ class TestTenantImpliedBranchMatchers(ZuulTestCase):
         jobs = tenant.layout.getJobs('test-job')
         self.assertEqual(len(jobs), 1)
         for job in tenant.layout.getJobs('test-job'):
-            self.assertIsNotNone(job.branch_matcher)
+            self.assertIsNotNone(job.getBranchMatcher(tenant))
 
     def test_pragma_overrides_tenant_implied_branch_matchers(self):
         # Test that we can force implied branch matchers off with a pragma
@@ -7401,7 +7401,7 @@ class TestTenantImpliedBranchMatchers(ZuulTestCase):
         jobs = tenant.layout.getJobs('test-job')
         self.assertEqual(len(jobs), 2)
         for job in tenant.layout.getJobs('test-job'):
-            self.assertIsNone(job.branch_matcher)
+            self.assertIsNone(job.getBranchMatcher(tenant))
 
 
 class TestBaseJobs(ZuulTestCase):

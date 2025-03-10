@@ -240,9 +240,10 @@ class TestJob(BaseTestCase):
         change.cache_stat = Dummy(key=Dummy(reference=uuid.uuid4().hex))
         item = self.queue.enqueueChanges([change], None)
 
-        self.assertTrue(base.changeMatchesBranch(change))
-        self.assertTrue(python27.changeMatchesBranch(change))
-        self.assertFalse(python27diablo.changeMatchesBranch(change))
+        self.assertTrue(base.changeMatchesBranch(self.tenant, change))
+        self.assertTrue(python27.changeMatchesBranch(self.tenant, change))
+        self.assertFalse(python27diablo.changeMatchesBranch(
+            self.tenant, change))
 
         with self.zk_context as ctx:
             item.freezeJobGraph(self.layout, ctx,
@@ -257,9 +258,10 @@ class TestJob(BaseTestCase):
         change.cache_stat = Dummy(key=Dummy(reference=uuid.uuid4().hex))
         item = self.queue.enqueueChanges([change], None)
 
-        self.assertTrue(base.changeMatchesBranch(change))
-        self.assertTrue(python27.changeMatchesBranch(change))
-        self.assertTrue(python27diablo.changeMatchesBranch(change))
+        self.assertTrue(base.changeMatchesBranch(self.tenant, change))
+        self.assertTrue(python27.changeMatchesBranch(self.tenant, change))
+        self.assertTrue(python27diablo.changeMatchesBranch(
+            self.tenant, change))
 
         with self.zk_context as ctx:
             item.freezeJobGraph(self.layout, ctx,
@@ -465,8 +467,8 @@ class TestJob(BaseTestCase):
         change.cache_stat = Dummy(key=Dummy(reference=uuid.uuid4().hex))
         item = self.queue.enqueueChanges([change], None)
 
-        self.assertTrue(base.changeMatchesBranch(change))
-        self.assertTrue(python27.changeMatchesBranch(change))
+        self.assertTrue(base.changeMatchesBranch(self.tenant, change))
+        self.assertTrue(python27.changeMatchesBranch(self.tenant, change))
 
         with self.zk_context as ctx:
             item.freezeJobGraph(self.layout, ctx,
