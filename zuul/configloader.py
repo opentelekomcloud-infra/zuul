@@ -872,6 +872,7 @@ class JobParser(object):
         job.description = conf.get('description')
         job.source_context = conf['_source_context']
         job.start_mark = conf['_start_mark']
+        job.project_pipeline = project_pipeline
         job.variant_description = conf.get(
             'variant-description', " ".join([
                 str(x) for x in as_list(conf.get('branches'))
@@ -1140,10 +1141,10 @@ class JobParser(object):
                         make_regex(x, self.pcontext))
                     for x in as_list(conf_branches)
                 ]
+                job.setExplicitBranchMatchers(branches)
         elif not project_pipeline:
             branches = self.pcontext.getImpliedBranches(job.source_context)
-        if branches:
-            job.setBranchMatcher(branches)
+            job.setImpliedBranchMatchers(branches)
         if 'files' in conf:
             with self.pcontext.confAttr(conf, 'files') as conf_files:
                 if isinstance(conf_files, yaml.OverrideValue):
@@ -1259,7 +1260,7 @@ class ProjectTemplateParser(object):
 
         # If this project definition is in a place where it
         # should get implied branch matchers, set it.
-        branches = self.pcontext.getImpliedBranches_new(source_context)
+        branches = self.pcontext.getImpliedBranches(source_context)
         if branches:
             project_template.setImpliedBranchMatchers(branches)
 
@@ -1808,36 +1809,6 @@ class ParseContext(object):
             yield default
 
     def getImpliedBranches(self, source_context):
-        # If the user has set a pragma directive for this, use the
-        # value (if unset, the value is None).
-        if source_context.implied_branch_matchers is True:
-            if source_context.implied_branches is not None:
-                return source_context.implied_branches
-            return [change_matcher.ImpliedBranchMatcher(
-                ZuulRegex(source_context.branch))]
-        elif source_context.implied_branch_matchers is False:
-            return None
-
-        # If this is a trusted project, don't create implied branch
-        # matchers.
-        if source_context.trusted:
-            return None
-
-        # If this project only has one branch, don't create implied
-        # branch matchers.  This way central job repos can work.
-        branches = self.tenant.getProjectBranches(
-            source_context.project_canonical_name)
-        if len(branches) == 1:
-            return None
-
-        if source_context.implied_branches is not None:
-            return source_context.implied_branches
-        return [change_matcher.ImpliedBranchMatcher(
-            ZuulRegex(source_context.branch))]
-
-    # TODO: this will replace getImpliedBranches as we remove all
-    # tenant references during object parsing.
-    def getImpliedBranches_new(self, source_context):
         if source_context.implied_branches is not None:
             return source_context.implied_branches
         return [change_matcher.ImpliedBranchMatcher(
