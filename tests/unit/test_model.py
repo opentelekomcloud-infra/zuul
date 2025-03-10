@@ -325,6 +325,7 @@ class TestJob(BaseTestCase):
             base_project.canonical_name, base_project.name,
             base_project.connection_name, 'master', 'test', True)
         tpc = model.TenantProjectConfig(base_project)
+        tpc.trusted = True
         self.tenant.addTPC(tpc)
 
         base = self.pcontext.job_parser.fromYaml({
@@ -1134,6 +1135,7 @@ class TestJob(BaseTestCase):
             job_project.canonical_name, job_project.name,
             job_project.connection_name, 'master', 'test', True)
         tpc = model.TenantProjectConfig(job_project)
+        tpc.trusted = True
         self.tenant.addTPC(tpc)
 
         job = self.pcontext.job_parser.fromYaml({

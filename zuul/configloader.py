@@ -883,11 +883,7 @@ class JobParser(object):
                 job.parent = conf['parent']
             else:
                 # Parent is explicitly set as None, so user intends
-                # this to be a base job.  That's only okay if we're in
-                # a config project.
-                if not conf['_source_context'].trusted:
-                    raise Exception(
-                        "Base jobs must be defined in config projects")
+                # this to be a base job.
                 job.parent = job.BASE_JOB_MARKER
 
         # Secrets are part of the playbook context so we must establish
