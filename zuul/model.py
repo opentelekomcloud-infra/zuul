@@ -9400,6 +9400,11 @@ class Layout(object):
             job.post_timeout > self.tenant.max_job_timeout):
             raise MaxTimeoutError(job, self.tenant)
 
+        if job.isBase() and not self.tenant.isTrusted(
+                job.source_context.project_canonical_name):
+            raise Exception(
+                "Base jobs must be defined in config projects")
+
     def addJob(self, job):
         self._checkAddJob(job)
         # We can have multiple variants of a job all with the same
