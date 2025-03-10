@@ -2911,16 +2911,15 @@ class SourceContext(ConfigObject):
     originate."""
 
     def __init__(self, project_canonical_name, project_name,
-                 project_connection_name, branch, path, trusted,
-                 implied_branch_matchers=None):
+                 project_connection_name, branch, path):
         super(SourceContext, self).__init__()
         self.project_canonical_name = project_canonical_name
         self.project_name = project_name
         self.project_connection_name = project_connection_name
         self.branch = branch
         self.path = path
-        self.trusted = trusted
-        self.implied_branch_matchers = implied_branch_matchers
+        # These attributes are not copied in copy()
+        self.implied_branch_matchers = None
         self.implied_branches = None
         self.implied_branch_matcher = None
 
@@ -2929,8 +2928,7 @@ class SourceContext(ConfigObject):
             self.project_name, self.path, self.branch)
 
     def __repr__(self):
-        return '<SourceContext %s trusted:%s>' % (str(self),
-                                                  self.trusted)
+        return '<SourceContext %s>' % (str(self),)
 
     def __deepcopy__(self, memo):
         return self.copy()
@@ -2938,14 +2936,12 @@ class SourceContext(ConfigObject):
     def copy(self):
         return self.__class__(
             self.project_canonical_name, self.project_name,
-            self.project_connection_name, self.branch, self.path, self.trusted,
-            self.implied_branch_matchers)
+            self.project_connection_name, self.branch, self.path)
 
     def isSameProject(self, other):
         if not isinstance(other, SourceContext):
             return False
-        return (self.project_canonical_name == other.project_canonical_name and
-                self.trusted == other.trusted)
+        return self.project_canonical_name == other.project_canonical_name
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -2955,8 +2951,7 @@ class SourceContext(ConfigObject):
             return False
         return (self.project_canonical_name == other.project_canonical_name and
                 self.branch == other.branch and
-                self.path == other.path and
-                self.trusted == other.trusted)
+                self.path == other.path)
 
     def serialize(self):
         ibs = None
@@ -2968,7 +2963,6 @@ class SourceContext(ConfigObject):
             "project_connection_name": self.project_connection_name,
             "branch": self.branch,
             "path": self.path,
-            "trusted": self.trusted,
             "implied_branch_matchers": self.implied_branch_matchers,
             "implied_branches": ibs,
         }
@@ -4119,7 +4113,7 @@ class Job(ConfigObject):
         ln = 0
         if self.start_mark:
             ln = self.start_mark.line + 1
-        return ('<Job %s explicit branches: %s implied branches: %s '
+        return ('<Job %s explicit: %s implied: %s '
                 'source: %s#%s>' % (
                     self.name,
                     self.explicit_branch_matcher,
@@ -8832,8 +8826,13 @@ class ProjectConfig(ConfigObject):
         self.queue_name = None
 
     def __repr__(self):
-        return '<ProjectConfig %s source: %s>' % (
-            self.name, self.source_context)
+        return ('<ProjectConfig %s source: %s '
+                'explicit: %s implied: %s source: %s>' % (
+                    self.name, self.source_context,
+                    self.explicit_branch_matcher,
+                    self.implied_branch_matcher,
+                    self.source_implied_branch_matcher,
+                ))
 
     def embeddedJobs(self):
         # Return all embedded job definitions in this project config
@@ -9246,13 +9245,8 @@ class UnparsedConfig(object):
         self.files_examined = set()
         self.dirs_examined = set()
 
-    def copy(self, trusted=None):
-        # If trusted is not None, update the source context of each
-        # object in the copy.
+    def copy(self):
         r = UnparsedConfig()
-        # Keep a cache of all the source contexts indexed by
-        # project-branch-path so that we can share them across objects
-        source_contexts = {}
         for attr in ['pragmas', 'pipelines', 'jobs', 'project_templates',
                      'projects', 'nodesets', 'secrets', 'semaphores',
                      'queues', 'images', 'flavors', 'labels', 'sections',
@@ -9261,21 +9255,6 @@ class UnparsedConfig(object):
             old_objlist = getattr(self, attr)
             new_objlist = copy.deepcopy(old_objlist)
             setattr(r, attr, new_objlist)
-            for i, new_obj in enumerate(new_objlist):
-                old_obj = old_objlist[i]
-                key = (old_obj['_source_context'].project_canonical_name,
-                       old_obj['_source_context'].project_name,
-                       old_obj['_source_context'].project_connection_name,
-                       old_obj['_source_context'].branch,
-                       old_obj['_source_context'].path)
-                new_sc = source_contexts.get(key)
-                if not new_sc:
-                    new_sc = new_obj['_source_context']
-                    if trusted is not None:
-                        new_sc.trusted = trusted
-                    source_contexts[key] = new_sc
-                else:
-                    new_obj['_source_context'] = new_sc
         return r
 
     def extend(self, conf):
