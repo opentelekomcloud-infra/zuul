@@ -56,6 +56,7 @@ class ExecutorClient(object):
         log = get_annotated_logger(self.log, item.event)
         tracer = trace.get_tracer("zuul")
         uuid = str(uuid4().hex)
+        manager = item.manager
         log.info(
             "Execute job %s (uuid: %s) on nodes %s for %s "
             "with dependent changes %s",
@@ -68,7 +69,7 @@ class ExecutorClient(object):
         # TODO: deprecate and remove this variable?
         params["zuul"]["_inheritance_path"] = list(job.inheritance_path)
 
-        semaphore_handler = item.pipeline.tenant.semaphore_handler
+        semaphore_handler = manager.tenant.semaphore_handler
         params['semaphore_handle'] = semaphore_handler.getSemaphoreHandle(
             item, job)
 
@@ -78,7 +79,7 @@ class ExecutorClient(object):
             build_span = tracer.start_span("Build", start_time=execute_time)
         build_span_info = tracing.getSpanInfo(build_span)
         build = Build.new(
-            pipeline.manager.current_context,
+            manager.current_context,
             job=job,
             build_set=item.current_build_set,
             uuid=uuid,
@@ -96,7 +97,7 @@ class ExecutorClient(object):
             started_event = BuildStartedEvent(
                 build.uuid, build.build_set.uuid, job.uuid,
                 None, data, zuul_event_id=build.zuul_event_id)
-            self.result_events[pipeline.tenant.name][pipeline.name].put(
+            self.result_events[manager.tenant.name][manager.pipeline.name].put(
                 started_event
             )
 
@@ -104,7 +105,7 @@ class ExecutorClient(object):
             completed_event = BuildCompletedEvent(
                 build.uuid, build.build_set.uuid, job.uuid,
                 None, result, zuul_event_id=build.zuul_event_id)
-            self.result_events[pipeline.tenant.name][pipeline.name].put(
+            self.result_events[manager.tenant.name][manager.pipeline.name].put(
                 completed_event
             )
 
@@ -151,14 +152,14 @@ class ExecutorClient(object):
                 uuid=uuid,
                 build_set_uuid=build.build_set.uuid,
                 job_uuid=job.uuid,
-                tenant_name=build.build_set.item.pipeline.tenant.name,
-                pipeline_name=build.build_set.item.pipeline.name,
+                tenant_name=manager.tenant.name,
+                pipeline_name=manager.pipeline.name,
                 zone=executor_zone,
                 event_id=item.event.zuul_event_id,
                 precedence=PRIORITY_MAP[pipeline.precedence],
             )
         self.executor_api.submit(request, params)
-        build.updateAttributes(pipeline.manager.current_context,
+        build.updateAttributes(manager.current_context,
                                build_request_ref=request.path)
 
     def cancel(self, build):
@@ -168,7 +169,7 @@ class ExecutorClient(object):
         log.info("Cancel build %s for job %s", build, build.job)
 
         build.updateAttributes(
-            build.build_set.item.pipeline.manager.current_context,
+            build.build_set.item.manager.current_context,
             canceled=True)
 
         if not build.build_request_ref:
@@ -199,8 +200,8 @@ class ExecutorClient(object):
                     self.executor_api.update(build_request)
 
                     result = {"result": "CANCELED", "end_time": time.time()}
-                    tenant_name = build.build_set.item.pipeline.tenant.name
-                    pipeline_name = build.build_set.item.pipeline.name
+                    tenant_name = build.build_set.item.manager.tenant.name
+                    pipeline_name = build.build_set.item.manager.pipeline.name
                     event = BuildCompletedEvent(
                         build_request.uuid, build_request.build_set_uuid,
                         build_request.job_uuid,

@@ -37,5 +37,5 @@ class BaseTrigger(object, metaclass=abc.ABCMeta):
     def onChangeMerged(self, change, source):
         """Called when a change has been merged."""
 
-    def onChangeEnqueued(self, change, pipeline, event):
+    def onChangeEnqueued(self, change, manager, event):
         """Called when a change has been enqueued."""
