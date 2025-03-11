@@ -31,8 +31,8 @@ class IndependentPipelineManager(PipelineManager):
         if existing:
             return DynamicChangeQueueContextManager(existing)
         change_queue = model.ChangeQueue.new(
-            self.pipeline.manager.current_context,
-            pipeline=self.pipeline,
+            self.current_context,
+            manager=self,
             dynamic=True)
         change_queue.addProject(change.project, None)
         self.state.addQueue(change_queue)

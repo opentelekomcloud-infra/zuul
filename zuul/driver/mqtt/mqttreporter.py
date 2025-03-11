@@ -55,9 +55,9 @@ class MQTTReporter(BaseReporter):
         message = {
             'timestamp': time.time(),
             'action': self._action,
-            'tenant': item.pipeline.tenant.name,
+            'tenant': item.manager.tenant.name,
             'zuul_ref': buildset.ref,
-            'pipeline': item.pipeline.name,
+            'pipeline': item.manager.pipeline.name,
             'queue': item.queue.name,
             'changes': changes,
             'project': item.changes[0].project.name,
@@ -155,8 +155,8 @@ class MQTTReporter(BaseReporter):
         topic = None
         try:
             topic = self.config['topic'].format(
-                tenant=item.pipeline.tenant.name,
-                pipeline=item.pipeline.name,
+                tenant=item.manager.tenant.name,
+                pipeline=item.manager.pipeline.name,
                 changes=changes,
                 project=item.changes[0].project.name,
                 branch=getattr(item.changes[0], 'branch', None),

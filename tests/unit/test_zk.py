@@ -2478,14 +2478,15 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
         pipeline = model.Pipeline('gate', tenant)
         layout = model.Layout(tenant)
         tenant.layout = layout
-        pipeline.manager = mock.Mock()
-        pipeline.manager.state = model.PipelineState.create(
-            pipeline, None)
+        manager = mock.Mock()
+        manager.pipeline = pipeline
+        manager.tenant = tenant
+        manager.state = model.PipelineState.create(
+            manager, None)
         context = ZKContext(self.zk_client, None, None, self.log)
-        pipeline.state.refresh(context)
-        self.assertTrue(self.zk_client.client.exists(
-            pipeline.state.getPath()))
-        self.assertEqual(pipeline.manager.state.layout_uuid, layout.uuid)
+        manager.state.refresh(context)
+        self.assertTrue(self.zk_client.client.exists(manager.state.getPath()))
+        self.assertEqual(manager.state.layout_uuid, layout.uuid)
 
     def test_pipeline_state_existing_object(self):
         # Test the initialize-on-refresh code path with a pre-existing object
@@ -2493,21 +2494,23 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
         pipeline = model.Pipeline('gate', tenant)
         layout = model.Layout(tenant)
         tenant.layout = layout
-        pipeline.manager = mock.Mock()
-        pipeline.manager.state = model.PipelineState.create(
-            pipeline, None)
-        pipeline.manager.change_list = model.PipelineChangeList.create(
-            pipeline)
+        manager = mock.Mock()
+        manager.pipeline = pipeline
+        manager.tenant = tenant
+        manager.state = model.PipelineState.create(
+            manager, None)
+        manager.change_list = model.PipelineChangeList.create(
+            manager)
         context = ZKContext(self.zk_client, None, None, self.log)
         # We refresh the change list here purely for the side effect
         # of creating the pipeline state object with no data (the list
         # is a subpath of the state object).
-        pipeline.change_list.refresh(context)
-        pipeline.state.refresh(context)
+        manager.change_list.refresh(context)
+        manager.state.refresh(context)
         self.assertTrue(
-            self.zk_client.client.exists(pipeline.change_list.getPath()))
-        self.assertTrue(self.zk_client.client.exists(pipeline.state.getPath()))
-        self.assertEqual(pipeline.manager.state.layout_uuid, layout.uuid)
+            self.zk_client.client.exists(manager.change_list.getPath()))
+        self.assertTrue(self.zk_client.client.exists(manager.state.getPath()))
+        self.assertEqual(manager.state.layout_uuid, layout.uuid)
 
     def test_pipeline_change_list_new_object(self):
         # Test the initialize-on-refresh code path with no existing object
@@ -2515,17 +2518,19 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
         pipeline = model.Pipeline('gate', tenant)
         layout = model.Layout(tenant)
         tenant.layout = layout
-        pipeline.manager = mock.Mock()
-        pipeline.manager.state = model.PipelineState.create(
-            pipeline, None)
-        pipeline.manager.change_list = model.PipelineChangeList.create(
-            pipeline)
+        manager = mock.Mock()
+        manager.pipeline = pipeline
+        manager.tenant = tenant
+        manager.state = model.PipelineState.create(
+            manager, None)
+        manager.change_list = model.PipelineChangeList.create(
+            manager)
         context = ZKContext(self.zk_client, None, None, self.log)
-        pipeline.manager.change_list.refresh(context)
+        manager.change_list.refresh(context)
         self.assertTrue(
-            self.zk_client.client.exists(pipeline.change_list.getPath()))
-        pipeline.state.refresh(context)
-        self.assertEqual(pipeline.manager.state.layout_uuid, layout.uuid)
+            self.zk_client.client.exists(manager.change_list.getPath()))
+        manager.state.refresh(context)
+        self.assertEqual(manager.state.layout_uuid, layout.uuid)
 
     def test_pipeline_change_list_new_object_without_lock(self):
         # Test the initialize-on-refresh code path if we don't have
@@ -2534,18 +2539,20 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
         pipeline = model.Pipeline('gate', tenant)
         layout = model.Layout(tenant)
         tenant.layout = layout
-        pipeline.manager = mock.Mock()
-        pipeline.manager.state = model.PipelineState.create(
-            pipeline, None)
-        pipeline.manager.change_list = model.PipelineChangeList.create(
-            pipeline)
+        manager = mock.Mock()
+        manager.pipeline = pipeline
+        manager.tenant = tenant
+        manager.state = model.PipelineState.create(
+            manager, None)
+        manager.change_list = model.PipelineChangeList.create(
+            manager)
         context = ZKContext(self.zk_client, None, None, self.log)
         with testtools.ExpectedException(NoNodeError):
-            pipeline.change_list.refresh(context, allow_init=False)
+            manager.change_list.refresh(context, allow_init=False)
         self.assertIsNone(
-            self.zk_client.client.exists(pipeline.change_list.getPath()))
-        pipeline.state.refresh(context)
-        self.assertEqual(pipeline.state.layout_uuid, layout.uuid)
+            self.zk_client.client.exists(manager.change_list.getPath()))
+        manager.state.refresh(context)
+        self.assertEqual(manager.state.layout_uuid, layout.uuid)
 
 
 class TestPolymorphicZKObjectMixin(ZooKeeperBaseTestCase):
