@@ -74,8 +74,6 @@ class PipelineManager(metaclass=ABCMeta):
                                       pipeline.name,))
         self.sched = sched
         self.pipeline = pipeline
-        self.event_filters = []
-        self.ref_filters = []
         self.relative_priority_queues = {}
         # Cached dynamic layouts (layout uuid -> layout)
         self._layout_cache = {}
@@ -213,7 +211,7 @@ class PipelineManager(metaclass=ABCMeta):
                 return True
             else:
                 return False
-        for ef in self.event_filters:
+        for ef in self.pipeline.event_filters:
             match_result = ef.matches(event, change)
             if match_result:
                 log.debug("Event %s for change %s matched %s "
@@ -706,7 +704,7 @@ class PipelineManager(metaclass=ABCMeta):
                 cycle = [change]
 
             if not ignore_requirements:
-                for f in self.ref_filters:
+                for f in self.pipeline.ref_filters:
                     for cycle_change in cycle:
                         if (f.connection_name !=
                             cycle_change.project.connection_name):
