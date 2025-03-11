@@ -39,6 +39,7 @@ from zuul.model import (
 )
 from zuul.zk import ZooKeeperClient
 from zuul.lib.keystorage import KeyStorage
+from zuul.manager.independent import IndependentPipelineManager
 from zuul.zk.locks import tenant_read_lock, pipeline_lock
 from zuul.zk.zkobject import ZKContext
 from zuul.zk.components import COMPONENT_REGISTRY
@@ -1078,15 +1079,25 @@ class Client(zuul.cmd.ZuulApp):
         safe_tenant = urllib.parse.quote_plus(args.tenant)
         safe_pipeline = urllib.parse.quote_plus(args.pipeline)
         COMPONENT_REGISTRY.create(zk_client)
+
+        class FakeTenant:
+            pass
+
+        tenant = FakeTenant()
+        tenant.name = args.tenant
+
         with tenant_read_lock(zk_client, args.tenant, self.log):
             path = f'/zuul/tenant/{safe_tenant}/pipeline/{safe_pipeline}'
-            pipeline = Pipeline(args.tenant, args.pipeline)
+            pipeline = Pipeline(args.pipeline, tenant)
             with pipeline_lock(
                     zk_client, args.tenant, args.pipeline
             ) as plock:
                 zk_client.fastRecursiveDelete(path)
                 with ZKContext(zk_client, plock, None, self.log) as context:
-                    pipeline.state = PipelineState.new(
+                    pipeline.manager = IndependentPipelineManager(
+                        None, pipeline)
+                    pipeline.manager.tenant = tenant
+                    pipeline.manager.state = PipelineState.new(
                         context, _path=path, layout_uuid=None)
                     PipelineChangeList.new(context, pipeline=pipeline)
 

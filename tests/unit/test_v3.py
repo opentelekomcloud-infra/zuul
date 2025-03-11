@@ -1720,9 +1720,6 @@ class TestInRepoConfig(ZuulTestCase):
     def test_dynamic_config_new_patchset(self):
         self.executor_server.hold_jobs_in_build = True
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
-
         in_repo_conf = textwrap.dedent(
             """
             - job:
@@ -1753,7 +1750,7 @@ class TestInRepoConfig(ZuulTestCase):
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
 
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(items[0].changes[0].number, '1')
         self.assertEqual(items[0].changes[0].patchset, '1')
         self.assertTrue(items[0].live)
@@ -1783,7 +1780,7 @@ class TestInRepoConfig(ZuulTestCase):
 
         self.waitUntilSettled()
 
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(items[0].changes[0].number, '1')
         self.assertEqual(items[0].changes[0].patchset, '2')
         self.assertTrue(items[0].live)
@@ -4079,7 +4076,7 @@ class TestInRepoJoin(ZuulTestCase):
         self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
         self.waitUntilSettled()
 
-        items = gate_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         self.assertEqual(items[0].changes[0].number, '1')
         self.assertEqual(items[0].changes[0].patchset, '1')
         self.assertTrue(items[0].live)

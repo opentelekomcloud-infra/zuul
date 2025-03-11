@@ -2462,8 +2462,9 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
         pipeline = model.Pipeline('gate', tenant)
         layout = model.Layout(tenant)
         tenant.layout = layout
-        pipeline.state = model.PipelineState.create(
-            pipeline, pipeline.state)
+        pipeline.manager = mock.Mock()
+        pipeline.manager.state = model.PipelineState.create(
+            pipeline, None)
         context = ZKContext(self.zk_client, None, None, self.log)
         pipeline.state.refresh(context)
         self.assertTrue(self.zk_client.client.exists(pipeline.state.getPath()))
@@ -2476,9 +2477,9 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
         layout = model.Layout(tenant)
         tenant.layout = layout
         pipeline.manager = mock.Mock()
-        pipeline.state = model.PipelineState.create(
-            pipeline, pipeline.state)
-        pipeline.change_list = model.PipelineChangeList.create(
+        pipeline.manager.state = model.PipelineState.create(
+            pipeline, None)
+        pipeline.manager.change_list = model.PipelineChangeList.create(
             pipeline)
         context = ZKContext(self.zk_client, None, None, self.log)
         # We refresh the change list here purely for the side effect
@@ -2497,15 +2498,15 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
         pipeline = model.Pipeline('gate', tenant)
         layout = model.Layout(tenant)
         tenant.layout = layout
-        pipeline.state = model.PipelineState.create(
-            pipeline, pipeline.state)
-        pipeline.change_list = model.PipelineChangeList.create(
+        pipeline.manager = mock.Mock()
+        pipeline.manager.state = model.PipelineState.create(
+            pipeline, None)
+        pipeline.manager.change_list = model.PipelineChangeList.create(
             pipeline)
         context = ZKContext(self.zk_client, None, None, self.log)
         pipeline.change_list.refresh(context)
         self.assertTrue(
             self.zk_client.client.exists(pipeline.change_list.getPath()))
-        pipeline.manager = mock.Mock()
         pipeline.state.refresh(context)
         self.assertEqual(pipeline.state.layout_uuid, layout.uuid)
 
@@ -2516,17 +2517,17 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
         pipeline = model.Pipeline('gate', tenant)
         layout = model.Layout(tenant)
         tenant.layout = layout
-        pipeline.state = model.PipelineState.create(
-            pipeline, pipeline.state)
-        pipeline.change_list = model.PipelineChangeList.create(
+        pipeline.manager = mock.Mock()
+        pipeline.manager.state = model.PipelineState.create(
+            pipeline, None)
+        pipeline.manager.change_list = model.PipelineChangeList.create(
             pipeline)
         context = ZKContext(self.zk_client, None, None, self.log)
         with testtools.ExpectedException(NoNodeError):
             pipeline.change_list.refresh(context, allow_init=False)
         self.assertIsNone(
             self.zk_client.client.exists(pipeline.change_list.getPath()))
-        pipeline.manager = mock.Mock()
-        pipeline.state.refresh(context)
+        pipeline.manager.state.refresh(context)
         self.assertEqual(pipeline.state.layout_uuid, layout.uuid)
 
 
