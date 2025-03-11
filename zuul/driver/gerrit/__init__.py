@@ -42,7 +42,7 @@ class GerritDriver(Driver, ConnectionInterface, TriggerInterface,
                             elif 'scheme' in trigger_item:
                                 d['scheme'] = trigger_item['scheme']
                             checkers.append(d)
-            for event_filter in pipeline.manager.event_filters:
+            for event_filter in pipeline.event_filters:
                 trigger = event_filter.trigger
                 if isinstance(trigger, gerrittrigger.GerritTrigger):
                     con = trigger.connection
