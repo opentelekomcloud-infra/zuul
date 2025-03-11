@@ -48,15 +48,15 @@ class ZuulDriver(Driver, TriggerInterface, ReporterInterface):
         self.sched = scheduler
 
     def reconfigure(self, tenant):
-        for pipeline in tenant.layout.pipelines.values():
-            for ef in pipeline.event_filters:
+        for manager in tenant.layout.pipeline_managers.values():
+            for ef in manager.pipeline.event_filters:
                 if not isinstance(ef.trigger, zuultrigger.ZuulTrigger):
                     continue
                 if PARENT_CHANGE_ENQUEUED in ef._types:
                     # parent-change-enqueued events need to be filtered by
                     # pipeline
-                    for pipeline in ef._pipelines:
-                        key = (tenant.name, pipeline)
+                    for pipeline_name in ef._pipelines:
+                        key = (tenant.name, pipeline_name)
                         self.parent_change_enqueued_events[key] = True
                 elif PROJECT_CHANGE_MERGED in ef._types:
                     self.project_change_merged_events[tenant.name] = True
@@ -78,12 +78,12 @@ class ZuulDriver(Driver, TriggerInterface, ReporterInterface):
                         "Unable to create project-change-merged events for "
                         "%s" % (change,))
 
-    def onChangeEnqueued(self, tenant, change, pipeline, event):
+    def onChangeEnqueued(self, tenant, change, manager, event):
         log = get_annotated_logger(self.log, event)
 
         # Called each time a change is enqueued in a pipeline
         tenant_events = self.parent_change_enqueued_events.get(
-            (tenant.name, pipeline.name))
+            (tenant.name, manager.pipeline.name))
         log.debug("onChangeEnqueued %s", tenant_events)
         if tenant_events:
             span = trace.get_current_span()
@@ -95,11 +95,11 @@ class ZuulDriver(Driver, TriggerInterface, ReporterInterface):
                     "ZuulEvent", links=[link], attributes=attributes):
                 try:
                     self._createParentChangeEnqueuedEvents(
-                        change, pipeline, tenant, event)
+                        change, manager, tenant, event)
                 except Exception:
                     log.exception(
                         "Unable to create parent-change-enqueued events for "
-                        "%s in %s" % (change, pipeline))
+                        "%s in %s" % (change, manager.pipeline))
 
     def _createProjectChangeMergedEvents(self, change, source):
         changes = source.getProjectOpenChanges(
@@ -123,7 +123,7 @@ class ZuulDriver(Driver, TriggerInterface, ReporterInterface):
         event.timestamp = time.time()
         self.sched.addTriggerEvent(self.name, event)
 
-    def _createParentChangeEnqueuedEvents(self, change, pipeline, tenant,
+    def _createParentChangeEnqueuedEvents(self, change, manager, tenant,
                                           event):
         log = get_annotated_logger(self.log, event)
 
@@ -136,8 +136,7 @@ class ZuulDriver(Driver, TriggerInterface, ReporterInterface):
         # numbers of github installations.  This can be improved later
         # with persistent storage of dependency information.
         needed_by_changes = set(
-            pipeline.manager.resolveChangeReferences(
-                change.getNeededByChanges()))
+            manager.resolveChangeReferences(change.getNeededByChanges()))
         for source in self.sched.connections.getSources():
             log.debug("  Checking source: %s",
                       source.connection.connection_name)
@@ -149,14 +148,14 @@ class ZuulDriver(Driver, TriggerInterface, ReporterInterface):
         log.debug("  Following changes: %s", needed_by_changes)
 
         for needs in needed_by_changes:
-            self._createParentChangeEnqueuedEvent(needs, pipeline)
+            self._createParentChangeEnqueuedEvent(needs, manager)
 
-    def _createParentChangeEnqueuedEvent(self, change, pipeline):
+    def _createParentChangeEnqueuedEvent(self, change, manager):
         event = ZuulTriggerEvent()
         event.type = PARENT_CHANGE_ENQUEUED
         event.connection_name = "zuul"
         event.trigger_name = self.name
-        event.pipeline_name = pipeline.name
+        event.pipeline_name = manager.pipeline.name
         event.project_hostname = change.project.canonical_hostname
         event.project_name = change.project.name
         event.change_number = change.number

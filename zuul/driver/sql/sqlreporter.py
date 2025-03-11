@@ -64,8 +64,8 @@ class SQLReporter(BaseReporter):
 
         db_buildset = db.createBuildSet(
             uuid=buildset.uuid,
-            tenant=item.pipeline.tenant.name,
-            pipeline=item.pipeline.name,
+            tenant=item.manager.tenant.name,
+            pipeline=item.manager.pipeline.name,
             event_id=event_id,
             event_timestamp=event_timestamp,
             updated=datetime.datetime.utcnow(),
@@ -120,7 +120,7 @@ class SQLReporter(BaseReporter):
             try:
                 with self.connection.getSession() as db:
                     db_buildset = db.getBuildset(
-                        tenant=buildset.item.pipeline.tenant.name,
+                        tenant=buildset.item.manager.tenant.name,
                         uuid=buildset.uuid)
                     if not db_buildset:
                         db_buildset = self._createBuildset(db, buildset)
@@ -235,7 +235,7 @@ class SQLReporter(BaseReporter):
         if not buildset:
             return None
         db_buildset = db.getBuildset(
-            tenant=buildset.item.pipeline.tenant.name, uuid=buildset.uuid)
+            tenant=buildset.item.manager.tenant.name, uuid=buildset.uuid)
         if not db_buildset:
             self.log.warning("Creating missing buildset %s", buildset.uuid)
             db_buildset = self._createBuildset(db, buildset)

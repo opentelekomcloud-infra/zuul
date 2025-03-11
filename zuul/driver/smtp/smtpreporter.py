@@ -45,7 +45,7 @@ class SMTPReporter(BaseReporter):
             subject = self.config['subject'].format(
                 change=item.changes[0],
                 changes=item.changes,
-                pipeline=item.pipeline.getSafeAttributes())
+                pipeline=item.manager.pipeline.getSafeAttributes())
         else:
             subject = "Report for changes {changes} against {ref}".format(
                 changes=' '.join([str(c) for c in item.changes]),

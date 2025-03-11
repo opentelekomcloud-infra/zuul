@@ -171,7 +171,7 @@ def construct_build_params(uuid, connections, job, item, pipeline,
 
     for change in dependent_changes:
         try:
-            (_, project) = item.pipeline.tenant.getProject(
+            (_, project) = item.manager.tenant.getProject(
                 change['project']['canonical_name'])
             if not project:
                 raise KeyError()

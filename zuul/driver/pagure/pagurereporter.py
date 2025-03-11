@@ -114,7 +114,7 @@ class PagureReporter(BaseReporter):
 
         url = item.formatItemUrl()
         description = '%s status: %s (%s)' % (
-            item.pipeline.name, self._commit_status, sha)
+            item.manager.pipeline.name, self._commit_status, sha)
 
         self.log.debug(
             'Reporting change %s, params %s, '

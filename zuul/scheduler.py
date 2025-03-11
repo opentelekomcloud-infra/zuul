@@ -617,7 +617,8 @@ class Scheduler(threading.Thread):
             management_event_queues = (
                 self.pipeline_management_events[tenant.name]
             )
-            for pipeline in tenant.layout.pipelines.values():
+            for manager in tenant.layout.pipeline_managers.values():
+                pipeline = manager.pipeline
                 base = f"zuul.tenant.{tenant.name}.pipeline.{pipeline.name}"
                 self.statsd.gauge(f"{base}.trigger_events",
                                   len(trigger_event_queues[pipeline.name]))
@@ -626,7 +627,7 @@ class Scheduler(threading.Thread):
                 self.statsd.gauge(f"{base}.management_events",
                                   len(management_event_queues[pipeline.name]))
                 compressed_size, uncompressed_size =\
-                    pipeline.state.estimateDataSize()
+                    manager.state.estimateDataSize()
                 self.statsd.gauge(f'{base}.data_size_compressed',
                                   compressed_size)
                 self.statsd.gauge(f'{base}.data_size_uncompressed',
@@ -708,17 +709,17 @@ class Scheduler(threading.Thread):
         # Get all the current node requests in the queues
         outstanding_requests = set()
         for tenant in self.abide.tenants.values():
-            for pipeline in tenant.layout.pipelines.values():
+            for manager in tenant.layout.pipeline_managers.values():
                 with pipeline_lock(
-                    self.zk_client, tenant.name, pipeline.name,
+                    self.zk_client, tenant.name, manager.pipeline.name,
                 ) as lock:
                     with self.createZKContext(lock, self.log) as ctx:
-                        with pipeline.manager.currentContext(ctx):
-                            pipeline.change_list.refresh(ctx)
-                            pipeline.state.refresh(ctx, read_only=True)
+                        with manager.currentContext(ctx):
+                            manager.change_list.refresh(ctx)
+                            manager.state.refresh(ctx, read_only=True)
                             # In case we're in the middle of a reconfig,
                             # include the old queue items.
-                            for item in pipeline.manager.state.getAllItems(
+                            for item in manager.state.getAllItems(
                                     include_old=True):
                                 nrs = item.current_build_set.getNodeRequests()
                                 for _, req_id in nrs:
@@ -793,13 +794,13 @@ class Scheduler(threading.Thread):
                             "Skipping leaked pipeline cleanup for tenant %s",
                             tenant.name)
                         continue
-                    valid_pipelines = tenant.layout.pipelines.values()
+                    valid_managers = tenant.layout.pipeline_managers.values()
                     valid_state_paths = set(
-                        p.state.getPath() for p in valid_pipelines)
+                        m.state.getPath() for m in valid_managers)
                     valid_event_root_paths = set(
                         PIPELINE_NAME_ROOT.format(
-                            tenant=p.tenant.name, pipeline=p.name)
-                        for p in valid_pipelines)
+                            tenant=m.tenant.name, pipeline=m.pipeline.name)
+                        for m in valid_managers)
 
                     safe_tenant = urllib.parse.quote_plus(tenant.name)
                     state_root = f"/zuul/tenant/{safe_tenant}/pipeline"
@@ -845,9 +846,11 @@ class Scheduler(threading.Thread):
                             self.zk_client, tenant.name,
                             pipeline.name) as lock,
                           self.createZKContext(lock, self.log) as ctx):
-                        pipeline.state.refresh(ctx, read_only=True)
+                        manager = tenant.layout.pipeline_managers.get(
+                            pipeline.name)
+                        manager.state.refresh(ctx, read_only=True)
                         # add any blobstore references
-                        for item in pipeline.manager.state.getAllItems(
+                        for item in manager.state.getAllItems(
                                 include_old=True):
                             live_blobs.update(item.getBlobKeys())
             with self.createZKContext(None, self.log) as ctx:
@@ -928,8 +931,9 @@ class Scheduler(threading.Thread):
         # result to the main event loop.
         try:
             if self.statsd and build.pipeline:
-                tenant = build.pipeline.tenant
                 item = build.build_set.item
+                manager = item.manager
+                tenant = manager.tenant
                 job = build.job
                 change = item.getChangeForJob(job)
                 jobname = job.name.replace('.', '_').replace('/', '_')
@@ -940,7 +944,7 @@ class Scheduler(threading.Thread):
                 branchname = (getattr(change, 'branch', '').
                               replace('.', '_').replace('/', '_'))
                 basekey = 'zuul.tenant.%s' % tenant.name
-                pipekey = '%s.pipeline.%s' % (basekey, build.pipeline.name)
+                pipekey = '%s.pipeline.%s' % (basekey, manager.pipeline.name)
                 # zuul.tenant.<tenant>.pipeline.<pipeline>.all_jobs
                 key = '%s.all_jobs' % pipekey
                 self.statsd.incr(key)
@@ -1660,20 +1664,21 @@ class Scheduler(threading.Thread):
             return None
         return source.getProject(project.name)
 
-    def _reenqueuePipeline(self, tenant, new_pipeline, context):
+    def _reenqueuePipeline(self, tenant, manager, context):
+        pipeline = manager.pipeline
         self.log.debug("Re-enqueueing changes for pipeline %s",
-                       new_pipeline.name)
+                       pipeline.name)
         # TODO(jeblair): This supports an undocument and
         # unanticipated hack to create a static window.  If we
         # really want to support this, maybe we should have a
         # 'static' type?  But it may be in use in the wild, so we
         # should allow this at least until there's an upgrade
         # path.
-        if (new_pipeline.window and
-            new_pipeline.window_increase_type == 'exponential' and
-            new_pipeline.window_decrease_type == 'exponential' and
-            new_pipeline.window_increase_factor == 1 and
-            new_pipeline.window_decrease_factor == 1):
+        if (pipeline.window and
+            pipeline.window_increase_type == 'exponential' and
+            pipeline.window_decrease_type == 'exponential' and
+            pipeline.window_increase_factor == 1 and
+            pipeline.window_decrease_factor == 1):
             static_window = True
         else:
             static_window = False
@@ -1681,7 +1686,7 @@ class Scheduler(threading.Thread):
         items_to_remove = []
         builds_to_cancel = []
         requests_to_cancel = []
-        for shared_queue in list(new_pipeline.state.old_queues):
+        for shared_queue in list(manager.state.old_queues):
             last_head = None
             for item in shared_queue.queue:
                 # If the old item ahead made it in, re-enqueue
@@ -1705,7 +1710,7 @@ class Scheduler(threading.Thread):
                         if not old_item_ahead or not last_head:
                             last_head = item
                         try:
-                            reenqueued = new_pipeline.manager.reEnqueueItem(
+                            reenqueued = manager.reEnqueueItem(
                                 item, last_head, old_item_ahead,
                                 item_ahead_valid=item_ahead_valid)
                         except Exception:
@@ -1717,12 +1722,12 @@ class Scheduler(threading.Thread):
 
             # Attempt to keep window sizes from shrinking where possible
             project, branch = shared_queue.project_branches[0]
-            new_queue = new_pipeline.manager.state.getQueue(project, branch)
+            new_queue = manager.state.getQueue(project, branch)
             if new_queue and shared_queue.window and (not static_window):
                 new_queue.updateAttributes(
                     context, window=max(shared_queue.window,
                                         new_queue.window_floor))
-            new_pipeline.manager.state.removeOldQueue(context, shared_queue)
+            manager.state.removeOldQueue(context, shared_queue)
         for item in items_to_remove:
             log = get_annotated_logger(self.log, item.event)
             log.info("Removing item %s during reconfiguration", item)
@@ -1762,11 +1767,12 @@ class Scheduler(threading.Thread):
         # layout lock
         if old_tenant:
             for name, old_pipeline in old_tenant.layout.pipelines.items():
-                new_pipeline = tenant.layout.pipelines.get(name)
-                if not new_pipeline:
-                    with old_pipeline.manager.currentContext(context):
+                new_manager = tenant.layout.pipeline_managers.get(name)
+                old_manager = old_tenant.layout.pipeline_managers.get(name)
+                if not new_manager:
+                    with old_manager.currentContext(context):
                         try:
-                            self._reconfigureDeletePipeline(old_pipeline)
+                            self._reconfigureDeletePipeline(old_manager)
                         except Exception:
                             self.log.exception(
                                 "Failed to cleanup deleted pipeline %s:",
@@ -1843,9 +1849,10 @@ class Scheduler(threading.Thread):
         self.log.info("Removing tenant %s during reconfiguration" %
                       (tenant,))
         for pipeline in tenant.layout.pipelines.values():
-            with pipeline.manager.currentContext(context):
+            manager = tenant.layout.pipeline_managers.get(pipeline.name)
+            with manager.currentContext(context):
                 try:
-                    self._reconfigureDeletePipeline(pipeline)
+                    self._reconfigureDeletePipeline(manager)
                 except Exception:
                     self.log.exception(
                         "Failed to cleanup deleted pipeline %s:", pipeline)
@@ -1861,17 +1868,17 @@ class Scheduler(threading.Thread):
             # periodic cleanup job.
             pass
 
-    def _reconfigureDeletePipeline(self, pipeline):
-        self.log.info("Removing pipeline %s during reconfiguration" %
-                      (pipeline,))
+    def _reconfigureDeletePipeline(self, manager):
+        self.log.info("Removing pipeline %s during reconfiguration",
+                      manager.pipeline)
 
-        ctx = pipeline.manager.current_context
-        pipeline.state.refresh(ctx)
+        ctx = manager.current_context
+        manager.state.refresh(ctx)
 
         builds_to_cancel = []
         requests_to_cancel = []
-        for item in pipeline.manager.state.getAllItems():
-            with item.activeContext(pipeline.manager.current_context):
+        for item in manager.state.getAllItems():
+            with item.activeContext(manager.current_context):
                 item.item_ahead = None
                 item.items_behind = []
             self.log.info(
@@ -1919,29 +1926,29 @@ class Scheduler(threading.Thread):
         try:
             self.zk_client.client.delete(
                 PIPELINE_NAME_ROOT.format(
-                    tenant=pipeline.tenant.name,
-                    pipeline=pipeline.name),
+                    tenant=manager.tenant.name,
+                    pipeline=manager.pipeline.name),
                 recursive=True)
         except Exception:
             # In case a pipeline event has been submitted during
             # reconfiguration this cleanup will fail.
             self.log.exception(
                 "Error removing event queues for deleted pipeline %s in "
-                "tenant %s", pipeline.name, pipeline.tenant.name)
+                "tenant %s", manager.pipeline.name, manager.tenant.name)
 
         # Delete the pipeline root path in ZooKeeper to remove all pipeline
         # state.
         try:
-            self.zk_client.client.delete(pipeline.state.getPath(),
+            self.zk_client.client.delete(manager.state.getPath(),
                                          recursive=True)
         except Exception:
             self.log.exception(
                 "Error removing state for deleted pipeline %s in tenant %s",
-                pipeline.name, pipeline.tenant.name)
+                manager.pipeline.name, manager.tenant.name)
 
     def _doPromoteEvent(self, event):
         tenant = self.abide.tenants.get(event.tenant_name)
-        pipeline = tenant.layout.pipelines[event.pipeline_name]
+        manager = tenant.layout.pipeline_managers[event.pipeline_name]
         change_ids = [c.split(',') for c in event.change_ids]
         items_to_enqueue = []
         change_queue = None
@@ -1952,7 +1959,7 @@ class Scheduler(threading.Thread):
         promote_operations = OrderedDict()
         for number, patchset in change_ids:
             found = False
-            for shared_queue in pipeline.queues:
+            for shared_queue in manager.state.queues:
                 for item in shared_queue.queue:
                     if not item.live:
                         continue
@@ -1995,18 +2002,18 @@ class Scheduler(threading.Thread):
                 if item not in items_to_enqueue:
                     items_to_enqueue.append(item)
                 head_same = False
-                pipeline.manager.cancelJobs(item)
-                pipeline.manager.dequeueItem(item)
+                manager.cancelJobs(item)
+                manager.dequeueItem(item)
 
             for item in items_to_enqueue:
                 for item_change in item.changes:
-                    pipeline.manager.addChange(
+                    manager.addChange(
                         item_change, item.event,
                         enqueue_time=item.enqueue_time,
                         quiet=True,
                         ignore_requirements=True)
             # Regardless, move this shared change queue to the head.
-            pipeline.manager.state.promoteQueue(change_queue)
+            manager.state.promoteQueue(change_queue)
 
     def _doDequeueEvent(self, event):
         tenant = self.abide.tenants.get(event.tenant_name)
@@ -2015,6 +2022,7 @@ class Scheduler(threading.Thread):
         pipeline = tenant.layout.pipelines.get(event.pipeline_name)
         if pipeline is None:
             raise ValueError('Unknown pipeline %s' % event.pipeline_name)
+        manager = tenant.layout.pipeline_managers.get(event.pipeline_name)
         canonical_name = event.project_hostname + '/' + event.project_name
         (trusted, project) = tenant.getProject(canonical_name)
         if project is None:
@@ -2028,7 +2036,7 @@ class Scheduler(threading.Thread):
                 item = 'Ref %s' % event.ref
             raise Exception('%s does not belong to project "%s"'
                             % (item, project.name))
-        for shared_queue in pipeline.queues:
+        for shared_queue in manager.state.queues:
             for item in shared_queue.queue:
                 if not item.live:
                     continue
@@ -2039,7 +2047,7 @@ class Scheduler(threading.Thread):
                         item_change.number == change.number and
                         item_change.patchset == change.patchset) or\
                         (item_change.ref == change.ref):
-                        pipeline.manager.removeItem(item)
+                        manager.removeItem(item)
                         return
         raise Exception("Unable to find shared change queue for %s:%s" %
                         (event.project_name,
@@ -2052,6 +2060,7 @@ class Scheduler(threading.Thread):
         pipeline = tenant.layout.pipelines.get(event.pipeline_name)
         if pipeline is None:
             raise ValueError(f'Unknown pipeline {event.pipeline_name}')
+        manager = tenant.layout.pipeline_managers.get(event.pipeline_name)
         canonical_name = event.project_hostname + '/' + event.project_name
         (trusted, project) = tenant.getProject(canonical_name)
         if project is None:
@@ -2068,18 +2077,18 @@ class Scheduler(threading.Thread):
                 f'Change {change} does not belong to project "{project.name}"')
         self.log.debug("Event %s for change %s was directly assigned "
                        "to pipeline %s", event, change, self)
-        pipeline.manager.addChange(change, event, ignore_requirements=True)
+        manager.addChange(change, event, ignore_requirements=True)
 
     def _doSupercedeEvent(self, event):
         tenant = self.abide.tenants[event.tenant_name]
-        pipeline = tenant.layout.pipelines[event.pipeline_name]
+        manager = tenant.layout.pipeline_managers[event.pipeline_name]
         canonical_name = f"{event.project_hostname}/{event.project_name}"
         trusted, project = tenant.getProject(canonical_name)
         if project is None:
             return
         change_key = project.source.getChangeKey(event)
         change = project.source.getChange(change_key, event=event)
-        for shared_queue in pipeline.queues:
+        for shared_queue in manager.state.queues:
             for item in shared_queue.queue:
                 if not item.live:
                     continue
@@ -2092,7 +2101,7 @@ class Scheduler(threading.Thread):
                         ) or (item_change.ref == change.ref)):
                         log = get_annotated_logger(self.log, item.event)
                         log.info("Item %s is superceded, dequeuing", item)
-                        pipeline.manager.removeItem(item)
+                        manager.removeItem(item)
                         return
 
     def _doSemaphoreReleaseEvent(self, event, tenant, notified):
@@ -2118,7 +2127,8 @@ class Scheduler(threading.Thread):
         waiting = False
         for tenant in self.abide.tenants.values():
             for pipeline in tenant.layout.pipelines.values():
-                for item in pipeline.manager.state.getAllItems():
+                manager = tenant.layout.pipeline_managers[pipeline.name]
+                for item in manager.state.getAllItems():
                     for build in item.current_build_set.getBuilds():
                         if build.result is None:
                             self.log.debug("%s waiting on %s" %
@@ -2266,7 +2276,8 @@ class Scheduler(threading.Thread):
             loader.loadTPCs(self.abide, self.unparsed_abide)
 
     def process_pipelines(self, tenant, tenant_lock):
-        for pipeline in tenant.layout.pipelines.values():
+        for manager in tenant.layout.pipeline_managers.values():
+            pipeline = manager.pipeline
             if self._stopped:
                 return
             self.abortIfPendingReconfig(tenant_lock)
@@ -2278,16 +2289,16 @@ class Scheduler(threading.Thread):
                       self.createZKContext(lock, self.log) as ctx):
                     self.log.debug("Processing pipeline %s in tenant %s",
                                    pipeline.name, tenant.name)
-                    with pipeline.manager.currentContext(ctx):
+                    with manager.currentContext(ctx):
                         if ((tenant.name, pipeline.name) in
                             self._profile_pipelines):
                             ctx.profile = True
                         with self.statsd_timer(f'{stats_key}.handling'):
                             refreshed = self._process_pipeline(
-                                tenant, tenant_lock, pipeline)
+                                tenant, tenant_lock, manager)
                     # Update pipeline summary for zuul-web
                     if refreshed:
-                        pipeline.summary.update(ctx, self.globals)
+                        manager.summary.update(ctx, self.globals)
                         if self.statsd:
                             self._contextStats(ctx, stats_key)
             except PendingReconfiguration:
@@ -2301,7 +2312,7 @@ class Scheduler(threading.Thread):
                     # In case this pipeline is locked for some reason
                     # other than processing events, we need to return
                     # to it to process them.
-                    if self._pipelineHasEvents(tenant, pipeline):
+                    if self._pipelineHasEvents(tenant, manager):
                         self.wake_event.set()
                 except Exception:
                     self.log.exception(
@@ -2331,83 +2342,84 @@ class Scheduler(threading.Thread):
         self.statsd.gauge(f'{stats_key}.write_bytes',
                           ctx.cumulative_write_bytes)
 
-    def _pipelineHasEvents(self, tenant, pipeline):
+    def _pipelineHasEvents(self, tenant, manager):
         return any((
             self.pipeline_trigger_events[
-                tenant.name][pipeline.name].hasEvents(),
+                tenant.name][manager.pipeline.name].hasEvents(),
             self.pipeline_result_events[
-                tenant.name][pipeline.name].hasEvents(),
+                tenant.name][manager.pipeline.name].hasEvents(),
             self.pipeline_management_events[
-                tenant.name][pipeline.name].hasEvents(),
-            pipeline.state.isDirty(self.zk_client.client),
+                tenant.name][manager.pipeline.name].hasEvents(),
+            manager.state.isDirty(self.zk_client.client),
         ))
 
     def abortIfPendingReconfig(self, tenant_lock):
         if tenant_lock.contender_present(RECONFIG_LOCK_ID):
             raise PendingReconfiguration()
 
-    def _process_pipeline(self, tenant, tenant_lock, pipeline):
+    def _process_pipeline(self, tenant, tenant_lock, manager):
         # Return whether or not we refreshed the pipeline.
 
+        pipeline = manager.pipeline
         # We only need to process the pipeline if there are
         # outstanding events.
-        if not self._pipelineHasEvents(tenant, pipeline):
+        if not self._pipelineHasEvents(tenant, manager):
             self.log.debug("No events to process for pipeline %s in tenant %s",
                            pipeline.name, tenant.name)
             return False
 
         stats_key = f'zuul.tenant.{tenant.name}.pipeline.{pipeline.name}'
-        ctx = pipeline.manager.current_context
+        ctx = manager.current_context
         with self.statsd_timer(f'{stats_key}.refresh'):
-            pipeline.change_list.refresh(ctx)
-            pipeline.summary.refresh(ctx)
-            pipeline.state.refresh(ctx)
+            manager.change_list.refresh(ctx)
+            manager.summary.refresh(ctx)
+            manager.state.refresh(ctx)
 
-        pipeline.state.setDirty(self.zk_client.client)
-        if pipeline.state.old_queues:
-            self._reenqueuePipeline(tenant, pipeline, ctx)
+        manager.state.setDirty(self.zk_client.client)
+        if manager.state.old_queues:
+            self._reenqueuePipeline(tenant, manager, ctx)
 
         with self.statsd_timer(f'{stats_key}.event_process'):
             self.process_pipeline_management_queue(
-                tenant, tenant_lock, pipeline)
+                tenant, tenant_lock, manager)
             # Give result events priority -- they let us stop builds,
             # whereas trigger events cause us to execute builds.
-            self.process_pipeline_result_queue(tenant, tenant_lock, pipeline)
-            self.process_pipeline_trigger_queue(tenant, tenant_lock, pipeline)
+            self.process_pipeline_result_queue(tenant, tenant_lock, manager)
+            self.process_pipeline_trigger_queue(tenant, tenant_lock, manager)
         self.abortIfPendingReconfig(tenant_lock)
         try:
             with self.statsd_timer(f'{stats_key}.process'):
-                while not self._stopped and pipeline.manager.processQueue(
+                while not self._stopped and manager.processQueue(
                         tenant_lock):
                     self.abortIfPendingReconfig(tenant_lock)
-            pipeline.state.cleanup(ctx)
+            manager.state.cleanup(ctx)
         except PendingReconfiguration:
             # Don't do anything else here and let the next level up
             # handle it.
             raise
         except Exception:
             self.log.exception("Exception in pipeline processing:")
-            pipeline.state.updateAttributes(
+            manager.state.updateAttributes(
                 ctx, state=pipeline.STATE_ERROR)
             # Continue processing other pipelines+tenants
         else:
-            pipeline.state.updateAttributes(
+            manager.state.updateAttributes(
                 ctx, state=pipeline.STATE_NORMAL)
-            pipeline.state.clearDirty(self.zk_client.client)
+            manager.state.clearDirty(self.zk_client.client)
         return True
 
     def _gatherConnectionCacheKeys(self):
         relevant = set()
         with self.createZKContext(None, self.log) as ctx:
             for tenant in self.abide.tenants.values():
-                for pipeline in tenant.layout.pipelines.values():
+                for manager in tenant.layout.pipeline_managers.values():
                     self.log.debug("Gather relevant cache items for: %s %s",
-                                   tenant.name, pipeline.name)
+                                   tenant.name, manager.pipeline.name)
                     # This will raise an exception and abort the process if
                     # unable to refresh the change list.
-                    pipeline.change_list.refresh(ctx, allow_init=False)
-                    change_keys = pipeline.change_list.getChangeKeys()
-                    relevant_changes = pipeline.manager.resolveChangeKeys(
+                    manager.change_list.refresh(ctx, allow_init=False)
+                    change_keys = manager.change_list.getChangeKeys()
+                    relevant_changes = manager.resolveChangeKeys(
                         change_keys)
                     for change in relevant_changes:
                         relevant.add(change.cache_stat.key)
@@ -2435,7 +2447,7 @@ class Scheduler(threading.Thread):
                                tenant.name)
                 # Update the pipeline changes
                 ctx = self.createZKContext(None, self.log)
-                for pipeline in tenant.layout.pipelines.values():
+                for manager in tenant.layout.pipeline_managers.values():
                     # This will raise an exception if it is unable to
                     # refresh the change list.  We will proceed anyway
                     # and use our data from the last time we did
@@ -2445,15 +2457,15 @@ class Scheduler(threading.Thread):
                     # pipeline but don't match the pipeline trigger
                     # criteria.
                     try:
-                        pipeline.change_list.refresh(ctx, allow_init=False)
+                        manager.change_list.refresh(ctx, allow_init=False)
                     except json.JSONDecodeError:
                         self.log.warning(
                             "Unable to refresh pipeline change list for %s",
-                            pipeline.name)
+                            manager.pipeline.name)
                     except Exception:
                         self.log.exception(
                             "Unable to refresh pipeline change list for %s",
-                            pipeline.name)
+                            manager.pipeline.name)
 
                 # Get the ltime of the last reconfiguration event
                 self.trigger_events[tenant.name].refreshMetadata()
@@ -2567,7 +2579,7 @@ class Scheduler(threading.Thread):
         span.set_attribute("reconfigure_tenant", reconfigure_tenant)
         event.span_context = tracing.getSpanContext(span)
 
-        for pipeline in tenant.layout.pipelines.values():
+        for manager in tenant.layout.pipeline_managers.values():
             # For most kinds of dependencies, it's sufficient to check
             # if this change is already in the pipeline, because the
             # only way to update a dependency cycle is to update one
@@ -2584,17 +2596,18 @@ class Scheduler(threading.Thread):
             # manager, but the result of the work goes into the change
             # cache, so it's not wasted; it's just less parallelized.
             if isinstance(change, Change):
-                pipeline.manager.updateCommitDependencies(change, event)
+                manager.updateCommitDependencies(change, event)
             if (
-                pipeline.manager.eventMatches(event, change)
-                or pipeline.manager.isChangeRelevantToPipeline(change)
+                manager.eventMatches(event, change)
+                or manager.isChangeRelevantToPipeline(change)
             ):
                 self.pipeline_trigger_events[tenant.name][
-                    pipeline.name
+                    manager.pipeline.name
                 ].put(event.driver_name, event)
 
-    def process_pipeline_trigger_queue(self, tenant, tenant_lock, pipeline):
-        for event in self.pipeline_trigger_events[tenant.name][pipeline.name]:
+    def process_pipeline_trigger_queue(self, tenant, tenant_lock, manager):
+        for event in self.pipeline_trigger_events[tenant.name][
+                manager.pipeline.name]:
             log = get_annotated_logger(self.log, event.zuul_event_id)
             if not isinstance(event, SupercedeEvent):
                 local_state = self.local_layout_state[tenant.name]
@@ -2617,17 +2630,18 @@ class Scheduler(threading.Thread):
                     if isinstance(event, SupercedeEvent):
                         self._doSupercedeEvent(event)
                     else:
-                        self._process_trigger_event(tenant, pipeline, event)
+                        self._process_trigger_event(tenant, manager, event)
             finally:
                 self.pipeline_trigger_events[tenant.name][
-                    pipeline.name
+                    manager.pipeline.name
                 ].ack(event)
             if self._stopped:
                 return
             self.abortIfPendingReconfig(tenant_lock)
-        self.pipeline_trigger_events[tenant.name][pipeline.name].cleanup()
+        self.pipeline_trigger_events[
+            tenant.name][manager.pipeline.name].cleanup()
 
-    def _process_trigger_event(self, tenant, pipeline, event):
+    def _process_trigger_event(self, tenant, manager, event):
         log = get_annotated_logger(
             self.log, event.zuul_event_id
         )
@@ -2643,17 +2657,17 @@ class Scheduler(threading.Thread):
             return
 
         if event.isPatchsetCreated():
-            pipeline.manager.removeOldVersionsOfChange(change, event)
+            manager.removeOldVersionsOfChange(change, event)
         elif event.isChangeAbandoned():
-            pipeline.manager.removeAbandonedChange(change, event)
+            manager.removeAbandonedChange(change, event)
 
         # Let the pipeline update any dependencies that may need
         # refreshing if this change has updated.
         if event.isPatchsetCreated() or event.isMessageChanged():
-            pipeline.manager.refreshDeps(change, event)
+            manager.refreshDeps(change, event)
 
-        if pipeline.manager.eventMatches(event, change):
-            pipeline.manager.addChange(change, event)
+        if manager.eventMatches(event, change):
+            manager.addChange(change, event)
 
     def process_tenant_management_queue(self, tenant):
         try:
@@ -2734,9 +2748,9 @@ class Scheduler(threading.Thread):
                     event.ack_ref.set()
                 self.reconfigure_event_queue.task_done()
 
-    def process_pipeline_management_queue(self, tenant, tenant_lock, pipeline):
+    def process_pipeline_management_queue(self, tenant, tenant_lock, manager):
         for event in self.pipeline_management_events[tenant.name][
-            pipeline.name
+            manager.pipeline.name
         ]:
             log = get_annotated_logger(self.log, event.zuul_event_id)
             log.debug("Processing management event %s", event)
@@ -2745,12 +2759,13 @@ class Scheduler(threading.Thread):
                     self._process_management_event(event)
             finally:
                 self.pipeline_management_events[tenant.name][
-                    pipeline.name
+                    manager.pipeline.name
                 ].ack(event)
             if self._stopped:
                 return
             self.abortIfPendingReconfig(tenant_lock)
-        self.pipeline_management_events[tenant.name][pipeline.name].cleanup()
+        self.pipeline_management_events[tenant.name][
+            manager.pipeline.name].cleanup()
 
     def _process_management_event(self, event):
         try:
@@ -2775,8 +2790,9 @@ class Scheduler(threading.Thread):
                 "".join(traceback.format_exception(*sys.exc_info()))
             )
 
-    def process_pipeline_result_queue(self, tenant, tenant_lock, pipeline):
-        for event in self.pipeline_result_events[tenant.name][pipeline.name]:
+    def process_pipeline_result_queue(self, tenant, tenant_lock, manager):
+        for event in self.pipeline_result_events[tenant.name][
+                manager.pipeline.name]:
             log = get_annotated_logger(
                 self.log,
                 event=getattr(event, "zuul_event_id", None),
@@ -2785,53 +2801,54 @@ class Scheduler(threading.Thread):
             log.debug("Processing result event %s", event)
             try:
                 if not self.disable_pipelines:
-                    self._process_result_event(event, pipeline)
+                    self._process_result_event(event, manager)
             finally:
                 self.pipeline_result_events[tenant.name][
-                    pipeline.name
+                    manager.pipeline.name
                 ].ack(event)
             if self._stopped:
                 return
             self.abortIfPendingReconfig(tenant_lock)
-        self.pipeline_result_events[tenant.name][pipeline.name].cleanup()
+        self.pipeline_result_events[
+            tenant.name][manager.pipeline.name].cleanup()
 
-    def _process_result_event(self, event, pipeline):
+    def _process_result_event(self, event, manager):
         if isinstance(event, BuildStartedEvent):
-            self._doBuildStartedEvent(event, pipeline)
+            self._doBuildStartedEvent(event, manager)
         elif isinstance(event, BuildStatusEvent):
-            self._doBuildStatusEvent(event, pipeline)
+            self._doBuildStatusEvent(event, manager)
         elif isinstance(event, BuildPausedEvent):
-            self._doBuildPausedEvent(event, pipeline)
+            self._doBuildPausedEvent(event, manager)
         elif isinstance(event, BuildCompletedEvent):
-            self._doBuildCompletedEvent(event, pipeline)
+            self._doBuildCompletedEvent(event, manager)
         elif isinstance(event, MergeCompletedEvent):
-            self._doMergeCompletedEvent(event, pipeline)
+            self._doMergeCompletedEvent(event, manager)
         elif isinstance(event, FilesChangesCompletedEvent):
-            self._doFilesChangesCompletedEvent(event, pipeline)
+            self._doFilesChangesCompletedEvent(event, manager)
         elif isinstance(event, NodesProvisionedEvent):
-            self._doNodesProvisionedEvent(event, pipeline)
+            self._doNodesProvisionedEvent(event, manager)
         elif isinstance(event, SemaphoreReleaseEvent):
             # MODEL_API <= 32
             # Kept for backward compatibility; semaphore release events
             # are now processed in the management event queue.
-            self._doSemaphoreReleaseEvent(event, pipeline.tenant, set())
+            self._doSemaphoreReleaseEvent(event, manager.tenant, set())
         else:
             self.log.error("Unable to handle event %s", event)
 
-    def _getBuildSetFromPipeline(self, event, pipeline):
+    def _getBuildSetFromPipeline(self, event, manager):
         log = get_annotated_logger(
             self.log,
             event=getattr(event, "zuul_event_id", None),
             build=getattr(event, "build_uuid", None),
         )
-        if not pipeline:
+        if not manager:
             log.warning(
                 "Build set %s is not associated with a pipeline",
                 event.build_set_uuid,
             )
             return
 
-        for item in pipeline.manager.state.getAllItems():
+        for item in manager.state.getAllItems():
             # If the provided buildset UUID doesn't match any current one,
             # we assume that it's not current anymore.
             if item.current_build_set.uuid == event.build_set_uuid:
@@ -2839,10 +2856,10 @@ class Scheduler(threading.Thread):
 
         log.warning("Build set %s is not current", event.build_set_uuid)
 
-    def _getBuildFromPipeline(self, event, pipeline):
+    def _getBuildFromPipeline(self, event, manager):
         log = get_annotated_logger(
             self.log, event.zuul_event_id, build=event.build_uuid)
-        build_set = self._getBuildSetFromPipeline(event, pipeline)
+        build_set = self._getBuildSetFromPipeline(event, manager)
         if not build_set:
             return
 
@@ -2868,12 +2885,12 @@ class Scheduler(threading.Thread):
 
         return build
 
-    def _doBuildStartedEvent(self, event, pipeline):
-        build = self._getBuildFromPipeline(event, pipeline)
+    def _doBuildStartedEvent(self, event, manager):
+        build = self._getBuildFromPipeline(event, manager)
         if not build:
             return
 
-        with build.activeContext(pipeline.manager.current_context):
+        with build.activeContext(manager.current_context):
             build.start_time = event.data["start_time"]
 
             log = get_annotated_logger(
@@ -2883,7 +2900,7 @@ class Scheduler(threading.Thread):
                 job = build.job
                 change = item.getChangeForJob(job)
                 estimate = self.times.getEstimatedTime(
-                    pipeline.tenant.name,
+                    manager.tenant.name,
                     change.project.name,
                     getattr(change, 'branch', None),
                     job.name)
@@ -2892,10 +2909,10 @@ class Scheduler(threading.Thread):
                 build.estimated_time = estimate
             except Exception:
                 log.exception("Exception estimating build time:")
-        pipeline.manager.onBuildStarted(build)
+        manager.onBuildStarted(build)
 
-    def _doBuildStatusEvent(self, event, pipeline):
-        build = self._getBuildFromPipeline(event, pipeline)
+    def _doBuildStatusEvent(self, event, manager):
+        build = self._getBuildFromPipeline(event, manager)
         if not build:
             return
 
@@ -2904,17 +2921,17 @@ class Scheduler(threading.Thread):
             args['url'] = event.data['url']
         if 'pre_fail' in event.data:
             args['pre_fail'] = event.data['pre_fail']
-        build.updateAttributes(pipeline.manager.current_context,
+        build.updateAttributes(manager.current_context,
                                **args)
 
-    def _doBuildPausedEvent(self, event, pipeline):
-        build = self._getBuildFromPipeline(event, pipeline)
+    def _doBuildPausedEvent(self, event, manager):
+        build = self._getBuildFromPipeline(event, manager)
         if not build:
             return
 
         # Setting paused is deferred to event processing stage to avoid a race
         # with child job skipping.
-        with build.activeContext(pipeline.manager.current_context):
+        with build.activeContext(manager.current_context):
             build.paused = True
             build.addEvent(
                 BuildEvent(
@@ -2924,12 +2941,12 @@ class Scheduler(threading.Thread):
                 event.data.get("data", {}),
                 event.data.get("secret_data", {}))
 
-        pipeline.manager.onBuildPaused(build)
+        manager.onBuildPaused(build)
 
-    def _doBuildCompletedEvent(self, event, pipeline):
+    def _doBuildCompletedEvent(self, event, manager):
         log = get_annotated_logger(
             self.log, event.zuul_event_id, build=event.build_uuid)
-        build = self._getBuildFromPipeline(event, pipeline)
+        build = self._getBuildFromPipeline(event, manager)
         if not build:
             self.log.error(
                 "Unable to find build %s. Creating a fake build to clean up "
@@ -2963,7 +2980,7 @@ class Scheduler(threading.Thread):
             self._cleanupCompletedBuild(build)
             try:
                 self.sql.reportBuildEnd(
-                    build, tenant=pipeline.tenant.name,
+                    build, tenant=manager.tenant.name,
                     final=True)
             except exceptions.MissingBuildsetError:
                 # If we have not reported start for this build, we
@@ -2991,7 +3008,7 @@ class Scheduler(threading.Thread):
 
         log.info("Build complete, result %s, warnings %s", result, warnings)
 
-        with build.activeContext(pipeline.manager.current_context):
+        with build.activeContext(manager.current_context):
             build.error_detail = event_result.get("error_detail")
 
             if result is None:
@@ -3026,7 +3043,7 @@ class Scheduler(threading.Thread):
             build.end_time = event_result["end_time"]
             build.setResultData(result_data, secret_result_data)
             build.build_set.updateAttributes(
-                pipeline.manager.current_context,
+                manager.current_context,
                 warning_messages=build.build_set.warning_messages + warnings)
             build.held = event_result.get("held")
 
@@ -3043,11 +3060,11 @@ class Scheduler(threading.Thread):
         self._cleanupCompletedBuild(build)
         try:
             self.reportBuildEnd(
-                build, tenant=pipeline.tenant.name, final=(not build.retry))
+                build, tenant=manager.tenant.name, final=(not build.retry))
         except Exception:
             log.exception("Error reporting build completion to DB:")
 
-        pipeline.manager.onBuildCompleted(build)
+        manager.onBuildCompleted(build)
 
     def _cleanupCompletedBuild(self, build):
         # TODO (felix): Returning the nodes doesn't work in case the buildset
@@ -3071,8 +3088,8 @@ class Scheduler(threading.Thread):
         # internal dict after it's added to the report queue.
         self.executor.removeBuild(build)
 
-    def _doMergeCompletedEvent(self, event, pipeline):
-        build_set = self._getBuildSetFromPipeline(event, pipeline)
+    def _doMergeCompletedEvent(self, event, manager):
+        build_set = self._getBuildSetFromPipeline(event, manager)
         if not build_set:
             return
 
@@ -3084,10 +3101,10 @@ class Scheduler(threading.Thread):
                 "zuul_event_id": build_set.item.event.zuul_event_id,
             }
         )
-        pipeline.manager.onMergeCompleted(event, build_set)
+        manager.onMergeCompleted(event, build_set)
 
-    def _doFilesChangesCompletedEvent(self, event, pipeline):
-        build_set = self._getBuildSetFromPipeline(event, pipeline)
+    def _doFilesChangesCompletedEvent(self, event, manager):
+        build_set = self._getBuildSetFromPipeline(event, manager)
         if not build_set:
             return
 
@@ -3099,9 +3116,9 @@ class Scheduler(threading.Thread):
                 "zuul_event_id": build_set.item.event.zuul_event_id,
             }
         )
-        pipeline.manager.onFilesChangesCompleted(event, build_set)
+        manager.onFilesChangesCompleted(event, build_set)
 
-    def _doNodesProvisionedEvent(self, event, pipeline):
+    def _doNodesProvisionedEvent(self, event, manager):
         if self.nodepool.isNodeRequestID(event.request_id):
             request = self.nodepool.zk_nodepool.getNodeRequest(
                 event.request_id)
@@ -3115,7 +3132,7 @@ class Scheduler(threading.Thread):
 
         log = get_annotated_logger(self.log, request)
         # Look up the buildset to access the local node request object
-        build_set = self._getBuildSetFromPipeline(event, pipeline)
+        build_set = self._getBuildSetFromPipeline(event, manager)
         if not build_set:
             log.warning("Build set not found while processing"
                         "nodes provisioned event %s", event)
@@ -3142,7 +3159,7 @@ class Scheduler(threading.Thread):
 
         job = build_set.item.getJob(request.job_uuid)
         if build_set.getJobNodeSetInfo(job) is None:
-            pipeline.manager.onNodesProvisioned(
+            manager.onNodesProvisioned(
                 request, nodeset_info, build_set)
         else:
             self.log.warning("Duplicate nodes provisioned event: %s",
@@ -3194,7 +3211,7 @@ class Scheduler(threading.Thread):
 
                 if build.result is None:
                     build.updateAttributes(
-                        buildset.item.pipeline.manager.current_context,
+                        buildset.item.manager.current_context,
                         result='CANCELED')
 
                 if force:
@@ -3205,7 +3222,7 @@ class Scheduler(threading.Thread):
                     self.executor.removeBuild(build)
                     try:
                         self.reportBuildEnd(
-                            build, build.build_set.item.pipeline.tenant.name,
+                            build, build.build_set.item.manager.tenant.name,
                             final=False)
                     except Exception:
                         self.log.exception(
@@ -3216,19 +3233,19 @@ class Scheduler(threading.Thread):
                     # If final is set make sure that the job is not resurrected
                     # later by re-requesting nodes.
                     fakebuild = Build.new(
-                        buildset.item.pipeline.manager.current_context,
+                        buildset.item.manager.current_context,
                         job=job, build_set=item.current_build_set,
                         result='CANCELED')
                     buildset.addBuild(fakebuild)
         finally:
             # Release the semaphore in any case
-            pipeline = buildset.item.pipeline
-            tenant = pipeline.tenant
+            manager = buildset.item.manager
+            tenant = manager.tenant
             if COMPONENT_REGISTRY.model_api >= 33:
                 event_queue = self.management_events[tenant.name]
             else:
                 event_queue = self.pipeline_result_events[
-                    tenant.name][pipeline.name]
+                    tenant.name][manager.pipeline.name]
             tenant.semaphore_handler.release(event_queue, item, job)
 
     # Image related methods

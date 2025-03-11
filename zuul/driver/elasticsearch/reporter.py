@@ -36,7 +36,7 @@ class ElasticsearchReporter(BaseReporter):
         if not phase1:
             return
         docs = []
-        index = '%s.%s-%s' % (self.index, item.pipeline.tenant.name,
+        index = '%s.%s-%s' % (self.index, item.manager.tenant.name,
                               time.strftime("%Y.%m.%d"))
         changes = [
             {
@@ -54,8 +54,8 @@ class ElasticsearchReporter(BaseReporter):
         buildset_doc = {
             "uuid": item.current_build_set.uuid,
             "build_type": "buildset",
-            "tenant": item.pipeline.tenant.name,
-            "pipeline": item.pipeline.name,
+            "tenant": item.manager.tenant.name,
+            "pipeline": item.manager.pipeline.name,
             "changes": changes,
             "project": item.changes[0].project.name,
             "change": getattr(item.changes[0], 'number', None),
