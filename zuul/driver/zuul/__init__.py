@@ -49,7 +49,7 @@ class ZuulDriver(Driver, TriggerInterface, ReporterInterface):
 
     def reconfigure(self, tenant):
         for pipeline in tenant.layout.pipelines.values():
-            for ef in pipeline.manager.event_filters:
+            for ef in pipeline.event_filters:
                 if not isinstance(ef.trigger, zuultrigger.ZuulTrigger):
                     continue
                 if PARENT_CHANGE_ENQUEUED in ef._types:
