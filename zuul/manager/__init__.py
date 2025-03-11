@@ -51,7 +51,8 @@ class DynamicChangeQueueContextManager(object):
         if (self.allow_delete and
             self.change_queue and
             not self.change_queue.queue):
-            self.change_queue.pipeline.removeQueue(self.change_queue)
+            self.change_queue.pipeline.manager.state.removeQueue(
+                self.change_queue)
 
 
 class StaticChangeQueueContextManager(object):
@@ -227,7 +228,7 @@ class PipelineManager(metaclass=ABCMeta):
         queue_projects = set(self.getRelativePriorityQueue(
             change.project))
         items = []
-        for i in self.pipeline.getAllItems():
+        for i in self.state.getAllItems():
             if not i.live:
                 continue
             item_projects = set([
@@ -280,7 +281,7 @@ class PipelineManager(metaclass=ABCMeta):
     def _maintainCache(self):
         active_layout_uuids = set()
         referenced_change_keys = set()
-        for item in self.pipeline.getAllItems():
+        for item in self.state.getAllItems():
             if item.layout_uuid:
                 active_layout_uuids.add(item.layout_uuid)
 
@@ -308,7 +309,7 @@ class PipelineManager(metaclass=ABCMeta):
 
     def isChangeAlreadyInPipeline(self, change):
         # Checks live items in the pipeline
-        for item in self.pipeline.getAllItems():
+        for item in self.state.getAllItems():
             if not item.live:
                 continue
             for c in item.changes:
@@ -350,7 +351,7 @@ class PipelineManager(metaclass=ABCMeta):
 
         self.sched.query_cache.clearIfOlderThan(event)
         to_refresh = set()
-        for item in self.pipeline.getAllItems():
+        for item in self.state.getAllItems():
             for item_change in item.changes:
                 if not isinstance(item_change, model.Change):
                     continue
@@ -466,7 +467,7 @@ class PipelineManager(metaclass=ABCMeta):
         if change_queue is not None:
             items = change_queue.queue
         else:
-            items = self.pipeline.getAllItems()
+            items = self.state.getAllItems()
 
         for item in items:
             for c in item.changes:
@@ -476,7 +477,7 @@ class PipelineManager(metaclass=ABCMeta):
 
     def findOldVersionOfChangeAlreadyInQueue(self, change):
         # Return the item and the old version of the change
-        for item in self.pipeline.getAllItems():
+        for item in self.state.getAllItems():
             if not item.live:
                 continue
             for item_change in item.changes:
@@ -980,7 +981,7 @@ class PipelineManager(metaclass=ABCMeta):
                 f"pipeline max of {pipeline_max}")
 
         count = additional
-        for item in self.pipeline.getAllItems():
+        for item in self.state.getAllItems():
             count += len(item.changes)
             if count > pipeline_max:
                 return FalseWithReason(
@@ -2535,7 +2536,7 @@ class PipelineManager(metaclass=ABCMeta):
                 dt = None
                 item_changes = 0
             changes = sum(len(i.changes)
-                          for i in self.pipeline.getAllItems())
+                          for i in self.state.getAllItems())
             # TODO(jeblair): add items keys like changes
 
             tenant = self.pipeline.tenant

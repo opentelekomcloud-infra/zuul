@@ -1506,9 +1506,7 @@ class TestExecutorFailure(ZuulTestCase):
             self.executor_api.release()
             self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        pipeline = tenant.layout.pipelines['gate']
-        items = pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         self.assertEqual(len(items), 1)
 
         self.hold_jobs_in_queue = False

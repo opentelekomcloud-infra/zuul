@@ -1096,6 +1096,7 @@ class Client(zuul.cmd.ZuulApp):
                 with ZKContext(zk_client, plock, None, self.log) as context:
                     pipeline.manager = IndependentPipelineManager(
                         None, pipeline)
+                    pipeline.manager.tenant = tenant
                     pipeline.manager.state = PipelineState.new(
                         context, _path=path, layout_uuid=None)
                     PipelineChangeList.new(context, pipeline=pipeline)
