@@ -188,8 +188,7 @@ class TestSchedulerZone(ZuulTestCase):
         self.executor_server.zk_client.client.start()
 
         # Find the build in the scheduler so we can check its status
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         builds = items[0].current_build_set.getBuilds()
         build = builds[0]
 
@@ -1058,8 +1057,7 @@ class TestScheduler(ZuulTestCase):
         # project-test1 and project-test2 for C
         self.assertEqual(len(self.builds), 5)
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         builds = items[0].current_build_set.getBuilds()
         self.assertEqual(self.countJobResults(builds, 'SUCCESS'), 1)
         self.assertEqual(self.countJobResults(builds, None), 2)
@@ -2944,8 +2942,6 @@ class TestScheduler(ZuulTestCase):
 
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
 
         # Add two git-dependent changes
         B.setDependsOn(A, 1)
@@ -2955,7 +2951,7 @@ class TestScheduler(ZuulTestCase):
         self.waitUntilSettled()
 
         # A live item, and a non-live/live pair
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 3)
 
         self.assertEqual(items[0].changes[0].number, '1')
@@ -2977,7 +2973,7 @@ class TestScheduler(ZuulTestCase):
 
         # The live copy of A,1 should be gone, but the non-live and B
         # should continue, and we should have a new A,2
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 3)
 
         self.assertEqual(items[0].changes[0].number, '1')
@@ -2999,7 +2995,7 @@ class TestScheduler(ZuulTestCase):
 
         # The live copy of B,1 should be gone, and it's non-live copy of A,1
         # but we should have a new B,2 (still based on A,1)
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 3)
 
         self.assertEqual(items[0].changes[0].number, '1')
@@ -3065,8 +3061,6 @@ class TestScheduler(ZuulTestCase):
 
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
 
         # Add two git-dependent changes
         B.setDependsOn(A, 1)
@@ -3075,7 +3069,7 @@ class TestScheduler(ZuulTestCase):
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
         # A live item, and a non-live/live pair
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 3)
 
         self.assertEqual(items[0].changes[0].number, '1')
@@ -3093,7 +3087,7 @@ class TestScheduler(ZuulTestCase):
 
         # The live copy of A should be gone, but the non-live and B
         # should continue
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 2)
 
         self.assertEqual(items[0].changes[0].number, '1')
@@ -3319,9 +3313,7 @@ class TestScheduler(ZuulTestCase):
         self.assertEqual(A.reported, False)
 
         # Check queue is empty afterwards
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 0)
 
         self.assertEqual(len(self.history), 0)
@@ -3764,8 +3756,8 @@ class TestScheduler(ZuulTestCase):
             gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
-        q1 = gate.getQueue(project1.canonical_name, None)
-        q2 = gate.getQueue(project2.canonical_name, None)
+        q1 = gate.manager.state.getQueue(project1.canonical_name, None)
+        q2 = gate.manager.state.getQueue(project2.canonical_name, None)
         self.assertEqual(q1.name, 'integrated')
         self.assertEqual(q2.name, 'integrated')
 
@@ -3790,8 +3782,8 @@ class TestScheduler(ZuulTestCase):
             gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
-        q1 = gate.getQueue(project1.canonical_name, None)
-        q2 = gate.getQueue(project2.canonical_name, None)
+        q1 = gate.manager.state.getQueue(project1.canonical_name, None)
+        q2 = gate.manager.state.getQueue(project2.canonical_name, None)
         self.assertEqual(q1.name, 'integrated')
         self.assertEqual(q2.name, 'integrated')
 
@@ -3816,8 +3808,8 @@ class TestScheduler(ZuulTestCase):
             gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
-        q1 = gate.getQueue(project1.canonical_name, None)
-        q2 = gate.getQueue(project2.canonical_name, None)
+        q1 = gate.manager.state.getQueue(project1.canonical_name, None)
+        q2 = gate.manager.state.getQueue(project2.canonical_name, None)
         self.assertEqual(q1.name, 'integrated')
         self.assertEqual(q2.name, 'integrated')
 
@@ -3841,8 +3833,8 @@ class TestScheduler(ZuulTestCase):
             gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
-        q1 = gate.getQueue(project1.canonical_name, None)
-        q2 = gate.getQueue(project2.canonical_name, None)
+        q1 = gate.manager.state.getQueue(project1.canonical_name, None)
+        q2 = gate.manager.state.getQueue(project2.canonical_name, None)
         self.assertEqual(q1.name, 'integrated')
         self.assertEqual(q2.name, 'integrated')
 
@@ -3867,8 +3859,8 @@ class TestScheduler(ZuulTestCase):
             gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
-        q1 = gate.getQueue(project1.canonical_name, None)
-        q2 = gate.getQueue(project2.canonical_name, None)
+        q1 = gate.manager.state.getQueue(project1.canonical_name, None)
+        q2 = gate.manager.state.getQueue(project2.canonical_name, None)
         self.assertEqual(q1.name, 'integrated')
         self.assertEqual(q2.name, 'integrated')
 
@@ -3995,13 +3987,13 @@ class TestScheduler(ZuulTestCase):
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        pipeline = tenant.layout.pipelines['gate']
-        items = pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         self.assertEqual(len(items), 1)
         self.assertIsNone(items[0].layout_uuid)
 
         # Assert that the layout cache is empty after a reconfiguration.
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        pipeline = tenant.layout.pipelines['gate']
         self.assertEqual(pipeline.manager._layout_cache, {})
 
         B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B',
@@ -4011,7 +4003,7 @@ class TestScheduler(ZuulTestCase):
         self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
         self.waitUntilSettled()
 
-        items = pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         self.assertEqual(len(items), 2)
         for item in items:
             # Layout UUID should be set again for all live items. It had to
@@ -4071,9 +4063,7 @@ class TestScheduler(ZuulTestCase):
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        pipeline = tenant.layout.pipelines['check']
-        items = pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 2)
 
         # Assert that the layout UUID of the live item is reset during a
@@ -4082,6 +4072,8 @@ class TestScheduler(ZuulTestCase):
         self.assertIsNone(items[1].layout_uuid)
 
         # Cache should be empty after a reconfiguration
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        pipeline = tenant.layout.pipelines['check']
         self.assertEqual(pipeline.manager._layout_cache, {})
 
         self.executor_server.hold_jobs_in_build = False
@@ -5908,8 +5900,7 @@ For CI problems and help debugging, contact ci@example.org"""
         self.executor_server.release('.*-test*')
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['check'].getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         build_set = items[0].current_build_set
         job = list(filter(lambda j: j.name == 'project-test1',
                           items[0].getJobs()))[0]
@@ -5950,8 +5941,7 @@ For CI problems and help debugging, contact ci@example.org"""
         self.executor_server.zk_client.client.start()
 
         # Find the build in the scheduler so we can check its status
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         builds = items[0].current_build_set.getBuilds()
         build = builds[0]
 
@@ -6490,8 +6480,7 @@ For CI problems and help debugging, contact ci@example.org"""
         self.assertEqual(jobs[0].state, zuul.model.MergeRequest.HOLD)
         self.assertEqual(len(jobs), 1)
 
-        pipeline = tenant.layout.pipelines['post']
-        self.assertEqual(len(pipeline.getAllItems()), 1)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'post')), 1)
         self.merger_api.release()
         self.waitUntilSettled()
 
@@ -6807,9 +6796,9 @@ class TestChangeQueues(ZuulTestCase):
         ])
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         _, p = tenant.getProject(project)
-        q1 = tenant.layout.pipelines['gate'].getQueue(
+        q1 = tenant.layout.pipelines['gate'].manager.state.getQueue(
             p.canonical_name, 'master')
-        q2 = tenant.layout.pipelines['gate'].getQueue(
+        q2 = tenant.layout.pipelines['gate'].manager.state.getQueue(
             p.canonical_name, 'stable')
         self.assertEqual(q1.name, queue_name)
         self.assertEqual(q2.name, queue_name)
@@ -6866,11 +6855,11 @@ class TestChangeQueues(ZuulTestCase):
         ])
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         _, p = tenant.getProject(project)
-        q1 = tenant.layout.pipelines['gate'].getQueue(
+        q1 = tenant.layout.pipelines['gate'].manager.state.getQueue(
             p.canonical_name, 'master')
-        q2 = tenant.layout.pipelines['gate'].getQueue(
+        q2 = tenant.layout.pipelines['gate'].manager.state.getQueue(
             p.canonical_name, 'stable')
-        q3 = tenant.layout.pipelines['gate'].getQueue(
+        q3 = tenant.layout.pipelines['gate'].manager.state.getQueue(
             p.canonical_name, None)
 
         # There should be no branch specific queues anymore
@@ -8489,7 +8478,6 @@ class TestSemaphore(ZuulTestCase):
         "Test abandon with job semaphores"
         self.executor_server.hold_jobs_in_build = True
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
 
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         self.assertEqual(
@@ -8507,7 +8495,7 @@ class TestSemaphore(ZuulTestCase):
         self.waitUntilSettled()
 
         # The check pipeline should be empty
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 0)
 
         # The semaphore should be released
@@ -8528,7 +8516,6 @@ class TestSemaphore(ZuulTestCase):
         self.fake_nodepool.paused = True
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
 
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         self.assertEqual(
@@ -8546,7 +8533,7 @@ class TestSemaphore(ZuulTestCase):
         self.waitUntilSettled()
 
         # The check pipeline should be empty
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 0)
 
         # The semaphore should be released
@@ -8573,7 +8560,6 @@ class TestSemaphore(ZuulTestCase):
         self.fake_nodepool.paused = True
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
 
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         self.assertEqual(
@@ -8604,7 +8590,7 @@ class TestSemaphore(ZuulTestCase):
         self.waitUntilSettled()
 
         # The check pipeline should be empty
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 0)
 
         # The semaphore should be released
@@ -8619,7 +8605,6 @@ class TestSemaphore(ZuulTestCase):
         "Test new patchset with job semaphores"
         self.executor_server.hold_jobs_in_build = True
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
 
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         self.assertEqual(
@@ -8641,7 +8626,7 @@ class TestSemaphore(ZuulTestCase):
             len(tenant.semaphore_handler.semaphoreHolders("test-semaphore")),
             1)
 
-        items = check_pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(items[0].changes[0].number, '1')
         self.assertEqual(items[0].changes[0].patchset, '2')
         self.assertTrue(items[0].live)
@@ -8718,8 +8703,7 @@ class TestSemaphore(ZuulTestCase):
             1)
 
         # Save some variables for later use while the job is running
-        check_pipeline = tenant.layout.pipelines['check']
-        item = check_pipeline.getAllItems()[0]
+        item = self.getAllItems('tenant-one', 'check')[0]
         job = list(filter(lambda j: j.name == 'semaphore-one-test1',
                           item.getJobs()))[0]
 
@@ -9243,8 +9227,7 @@ class TestSchedulerFailFast(ZuulTestCase):
         self.assertEqual(self.builds[1].name, 'project-test2')
 
         # But both changes should still be in the pipeline
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         self.assertEqual(len(items), 2)
         self.assertEqual(A.reported, 1)
         self.assertEqual(B.reported, 1)
