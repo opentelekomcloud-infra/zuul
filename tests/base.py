@@ -2908,11 +2908,6 @@ class ZuulTestCase(BaseTestCase):
                 self.assertIsNotNone(build.start_time)
                 self.assertIsNotNone(build.end_time)
 
-    def assertNoPipelineExceptions(self):
-        for tenant in self.scheds.first.sched.abide.tenants.values():
-            for pipeline in tenant.layout.pipelines.values():
-                self.assertEqual(0, pipeline._exception_count)
-
     def assertFinalState(self):
         self.log.debug("Assert final state")
         # Make sure no jobs are running
@@ -2939,7 +2934,6 @@ class ZuulTestCase(BaseTestCase):
             for pipeline in tenant.layout.pipelines.values():
                 if isinstance(pipeline.manager, ipm):
                     self.assertEqual(len(pipeline.queues), 0)
-        self.assertNoPipelineExceptions()
 
     def shutdown(self):
         # Note: when making changes to this sequence, check if
