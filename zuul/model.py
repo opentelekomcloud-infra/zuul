@@ -650,39 +650,6 @@ class Pipeline(object):
     def setManager(self, manager):
         self.manager = manager
 
-    def addQueue(self, queue):
-        with self.state.activeContext(self.manager.current_context):
-            self.queues.append(queue)
-
-    def getQueue(self, project_cname, branch):
-        # Queues might be branch specific so match with branch
-        for queue in self.queues:
-            if queue.matches(project_cname, branch):
-                return queue
-        return None
-
-    def removeQueue(self, queue):
-        if queue in self.queues:
-            with self.state.activeContext(self.manager.current_context):
-                self.queues.remove(queue)
-            queue.delete(self.manager.current_context)
-
-    def promoteQueue(self, queue):
-        if queue not in self.queues:
-            return
-        with self.state.activeContext(self.manager.current_context):
-            self.queues.remove(queue)
-            self.queues.insert(0, queue)
-
-    def getAllItems(self, include_old=False):
-        items = []
-        for shared_queue in self.queues:
-            items.extend(shared_queue.queue)
-        if include_old:
-            for shared_queue in self.state.old_queues:
-                items.extend(shared_queue.queue)
-        return items
-
     def formatStatusJSON(self, websocket_url=None):
         j_pipeline = dict(name=self.name,
                           description=self.description,
@@ -827,6 +794,39 @@ class PipelineState(zkobject.ZKObject):
             with self.activeContext(context):
                 self.old_queues.remove(queue)
 
+    def addQueue(self, queue):
+        with self.activeContext(self.pipeline.manager.current_context):
+            self.queues.append(queue)
+
+    def getQueue(self, project_cname, branch):
+        # Queues might be branch specific so match with branch
+        for queue in self.queues:
+            if queue.matches(project_cname, branch):
+                return queue
+        return None
+
+    def removeQueue(self, queue):
+        if queue in self.queues:
+            with self.activeContext(self.pipeline.manager.current_context):
+                self.queues.remove(queue)
+            queue.delete(self.pipeline.manager.current_context)
+
+    def promoteQueue(self, queue):
+        if queue not in self.queues:
+            return
+        with self.activeContext(self.pipeline.manager.current_context):
+            self.queues.remove(queue)
+            self.queues.insert(0, queue)
+
+    def getAllItems(self, include_old=False):
+        items = []
+        for shared_queue in self.queues:
+            items.extend(shared_queue.queue)
+        if include_old:
+            for shared_queue in self.old_queues:
+                items.extend(shared_queue.queue)
+        return items
+
     def serialize(self, context):
         if self._read_only:
             raise RuntimeError("Attempt to serialize read-only pipeline state")
@@ -962,12 +962,6 @@ class PipelineState(zkobject.ZKObject):
         })
         return data
 
-    def _getKnownItems(self):
-        items = []
-        for queue in (*self.old_queues, *self.queues):
-            items.extend(queue.queue)
-        return items
-
     def cleanup(self, context):
         pipeline_path = self.getPath()
         try:
@@ -976,7 +970,7 @@ class PipelineState(zkobject.ZKObject):
         except NoNodeError:
             all_items = set()
 
-        known_item_objs = self._getKnownItems()
+        known_item_objs = self.getAllItems(include_old=True)
         known_items = {i.uuid for i in known_item_objs}
         items_referenced_by_builds = set()
         for i in known_item_objs:
@@ -6824,7 +6818,7 @@ class QueueItem(zkobject.ZKObject):
             # Look for this item in other queues in the pipeline.
             item = None
             found = False
-            for item in self.pipeline.getAllItems():
+            for item in self.pipeline.state.getAllItems():
                 if item.live and set(item.changes) == set(self.changes):
                     found = True
                     break
