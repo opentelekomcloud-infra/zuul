@@ -1722,14 +1722,14 @@ class ZuulWebAPI(object):
         management_event_queues = self.zuulweb.pipeline_management_events[
             tenant.name]
         with self.zuulweb.zk_context as ctx:
-            for pipeline in tenant.layout.pipelines.values():
-                status = pipeline.summary.refresh(ctx)
+            for manager in tenant.layout.pipeline_managers.values():
+                status = manager.summary.refresh(ctx)
                 status['trigger_events'] = len(
-                    trigger_event_queues[pipeline.name])
+                    trigger_event_queues[manager.pipeline.name])
                 status['result_events'] = len(
-                    result_event_queues[pipeline.name])
+                    result_event_queues[manager.pipeline.name])
                 status['management_events'] = len(
-                    management_event_queues[pipeline.name])
+                    management_event_queues[manager.pipeline.name])
                 pipelines.append(status)
         return data, json.dumps(data).encode('utf-8')
 
@@ -2580,7 +2580,7 @@ class ZuulWebAPI(object):
 
         uuid = "0" * 32
         params = zuul.executor.common.construct_build_params(
-            uuid, self.zuulweb.connections, job, item, item.pipeline)
+            uuid, self.zuulweb.connections, job, item, item.manager.pipeline)
         params['zuul'].update(zuul.executor.common.zuul_params_from_job(job))
         del params['job_ref']
         del params['parent_data']
@@ -2615,15 +2615,15 @@ class ZuulWebAPI(object):
                      branch_name):
 
         project = self._getProjectOrRaise(tenant, project_name)
-        pipeline = tenant.layout.pipelines.get(pipeline_name)
-        if not pipeline:
+        manager = tenant.layout.pipeline_managers.get(pipeline_name)
+        if not manager:
             raise cherrypy.HTTPError(404, 'Unknown pipeline')
 
         change = Branch(project)
         change.branch = branch_name or "master"
         change.cache_stat = FakeCacheKey()
         with LocalZKContext(self.log) as context:
-            queue = ChangeQueue.new(context, pipeline=pipeline)
+            queue = ChangeQueue.new(context, manager=manager)
             item = QueueItem.new(context, queue=queue, changes=[change])
             item.freezeJobGraph(tenant.layout, context,
                                 skip_file_matcher=True,

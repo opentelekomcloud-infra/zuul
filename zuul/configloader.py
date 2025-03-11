@@ -1566,21 +1566,7 @@ class PipelineParser(object):
         pipeline.window_decrease_factor = conf.get(
             'window-decrease-factor', 2)
 
-        manager_name = conf['manager']
-        if manager_name == 'dependent':
-            manager = zuul.manager.dependent.DependentPipelineManager(
-                self.pcontext.scheduler, pipeline)
-        elif manager_name == 'independent':
-            manager = zuul.manager.independent.IndependentPipelineManager(
-                self.pcontext.scheduler, pipeline)
-        elif manager_name == 'serial':
-            manager = zuul.manager.serial.SerialPipelineManager(
-                self.pcontext.scheduler, pipeline)
-        elif manager_name == 'supercedent':
-            manager = zuul.manager.supercedent.SupercedentPipelineManager(
-                self.pcontext.scheduler, pipeline)
-
-        pipeline.setManager(manager)
+        pipeline.manager_name = conf['manager']
 
         with self.pcontext.errorContext(stanza='pipeline', conf=conf):
             with self.pcontext.confAttr(conf, 'require', {}) as require_dict:
@@ -2033,8 +2019,8 @@ class TenantParser(object):
             # Only call the postConfig hook if we have a scheduler as this will
             # change data in ZooKeeper. In case we are in a zuul-web context,
             # we don't want to do that.
-            for pipeline in tenant.layout.pipelines.values():
-                pipeline.manager._postConfig()
+            for manager in tenant.layout.pipeline_managers.values():
+                manager._postConfig()
 
         return tenant
 
@@ -2800,7 +2786,9 @@ class TenantParser(object):
                 with parse_context.errorContext(stanza='pipeline',
                                                 conf=pipeline):
                     with parse_context.accumulator.catchErrors():
-                        layout.addPipeline(pipeline)
+                        manager = self.createManager(parse_context, pipeline,
+                                                     tenant)
+                        layout.addPipeline(pipeline, manager)
 
         for nodeset in parsed_config.nodesets:
             with parse_context.errorContext(stanza='nodeset', conf=nodeset):
@@ -3021,6 +3009,21 @@ class TenantParser(object):
         self._addLayoutItems(layout, tenant, data, parse_context)
         return layout
 
+    def createManager(self, parse_context, pipeline, tenant):
+        if pipeline.manager_name == 'dependent':
+            manager = zuul.manager.dependent.DependentPipelineManager(
+                parse_context.scheduler, pipeline, tenant)
+        elif pipeline.manager_name == 'independent':
+            manager = zuul.manager.independent.IndependentPipelineManager(
+                parse_context.scheduler, pipeline, tenant)
+        elif pipeline.manager_name == 'serial':
+            manager = zuul.manager.serial.SerialPipelineManager(
+                parse_context.scheduler, pipeline, tenant)
+        elif pipeline.manager_name == 'supercedent':
+            manager = zuul.manager.supercedent.SupercedentPipelineManager(
+                parse_context.scheduler, pipeline, tenant)
+        return manager
+
 
 class ConfigLoader(object):
     log = logging.getLogger("zuul.ConfigLoader")
@@ -3233,7 +3236,7 @@ class ConfigLoader(object):
     def _loadDynamicProjectData(self, config, project, files,
                                 additional_project_branches, trusted,
                                 item, pcontext):
-        tenant = item.pipeline.tenant
+        tenant = item.manager.tenant
         tpc = tenant.project_configs[project.canonical_name]
         if trusted:
             branches = [tpc.load_branch if tpc.load_branch else 'master']
@@ -3335,7 +3338,7 @@ class ConfigLoader(object):
                             ansible_manager,
                             include_config_projects=False,
                             zuul_event_id=None):
-        tenant = item.pipeline.tenant
+        tenant = item.manager.tenant
         log = get_annotated_logger(self.log, zuul_event_id)
         pcontext = ParseContext(self.connections, self.scheduler,
                                 tenant, ansible_manager)

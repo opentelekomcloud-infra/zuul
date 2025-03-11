@@ -453,7 +453,7 @@ class TestGerritCircularDependencies(ZuulTestCase):
         # Make sure the out-of-cycle change (A) is enqueued after the cycle.
         tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
         queue_change_numbers = []
-        for queue in tenant.layout.pipelines["gate"].queues:
+        for queue in tenant.layout.pipeline_managers["gate"].state.queues:
             for item in queue.queue:
                 for change in item.changes:
                     queue_change_numbers.append(change.number)
@@ -878,7 +878,7 @@ class TestGerritCircularDependencies(ZuulTestCase):
         tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
 
         # Make the gate window smaller than the length of the cycle
-        for queue in tenant.layout.pipelines["gate"].queues:
+        for queue in tenant.layout.pipeline_managers["gate"].state.queues:
             if any("org/project" in p.name for p in queue.projects):
                 queue.window = 1
 
@@ -1006,8 +1006,9 @@ class TestGerritCircularDependencies(ZuulTestCase):
         self.waitUntilSettled()
 
         tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
-        self.assertEqual(len(tenant.layout.pipelines["check"].queues), 1)
-        queue = tenant.layout.pipelines["check"].queues[0].queue
+        manager = tenant.layout.pipeline_managers["check"]
+        self.assertEqual(len(manager.state.queues), 1)
+        queue = manager.state.queues[0].queue
         self.assertEqual(len(queue), 1)
 
         self.assertEqual(len(self.builds), 2)
@@ -2601,8 +2602,8 @@ class TestGerritCircularDependencies(ZuulTestCase):
     def _assert_job_deduplication_check(self):
         # Make sure there are no leaked queue items
         tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
-        pipeline = tenant.layout.pipelines["check"]
-        pipeline_path = pipeline.state.getPath()
+        manager = tenant.layout.pipeline_managers["check"]
+        pipeline_path = manager.state.getPath()
         all_items = set(self.zk_client.client.get_children(
             f"{pipeline_path}/item"))
         self.assertEqual(len(all_items), 0)
@@ -2691,8 +2692,8 @@ class TestGerritCircularDependencies(ZuulTestCase):
             # dict(name="common-job", result="SUCCESS", changes="2,1 1,1"),
         ], ordered=False)
         tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
-        pipeline = tenant.layout.pipelines["check"]
-        pipeline_path = pipeline.state.getPath()
+        manager = tenant.layout.pipeline_managers["check"]
+        pipeline_path = manager.state.getPath()
         all_items = set(self.zk_client.client.get_children(
             f"{pipeline_path}/item"))
         self.assertEqual(len(all_items), 0)

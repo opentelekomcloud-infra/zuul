@@ -1160,7 +1160,10 @@ class TestScheduler(ZuulTestCase):
         found_job = None
         pipeline = self.scheds.first.sched.abide.tenants[
             'tenant-one'].layout.pipelines['gate']
+        manager = self.scheds.first.sched.abide.tenants[
+            'tenant-one'].layout.pipeline_managers['gate']
         pipeline_status = pipeline.formatStatusJSON(
+            manager,
             self.scheds.first.sched.globals.websocket_url)
         for queue in pipeline_status['change_queues']:
             for head in queue['heads']:
@@ -1572,7 +1575,7 @@ class TestScheduler(ZuulTestCase):
         event.patch_number = '2'
 
         a = source.getChange(source.getChangeKey(event), event=event)
-        mgr = tenant.layout.pipelines['gate'].manager
+        mgr = tenant.layout.pipeline_managers['gate']
         self.assertFalse(source.canMerge(a, mgr.getSubmitAllowNeeds()))
 
         A.addApproval('Code-Review', 2)
@@ -3745,17 +3748,18 @@ class TestScheduler(ZuulTestCase):
         # Change queues are created lazy by the dependent pipeline manager
         # so retrieve the queue first without having to really enqueue a
         # change first.
-        gate = tenant.layout.pipelines['gate']
+        gate = tenant.layout.pipeline_managers['gate']
         FakeChange = namedtuple('FakeChange', ['project', 'branch'])
         fake_a = FakeChange(project1, 'master')
         fake_b = FakeChange(project2, 'master')
-        with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
+        with (pipeline_lock(self.zk_client, tenant.name,
+                            gate.pipeline.name) as lock,
               self.createZKContext(lock) as ctx,
-              gate.manager.currentContext(ctx)):
-            gate.manager.getChangeQueue(fake_a, None)
-            gate.manager.getChangeQueue(fake_b, None)
-        q1 = gate.manager.state.getQueue(project1.canonical_name, None)
-        q2 = gate.manager.state.getQueue(project2.canonical_name, None)
+              gate.currentContext(ctx)):
+            gate.getChangeQueue(fake_a, None)
+            gate.getChangeQueue(fake_b, None)
+        q1 = gate.state.getQueue(project1.canonical_name, None)
+        q2 = gate.state.getQueue(project2.canonical_name, None)
         self.assertEqual(q1.name, 'integrated')
         self.assertEqual(q2.name, 'integrated')
 
@@ -3769,17 +3773,18 @@ class TestScheduler(ZuulTestCase):
         # Change queues are created lazy by the dependent pipeline manager
         # so retrieve the queue first without having to really enqueue a
         # change first.
-        gate = tenant.layout.pipelines['gate']
+        gate = tenant.layout.pipeline_managers['gate']
         FakeChange = namedtuple('FakeChange', ['project', 'branch'])
         fake_a = FakeChange(project1, 'master')
         fake_b = FakeChange(project2, 'master')
-        with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
+        with (pipeline_lock(self.zk_client, tenant.name,
+                            gate.pipeline.name) as lock,
               self.createZKContext(lock) as ctx,
-              gate.manager.currentContext(ctx)):
-            gate.manager.getChangeQueue(fake_a, None)
-            gate.manager.getChangeQueue(fake_b, None)
-        q1 = gate.manager.state.getQueue(project1.canonical_name, None)
-        q2 = gate.manager.state.getQueue(project2.canonical_name, None)
+              gate.currentContext(ctx)):
+            gate.getChangeQueue(fake_a, None)
+            gate.getChangeQueue(fake_b, None)
+        q1 = gate.state.getQueue(project1.canonical_name, None)
+        q2 = gate.state.getQueue(project2.canonical_name, None)
         self.assertEqual(q1.name, 'integrated')
         self.assertEqual(q2.name, 'integrated')
 
@@ -3793,17 +3798,18 @@ class TestScheduler(ZuulTestCase):
         # Change queues are created lazy by the dependent pipeline manager
         # so retrieve the queue first without having to really enqueue a
         # change first.
-        gate = tenant.layout.pipelines['gate']
+        gate = tenant.layout.pipeline_managers['gate']
         FakeChange = namedtuple('FakeChange', ['project', 'branch'])
         fake_a = FakeChange(project1, 'master')
         fake_b = FakeChange(project2, 'master')
-        with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
+        with (pipeline_lock(self.zk_client, tenant.name,
+                            gate.pipeline.name) as lock,
               self.createZKContext(lock) as ctx,
-              gate.manager.currentContext(ctx)):
-            gate.manager.getChangeQueue(fake_a, None)
-            gate.manager.getChangeQueue(fake_b, None)
-        q1 = gate.manager.state.getQueue(project1.canonical_name, None)
-        q2 = gate.manager.state.getQueue(project2.canonical_name, None)
+              gate.currentContext(ctx)):
+            gate.getChangeQueue(fake_a, None)
+            gate.getChangeQueue(fake_b, None)
+        q1 = gate.state.getQueue(project1.canonical_name, None)
+        q2 = gate.state.getQueue(project2.canonical_name, None)
         self.assertEqual(q1.name, 'integrated')
         self.assertEqual(q2.name, 'integrated')
 
@@ -3816,17 +3822,18 @@ class TestScheduler(ZuulTestCase):
         # Change queues are created lazy by the dependent pipeline manager
         # so retrieve the queue first without having to really enqueue a
         # change first.
-        gate = tenant.layout.pipelines['gate']
+        gate = tenant.layout.pipeline_managers['gate']
         FakeChange = namedtuple('FakeChange', ['project', 'branch'])
         fake_a = FakeChange(project1, 'master')
         fake_b = FakeChange(project2, 'master')
-        with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
+        with (pipeline_lock(self.zk_client, tenant.name,
+                            gate.pipeline.name) as lock,
               self.createZKContext(lock) as ctx,
-              gate.manager.currentContext(ctx)):
-            gate.manager.getChangeQueue(fake_a, None)
-            gate.manager.getChangeQueue(fake_b, None)
-        q1 = gate.manager.state.getQueue(project1.canonical_name, None)
-        q2 = gate.manager.state.getQueue(project2.canonical_name, None)
+              gate.currentContext(ctx)):
+            gate.getChangeQueue(fake_a, None)
+            gate.getChangeQueue(fake_b, None)
+        q1 = gate.state.getQueue(project1.canonical_name, None)
+        q2 = gate.state.getQueue(project2.canonical_name, None)
         self.assertEqual(q1.name, 'integrated')
         self.assertEqual(q2.name, 'integrated')
 
@@ -3840,17 +3847,18 @@ class TestScheduler(ZuulTestCase):
         # Change queues are created lazy by the dependent pipeline manager
         # so retrieve the queue first without having to really enqueue a
         # change first.
-        gate = tenant.layout.pipelines['gate']
+        gate = tenant.layout.pipeline_managers['gate']
         FakeChange = namedtuple('FakeChange', ['project', 'branch'])
         fake_a = FakeChange(project1, 'master')
         fake_b = FakeChange(project2, 'master')
-        with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
+        with (pipeline_lock(self.zk_client, tenant.name,
+                            gate.pipeline.name) as lock,
               self.createZKContext(lock) as ctx,
-              gate.manager.currentContext(ctx)):
-            gate.manager.getChangeQueue(fake_a, None)
-            gate.manager.getChangeQueue(fake_b, None)
-        q1 = gate.manager.state.getQueue(project1.canonical_name, None)
-        q2 = gate.manager.state.getQueue(project2.canonical_name, None)
+              gate.currentContext(ctx)):
+            gate.getChangeQueue(fake_a, None)
+            gate.getChangeQueue(fake_b, None)
+        q1 = gate.state.getQueue(project1.canonical_name, None)
+        q2 = gate.state.getQueue(project2.canonical_name, None)
         self.assertEqual(q1.name, 'integrated')
         self.assertEqual(q2.name, 'integrated')
 
@@ -3983,8 +3991,8 @@ class TestScheduler(ZuulTestCase):
 
         # Assert that the layout cache is empty after a reconfiguration.
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        pipeline = tenant.layout.pipelines['gate']
-        self.assertEqual(pipeline.manager._layout_cache, {})
+        manager = tenant.layout.pipeline_managers['gate']
+        self.assertEqual(manager._layout_cache, {})
 
         B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B',
                                            parent='refs/changes/01/1/1')
@@ -4063,8 +4071,8 @@ class TestScheduler(ZuulTestCase):
 
         # Cache should be empty after a reconfiguration
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        pipeline = tenant.layout.pipelines['check']
-        self.assertEqual(pipeline.manager._layout_cache, {})
+        manager = tenant.layout.pipeline_managers['check']
+        self.assertEqual(manager._layout_cache, {})
 
         self.executor_server.hold_jobs_in_build = False
         self.executor_server.release()
@@ -4243,7 +4251,8 @@ class TestScheduler(ZuulTestCase):
         ], ordered=False)
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
         self.assertIn('Build succeeded', A.messages[0])
 
     def test_live_reconfiguration_del_pipeline(self):
@@ -4434,6 +4443,7 @@ class TestScheduler(ZuulTestCase):
             tenant = self.scheds.first.sched.abide.tenants['tenant-one']
             for pipeline in tenant.layout.pipelines.values():
                 pipeline_status = pipeline.formatStatusJSON(
+                    tenant.layout.pipeline_managers[pipeline.name],
                     self.scheds.first.sched.globals.websocket_url)
                 for queue in pipeline_status['change_queues']:
                     for head in queue['heads']:
@@ -4663,9 +4673,11 @@ class TestScheduler(ZuulTestCase):
 
         # Ensure that the status json has the ref so we can render it in the
         # web ui.
-        pipeline = self.scheds.first.sched.abide.tenants[
-            'tenant-one'].layout.pipelines['periodic']
+        tenant = self.scheds.first.sched.abide.tenants['tenant-one']
+        pipeline = tenant.layout.pipelines['periodic']
+        manager = tenant.layout.pipeline_managers['periodic']
         pipeline_status = pipeline.formatStatusJSON(
+            manager,
             self.scheds.first.sched.globals.websocket_url)
 
         first = pipeline_status['change_queues'][0]['heads'][0][0]
@@ -5016,7 +5028,7 @@ class TestScheduler(ZuulTestCase):
         self.waitUntilSettled()
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         # A failed so window is reduced by 1 to 1.
         self.assertEqual(queue.window, 1)
         self.assertEqual(queue.window_floor, 1)
@@ -5107,7 +5119,7 @@ class TestScheduler(ZuulTestCase):
         self.waitUntilSettled()
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         # A failed so window is reduced by 1 to 1.
         self.assertEqual(queue.window, 1)
         self.assertEqual(queue.window_floor, 1)
@@ -5229,7 +5241,7 @@ class TestScheduler(ZuulTestCase):
         self.assertEqual(self.builds[2].name, 'project-test2')
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         self.assertEqual(queue.window, 1)
 
         # D dropped out of the window
@@ -5260,7 +5272,7 @@ class TestScheduler(ZuulTestCase):
         self.waitUntilSettled()
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         self.assertEqual(queue.window, 20)
         self.assertTrue(len(self.builds), 4)
 
@@ -5271,7 +5283,7 @@ class TestScheduler(ZuulTestCase):
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
         self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         # Even though we have configured a smaller window, the value
         # on the existing shared queue should be used.
         self.assertEqual(queue.window, 20)
@@ -5280,7 +5292,7 @@ class TestScheduler(ZuulTestCase):
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
         self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         self.assertEqual(queue.window, 20)
         self.assertTrue(len(self.builds), 4)
 
@@ -5310,7 +5322,7 @@ class TestScheduler(ZuulTestCase):
         self.waitUntilSettled()
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         self.assertEqual(queue.window, 2)
         self.assertEqual(len(self.builds), 4)
 
@@ -5320,7 +5332,7 @@ class TestScheduler(ZuulTestCase):
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
         self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         # Because we have configured a static window, it should
         # be allowed to shrink on reconfiguration.
         self.assertEqual(queue.window, 1)
@@ -5331,7 +5343,7 @@ class TestScheduler(ZuulTestCase):
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
         self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         self.assertEqual(queue.window, 1)
         self.waitUntilSettled()
         # B's builds should not be canceled
@@ -5370,7 +5382,7 @@ class TestScheduler(ZuulTestCase):
         self.log.debug("B complete")
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         self.assertEqual(queue.window, 2)
         self.assertEqual(len(self.builds), 2)
 
@@ -5382,7 +5394,7 @@ class TestScheduler(ZuulTestCase):
         self.log.debug("Reconfiguration complete")
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         # Because we have configured a static window, it should
         # be allowed to shrink on reconfiguration.
         self.assertEqual(queue.window, 1)
@@ -5406,7 +5418,7 @@ class TestScheduler(ZuulTestCase):
         self.log.debug("Executor unpause complete")
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        queue = tenant.layout.pipelines['gate'].queues[0]
+        queue = tenant.layout.pipeline_managers['gate'].state.queues[0]
         self.assertEqual(queue.window, 1)
 
         self.waitUntilSettled()
@@ -5693,8 +5705,11 @@ For CI problems and help debugging, contact ci@example.org"""
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         self.assertEqual(3, tenant.layout.pipelines['check'].disable_at)
         self.assertEqual(
-            0, tenant.layout.pipelines['check'].state.consecutive_failures)
-        self.assertFalse(tenant.layout.pipelines['check'].state.disabled)
+            0,
+            tenant.layout.pipeline_managers[
+                'check'].state.consecutive_failures)
+        self.assertFalse(
+            tenant.layout.pipeline_managers['check'].state.disabled)
 
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
@@ -5725,15 +5740,21 @@ For CI problems and help debugging, contact ci@example.org"""
         self.waitUntilSettled()
 
         self.assertEqual(
-            2, tenant.layout.pipelines['check'].state.consecutive_failures)
-        self.assertFalse(tenant.layout.pipelines['check'].state.disabled)
+            2,
+            tenant.layout.pipeline_managers[
+                'check'].state.consecutive_failures)
+        self.assertFalse(
+            tenant.layout.pipeline_managers['check'].state.disabled)
 
         self.fake_gerrit.addEvent(C.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
 
         self.assertEqual(
-            0, tenant.layout.pipelines['check'].state.consecutive_failures)
-        self.assertFalse(tenant.layout.pipelines['check'].state.disabled)
+            0,
+            tenant.layout.pipeline_managers[
+                'check'].state.consecutive_failures)
+        self.assertFalse(
+            tenant.layout.pipeline_managers['check'].state.disabled)
 
         self.fake_gerrit.addEvent(D.getPatchsetCreatedEvent(1))
         self.fake_gerrit.addEvent(E.getPatchsetCreatedEvent(1))
@@ -5742,8 +5763,11 @@ For CI problems and help debugging, contact ci@example.org"""
 
         # We should be disabled now
         self.assertEqual(
-            3, tenant.layout.pipelines['check'].state.consecutive_failures)
-        self.assertTrue(tenant.layout.pipelines['check'].state.disabled)
+            3,
+            tenant.layout.pipeline_managers[
+                'check'].state.consecutive_failures)
+        self.assertTrue(
+            tenant.layout.pipeline_managers['check'].state.disabled)
 
         # We need to wait between each of these patches to make sure the
         # smtp messages come back in an expected order
@@ -5793,16 +5817,22 @@ For CI problems and help debugging, contact ci@example.org"""
 
         self.assertEqual(3, tenant.layout.pipelines['check'].disable_at)
         self.assertEqual(
-            0, tenant.layout.pipelines['check'].state.consecutive_failures)
-        self.assertFalse(tenant.layout.pipelines['check'].state.disabled)
+            0,
+            tenant.layout.pipeline_managers[
+                'check'].state.consecutive_failures)
+        self.assertFalse(
+            tenant.layout.pipeline_managers['check'].state.disabled)
 
         self.fake_gerrit.addEvent(J.getPatchsetCreatedEvent(1))
         self.fake_gerrit.addEvent(K.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
 
         self.assertEqual(
-            2, tenant.layout.pipelines['check'].state.consecutive_failures)
-        self.assertFalse(tenant.layout.pipelines['check'].state.disabled)
+            2,
+            tenant.layout.pipeline_managers[
+                'check'].state.consecutive_failures)
+        self.assertFalse(
+            tenant.layout.pipeline_managers['check'].state.disabled)
 
         # J and K went back to gerrit
         self.assertEqual(1, len(J.messages))
@@ -6636,7 +6666,8 @@ For CI problems and help debugging, contact ci@example.org"""
         self.waitUntilSettled()
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        item = tenant.layout.pipelines['check'].queues[0].queue[0]
+        item = tenant.layout.pipeline_managers[
+            'check'].state.queues[0].queue[0]
         hold_job = item.getJobs()[1]
 
         # Refresh the pipeline so that we can verify the JobData
@@ -6786,9 +6817,9 @@ class TestChangeQueues(ZuulTestCase):
         ])
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         _, p = tenant.getProject(project)
-        q1 = tenant.layout.pipelines['gate'].manager.state.getQueue(
+        q1 = tenant.layout.pipeline_managers['gate'].state.getQueue(
             p.canonical_name, 'master')
-        q2 = tenant.layout.pipelines['gate'].manager.state.getQueue(
+        q2 = tenant.layout.pipeline_managers['gate'].state.getQueue(
             p.canonical_name, 'stable')
         self.assertEqual(q1.name, queue_name)
         self.assertEqual(q2.name, queue_name)
@@ -6845,11 +6876,11 @@ class TestChangeQueues(ZuulTestCase):
         ])
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         _, p = tenant.getProject(project)
-        q1 = tenant.layout.pipelines['gate'].manager.state.getQueue(
+        q1 = tenant.layout.pipeline_managers['gate'].state.getQueue(
             p.canonical_name, 'master')
-        q2 = tenant.layout.pipelines['gate'].manager.state.getQueue(
+        q2 = tenant.layout.pipeline_managers['gate'].state.getQueue(
             p.canonical_name, 'stable')
-        q3 = tenant.layout.pipelines['gate'].manager.state.getQueue(
+        q3 = tenant.layout.pipeline_managers['gate'].state.getQueue(
             p.canonical_name, None)
 
         # There should be no branch specific queues anymore
@@ -8152,7 +8183,8 @@ class TestSemaphore(ZuulTestCase):
         self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
 
-        status = tenant.layout.pipelines["check"].formatStatusJSON()
+        status = tenant.layout.pipelines["check"].formatStatusJSON(
+            tenant.layout.pipeline_managers["check"])
         jobs = status["change_queues"][0]["heads"][0][0]["jobs"]
         self.assertEqual(jobs[0]["waiting_status"],
                          'node request: 200-0000000000')
@@ -9052,14 +9084,14 @@ class TestSemaphoreInRepo(ZuulTestCase):
 
         # check that the layout in a queue item still has max value of 1
         # for test-semaphore
-        pipeline = tenant.layout.pipelines.get('tenant-one-gate')
+        manager = tenant.layout.pipeline_managers.get('tenant-one-gate')
         queue = None
-        for queue_candidate in pipeline.queues:
+        for queue_candidate in manager.state.queues:
             if queue_candidate.name == 'org/project':
                 queue = queue_candidate
                 break
         queue_item = queue.queue[0]
-        item_dynamic_layout = pipeline.manager._layout_cache.get(
+        item_dynamic_layout = manager._layout_cache.get(
             queue_item.layout_uuid)
         self.assertIsNotNone(item_dynamic_layout)
         dynamic_test_semaphore = item_dynamic_layout.getSemaphore(
