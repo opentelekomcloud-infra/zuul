@@ -76,6 +76,7 @@ class PipelineManager(metaclass=ABCMeta):
         self.pipeline = pipeline
         self.event_filters = []
         self.ref_filters = []
+        self.relative_priority_queues = {}
         # Cached dynamic layouts (layout uuid -> layout)
         self._layout_cache = {}
         # A small local cache to avoid hitting the ZK-based connection
@@ -85,8 +86,10 @@ class PipelineManager(metaclass=ABCMeta):
         self.current_context = None
         # The pipeline summary used by zuul-web that is updated by the
         # schedulers after processing a pipeline.
-        self.pipeline.summary = model.PipelineSummary()
-        self.pipeline.summary._set(pipeline=self.pipeline)
+        self.summary = model.PipelineSummary()
+        self.summary._set(pipeline=self.pipeline)
+        self.state = None
+        self.change_list = None
 
         if sched:
             self.sql = sched.sql
@@ -103,6 +106,12 @@ class PipelineManager(metaclass=ABCMeta):
             self.current_context = None
 
     def _postConfig(self):
+        # After a reconfiguration, we need to forget anything built
+        # from the old layout.
+        # TODO: we may be able to preserve change queues if projects
+        # haven't changed their pipeline participation.
+        self._layout_cache = {}
+
         layout = self.pipeline.tenant.layout
         self.buildChangeQueues(layout)
         # Make sure we have state and change list objects.  We
@@ -115,9 +124,9 @@ class PipelineManager(metaclass=ABCMeta):
         # refresh.
 
         # These will be out of date until they are refreshed later.
-        self.pipeline.state = PipelineState.create(
+        self.state = PipelineState.create(
             self.pipeline, self.pipeline.state)
-        self.pipeline.change_list = PipelineChangeList.create(
+        self.change_list = PipelineChangeList.create(
             self.pipeline)
 
         # Now, try to acquire a non-blocking pipeline lock and refresh
@@ -148,7 +157,7 @@ class PipelineManager(metaclass=ABCMeta):
 
     def buildChangeQueues(self, layout):
         self.log.debug("Building relative_priority queues")
-        change_queues = self.pipeline.relative_priority_queues
+        change_queues = self.relative_priority_queues
         tenant = self.pipeline.tenant
         layout_project_configs = layout.project_configs
 
@@ -178,6 +187,12 @@ class PipelineManager(metaclass=ABCMeta):
             change_queue.append(project)
             self.log.debug("Added project %s to queue: %s" %
                            (project, queue_name))
+
+    def getRelativePriorityQueue(self, project):
+        for queue in self.relative_priority_queues.values():
+            if project in queue:
+                return queue
+        return [project]
 
     def getSubmitAllowNeeds(self):
         # Get a list of code review labels that are allowed to be
@@ -211,7 +226,7 @@ class PipelineManager(metaclass=ABCMeta):
         return False
 
     def getNodePriority(self, item, change):
-        queue_projects = set(self.pipeline.getRelativePriorityQueue(
+        queue_projects = set(self.getRelativePriorityQueue(
             change.project))
         items = []
         for i in self.pipeline.getAllItems():
