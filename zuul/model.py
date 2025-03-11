@@ -597,6 +597,8 @@ class Pipeline(object):
         self.window_increase_factor = None
         self.window_decrease_type = None
         self.window_decrease_factor = None
+        self.ref_filters = []
+        self.event_filters = []
 
     @property
     def queues(self):
