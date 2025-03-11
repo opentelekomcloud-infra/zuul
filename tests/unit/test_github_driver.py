@@ -1368,9 +1368,8 @@ class TestGithubDriver(ZuulTestCase):
 
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
-        self.assertEqual(check_pipeline.getAllItems(), [])
+        items = self.getAllItems('tenant-one', 'check')
+        self.assertEqual(items, [])
         self.assertEqual(self.countJobResults(self.history, 'ABORTED'), 2)
 
         self.executor_server.hold_jobs_in_build = False
@@ -2606,9 +2605,8 @@ class TestGithubAppDriver(ZuulGithubAppTestCase):
         self.fake_github.emitEvent(A.getCheckRunAbortEvent(check_run))
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
-        check_pipeline = tenant.layout.pipelines["check"]
-        self.assertEqual(0, len(check_pipeline.getAllItems()))
+        items = self.getAllItems('tenant-one', 'check')
+        self.assertEqual(0, len(items))
         self.assertEqual(1, self.countJobResults(self.history, "ABORTED"))
 
         # The buildset was already dequeued, so there shouldn't be anything to

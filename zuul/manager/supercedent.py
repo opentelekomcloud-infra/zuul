@@ -51,7 +51,7 @@ class SupercedentPipelineManager(PipelineManager):
             window_decrease_type='none',
             dynamic=True)
         change_queue.addProject(change.project, None)
-        self.pipeline.addQueue(change_queue)
+        self.pipeline.manager.state.addQueue(change_queue)
         log.debug("Dynamically created queue %s", change_queue)
         return DynamicChangeQueueContextManager(
             change_queue, allow_delete=True)
@@ -88,4 +88,4 @@ class SupercedentPipelineManager(PipelineManager):
         # A supercedent pipeline manager dynamically removes empty
         # queues
         if not item.queue.queue:
-            self.pipeline.removeQueue(item.queue)
+            self.state.removeQueue(item.queue)
