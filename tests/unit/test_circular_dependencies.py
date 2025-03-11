@@ -850,8 +850,7 @@ class TestGerritCircularDependencies(ZuulTestCase):
         self.fake_gerrit.addEvent(B.addApproval("Approved", 1))
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items_before = tenant.layout.pipelines['gate'].getAllItems()
+        items_before = self.getAllItems('tenant-one', 'gate')
 
         # Trigger a re-enqueue of change B
         self.fake_gerrit.addEvent(B.getChangeAbandonedEvent())
@@ -859,8 +858,7 @@ class TestGerritCircularDependencies(ZuulTestCase):
         self.fake_gerrit.addEvent(B.addApproval("Approved", 1))
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items_after = tenant.layout.pipelines['gate'].getAllItems()
+        items_after = self.getAllItems('tenant-one', 'gate')
 
         # Make sure the complete cycle was re-enqueued
         for before, after in zip(items_before, items_after):
@@ -1229,8 +1227,7 @@ class TestGerritCircularDependencies(ZuulTestCase):
         self.waitUntilSettled()
 
         # We only want to have a merge failure for the first item in the queue
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         with self.createZKContext() as context:
             items[0].current_build_set.updateAttributes(context,
                                                         unable_to_merge=True)
@@ -2012,9 +2009,7 @@ class TestGerritCircularDependencies(ZuulTestCase):
         self.waitUntilSettled()
 
         # Fail the node request and unpause
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        pipeline = tenant.layout.pipelines['gate']
-        items = pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         job = items[0].current_build_set.job_graph.getJob(
             'common-job', items[0].changes[0].cache_key)
         for req in self.fake_nodepool.getNodeRequests():
@@ -2881,9 +2876,7 @@ class TestGerritCircularDependencies(ZuulTestCase):
         self.waitUntilSettled()
 
         # Fail the node request and unpause
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        pipeline = tenant.layout.pipelines['check']
-        items = pipeline.getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         job = items[0].current_build_set.job_graph.getJob(
             'common-job', items[0].changes[0].cache_key)
         for req in self.fake_nodepool.getNodeRequests():
@@ -4664,8 +4657,6 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         # patchsets.  This test exercises such changes.
 
         self.executor_server.hold_jobs_in_build = True
-        tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
-        pipeline = tenant.layout.pipelines["gate"]
 
         A = self.fake_github.openFakePullRequest("gh/project1", "master", "A")
         B = self.fake_github.openFakePullRequest("gh/project2", "master", "B")
@@ -4703,8 +4694,9 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         self.fake_github.emitEvent(C.addLabel("approved"))
         self.waitUntilSettled()
         expected_cycle = {A.number, B.number, C.number, E.number}
-        self.assertEqual(len(list(pipeline.getAllItems())), 1)
-        for item in pipeline.getAllItems():
+        items = self.getAllItems('tenant-one', 'gate')
+        self.assertEqual(len(list(items)), 1)
+        for item in items:
             cycle = {c.number for c in item.changes}
             self.assertEqual(expected_cycle, cycle)
             # Assert we get the same triggering change every time
@@ -4718,7 +4710,8 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         )
         self.fake_github.emitEvent(A.getPullRequestEditedEvent(A.body))
         self.waitUntilSettled()
-        self.assertEqual(len(list(pipeline.getAllItems())), 2)
+        items = self.getAllItems('tenant-one', 'gate')
+        self.assertEqual(len(list(items)), 2)
 
         # Now remove all dependencies for the three remaining changes,
         # and also E so that it doesn't get pulled back in as an
@@ -4734,8 +4727,9 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         self.waitUntilSettled()
         self.fake_github.emitEvent(C.getPullRequestEditedEvent(C.body))
         self.waitUntilSettled()
-        self.assertEqual(len(list(pipeline.getAllItems())), 3)
-        for item in pipeline.getAllItems():
+        items = self.getAllItems('tenant-one', 'gate')
+        self.assertEqual(len(list(items)), 3)
+        for item in items:
             self.assertEqual(len(item.changes), 1)
             # Assert we get the same triggering change every time
             self.assertEqual(json.loads(item.event.ref)['stable_id'], '3')
@@ -4747,8 +4741,9 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         )
         self.fake_github.emitEvent(A.getPullRequestEditedEvent(A.body))
         self.waitUntilSettled()
-        self.assertEqual(len(list(pipeline.getAllItems())), 2)
-        for item in pipeline.getAllItems():
+        items = self.getAllItems('tenant-one', 'gate')
+        self.assertEqual(len(list(items)), 2)
+        for item in items:
             self.assertEqual(len(item.changes), 1)
             # Assert we get the same triggering change every time
             self.assertEqual(json.loads(item.event.ref)['stable_id'], '3')
@@ -4766,8 +4761,9 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         self.fake_github.emitEvent(B.getPullRequestEditedEvent(B.body))
         self.waitUntilSettled()
         expected_cycle = {B.number, C.number}
-        self.assertEqual(len(list(pipeline.getAllItems())), 1)
-        for item in pipeline.getAllItems():
+        items = self.getAllItems('tenant-one', 'gate')
+        self.assertEqual(len(list(items)), 1)
+        for item in items:
             cycle = {c.number for c in item.changes}
             self.assertEqual(expected_cycle, cycle)
             # Assert we get the same triggering change every time
@@ -4790,9 +4786,6 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         # patchsets.  This test exercises such changes.
 
         self.executor_server.hold_jobs_in_build = True
-        tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
-        pipeline = tenant.layout.pipelines["gate"]
-
         A = self.fake_github.openFakePullRequest("gh/project1", "master", "A")
         B = self.fake_github.openFakePullRequest("gh/project2", "master", "B")
 
@@ -4801,8 +4794,9 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         self.fake_github.emitEvent(A.addLabel("approved"))
         self.waitUntilSettled()
 
-        self.assertEqual(len(list(pipeline.getAllItems())), 1)
-        for item in pipeline.getAllItems():
+        items = self.getAllItems('tenant-one', 'gate')
+        self.assertEqual(len(list(items)), 1)
+        for item in items:
             self.assertEqual(len(item.changes), 1)
             # Assert we get the same triggering change every time
             self.assertEqual(json.loads(item.event.ref)['stable_id'], '1')
@@ -4818,9 +4812,10 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         )
         self.fake_github.emitEvent(A.getPullRequestEditedEvent(A.body))
         self.waitUntilSettled()
-        self.assertEqual(len(list(pipeline.getAllItems())), 1)
+        items = self.getAllItems('tenant-one', 'gate')
+        self.assertEqual(len(list(items)), 1)
         expected_cycle = {A.number, B.number}
-        for item in pipeline.getAllItems():
+        for item in items:
             cycle = {c.number for c in item.changes}
             self.assertEqual(expected_cycle, cycle)
             # Assert we get the same triggering change every time
@@ -4837,8 +4832,9 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         for build in self.history[-3:]:
             self.assertEqual(build.result, 'SUCCESS')
 
-    def assertQueueCycles(self, pipeline, queue_index, bundles):
-        queue = pipeline.queues[queue_index]
+    def assertQueueCycles(self, pipeline_name, queue_index, bundles):
+        queues = self.getAllQueues('tenant-one', pipeline_name)
+        queue = queues[queue_index]
         self.assertEqual(len(queue.queue), len(bundles))
 
         for x, item in enumerate(queue.queue):
@@ -4852,8 +4848,6 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         # patchsets.  This test exercises such changes.
 
         self.executor_server.hold_jobs_in_build = True
-        tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
-        pipeline = tenant.layout.pipelines["check"]
 
         A = self.fake_github.openFakePullRequest("gh/project1", "master", "A")
         B = self.fake_github.openFakePullRequest("gh/project2", "master", "B")
@@ -4885,9 +4879,10 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         self.fake_github.emitEvent(C.getPullRequestOpenedEvent())
         self.waitUntilSettled()
         abce = [A, B, C, E]
-        self.assertEqual(len(pipeline.queues), 1)
-        self.assertQueueCycles(pipeline, 0, [abce])
-        for item in pipeline.getAllItems():
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 1)
+        self.assertQueueCycles('check', 0, [abce])
+        items = self.getAllItems('tenant-one', 'check')
+        for item in items:
             # Assert we get the same triggering change every time
             self.assertEqual(json.loads(item.event.ref)['stable_id'], '3')
 
@@ -4902,8 +4897,9 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
 
         abc = [A, B, C]
         # ABC<nonlive>, E<live>
-        self.assertQueueCycles(pipeline, 0, [abc, [E]])
-        for item in pipeline.getAllItems():
+        self.assertQueueCycles('check', 0, [abc, [E]])
+        items = self.getAllItems('tenant-one', 'check')
+        for item in items:
             # Assert we get the same triggering change every time
             self.assertEqual(json.loads(item.event.ref)['stable_id'], '3')
 
@@ -4920,11 +4916,11 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         self.waitUntilSettled()
 
         # A, B, C individually
-        self.assertEqual(len(pipeline.queues), 3)
-        self.assertQueueCycles(pipeline, 0, [[A], [B]])
-        self.assertQueueCycles(pipeline, 1, [[A], [B], [C]])
-        self.assertQueueCycles(pipeline, 2, [[A]])
-        for item in pipeline.getAllItems():
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 3)
+        self.assertQueueCycles('check', 0, [[A], [B]])
+        self.assertQueueCycles('check', 1, [[A], [B], [C]])
+        self.assertQueueCycles('check', 2, [[A]])
+        for item in self.getAllItems('tenant-one', 'check'):
             # Assert we get the same triggering change every time
             self.assertEqual(json.loads(item.event.ref)['stable_id'], '3')
 
@@ -4934,7 +4930,7 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         )
         self.fake_github.emitEvent(C.getPullRequestEditedEvent(C.body))
         self.waitUntilSettled()
-        for item in pipeline.getAllItems():
+        for item in self.getAllItems('tenant-one', 'check'):
             # Assert we get the same triggering change every time
             self.assertEqual(json.loads(item.event.ref)['stable_id'], '3')
         B.body = "{}\n\nDepends-On: {}\n".format(
@@ -4942,13 +4938,13 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         )
         self.fake_github.emitEvent(B.getPullRequestEditedEvent(B.body))
         self.waitUntilSettled()
-        for item in pipeline.getAllItems():
+        for item in self.getAllItems('tenant-one', 'check'):
             # Assert we get the same triggering change every time
             self.assertEqual(json.loads(item.event.ref)['stable_id'], '3')
-        self.assertEqual(len(pipeline.queues), 2)
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 2)
         bc = [B, C]
-        self.assertQueueCycles(pipeline, 0, [[A]])
-        self.assertQueueCycles(pipeline, 1, [bc])
+        self.assertQueueCycles('check', 0, [[A]])
+        self.assertQueueCycles('check', 1, [bc])
 
         # All done.
         self.executor_server.hold_jobs_in_build = False
@@ -4967,17 +4963,15 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         # patchsets.  This test exercises such changes.
 
         self.executor_server.hold_jobs_in_build = True
-        tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
-        pipeline = tenant.layout.pipelines["check"]
-
         A = self.fake_github.openFakePullRequest("gh/project1", "master", "A")
         B = self.fake_github.openFakePullRequest("gh/project2", "master", "B")
 
         self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
         self.waitUntilSettled()
 
-        self.assertEqual(len(list(pipeline.getAllItems())), 1)
-        for item in pipeline.getAllItems():
+        items = self.getAllItems('tenant-one', 'check')
+        self.assertEqual(len(list(items)), 1)
+        for item in items:
             self.assertEqual(len(item.changes), 1)
             # Assert we get the same triggering change every time
             self.assertEqual(json.loads(item.event.ref)['stable_id'], '1')
@@ -4993,14 +4987,15 @@ class TestGithubAppCircularDependencies(ZuulGithubAppTestCase):
         )
         self.fake_github.emitEvent(A.getPullRequestEditedEvent(A.body))
         self.waitUntilSettled()
-        self.assertEqual(len(list(pipeline.getAllItems())), 1)
-        for item in pipeline.getAllItems():
+        items = self.getAllItems('tenant-one', 'check')
+        self.assertEqual(len(list(items)), 1)
+        for item in items:
             self.assertEqual(len(item.changes), 2)
             # Assert we get the same triggering change every time
             self.assertEqual(json.loads(item.event.ref)['stable_id'], '1')
-        self.assertEqual(len(pipeline.queues), 1)
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 1)
         ab = [A, B]
-        self.assertQueueCycles(pipeline, 0, [ab])
+        self.assertQueueCycles('check', 0, [ab])
 
         # All done.
         self.executor_server.hold_jobs_in_build = False

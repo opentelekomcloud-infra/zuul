@@ -35,7 +35,7 @@ class IndependentPipelineManager(PipelineManager):
             pipeline=self.pipeline,
             dynamic=True)
         change_queue.addProject(change.project, None)
-        self.pipeline.addQueue(change_queue)
+        self.state.addQueue(change_queue)
         log.debug("Dynamically created queue %s", id(change_queue))
         return DynamicChangeQueueContextManager(
             change_queue, allow_delete=True)
@@ -125,4 +125,4 @@ class IndependentPipelineManager(PipelineManager):
         # An independent pipeline manager dynamically removes empty
         # queues
         if not item.queue.queue:
-            self.pipeline.removeQueue(item.queue)
+            self.state.removeQueue(item.queue)

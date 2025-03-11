@@ -355,8 +355,7 @@ class TestGerritLegacyCRD(ZuulTestCase):
         self.assertEqual(B.reported, 0)
 
         self.assertEqual(self.history[0].changes, '2,1 1,1')
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 0)
 
     def test_crd_check_git_depends(self):
         "Test single-repo dependencies in independent pipelines"
@@ -378,8 +377,7 @@ class TestGerritLegacyCRD(ZuulTestCase):
 
         self.assertEqual(self.history[0].changes, '1,1')
         self.assertEqual(self.history[-1].changes, '1,1 2,1')
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 0)
 
         self.assertIn('Build succeeded', A.messages[0])
         self.assertIn('Build succeeded', B.messages[0])
@@ -389,24 +387,22 @@ class TestGerritLegacyCRD(ZuulTestCase):
         self.executor_server.hold_jobs_in_build = True
         A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
         B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
 
         # Add two git-dependent changes...
         B.setDependsOn(A, 1)
         self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 2)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 2)
 
         # ...make sure the live one is not duplicated...
         self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 2)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 2)
 
         # ...but the non-live one is able to be.
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 3)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 3)
 
         # Release jobs in order to avoid races with change A jobs
         # finishing before change B jobs.
@@ -422,7 +418,7 @@ class TestGerritLegacyCRD(ZuulTestCase):
 
         self.assertEqual(self.history[0].changes, '1,1 2,1')
         self.assertEqual(self.history[1].changes, '1,1')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 0)
 
         self.assertIn('Build succeeded', A.messages[0])
         self.assertIn('Build succeeded', B.messages[0])
@@ -446,9 +442,8 @@ class TestGerritLegacyCRD(ZuulTestCase):
 
         # Make sure the items still share a change queue, and the
         # first one is not live.
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 1)
-        queue = tenant.layout.pipelines['check'].queues[0]
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 1)
+        queue = self.getAllQueues('tenant-one', 'check')[0]
         first_item = queue.queue[0]
         for item in queue.queue:
             self.assertEqual(item.queue, first_item.queue)
@@ -465,7 +460,7 @@ class TestGerritLegacyCRD(ZuulTestCase):
         self.assertEqual(B.reported, 0)
 
         self.assertEqual(self.history[0].changes, '2,1 1,1')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 0)
 
     @skipIfMultiScheduler()
     def test_crd_check_reconfiguration(self):
@@ -501,11 +496,9 @@ class TestGerritLegacyCRD(ZuulTestCase):
 
         # Make sure none of the items share a change queue, and all
         # are live.
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
-        self.assertEqual(len(check_pipeline.queues), 3)
-        self.assertEqual(len(check_pipeline.getAllItems()), 3)
-        for item in check_pipeline.getAllItems():
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 3)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 3)
+        for item in self.getAllItems('tenant-one', 'check'):
             self.assertTrue(item.live)
 
         self.hold_jobs_in_queue = False
