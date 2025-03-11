@@ -718,7 +718,8 @@ class Scheduler(threading.Thread):
                             pipeline.state.refresh(ctx, read_only=True)
                             # In case we're in the middle of a reconfig,
                             # include the old queue items.
-                            for item in pipeline.getAllItems(include_old=True):
+                            for item in pipeline.manager.state.getAllItems(
+                                    include_old=True):
                                 nrs = item.current_build_set.getNodeRequests()
                                 for _, req_id in nrs:
                                     outstanding_requests.add(req_id)
@@ -846,7 +847,8 @@ class Scheduler(threading.Thread):
                           self.createZKContext(lock, self.log) as ctx):
                         pipeline.state.refresh(ctx, read_only=True)
                         # add any blobstore references
-                        for item in pipeline.getAllItems(include_old=True):
+                        for item in pipeline.manager.state.getAllItems(
+                                include_old=True):
                             live_blobs.update(item.getBlobKeys())
             with self.createZKContext(None, self.log) as ctx:
                 blobstore = BlobStore(ctx)
@@ -1715,12 +1717,12 @@ class Scheduler(threading.Thread):
 
             # Attempt to keep window sizes from shrinking where possible
             project, branch = shared_queue.project_branches[0]
-            new_queue = new_pipeline.getQueue(project, branch)
+            new_queue = new_pipeline.manager.state.getQueue(project, branch)
             if new_queue and shared_queue.window and (not static_window):
                 new_queue.updateAttributes(
                     context, window=max(shared_queue.window,
                                         new_queue.window_floor))
-            new_pipeline.state.removeOldQueue(context, shared_queue)
+            new_pipeline.manager.state.removeOldQueue(context, shared_queue)
         for item in items_to_remove:
             log = get_annotated_logger(self.log, item.event)
             log.info("Removing item %s during reconfiguration", item)
@@ -1868,7 +1870,7 @@ class Scheduler(threading.Thread):
 
         builds_to_cancel = []
         requests_to_cancel = []
-        for item in pipeline.getAllItems():
+        for item in pipeline.manager.state.getAllItems():
             with item.activeContext(pipeline.manager.current_context):
                 item.item_ahead = None
                 item.items_behind = []
@@ -2004,7 +2006,7 @@ class Scheduler(threading.Thread):
                         quiet=True,
                         ignore_requirements=True)
             # Regardless, move this shared change queue to the head.
-            pipeline.promoteQueue(change_queue)
+            pipeline.manager.state.promoteQueue(change_queue)
 
     def _doDequeueEvent(self, event):
         tenant = self.abide.tenants.get(event.tenant_name)
@@ -2116,7 +2118,7 @@ class Scheduler(threading.Thread):
         waiting = False
         for tenant in self.abide.tenants.values():
             for pipeline in tenant.layout.pipelines.values():
-                for item in pipeline.getAllItems():
+                for item in pipeline.manager.state.getAllItems():
                     for build in item.current_build_set.getBuilds():
                         if build.result is None:
                             self.log.debug("%s waiting on %s" %
@@ -2829,7 +2831,7 @@ class Scheduler(threading.Thread):
             )
             return
 
-        for item in pipeline.getAllItems():
+        for item in pipeline.manager.state.getAllItems():
             # If the provided buildset UUID doesn't match any current one,
             # we assume that it's not current anymore.
             if item.current_build_set.uuid == event.build_set_uuid:
