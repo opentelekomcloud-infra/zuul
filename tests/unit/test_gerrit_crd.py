@@ -460,24 +460,22 @@ class TestGerritCRD(ZuulTestCase):
         self.executor_server.hold_jobs_in_build = True
         A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
         B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
 
         # Add two git-dependent changes...
         B.setDependsOn(A, 1)
         self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 2)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 2)
 
         # ...make sure the live one is not duplicated...
         self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 2)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 2)
 
         # ...but the non-live one is able to be.
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 3)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 3)
 
         # Release jobs in order to avoid races with change A jobs
         # finishing before change B jobs.
@@ -493,7 +491,7 @@ class TestGerritCRD(ZuulTestCase):
 
         self.assertEqual(self.history[0].changes, '1,1 2,1')
         self.assertEqual(self.history[1].changes, '1,1')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 0)
 
         self.assertIn('Build succeeded', A.messages[0])
         self.assertIn('Build succeeded', B.messages[0])
@@ -575,8 +573,8 @@ class TestGerritCRD(ZuulTestCase):
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         check_pipeline = tenant.layout.pipelines['check']
         self.assertEqual(len(check_pipeline.queues), 3)
-        self.assertEqual(len(check_pipeline.getAllItems()), 3)
-        for item in check_pipeline.getAllItems():
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 3)
+        for item in self.getAllItems('tenant-one', 'check'):
             self.assertTrue(item.live)
 
         self.hold_jobs_in_queue = False

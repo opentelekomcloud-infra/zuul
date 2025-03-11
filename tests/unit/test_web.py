@@ -3219,8 +3219,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
 
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         enqueue_times = {}
         for item in items:
             enqueue_times[str(item.changes[0])] = item.enqueue_time
@@ -3247,7 +3246,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
         self.assertEqual(True, data)
 
         # ensure that enqueue times are durable
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         for item in items:
             self.assertEqual(
                 enqueue_times[str(item.changes[0])], item.enqueue_time)
@@ -3308,8 +3307,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
 
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         enqueue_times = {}
         for item in items:
             enqueue_times[str(item.changes[0])] = item.enqueue_time
@@ -3336,7 +3334,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
         self.assertEqual(True, data)
 
         # ensure that enqueue times are durable
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         for item in items:
             self.assertEqual(
                 enqueue_times[str(item.changes[0])], item.enqueue_time)
@@ -3399,9 +3397,8 @@ class TestTenantScopedWebApi(BaseTestWeb):
 
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = [i for i in tenant.layout.pipelines['check'].getAllItems()
-                 if i.live]
+        items = self.getAllItems('tenant-one', 'check')
+        items = [i for i in items if i.live]
         enqueue_times = {}
         for item in items:
             enqueue_times[str(item.changes[0])] = item.enqueue_time
@@ -3429,8 +3426,8 @@ class TestTenantScopedWebApi(BaseTestWeb):
         self.waitUntilSettled()
 
         # ensure that enqueue times are durable
-        items = [i for i in tenant.layout.pipelines['check'].getAllItems()
-                 if i.live]
+        items = self.getAllItems('tenant-one', 'check')
+        items = [i for i in items if i.live]
         for item in items:
             self.assertEqual(
                 enqueue_times[str(item.changes[0])], item.enqueue_time)
@@ -3438,8 +3435,8 @@ class TestTenantScopedWebApi(BaseTestWeb):
         # We can't reliably test for side effects in the check
         # pipeline since the change queues are independent, so we
         # directly examine the queues.
-        queue_items = [(item.changes[0].number, item.live) for item in
-                       tenant.layout.pipelines['check'].getAllItems()]
+        items = self.getAllItems('tenant-one', 'check')
+        queue_items = [(item.changes[0].number, item.live) for item in items]
         expected = [('1', False),
                     ('2', True),
                     ('1', False),
@@ -4102,8 +4099,7 @@ class TestCLIViaWebApi(BaseTestWeb):
 
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         enqueue_times = {}
         for item in items:
             enqueue_times[str(item.changes[0])] = item.enqueue_time
@@ -4129,7 +4125,7 @@ class TestCLIViaWebApi(BaseTestWeb):
         self.waitUntilSettled()
 
         # ensure that enqueue times are durable
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         for item in items:
             self.assertEqual(
                 enqueue_times[str(item.changes[0])], item.enqueue_time)
