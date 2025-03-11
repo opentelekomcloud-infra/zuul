@@ -2385,7 +2385,6 @@ class Scheduler(threading.Thread):
             raise
         except Exception:
             self.log.exception("Exception in pipeline processing:")
-            pipeline._exception_count += 1
             pipeline.state.updateAttributes(
                 ctx, state=pipeline.STATE_ERROR)
             # Continue processing other pipelines+tenants
