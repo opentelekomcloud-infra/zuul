@@ -178,8 +178,8 @@ class BaseReporter(object, metaclass=abc.ABCMeta):
             debug = '\n  '.join(item.current_build_set.debug_messages)
             ret += '\nDebug information:\n  ' + debug + '\n'
 
-        if item.pipeline.footer_message:
-            ret += '\n' + item.pipeline.footer_message
+        if item.manager.pipeline.footer_message:
+            ret += '\n' + item.manager.pipeline.footer_message
 
         return ret
 
@@ -188,8 +188,8 @@ class BaseReporter(object, metaclass=abc.ABCMeta):
             status_url = item.formatUrlPattern(status_url)
 
         # change, changes, and status_url are deprecated
-        return item.pipeline.enqueue_message.format(
-            pipeline=item.pipeline.getSafeAttributes(),
+        return item.manager.pipeline.enqueue_message.format(
+            pipeline=item.manager.pipeline.getSafeAttributes(),
             change=item.changes[0].getSafeAttributes(),
             changes=[c.getSafeAttributes() for c in item.changes],
             item_url=item.formatItemUrl(),
@@ -200,15 +200,15 @@ class BaseReporter(object, metaclass=abc.ABCMeta):
             status_url = item.formatUrlPattern(status_url)
 
         # change, changes, and status_url are deprecated
-        return item.pipeline.start_message.format(
-            pipeline=item.pipeline.getSafeAttributes(),
+        return item.manager.pipeline.start_message.format(
+            pipeline=item.manager.pipeline.getSafeAttributes(),
             change=item.changes[0].getSafeAttributes(),
             changes=[c.getSafeAttributes() for c in item.changes],
             item_url=item.formatItemUrl(),
             status_url=status_url)
 
     def _formatItemReportSuccess(self, item, change, with_jobs=True):
-        msg = item.pipeline.success_message
+        msg = item.manager.pipeline.success_message
         if with_jobs:
             item_url = item.formatItemUrl()
             if item_url is not None:
@@ -254,12 +254,12 @@ class BaseReporter(object, metaclass=abc.ABCMeta):
                 msg, self._formatItemReportOtherChanges(item,
                                                         change_annotations))
         elif item.didMergerFail():
-            msg = item.pipeline.merge_conflict_message
+            msg = item.manager.pipeline.merge_conflict_message
         elif item.current_build_set.has_blocking_errors:
             msg = str(item.getConfigErrors(
                 errors=True, warnings=False)[0].error)
         else:
-            msg = item.pipeline.failure_message
+            msg = item.manager.pipeline.failure_message
             if with_jobs:
                 item_url = item.formatItemUrl()
                 if item_url is not None:
@@ -281,7 +281,7 @@ class BaseReporter(object, metaclass=abc.ABCMeta):
         return ret
 
     def _formatItemReportMergeConflict(self, item, change, with_jobs=True):
-        return item.pipeline.merge_conflict_message
+        return item.manager.pipeline.merge_conflict_message
 
     def _formatItemReportMergeFailure(self, item, change, with_jobs=True):
         return 'This change was not merged by the code review system.\n'
@@ -298,8 +298,8 @@ class BaseReporter(object, metaclass=abc.ABCMeta):
             status_url = item.formatUrlPattern(status_url)
 
         # change, changes, and status_url are deprecated
-        return item.pipeline.no_jobs_message.format(
-            pipeline=item.pipeline.getSafeAttributes(),
+        return item.manager.pipeline.no_jobs_message.format(
+            pipeline=item.manager.pipeline.getSafeAttributes(),
             change=item.changes[0].getSafeAttributes(),
             changes=[c.getSafeAttributes() for c in item.changes],
             item_url=item.formatItemUrl(),
@@ -314,7 +314,7 @@ class BaseReporter(object, metaclass=abc.ABCMeta):
             return self._formatItemReport(item, change)
 
     def _formatItemReportDequeue(self, item, change, with_jobs=True):
-        msg = item.pipeline.dequeue_message
+        msg = item.manager.pipeline.dequeue_message
         if with_jobs:
             msg += '\n\n' + self._formatItemReportJobs(item)
         return msg
