@@ -578,7 +578,6 @@ class Pipeline(object):
         self.dequeue_on_new_patchset = True
         self.ignore_dependencies = False
         self.manager = None
-        self.relative_priority_queues = {}
         self.precedence = PRECEDENCE_NORMAL
         self.supercedes = []
         self.triggers = []
@@ -598,14 +597,22 @@ class Pipeline(object):
         self.window_increase_factor = None
         self.window_decrease_type = None
         self.window_decrease_factor = None
-        self.state = None
-        self.change_list = None
-        # Only used by the unit tests for assertions
-        self._exception_count = 0
 
     @property
     def queues(self):
-        return self.state.queues
+        return self.manager.state.queues
+
+    @property
+    def state(self):
+        return self.manager.state
+
+    @property
+    def change_list(self):
+        return self.manager.change_list
+
+    @property
+    def summary(self):
+        return self.manager.summary
 
     @property
     def actions(self):
@@ -651,16 +658,6 @@ class Pipeline(object):
             if queue.matches(project_cname, branch):
                 return queue
         return None
-
-    def getRelativePriorityQueue(self, project):
-        for queue in self.relative_priority_queues.values():
-            if project in queue:
-                return queue
-        return [project]
-
-    def setRelativePriorityQueues(self, queues):
-        self.state.updateAttributes(self.manager.current_context,
-                                    relative_priority_queues=queues)
 
     def removeQueue(self, queue):
         if queue in self.queues:
