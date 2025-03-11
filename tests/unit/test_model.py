@@ -80,7 +80,7 @@ class TestJob(BaseTestCase):
         self.pipeline.tenant = self.tenant
         self.zk_context = LocalZKContext(self.log)
         self.pipeline.manager.current_context = self.zk_context
-        self.pipeline.state = model.PipelineState()
+        self.pipeline.manager.state = model.PipelineState()
         self.pipeline.state._set(pipeline=self.pipeline)
         self.layout.addPipeline(self.pipeline)
         with self.zk_context as ctx:
