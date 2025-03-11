@@ -33,7 +33,7 @@ class SupercedentPipelineManager(PipelineManager):
 
         # Don't use Pipeline.getQueue to find an existing queue
         # because we're matching project and (branch or ref).
-        for queue in self.pipeline.queues:
+        for queue in self.state.queues:
             if (queue.queue[-1].changes[0].project == change.project and
                 ((hasattr(change, 'branch') and
                   hasattr(queue.queue[-1].changes[0], 'branch') and
@@ -42,8 +42,8 @@ class SupercedentPipelineManager(PipelineManager):
                 log.debug("Found existing queue %s", queue)
                 return DynamicChangeQueueContextManager(queue)
         change_queue = model.ChangeQueue.new(
-            self.pipeline.manager.current_context,
-            pipeline=self.pipeline,
+            self.current_context,
+            manager=self,
             window=1,
             window_floor=1,
             window_ceiling=1,
@@ -51,7 +51,7 @@ class SupercedentPipelineManager(PipelineManager):
             window_decrease_type='none',
             dynamic=True)
         change_queue.addProject(change.project, None)
-        self.pipeline.manager.state.addQueue(change_queue)
+        self.state.addQueue(change_queue)
         log.debug("Dynamically created queue %s", change_queue)
         return DynamicChangeQueueContextManager(
             change_queue, allow_delete=True)
@@ -62,7 +62,7 @@ class SupercedentPipelineManager(PipelineManager):
         # between.  This is what causes the last item to "supercede"
         # any previously enqueued items (which we know aren't running
         # jobs because the window size is 1).
-        for queue in self.pipeline.queues[:]:
+        for queue in self.state.queues[:]:
             remove = queue.queue[1:-1]
             for item in remove:
                 self.log.debug("Item %s is superceded by %s, removing" %

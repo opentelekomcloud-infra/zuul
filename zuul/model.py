@@ -577,7 +577,7 @@ class Pipeline(object):
         self.post_review = False
         self.dequeue_on_new_patchset = True
         self.ignore_dependencies = False
-        self.manager = None
+        self.manager_name = None
         self.precedence = PRECEDENCE_NORMAL
         self.supercedes = []
         self.triggers = []
@@ -599,22 +599,6 @@ class Pipeline(object):
         self.window_decrease_factor = None
         self.ref_filters = []
         self.event_filters = []
-
-    @property
-    def queues(self):
-        return self.manager.state.queues
-
-    @property
-    def state(self):
-        return self.manager.state
-
-    @property
-    def change_list(self):
-        return self.manager.change_list
-
-    @property
-    def summary(self):
-        return self.manager.summary
 
     @property
     def actions(self):
@@ -647,20 +631,17 @@ class Pipeline(object):
                         this=self.name,
                         other=pipeline))
 
-    def setManager(self, manager):
-        self.manager = manager
-
-    def formatStatusJSON(self, websocket_url=None):
+    def formatStatusJSON(self, manager, websocket_url=None):
         j_pipeline = dict(name=self.name,
                           description=self.description,
-                          state=self.state.state,
-                          manager=self.manager.type)
+                          state=manager.state.state,
+                          manager=manager.type)
         j_pipeline['triggers'] = [
             {'driver': t.driver.name} for t in self.triggers
         ]
         j_queues = []
         j_pipeline['change_queues'] = j_queues
-        for queue in self.queues:
+        for queue in manager.state.queues:
             if not queue.queue:
                 continue
             j_queue = dict(name=queue.name)
@@ -702,8 +683,8 @@ class PipelineState(zkobject.ZKObject):
             consecutive_failures=0,
             disabled=False,
             layout_uuid=None,
-            # Local pipeline reference (not persisted in Zookeeper)
-            pipeline=None,
+            # Local pipeline manager reference (not persisted in Zookeeper)
+            manager=None,
             _read_only=False,
         )
 
@@ -716,24 +697,25 @@ class PipelineState(zkobject.ZKObject):
             old_queues=[],
             consecutive_failures=0,
             disabled=False,
-            layout_uuid=self.pipeline.tenant.layout.uuid,
+            layout_uuid=self.manager.tenant.layout.uuid,
         )
 
     @classmethod
-    def fromZK(klass, context, path, pipeline, **kw):
+    def fromZK(klass, context, path, manager, **kw):
         obj = klass()
-        obj._set(pipeline=pipeline, **kw)
-        # Bind the state to the pipeline, so child objects can access
+        obj._set(manager=manager, **kw)
+        # Bind the state to the manager, so child objects can access
         # the the full pipeline state.
-        pipeline.state = obj
+        manager.state = obj
         obj._load(context, path=path)
         return obj
 
     @classmethod
-    def create(cls, pipeline, old_state=None):
+    def create(cls, manager, old_state=None):
         # If we are resetting an existing pipeline, we will have an
         # old_state, so just clean up the object references there and
         # let the next refresh handle updating any data.
+        # TODO: This apparently hasn't been called in some time; fix.
         if old_state:
             old_state._resetObjectRefs()
             return old_state
@@ -742,26 +724,26 @@ class PipelineState(zkobject.ZKObject):
         # seen before.  It still might exist in ZK, but since we
         # haven't seen it, we don't have any object references to
         # clean up.  We can just start with a clean object, set the
-        # pipeline reference, and let the next refresh deal with
+        # manager reference, and let the next refresh deal with
         # whether there might be any data in ZK.
         state = cls()
-        state._set(pipeline=pipeline)
+        state._set(manager=manager)
         return state
 
     def _resetObjectRefs(self):
         # Update the pipeline references on the queue objects.
         for queue in self.queues + self.old_queues:
-            queue.pipeline = self.pipeline
+            queue.manager = self.manager
 
     def getPath(self):
         if hasattr(self, '_path'):
             return self._path
-        return self.pipelinePath(self.pipeline)
+        return self.pipelinePath(self.manager)
 
     @classmethod
-    def pipelinePath(cls, pipeline):
-        safe_tenant = urllib.parse.quote_plus(pipeline.tenant.name)
-        safe_pipeline = urllib.parse.quote_plus(pipeline.name)
+    def pipelinePath(cls, manager):
+        safe_tenant = urllib.parse.quote_plus(manager.tenant.name)
+        safe_pipeline = urllib.parse.quote_plus(manager.pipeline.name)
         return f"/zuul/tenant/{safe_tenant}/pipeline/{safe_pipeline}"
 
     @classmethod
@@ -795,7 +777,7 @@ class PipelineState(zkobject.ZKObject):
                 self.old_queues.remove(queue)
 
     def addQueue(self, queue):
-        with self.activeContext(self.pipeline.manager.current_context):
+        with self.activeContext(self.manager.current_context):
             self.queues.append(queue)
 
     def getQueue(self, project_cname, branch):
@@ -807,14 +789,14 @@ class PipelineState(zkobject.ZKObject):
 
     def removeQueue(self, queue):
         if queue in self.queues:
-            with self.activeContext(self.pipeline.manager.current_context):
+            with self.activeContext(self.manager.current_context):
                 self.queues.remove(queue)
-            queue.delete(self.pipeline.manager.current_context)
+            queue.delete(self.manager.current_context)
 
     def promoteQueue(self, queue):
         if queue not in self.queues:
             return
-        with self.activeContext(self.pipeline.manager.current_context):
+        with self.activeContext(self.manager.current_context):
             self.queues.remove(queue)
             self.queues.insert(0, queue)
 
@@ -871,7 +853,7 @@ class PipelineState(zkobject.ZKObject):
             # deserialize() is used instead.
             context.log.warning("Initializing pipeline state for %s; "
                                 "this is expected only for new pipelines",
-                                self.pipeline.name)
+                                self.manager.pipeline.name)
             self._set(**self._lateInitData())
             self.internalCreate(context)
 
@@ -879,7 +861,7 @@ class PipelineState(zkobject.ZKObject):
         # We may have old change objects in the pipeline cache, so
         # make sure they are the same objects we would get from the
         # source change cache.
-        self.pipeline.manager.clearCache()
+        self.manager.clearCache()
 
         # If the object doesn't exist we will get back an empty byte
         # string.  This happens because the postConfig call creates
@@ -892,7 +874,7 @@ class PipelineState(zkobject.ZKObject):
         if raw == b'':
             context.log.warning("Initializing pipeline state for %s; "
                                 "this is expected only for new pipelines",
-                                self.pipeline.name)
+                                self.manager.pipeline.name)
             return self._lateInitData()
 
         data = super().deserialize(raw, context)
@@ -901,7 +883,7 @@ class PipelineState(zkobject.ZKObject):
             # Skip this check if we're in a context where we want to
             # read the state without updating it (in case we're not
             # certain that the layout is up to date).
-            if data['layout_uuid'] != self.pipeline.tenant.layout.uuid:
+            if data['layout_uuid'] != self.manager.tenant.layout.uuid:
                 # The tenant layout has updated since our last state; we
                 # need to reset the state.
                 data = dict(
@@ -910,7 +892,7 @@ class PipelineState(zkobject.ZKObject):
                     old_queues=data["old_queues"] + data["queues"],
                     consecutive_failures=0,
                     disabled=False,
-                    layout_uuid=self.pipeline.tenant.layout.uuid,
+                    layout_uuid=self.manager.tenant.layout.uuid,
                 )
 
         existing_queues = {
@@ -927,7 +909,7 @@ class PipelineState(zkobject.ZKObject):
                 queue.refresh(context)
             else:
                 queue = ChangeQueue.fromZK(context, queue_path,
-                                           pipeline=self.pipeline)
+                                           manager=self.manager)
             old_queues.append(queue)
 
         queues = []
@@ -937,18 +919,18 @@ class PipelineState(zkobject.ZKObject):
                 queue.refresh(context)
             else:
                 queue = ChangeQueue.fromZK(context, queue_path,
-                                           pipeline=self.pipeline)
+                                           manager=self.manager)
             queues.append(queue)
 
-        if hasattr(self.pipeline.manager, "change_queue_managers"):
+        if hasattr(self.manager, "change_queue_managers"):
             # Clear out references to old queues
-            for cq_manager in self.pipeline.manager.change_queue_managers:
+            for cq_manager in self.manager.change_queue_managers:
                 cq_manager.created_for_branches.clear()
 
             # Add queues to matching change queue managers
             for queue in queues:
                 project_cname, branch = queue.project_branches[0]
-                for cq_manager in self.pipeline.manager.change_queue_managers:
+                for cq_manager in self.manager.change_queue_managers:
                     managed_projects = {
                         p.canonical_name for p in cq_manager.projects
                     }
@@ -989,8 +971,8 @@ class PipelineState(zkobject.ZKObject):
                     items_referenced_by_builds.add(build.build_set.item.uuid)
         stale_items = all_items - known_items - items_referenced_by_builds
         for item_uuid in stale_items:
-            self.pipeline.manager.log.debug("Cleaning up stale item %s",
-                                            item_uuid)
+            self.manager.log.debug("Cleaning up stale item %s",
+                                   item_uuid)
             context.client.delete(QueueItem.itemPath(pipeline_path, item_uuid),
                                   recursive=True)
 
@@ -1003,8 +985,8 @@ class PipelineState(zkobject.ZKObject):
         known_queues = {q.uuid for q in (*self.old_queues, *self.queues)}
         stale_queues = all_queues - known_queues
         for queue_uuid in stale_queues:
-            self.pipeline.manager.log.debug("Cleaning up stale queue %s",
-                                            queue_uuid)
+            self.manager.log.debug("Cleaning up stale queue %s",
+                                   queue_uuid)
             context.client.delete(
                 ChangeQueue.queuePath(pipeline_path, queue_uuid),
                 recursive=True)
@@ -1050,7 +1032,7 @@ class PipelineChangeList(zkobject.ShardedZKObject):
                 context.log.warning(
                     "Initializing pipeline change list for %s; "
                     "this is expected only for new pipelines",
-                    self.pipeline.name)
+                    self.manager.pipeline.name)
                 self.internalCreate(context)
             else:
                 # If we're called from a context where we can't
@@ -1058,21 +1040,21 @@ class PipelineChangeList(zkobject.ShardedZKObject):
                 raise
 
     def getPath(self):
-        return self.getChangeListPath(self.pipeline)
+        return self.getChangeListPath(self.manager)
 
     @classmethod
-    def getChangeListPath(cls, pipeline):
-        pipeline_path = pipeline.state.getPath()
+    def getChangeListPath(cls, manager):
+        pipeline_path = manager.state.getPath()
         return pipeline_path + '/change_list'
 
     @classmethod
-    def create(cls, pipeline):
+    def create(cls, manager):
         # This object may or may not exist in ZK, but we using any of
         # that data here.  We can just start with a clean object, set
-        # the pipeline reference, and let the next refresh deal with
+        # the manager reference, and let the next refresh deal with
         # whether there might be any data in ZK.
         change_list = cls()
-        change_list._set(pipeline=pipeline)
+        change_list._set(manager=manager)
         return change_list
 
     def serialize(self, context):
@@ -1116,10 +1098,12 @@ class PipelineSummary(zkobject.ShardedZKObject):
         )
 
     def getPath(self):
-        return f"{PipelineState.pipelinePath(self.pipeline)}/status"
+        return f"{PipelineState.pipelinePath(self.manager)}/status"
 
     def update(self, context, zuul_globals):
-        status = self.pipeline.formatStatusJSON(zuul_globals.websocket_url)
+        status = self.manager.pipeline.formatStatusJSON(
+            self.manager,
+            zuul_globals.websocket_url)
         self.updateAttributes(context, status=status)
 
     def serialize(self, context):
@@ -1167,7 +1151,7 @@ class ChangeQueue(zkobject.ZKObject):
         super().__init__()
         self._set(
             uuid=uuid4().hex,
-            pipeline=None,
+            manager=None,
             name="",
             project_branches=[],
             _jobs=set(),
@@ -1250,7 +1234,7 @@ class ChangeQueue(zkobject.ZKObject):
         return data
 
     def getPath(self):
-        pipeline_path = self.pipeline.state.getPath()
+        pipeline_path = self.manager.state.getPath()
         return self.queuePath(pipeline_path, self.uuid)
 
     @classmethod
@@ -1259,10 +1243,10 @@ class ChangeQueue(zkobject.ZKObject):
 
     @property
     def zk_context(self):
-        return self.pipeline.manager.current_context
+        return self.manager.current_context
 
     def __repr__(self):
-        return '<ChangeQueue %s: %s>' % (self.pipeline.name, self.name)
+        return '<ChangeQueue %s: %s>' % (self.manager.pipeline.name, self.name)
 
     def getJobs(self):
         return self._jobs
@@ -1295,7 +1279,7 @@ class ChangeQueue(zkobject.ZKObject):
             elif getattr(event, 'orig_ref', None):
                 event_ref_cache_key = event.orig_ref
             elif hasattr(event, 'canonical_project_name'):
-                trusted, project = self.pipeline.tenant.getProject(
+                trusted, project = self.manager.tenant.getProject(
                     event.canonical_project_name)
                 if project:
                     change_key = project.source.getChangeKey(event)
@@ -1305,7 +1289,7 @@ class ChangeQueue(zkobject.ZKObject):
                 # above; it's unclear what other unhandled event would
                 # cause an enqueue, but if it happens, log and
                 # continue.
-                self.pipeline.manager.log.warning(
+                self.manager.log.warning(
                     "Unable to identify triggering ref from event %s",
                     event)
             event_info = EventInfo.fromEvent(event, event_ref_cache_key)
@@ -3532,7 +3516,7 @@ class FrozenJob(zkobject.ZKObject):
         if self.waiting_status == status:
             return
         self.updateAttributes(
-            self.buildset.item.pipeline.manager.current_context,
+            self.buildset.item.manager.current_context,
             waiting_status=status)
 
     def _getJobData(self, name):
@@ -3645,7 +3629,7 @@ class FrozenJob(zkobject.ZKObject):
         return data
 
     def setParentData(self, parent_data, secret_parent_data, artifact_data):
-        context = self.buildset.item.pipeline.manager.current_context
+        context = self.buildset.item.manager.current_context
         kw = {}
         if self.parent_data != parent_data:
             kw['_parent_data'] = self._makeJobData(
@@ -3658,11 +3642,11 @@ class FrozenJob(zkobject.ZKObject):
                 context, 'artifact_data', artifact_data)
         if kw:
             self.updateAttributes(
-                self.buildset.item.pipeline.manager.current_context,
+                self.buildset.item.manager.current_context,
                 **kw)
 
     def setArtifactData(self, artifact_data):
-        context = self.buildset.item.pipeline.manager.current_context
+        context = self.buildset.item.manager.current_context
         if self.artifact_data != artifact_data:
             self.updateAttributes(
                 context,
@@ -3924,7 +3908,7 @@ class Job(ConfigObject):
                     project_metadata.default_branch
             else:
                 role['project_default_branch'] = 'master'
-            role_trusted, role_project = item.pipeline.tenant.getProject(
+            role_trusted, role_project = item.manager.tenant.getProject(
                 role['project_canonical_name'])
             role_connection = role_project.source.connection
             role['connection'] = role_connection.connection_name
@@ -5607,7 +5591,7 @@ class Build(zkobject.ZKObject):
 
     @property
     def pipeline(self):
-        return self.build_set.item.pipeline
+        return self.build_set.item.manager.pipeline
 
     @property
     def log_url(self):
@@ -6166,7 +6150,7 @@ class BuildSet(zkobject.ZKObject):
         self.addBuilds([build])
 
     def addBuilds(self, builds):
-        with self.activeContext(self.item.pipeline.manager.current_context):
+        with self.activeContext(self.item.manager.current_context):
             for build in builds:
                 self._addBuild(build)
 
@@ -6176,12 +6160,12 @@ class BuildSet(zkobject.ZKObject):
             self.tries[build.job.uuid] = 1
 
     def addRetryBuild(self, build):
-        with self.activeContext(self.item.pipeline.manager.current_context):
+        with self.activeContext(self.item.manager.current_context):
             self.retry_builds.setdefault(
                 build.job.uuid, []).append(build)
 
     def removeBuild(self, build):
-        with self.activeContext(self.item.pipeline.manager.current_context):
+        with self.activeContext(self.item.manager.current_context):
             self.tries[build.job.uuid] += 1
             del self.builds[build.job.uuid]
 
@@ -6218,19 +6202,19 @@ class BuildSet(zkobject.ZKObject):
     def setJobNodeSetInfo(self, job, nodeset_info):
         if job.uuid in self.nodeset_info:
             raise Exception("Prior node request for %s", job.name)
-        with self.activeContext(self.item.pipeline.manager.current_context):
+        with self.activeContext(self.item.manager.current_context):
             self.nodeset_info[job.uuid] = nodeset_info
 
     def removeJobNodeSetInfo(self, job):
         if job.uuid not in self.nodeset_info:
             raise Exception("No job nodeset for %s" % (job.name))
-        with self.activeContext(self.item.pipeline.manager.current_context):
+        with self.activeContext(self.item.manager.current_context):
             del self.nodeset_info[job.uuid]
 
     def setJobNodeRequestID(self, job, request_id):
         if job.uuid in self.node_requests:
             raise Exception("Prior node request for %s" % (job.name))
-        with self.activeContext(self.item.pipeline.manager.current_context):
+        with self.activeContext(self.item.manager.current_context):
             self.node_requests[job.uuid] = request_id
 
     def getJobNodeRequestID(self, job):
@@ -6243,7 +6227,7 @@ class BuildSet(zkobject.ZKObject):
     def removeJobNodeRequestID(self, job):
         if job.uuid in self.node_requests:
             with self.activeContext(
-                    self.item.pipeline.manager.current_context):
+                    self.item.manager.current_context):
                 del self.node_requests[job.uuid]
 
     def getTries(self, job):
@@ -6270,7 +6254,7 @@ class BuildSet(zkobject.ZKObject):
                     break
             item = item.item_ahead
         if not project_metadata:
-            layout = self.item.pipeline.tenant.layout
+            layout = self.item.manager.tenant.layout
             if layout:
                 project_metadata = layout.getProjectMetadata(
                     project.canonical_name
@@ -6378,9 +6362,9 @@ class QueueItem(zkobject.ZKObject):
         )
 
     @property
-    def pipeline(self):
+    def manager(self):
         if self.queue:
-            return self.queue.pipeline
+            return self.queue.manager
         return None
 
     @classmethod
@@ -6407,7 +6391,7 @@ class QueueItem(zkobject.ZKObject):
         return obj
 
     def getPath(self):
-        return self.itemPath(PipelineState.pipelinePath(self.pipeline),
+        return self.itemPath(PipelineState.pipelinePath(self.manager),
                              self.uuid)
 
     @classmethod
@@ -6462,7 +6446,7 @@ class QueueItem(zkobject.ZKObject):
         self._set(uuid=data["uuid"])
 
         event = EventInfo.fromDict(data["event"]["data"])
-        changes = self.pipeline.manager.resolveChangeReferences(
+        changes = self.manager.resolveChangeReferences(
             data["changes"])
         build_set = self.current_build_set
         if build_set and build_set.getPath() == data["current_build_set"]:
@@ -6488,8 +6472,8 @@ class QueueItem(zkobject.ZKObject):
         return get_annotated_logger(logger, self.event)
 
     def __repr__(self):
-        if self.pipeline:
-            pipeline = self.pipeline.name
+        if self.manager:
+            pipeline = self.manager.pipeline.name
         else:
             pipeline = None
         if self.live:
@@ -6500,7 +6484,7 @@ class QueueItem(zkobject.ZKObject):
             self.uuid, live, self.changes, pipeline)
 
     def resetAllBuilds(self):
-        context = self.pipeline.manager.current_context
+        context = self.manager.current_context
         old_build_set = self.current_build_set
         have_all_files = all(c.files is not None for c in self.changes)
         files_state = (BuildSet.COMPLETE if have_all_files else BuildSet.NEW)
@@ -6534,14 +6518,14 @@ class QueueItem(zkobject.ZKObject):
         self.current_build_set.removeBuild(build)
 
     def setReportedResult(self, result):
-        self.updateAttributes(self.pipeline.manager.current_context,
+        self.updateAttributes(self.manager.current_context,
                               report_time=time.time())
         self.current_build_set.updateAttributes(
-            self.pipeline.manager.current_context, result=result)
+            self.manager.current_context, result=result)
 
     def warning(self, msgs):
         with self.current_build_set.activeContext(
-                self.pipeline.manager.current_context):
+                self.manager.current_context):
             if not isinstance(msgs, list):
                 msgs = [msgs]
             for msg in msgs:
@@ -6695,7 +6679,7 @@ class QueueItem(zkobject.ZKObject):
         trusted and untrusted configs"""
         includes_trusted = False
         includes_untrusted = False
-        tenant = self.pipeline.tenant
+        tenant = self.manager.tenant
         item = self
 
         while item:
@@ -6716,8 +6700,8 @@ class QueueItem(zkobject.ZKObject):
     def updatesConfig(self):
         """Returns whether the changes update the config"""
         for change in self.changes:
-            if change.updatesConfig(self.pipeline.tenant):
-                tenant_project = self.pipeline.tenant.getProject(
+            if change.updatesConfig(self.manager.tenant):
+                tenant_project = self.manager.tenant.getProject(
                     change.project.canonical_name
                 )[1]
                 # If the cycle doesn't update the config or a change
@@ -6754,13 +6738,13 @@ class QueueItem(zkobject.ZKObject):
         self.log.debug("Checking DB for requirements")
         requirements_tuple = tuple(sorted(requirements))
         if requirements_tuple not in self._cached_sql_results:
-            conn = self.pipeline.manager.sched.connections.getSqlConnection()
+            conn = self.manager.sched.connections.getSqlConnection()
             if conn:
                 for change in self.changes:
                     builds = conn.getBuilds(
-                        tenant=self.pipeline.tenant.name,
+                        tenant=self.manager.tenant.name,
                         project=change.project.name,
-                        pipeline=self.pipeline.name,
+                        pipeline=self.manager.pipeline.name,
                         change=change.number,
                         branch=change.branch,
                         patchset=change.patchset,
@@ -6818,7 +6802,7 @@ class QueueItem(zkobject.ZKObject):
             # Look for this item in other queues in the pipeline.
             item = None
             found = False
-            for item in self.pipeline.state.getAllItems():
+            for item in self.manager.state.getAllItems():
                 if item.live and set(item.changes) == set(self.changes):
                     found = True
                     break
@@ -6878,13 +6862,13 @@ class QueueItem(zkobject.ZKObject):
             return ret
         except RequirementsError as e:
             self.log.info(str(e))
-            fakebuild = Build.new(self.pipeline.manager.current_context,
+            fakebuild = Build.new(self.manager.current_context,
                                   job=job, build_set=self.current_build_set,
                                   error_detail=str(e), result='FAILURE')
             self.addBuild(fakebuild)
-            self.pipeline.manager.sched.reportBuildEnd(
+            self.manager.sched.reportBuildEnd(
                 fakebuild,
-                tenant=self.pipeline.tenant.name,
+                tenant=self.manager.tenant.name,
                 final=True)
             self.setResult(fakebuild)
         return False
@@ -7025,7 +7009,7 @@ class QueueItem(zkobject.ZKObject):
                         # it, set it here.
                         if job.queued is not True:
                             job.updateAttributes(
-                                self.pipeline.manager.current_context,
+                                self.manager.current_context,
                                 queued=True)
 
         # Attempt to request nodes for jobs in the order jobs appear
@@ -7076,7 +7060,7 @@ class QueueItem(zkobject.ZKObject):
                     toreq.append(job)
                     if job.queued is not True:
                         job.updateAttributes(
-                            self.pipeline.manager.current_context,
+                            self.manager.current_context,
                             queued=True)
                 else:
                     sem_names = ','.join([s.name for s in job.semaphores])
@@ -7133,21 +7117,21 @@ class QueueItem(zkobject.ZKObject):
             child_build = self.current_build_set.getBuild(job)
             if not child_build:
                 fake_builds.append(
-                    Build.new(self.pipeline.manager.current_context,
+                    Build.new(self.manager.current_context,
                               job=job,
                               build_set=self.current_build_set,
                               error_detail=skipped_reason,
                               result='SKIPPED'))
         if fake_builds:
             self.addBuilds(fake_builds)
-            self.pipeline.manager.sched.reportBuildEnds(
+            self.manager.sched.reportBuildEnds(
                 fake_builds,
-                tenant=self.pipeline.tenant.name,
+                tenant=self.manager.tenant.name,
                 final=True)
 
     def setNodeRequestFailure(self, job, error):
         fakebuild = Build.new(
-            self.pipeline.manager.current_context,
+            self.manager.current_context,
             job=job,
             build_set=self.current_build_set,
             start_time=time.time(),
@@ -7156,27 +7140,27 @@ class QueueItem(zkobject.ZKObject):
             result='NODE_FAILURE',
         )
         self.addBuild(fakebuild)
-        self.pipeline.manager.sched.reportBuildEnd(
+        self.manager.sched.reportBuildEnd(
             fakebuild,
-            tenant=self.pipeline.tenant.name,
+            tenant=self.manager.tenant.name,
             final=True)
         self.setResult(fakebuild)
 
     def setDequeuedNeedingChange(self, msg):
         self.updateAttributes(
-            self.pipeline.manager.current_context,
+            self.manager.current_context,
             dequeued_needing_change=msg)
         self._setAllJobsSkipped(msg)
 
     def setDequeuedMissingRequirements(self):
         self.updateAttributes(
-            self.pipeline.manager.current_context,
+            self.manager.current_context,
             dequeued_missing_requirements=True)
         self._setAllJobsSkipped('Missing pipeline requirements')
 
     def setUnableToMerge(self, errors=None):
         with self.current_build_set.activeContext(
-                self.pipeline.manager.current_context):
+                self.manager.current_context):
             self.current_build_set.unable_to_merge = True
             if errors:
                 for msg in errors:
@@ -7200,7 +7184,7 @@ class QueueItem(zkobject.ZKObject):
                              self)
         if self.current_build_set.config_errors != errors:
             with self.current_build_set.activeContext(
-                    self.pipeline.manager.current_context):
+                    self.manager.current_context):
                 self.current_build_set.setConfigErrors(errors)
         if [x for x in errors if x.severity == SEVERITY_ERROR]:
             self._setAllJobsSkipped('Buildset configuration error')
@@ -7209,14 +7193,14 @@ class QueueItem(zkobject.ZKObject):
         fake_builds = []
         for job in self.getJobs():
             fake_builds.append(Build.new(
-                self.pipeline.manager.current_context,
+                self.manager.current_context,
                 job=job, build_set=self.current_build_set,
                 error_detail=msg, result='SKIPPED'))
         if fake_builds:
             self.addBuilds(fake_builds)
-            self.pipeline.manager.sched.reportBuildEnds(
+            self.manager.sched.reportBuildEnds(
                 fake_builds,
-                tenant=self.pipeline.tenant.name,
+                tenant=self.manager.tenant.name,
                 final=True)
 
     def _setMissingJobsSkipped(self, msg):
@@ -7227,14 +7211,14 @@ class QueueItem(zkobject.ZKObject):
                 # We already have a build for this job
                 continue
             fake_builds.append(Build.new(
-                self.pipeline.manager.current_context,
+                self.manager.current_context,
                 job=job, build_set=self.current_build_set,
                 error_detail=msg, result='SKIPPED'))
         if fake_builds:
             self.addBuilds(fake_builds)
-            self.pipeline.manager.sched.reportBuildEnds(
+            self.manager.sched.reportBuildEnds(
                 fake_builds,
-                tenant=self.pipeline.tenant.name,
+                tenant=self.manager.tenant.name,
                 final=True)
 
     def formatUrlPattern(self, url_pattern, job=None, build=None):
@@ -7248,8 +7232,8 @@ class QueueItem(zkobject.ZKObject):
             safe_change = change.getSafeAttributes()
         else:
             safe_change = self.changes[0].getSafeAttributes()
-        safe_pipeline = self.pipeline.getSafeAttributes()
-        safe_tenant = self.pipeline.tenant.getSafeAttributes()
+        safe_pipeline = self.manager.pipeline.getSafeAttributes()
+        safe_tenant = self.manager.tenant.getSafeAttributes()
         safe_buildset = self.current_build_set.getSafeAttributes()
         safe_job = job.getSafeAttributes() if job else {}
         safe_build = build.getSafeAttributes() if build else {}
@@ -7277,7 +7261,7 @@ class QueueItem(zkobject.ZKObject):
     def formatJobResult(self, job, build=None):
         if build is None:
             build = self.current_build_set.getBuild(job)
-        pattern = urllib.parse.urljoin(self.pipeline.tenant.web_root,
+        pattern = urllib.parse.urljoin(self.manager.tenant.web_root,
                                        'build/{build.uuid}')
         url = self.formatUrlPattern(pattern, job, build)
         result = build.result
@@ -7291,7 +7275,7 @@ class QueueItem(zkobject.ZKObject):
 
     def formatItemUrl(self):
         # If we don't have a web root set, we can't format any url
-        if not self.pipeline.tenant.web_root:
+        if not self.manager.tenant.web_root:
             # Apparently we have no website
             return None
 
@@ -7299,7 +7283,7 @@ class QueueItem(zkobject.ZKObject):
             # We have reported (or are reporting) and so we should
             # send the buildset page url
             pattern = urllib.parse.urljoin(
-                self.pipeline.tenant.web_root, "buildset/{buildset.uuid}"
+                self.manager.tenant.web_root, "buildset/{buildset.uuid}"
             )
             return self.formatUrlPattern(pattern)
 
@@ -7308,7 +7292,7 @@ class QueueItem(zkobject.ZKObject):
         # url.  TODO: require a database, insert buildsets into it
         # when they are created, and remove this case.
         pattern = urllib.parse.urljoin(
-            self.pipeline.tenant.web_root,
+            self.manager.tenant.web_root,
             "status/change/{change.number},{change.patchset}",
         )
         return self.formatUrlPattern(pattern)
@@ -7482,8 +7466,8 @@ class QueueItem(zkobject.ZKObject):
     def updatesJobConfig(self, job, change, layout):
         log = self.annotateLogger(self.log)
         layout_ahead = None
-        if self.pipeline.manager:
-            layout_ahead = self.pipeline.manager.getFallbackLayout(self)
+        if self.manager:
+            layout_ahead = self.manager.getFallbackLayout(self)
         if layout_ahead and layout and layout is not layout_ahead:
             # This change updates the layout.  Calculate the job as it
             # would be if the layout had not changed.
@@ -7512,7 +7496,7 @@ class QueueItem(zkobject.ZKObject):
             if old_job is None:
                 log.debug("Found a newly created job")
                 return True  # A newly created job
-            if (job.getConfigHash(self.pipeline.tenant) !=
+            if (job.getConfigHash(self.manager.tenant) !=
                 old_job.config_hash):
                 log.debug("Found an updated job")
                 return True  # This job's configuration has changed
@@ -7537,7 +7521,7 @@ class QueueItem(zkobject.ZKObject):
             return None
         if not self.event.ref:
             return None
-        sched = self.pipeline.manager.sched
+        sched = self.manager.sched
         key = ChangeKey.fromReference(self.event.ref)
         source = sched.connections.getSource(key.connection_name)
         return source.getChange(key)
@@ -9396,6 +9380,7 @@ class Layout(object):
         self.project_templates = {}
         self.project_metadata = {}
         self.pipelines = OrderedDict()
+        self.pipeline_managers = OrderedDict()
         # This is a dictionary of name -> [jobs].  The first element
         # of the list is the first job added with that name.  It is
         # the reference definition for a given job.  Subsequent
@@ -9598,18 +9583,13 @@ class Layout(object):
                 "Provider %s is already defined" % provider.name)
         self.providers[provider.name] = provider
 
-    def addPipeline(self, pipeline):
-        if pipeline.tenant is not self.tenant:
-            raise Exception("Pipeline created for tenant %s "
-                            "may not be added to %s" % (
-                                pipeline.tenant,
-                                self.tenant))
-
+    def addPipeline(self, pipeline, manager):
         if pipeline.name in self.pipelines:
             raise Exception(
                 "Pipeline %s is already defined" % pipeline.name)
 
         self.pipelines[pipeline.name] = pipeline
+        self.pipeline_managers[pipeline.name] = manager
 
     def addProjectTemplate(self, project_template):
         for job in project_template.embeddedJobs():
@@ -9709,7 +9689,8 @@ class Layout(object):
             for template_name in pc.templates:
                 templates = self.getProjectTemplates(template_name)
                 for template in templates:
-                    template_ppc = template.pipelines.get(item.pipeline.name)
+                    template_ppc = template.pipelines.get(
+                        item.manager.pipeline.name)
                     if template_ppc:
                         if not template.changeMatches(
                                 self.tenant, change.project.canonical_name,
@@ -9732,7 +9713,7 @@ class Layout(object):
             # these again)
             ppc.updateVariables(pc.variables)
 
-            project_ppc = pc.pipelines.get(item.pipeline.name)
+            project_ppc = pc.pipelines.get(item.manager.pipeline.name)
             if project_ppc:
                 project_in_pipeline = True
                 ppc.update(project_ppc)
@@ -9847,9 +9828,9 @@ class Layout(object):
                        skip_file_matcher, redact_secrets_and_keys,
                        debug_messages, pending_errors):
         log = item.annotateLogger(self.log)
-        semaphore_handler = item.pipeline.tenant.semaphore_handler
+        semaphore_handler = item.manager.tenant.semaphore_handler
         job_list = ppc.job_list
-        pipeline = item.pipeline
+        pipeline = item.manager.pipeline
         add_debug_line(debug_messages, "Freezing job graph")
         for jobname in job_list.jobs:
             # This is the final job we are constructing
