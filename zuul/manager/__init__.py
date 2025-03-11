@@ -51,7 +51,7 @@ class DynamicChangeQueueContextManager(object):
         if (self.allow_delete and
             self.change_queue and
             not self.change_queue.queue):
-            self.change_queue.pipeline.manager.state.removeQueue(
+            self.change_queue.manager.state.removeQueue(
                 self.change_queue)
 
 
@@ -69,12 +69,13 @@ class StaticChangeQueueContextManager(object):
 class PipelineManager(metaclass=ABCMeta):
     """Abstract Base Class for enqueing and processing Changes in a Pipeline"""
 
-    def __init__(self, sched, pipeline):
+    def __init__(self, sched, pipeline, tenant):
         self.log = logging.getLogger("zuul.Pipeline.%s.%s" %
-                                     (pipeline.tenant.name,
+                                     (tenant.name,
                                       pipeline.name,))
         self.sched = sched
         self.pipeline = pipeline
+        self.tenant = tenant
         self.relative_priority_queues = {}
         # Cached dynamic layouts (layout uuid -> layout)
         self._layout_cache = {}
@@ -86,7 +87,7 @@ class PipelineManager(metaclass=ABCMeta):
         # The pipeline summary used by zuul-web that is updated by the
         # schedulers after processing a pipeline.
         self.summary = model.PipelineSummary()
-        self.summary._set(pipeline=self.pipeline)
+        self.summary._set(manager=self)
         self.state = None
         self.change_list = None
 
@@ -111,7 +112,7 @@ class PipelineManager(metaclass=ABCMeta):
         # haven't changed their pipeline participation.
         self._layout_cache = {}
 
-        layout = self.pipeline.tenant.layout
+        layout = self.tenant.layout
         self.buildChangeQueues(layout)
         # Make sure we have state and change list objects.  We
         # don't actually ensure they exist in ZK here; these are
@@ -124,9 +125,9 @@ class PipelineManager(metaclass=ABCMeta):
 
         # These will be out of date until they are refreshed later.
         self.state = PipelineState.create(
-            self.pipeline, self.pipeline.state)
+            self, self.state)
         self.change_list = PipelineChangeList.create(
-            self.pipeline)
+            self)
 
         # Now, try to acquire a non-blocking pipeline lock and refresh
         # them for the side effect of initializing them if necessary.
@@ -138,26 +139,26 @@ class PipelineManager(metaclass=ABCMeta):
         # read errors elsewhere in that case anyway.
         try:
             with (pipeline_lock(
-                    self.sched.zk_client, self.pipeline.tenant.name,
+                    self.sched.zk_client, self.tenant.name,
                     self.pipeline.name, blocking=False) as lock,
                     self.sched.createZKContext(lock, self.log) as ctx,
                     self.currentContext(ctx)):
-                if not self.pipeline.state.exists(ctx):
+                if not self.state.exists(ctx):
                     # We only do this if the pipeline doesn't exist in
                     # ZK because in that case, this process should be
                     # fast since it's empty.  If it does exist,
                     # refreshing it may be slow and since other actors
                     # won't encounter errors due to its absence, we
                     # would rather defer the work to later.
-                    self.pipeline.state.refresh(ctx)
-                    self.pipeline.change_list.refresh(ctx)
+                    self.state.refresh(ctx)
+                    self.change_list.refresh(ctx)
         except LockException:
             pass
 
     def buildChangeQueues(self, layout):
         self.log.debug("Building relative_priority queues")
         change_queues = self.relative_priority_queues
-        tenant = self.pipeline.tenant
+        tenant = self.tenant
         layout_project_configs = layout.project_configs
 
         for project_name, project_configs in layout_project_configs.items():
@@ -320,14 +321,14 @@ class PipelineManager(metaclass=ABCMeta):
     def isChangeRelevantToPipeline(self, change):
         # Checks if any version of the change or its deps matches any
         # item in the pipeline.
-        for change_key in self.pipeline.change_list.getChangeKeys():
+        for change_key in self.change_list.getChangeKeys():
             if change.cache_stat.key.isSameChange(change_key):
                 return True
         if isinstance(change, model.Change):
             for dep_change_ref in change.getNeedsChanges(
                     self.useDependenciesByTopic(change.project)):
                 dep_change_key = ChangeKey.fromReference(dep_change_ref)
-                for change_key in self.pipeline.change_list.getChangeKeys():
+                for change_key in self.change_list.getChangeKeys():
                     if change_key.isSameChange(dep_change_key):
                         return True
         return False
@@ -366,7 +367,7 @@ class PipelineManager(metaclass=ABCMeta):
             self.updateCommitDependencies(existing_change, event)
 
     def reportEnqueue(self, item):
-        if not self.pipeline.state.disabled:
+        if not self.state.disabled:
             self.log.info("Reporting enqueue, action %s item %s" %
                           (self.pipeline.enqueue_actions, item))
             ret = self.sendReport(self.pipeline.enqueue_actions, item)
@@ -375,7 +376,7 @@ class PipelineManager(metaclass=ABCMeta):
                                (item, ret))
 
     def reportStart(self, item):
-        if not self.pipeline.state.disabled:
+        if not self.state.disabled:
             self.log.info("Reporting start, action %s item %s" %
                           (self.pipeline.start_actions, item))
             ret = self.sendReport(self.pipeline.start_actions, item)
@@ -392,7 +393,7 @@ class PipelineManager(metaclass=ABCMeta):
                                        final, result)
 
     def reportDequeue(self, item, quiet=False):
-        if not (self.pipeline.state.disabled or quiet):
+        if not (self.state.disabled or quiet):
             self.log.info(
                 "Reporting dequeue, action %s item%s",
                 self.pipeline.dequeue_actions,
@@ -503,7 +504,7 @@ class PipelineManager(metaclass=ABCMeta):
     def removeAbandonedChange(self, change, event):
         log = get_annotated_logger(self.log, event)
         log.debug("Change %s abandoned, removing", change)
-        for queue in self.pipeline.queues:
+        for queue in self.state.queues:
             # Below we need to remove dependent changes of abandoned
             # changes we remove here, but only if both are live.
             # Therefore, track the changes we remove independently for
@@ -574,7 +575,7 @@ class PipelineManager(metaclass=ABCMeta):
             orig_ref = None
             if item.event:
                 orig_ref = item.event.ref
-            event = EnqueueEvent(self.pipeline.tenant.name,
+            event = EnqueueEvent(self.tenant.name,
                                  self.pipeline.name,
                                  change.project.canonical_hostname,
                                  change.project.name,
@@ -582,7 +583,7 @@ class PipelineManager(metaclass=ABCMeta):
                                  orig_ref=orig_ref)
             event.zuul_event_id = item.event.zuul_event_id
             self.sched.pipeline_management_events[
-                self.pipeline.tenant.name][self.pipeline.name].put(event)
+                self.tenant.name][self.pipeline.name].put(event)
 
     @abstractmethod
     def getChangeQueue(self, change, event, existing=None):
@@ -807,11 +808,11 @@ class PipelineManager(metaclass=ABCMeta):
                                           dependency_graph)
 
             zuul_driver = self.sched.connections.drivers['zuul']
-            tenant = self.pipeline.tenant
+            tenant = self.tenant
             with trace.use_span(tracing.restoreSpan(item.span_info)):
                 for c in item.changes:
                     zuul_driver.onChangeEnqueued(
-                        tenant, c, self.pipeline, event)
+                        tenant, c, self, event)
             self.dequeueSupercededItems(item)
             return True
 
@@ -829,7 +830,7 @@ class PipelineManager(metaclass=ABCMeta):
             # pipeline. Otherwise the change could be spammed by
             # reports from unrelated pipelines.
             try:
-                if self.pipeline.tenant.layout.getProjectPipelineConfig(
+                if self.tenant.layout.getProjectPipelineConfig(
                         ci, change):
                     self.sendReport(actions, ci)
             except model.TemplateNotFoundError:
@@ -915,9 +916,9 @@ class PipelineManager(metaclass=ABCMeta):
                     log.debug("%sNeeded change is merged", indent)
                 continue
 
-            if (self.pipeline.tenant.max_dependencies is not None and
+            if (self.tenant.max_dependencies is not None and
                 (len(dependency_graph) >
-                 self.pipeline.tenant.max_dependencies)):
+                 self.tenant.max_dependencies)):
                 log.info("%sDependency graph for change %s is too large",
                          indent, change)
                 raise exceptions.DependencyLimitExceededError(
@@ -936,7 +937,7 @@ class PipelineManager(metaclass=ABCMeta):
                                         history, quiet, indent + '  ')
 
     def getQueueConfig(self, project):
-        layout = self.pipeline.tenant.layout
+        layout = self.tenant.layout
         queue_name = None
         for project_config in layout.getAllProjectConfigs(
             project.canonical_name
@@ -971,7 +972,7 @@ class PipelineManager(metaclass=ABCMeta):
         return queue_config.dependencies_by_topic
 
     def checkPipelineWithinLimits(self, cycle, history):
-        pipeline_max = self.pipeline.tenant.max_changes_per_pipeline
+        pipeline_max = self.tenant.max_changes_per_pipeline
         if pipeline_max is None:
             return True
         additional = len(cycle) + len(history)
@@ -1015,7 +1016,7 @@ class PipelineManager(metaclass=ABCMeta):
 
         span_attrs = {
             'zuul_event_id': item.event.zuul_event_id,
-            'zuul_tenant': self.pipeline.tenant.name,
+            'zuul_tenant': self.tenant.name,
             'zuul_pipeline': self.pipeline.name,
         }
         for change in item.changes:
@@ -1038,9 +1039,9 @@ class PipelineManager(metaclass=ABCMeta):
 
     def dequeueSupercededItems(self, item):
         for other_name in self.pipeline.supercedes:
-            other_pipeline = self.pipeline.tenant.layout.pipelines.get(
+            other_manager = self.tenant.layout.pipeline_managers.get(
                 other_name)
-            if not other_pipeline:
+            if not other_manager:
                 continue
 
             for change in item.changes:
@@ -1049,14 +1050,14 @@ class PipelineManager(metaclass=ABCMeta):
                     else None
                 )
                 event = model.SupercedeEvent(
-                    other_pipeline.tenant.name,
-                    other_pipeline.name,
+                    other_manager.tenant.name,
+                    other_manager.pipeline.name,
                     change.project.canonical_hostname,
                     change.project.name,
                     change_id,
                     change.ref)
                 self.sched.pipeline_trigger_events[
-                    self.pipeline.tenant.name][other_pipeline.name
+                    self.tenant.name][other_manager.pipeline.name
                         ].put_supercede(event)
 
     def updateCommitDependencies(self, change, event):
@@ -1146,7 +1147,7 @@ class PipelineManager(metaclass=ABCMeta):
 
     def provisionNodes(self, item):
         log = item.annotateLogger(self.log)
-        jobs = item.findJobsToRequest(item.pipeline.tenant.semaphore_handler)
+        jobs = item.findJobsToRequest(self.tenant.semaphore_handler)
         if not jobs:
             return False
         build_set = item.current_build_set
@@ -1179,8 +1180,8 @@ class PipelineManager(metaclass=ABCMeta):
     def _makeNodepoolRequest(self, log, build_set, job, relative_priority):
         provider = self._getPausedParentProvider(build_set, job)
         priority = self._calculateNodeRequestPriority(build_set, job)
-        tenant_name = build_set.item.pipeline.tenant.name
-        pipeline_name = build_set.item.pipeline.name
+        tenant_name = self.tenant.name
+        pipeline_name = self.pipeline.name
         item = build_set.item
         req = self.sched.nodepool.requestNodes(
             build_set.uuid, job, tenant_name, pipeline_name, provider,
@@ -1229,7 +1230,7 @@ class PipelineManager(metaclass=ABCMeta):
 
     def _calculateNodeRequestPriority(self, build_set, job):
         precedence_adjustment = 0
-        precedence = build_set.item.pipeline.precedence
+        precedence = self.pipeline.precedence
         if self._getPausedParent(build_set, job):
             precedence_adjustment = -1
         initial_precedence = model.PRIORITY_MAP[precedence]
@@ -1274,8 +1275,9 @@ class PipelineManager(metaclass=ABCMeta):
                     # If we hit an exception we don't have a build in the
                     # current item so a potentially aquired semaphore must be
                     # released as it won't be released on dequeue of the item.
-                    pipeline = build_set.item.pipeline
-                    tenant = pipeline.tenant
+                    tenant = self.tenant
+                    pipeline = self.pipeline
+
                     if COMPONENT_REGISTRY.model_api >= 33:
                         event_queue = self.sched.management_events[tenant.name]
                     else:
@@ -1291,8 +1293,7 @@ class PipelineManager(metaclass=ABCMeta):
         if not item.current_build_set.job_graph:
             return False
 
-        jobs = item.findJobsToRun(
-            item.pipeline.tenant.semaphore_handler)
+        jobs = item.findJobsToRun(self.tenant.semaphore_handler)
         if jobs:
             self._executeJobs(item, jobs)
 
@@ -1430,7 +1431,7 @@ class PipelineManager(metaclass=ABCMeta):
                 # config items ahead), so just use the current pipeline
                 # layout.
                 log.debug("Loading dynamic layout complete")
-                return item.queue.pipeline.tenant.layout
+                return item.manager.tenant.layout
             # Untrusted layout only works with trusted updates
             elif (trusted_layout and not trusted_errors and
                     untrusted_layout and untrusted_errors):
@@ -1480,7 +1481,7 @@ class PipelineManager(metaclass=ABCMeta):
                     "change context. Error won't be reported.")
                 # We're a change to a config repo with errors not relevant
                 # to this repo. We use the pipeline layout.
-                return item.queue.pipeline.tenant.layout
+                return item.manager.tenant.layout
             else:
                 raise Exception("We have reached a configuration error that is"
                                 "not accounted for.")
@@ -1505,7 +1506,7 @@ class PipelineManager(metaclass=ABCMeta):
     def getFallbackLayout(self, item):
         parent_item = item.item_ahead
         if not parent_item:
-            return item.pipeline.tenant.layout
+            return self.tenant.layout
 
         return self.getLayout(parent_item)
 
@@ -1604,7 +1605,7 @@ class PipelineManager(metaclass=ABCMeta):
         # If the involved projects exclude unprotected branches we should also
         # exclude them from the merge and repo state except the branch of the
         # change that is tested.
-        tenant = item.pipeline.tenant
+        tenant = self.tenant
         items = list(item.items_ahead) + [item]
         projects = {
             change.project for i in items for change in i.changes
@@ -1644,7 +1645,7 @@ class PipelineManager(metaclass=ABCMeta):
     def scheduleGlobalRepoState(self, item):
         log = item.annotateLogger(self.log)
 
-        tenant = item.pipeline.tenant
+        tenant = self.tenant
         jobs = item.current_build_set.job_graph.getJobs()
         project_cnames = set()
         for job in jobs:
@@ -1711,7 +1712,7 @@ class PipelineManager(metaclass=ABCMeta):
 
     def prepareItem(self, item):
         build_set = item.current_build_set
-        tenant = item.pipeline.tenant
+        tenant = self.tenant
         # We always need to set the configuration of the item if it
         # isn't already set.
         if not build_set.ref:
@@ -2045,7 +2046,7 @@ class PipelineManager(metaclass=ABCMeta):
         self.log.debug("Starting queue processor: %s" % self.pipeline.name)
         changed = False
         change_keys = set()
-        for queue in self.pipeline.queues[:]:
+        for queue in self.state.queues[:]:
             queue_changed = False
             nnfi = None  # Nearest non-failing item
             for item in queue.queue[:]:
@@ -2066,9 +2067,7 @@ class PipelineManager(metaclass=ABCMeta):
                     self.log.debug("Queue %s status is now:\n %s" %
                                    (queue.name, status))
 
-        self.pipeline.change_list.setChangeKeys(
-            self.pipeline.manager.current_context,
-            change_keys)
+        self.change_list.setChangeKeys(self.current_context, change_keys)
         self._maintainCache()
         self.log.debug("Finished queue processor: %s (changed: %s)" %
                        (self.pipeline.name, changed))
@@ -2161,13 +2160,12 @@ class PipelineManager(metaclass=ABCMeta):
 
         log.debug("Build %s of %s completed", build, item)
 
-        pipeline = item.pipeline
         if COMPONENT_REGISTRY.model_api >= 33:
-            event_queue = self.sched.management_events[pipeline.tenant.name]
+            event_queue = self.sched.management_events[self.tenant.name]
         else:
             event_queue = self.sched.pipeline_result_events[
-                pipeline.tenant.name][pipeline.name]
-        item.pipeline.tenant.semaphore_handler.release(
+                self.tenant.name][self.pipeline.name]
+        self.tenant.semaphore_handler.release(
             event_queue, item, build.job)
 
         if item.getJob(build.job.uuid) is None:
@@ -2324,8 +2322,8 @@ class PipelineManager(metaclass=ABCMeta):
             build_set.item.setNodeRequestFailure(
                 job, f'Node(set) request {request.id} failed')
             self._resumeBuilds(build_set)
-            pipeline = build_set.item.pipeline
-            tenant = pipeline.tenant
+            pipeline = self.pipeline
+            tenant = self.tenant
             if COMPONENT_REGISTRY.model_api >= 33:
                 event_queue = self.sched.management_events[tenant.name]
             else:
@@ -2498,23 +2496,23 @@ class PipelineManager(metaclass=ABCMeta):
             action = 'success'
             actions = self.pipeline.success_actions
             item.setReportedResult('SUCCESS')
-            with self.pipeline.state.activeContext(self.current_context):
-                self.pipeline.state.consecutive_failures = 0
+            with self.state.activeContext(self.current_context):
+                self.state.consecutive_failures = 0
         else:
             action = 'failure'
             actions = self.pipeline.failure_actions
             item.setReportedResult('FAILURE')
-            with self.pipeline.state.activeContext(self.current_context):
-                self.pipeline.state.consecutive_failures += 1
-        if project_in_pipeline and self.pipeline.state.disabled:
+            with self.state.activeContext(self.current_context):
+                self.state.consecutive_failures += 1
+        if project_in_pipeline and self.state.disabled:
             actions = self.pipeline.disabled_actions
         # Check here if we should disable so that we only use the disabled
         # reporters /after/ the last disable_at failure is still reported as
         # normal.
-        if (self.pipeline.disable_at and not self.pipeline.state.disabled and
-            self.pipeline.state.consecutive_failures
+        if (self.pipeline.disable_at and not self.state.disabled and
+            self.state.consecutive_failures
                 >= self.pipeline.disable_at):
-            self.pipeline.state.updateAttributes(
+            self.state.updateAttributes(
                 self.current_context, disabled=True)
         if actions:
             log.info("Reporting item %s, actions: %s", item, actions)
@@ -2539,7 +2537,7 @@ class PipelineManager(metaclass=ABCMeta):
                           for i in self.state.getAllItems())
             # TODO(jeblair): add items keys like changes
 
-            tenant = self.pipeline.tenant
+            tenant = self.tenant
             basekey = 'zuul.tenant.%s' % tenant.name
             key = '%s.pipeline.%s' % (basekey, self.pipeline.name)
             # stats.timers.zuul.tenant.<tenant>.pipeline.<pipeline>.resident_time
@@ -2547,7 +2545,7 @@ class PipelineManager(metaclass=ABCMeta):
             # stats.gauges.zuul.tenant.<tenant>.pipeline.<pipeline>.current_changes
             # stats.gauges.zuul.tenant.<tenant>.pipeline.<pipeline>.window
             self.sched.statsd.gauge(key + '.current_changes', changes)
-            self.sched.statsd.gauge(key + '.window', item.pipeline.window)
+            self.sched.statsd.gauge(key + '.window', self.pipeline.window)
             if dt:
                 self.sched.statsd.timing(key + '.resident_time', dt)
                 self.sched.statsd.incr(key + '.total_changes', item_changes)

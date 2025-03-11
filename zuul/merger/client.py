@@ -79,8 +79,8 @@ class MergeClient(object):
 
         if build_set is not None:
             build_set_uuid = build_set.uuid
-            tenant_name = build_set.item.pipeline.tenant.name
-            pipeline_name = build_set.item.pipeline.name
+            tenant_name = build_set.item.manager.tenant.name
+            pipeline_name = build_set.item.manager.pipeline.name
             parent_span = tracing.restoreSpan(build_set.span_info)
 
         with trace.use_span(parent_span):

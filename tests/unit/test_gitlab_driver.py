@@ -599,7 +599,8 @@ class TestGitlabDriver(ZuulTestCase):
 
         # There should be no more changes in the queue
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
     @simple_layout('layouts/requirements-gitlab.yaml', driver='gitlab')
     def test_state_require(self):

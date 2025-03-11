@@ -76,16 +76,17 @@ class TestJob(BaseTestCase):
         self.tenant.addTPC(self.tpc)
         self.pipeline = model.Pipeline('gate', self.tenant)
         self.pipeline.source_context = self.context
-        self.pipeline.manager = mock.Mock()
-        self.pipeline.tenant = self.tenant
+        self.manager = mock.Mock()
+        self.manager.pipeline = self.pipeline
+        self.manager.tenant = self.tenant
         self.zk_context = LocalZKContext(self.log)
-        self.pipeline.manager.current_context = self.zk_context
-        self.pipeline.manager.state = model.PipelineState()
-        self.pipeline.state._set(pipeline=self.pipeline)
-        self.layout.addPipeline(self.pipeline)
+        self.manager.current_context = self.zk_context
+        self.manager.state = model.PipelineState()
+        self.manager.state._set(manager=self.manager)
+        self.layout.addPipeline(self.pipeline, self.manager)
         with self.zk_context as ctx:
             self.queue = model.ChangeQueue.new(
-                ctx, pipeline=self.pipeline)
+                ctx, manager=self.manager)
         self.pcontext = configloader.ParseContext(
             self.connections, None, self.tenant, AnsibleManager())
 
@@ -312,7 +313,7 @@ class TestJob(BaseTestCase):
         self.assertTrue(base.changeMatchesFiles(change))
         self.assertFalse(python27.changeMatchesFiles(change))
 
-        self.pipeline.manager.getFallbackLayout = mock.Mock(return_value=None)
+        self.manager.getFallbackLayout = mock.Mock(return_value=None)
         with self.zk_context as ctx:
             item.freezeJobGraph(self.layout, ctx,
                                 skip_file_matcher=False,

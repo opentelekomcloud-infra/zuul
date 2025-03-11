@@ -190,7 +190,7 @@ class GithubReporter(BaseReporter):
 
         url = item.formatItemUrl()
 
-        description = '%s status: %s' % (item.pipeline.name,
+        description = '%s status: %s' % (item.manager.pipeline.name,
                                          self._commit_status)
 
         if len(description) >= 140:
@@ -318,8 +318,8 @@ class GithubReporter(BaseReporter):
         # https://review.opendev.org/#/c/666258/7
         external_id = json.dumps(
             {
-                "tenant": item.pipeline.tenant.name,
-                "pipeline": item.pipeline.name,
+                "tenant": item.manager.tenant.name,
+                "pipeline": item.manager.pipeline.name,
                 "change": change.number,
             }
         )
