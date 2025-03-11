@@ -37,4 +37,4 @@ class SerialPipelineManager(SharedQueuePipelineManager):
         # remove the queue (if empty)
         if item.queue.dynamic:
             if not item.queue.queue:
-                self.pipeline.removeQueue(item.queue)
+                self.state.removeQueue(item.queue)

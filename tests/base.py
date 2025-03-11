@@ -2935,6 +2935,17 @@ class ZuulTestCase(BaseTestCase):
                 if isinstance(pipeline.manager, ipm):
                     self.assertEqual(len(pipeline.queues), 0)
 
+    def getAllItems(self, tenant_name, pipeline_name):
+        tenant = self.scheds.first.sched.abide.tenants.get(tenant_name)
+        manager = tenant.layout.pipelines[pipeline_name].manager
+        items = manager.state.getAllItems()
+        return items
+
+    def getAllQueues(self, tenant_name, pipeline_name):
+        tenant = self.scheds.first.sched.abide.tenants.get(tenant_name)
+        manager = tenant.layout.pipelines[pipeline_name].manager
+        return manager.state.queues
+
     def shutdown(self):
         # Note: when making changes to this sequence, check if
         # corresponding changes need to happen in
@@ -3080,7 +3091,7 @@ class ZuulTestCase(BaseTestCase):
     def getCurrentBuilds(self):
         for tenant in self.scheds.first.sched.abide.tenants.values():
             for pipeline in tenant.layout.pipelines.values():
-                for item in pipeline.getAllItems():
+                for item in pipeline.manager.state.getAllItems():
                     for build in item.current_build_set.builds.values():
                         yield build
 
