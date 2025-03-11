@@ -1586,7 +1586,7 @@ class PipelineParser(object):
             with self.pcontext.confAttr(conf, 'require', {}) as require_dict:
                 for source_name, require_config in require_dict.items():
                     source = self.pcontext.connections.getSource(source_name)
-                    manager.ref_filters.extend(
+                    pipeline.ref_filters.extend(
                         source.getRequireFilters(
                             require_config, self.pcontext))
                     seen_connections.add(source_name)
@@ -1594,7 +1594,7 @@ class PipelineParser(object):
             with self.pcontext.confAttr(conf, 'reject', {}) as reject_dict:
                 for source_name, reject_config in reject_dict.items():
                     source = self.pcontext.connections.getSource(source_name)
-                    manager.ref_filters.extend(
+                    pipeline.ref_filters.extend(
                         source.getRejectFilters(reject_config, self.pcontext))
                     seen_connections.add(source_name)
 
@@ -1607,7 +1607,7 @@ class PipelineParser(object):
                     trigger = self.pcontext.connections.getTrigger(
                         connection_name, trigger_config)
                     pipeline.triggers.append(trigger)
-                    manager.event_filters.extend(
+                    pipeline.event_filters.extend(
                         trigger.getEventFilters(
                             connection_name,
                             conf['trigger'][connection_name],
