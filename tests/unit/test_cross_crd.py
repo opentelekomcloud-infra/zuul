@@ -279,7 +279,8 @@ class TestGerritToGithubCRD(ZuulTestCase):
                          (B.head_sha,))
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
     def test_crd_check_duplicate(self):
         "Test duplicate check in independent pipelines"
@@ -353,8 +354,9 @@ class TestGerritToGithubCRD(ZuulTestCase):
         # Make sure the items still share a change queue, and the
         # first one is not live.
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 1)
-        queue = tenant.layout.pipelines['check'].queues[0]
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 1)
+        queue = tenant.layout.pipeline_managers['check'].state.queues[0]
         first_item = queue.queue[0]
         for item in queue.queue:
             self.assertEqual(item.queue, first_item.queue)
@@ -374,7 +376,8 @@ class TestGerritToGithubCRD(ZuulTestCase):
             'project-merge', project1).changes
         self.assertEqual(changes, '1,%s 1,1' %
                          (B.head_sha,))
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
     @skipIfMultiScheduler()
     def test_crd_check_reconfiguration(self):
@@ -740,7 +743,8 @@ class TestGithubToGerritCRD(ZuulTestCase):
                          (A.head_sha,))
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
     def test_crd_check_duplicate(self):
         "Test duplicate check in independent pipelines"
@@ -789,7 +793,8 @@ class TestGithubToGerritCRD(ZuulTestCase):
         changes = self.getJobFromHistory(
             'project-merge', 'gerrit/project1').changes
         self.assertEqual(changes, '1,1')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
         self.assertIn('Build succeeded', A.comments[0])
 
@@ -811,8 +816,9 @@ class TestGithubToGerritCRD(ZuulTestCase):
         # Make sure the items still share a change queue, and the
         # first one is not live.
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 1)
-        queue = tenant.layout.pipelines['check'].queues[0]
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 1)
+        queue = tenant.layout.pipeline_managers['check'].state.queues[0]
         first_item = queue.queue[0]
         for item in queue.queue:
             self.assertEqual(item.queue, first_item.queue)
@@ -832,7 +838,8 @@ class TestGithubToGerritCRD(ZuulTestCase):
             'project-merge', project1).changes
         self.assertEqual(changes, '1,1 1,%s' %
                          (A.head_sha,))
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
     @skipIfMultiScheduler()
     def test_crd_check_reconfiguration(self):
@@ -868,8 +875,9 @@ class TestGithubToGerritCRD(ZuulTestCase):
         # Make sure the items still share a change queue, and the
         # first one is not live.
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 1)
-        queue = tenant.layout.pipelines['check'].queues[0]
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 1)
+        queue = tenant.layout.pipeline_managers['check'].state.queues[0]
         first_item = queue.queue[0]
         for item in queue.queue:
             self.assertEqual(item.queue, first_item.queue)
@@ -889,7 +897,8 @@ class TestGithubToGerritCRD(ZuulTestCase):
             'project-merge', 'github/project2').changes
         expected_changes = f'1,1 1,{A.head_sha}'
         self.assertEqual(changes, expected_changes)
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
         # Re-check the same PR again
         self.fake_github.emitEvent(gh_event)

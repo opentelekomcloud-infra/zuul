@@ -170,9 +170,9 @@ class TestScaleOutScheduler(ZuulTestCase):
         self.assertHistory([])
 
         tenant = first.sched.abide.tenants['tenant-one']
-        pipeline = tenant.layout.pipelines['check']
+        manager = tenant.layout.pipeline_managers['check']
         summary = zuul.model.PipelineSummary()
-        summary._set(pipeline=pipeline)
+        summary._set(manager=manager)
         with self.createZKContext() as context:
             summary.refresh(context)
         self.assertEqual(summary.status['change_queues'], [])
@@ -336,7 +336,7 @@ class TestScaleOutScheduler(ZuulTestCase):
                 break
 
         pipeline_zk_path = app.sched.abide.tenants[
-            "tenant-one"].layout.pipelines["check"].state.getPath()
+            "tenant-one"].layout.pipeline_managers["check"].state.getPath()
 
         self.executor_server.hold_jobs_in_build = True
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
@@ -461,12 +461,12 @@ class TestScaleOutScheduler(ZuulTestCase):
         # Test that we can deal with a truncated pipeline summary
         self.executor_server.hold_jobs_in_build = True
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        pipeline = tenant.layout.pipelines['check']
+        manager = tenant.layout.pipeline_managers['check']
         context = self.createZKContext()
 
         def new_summary():
             summary = zuul.model.PipelineSummary()
-            summary._set(pipeline=pipeline)
+            summary._set(manager=manager)
             with context:
                 summary.refresh(context)
             return summary
