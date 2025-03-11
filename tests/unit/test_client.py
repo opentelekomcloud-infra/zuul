@@ -516,8 +516,9 @@ class TestOnlineZKOperations(ZuulTestCase):
         tenant = sched.abide.tenants[tenant.name]
         new_layout_uuid = tenant.layout.uuid
         self.assertEqual(old_layout_uuid, new_layout_uuid)
-        self.assertEqual(tenant.layout.pipelines[pipeline].state.layout_uuid,
-                         old_layout_uuid)
+        self.assertEqual(
+            tenant.layout.pipeline_managers[pipeline].state.layout_uuid,
+            old_layout_uuid)
 
     def test_delete_pipeline_check(self):
         self._test_delete_pipeline('check')

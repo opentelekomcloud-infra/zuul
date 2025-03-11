@@ -74,10 +74,10 @@ class TestTimerAlwaysDynamicBranches(ZuulTestCase):
 
         # Ensure that the status json has the ref so we can render it in the
         # web ui.
-        pipeline = self.scheds.first.sched.abide.tenants[
-            'tenant-one'].layout.pipelines['periodic']
-        self.assertEqual(len(pipeline.queues), 2)
-        for queue in pipeline.queues:
+        manager = self.scheds.first.sched.abide.tenants[
+            'tenant-one'].layout.pipeline_managers['periodic']
+        self.assertEqual(len(manager.state.queues), 2)
+        for queue in manager.state.queues:
             item = queue.queue[0]
             self.assertIn(item.changes[0].branch, ['master', 'stable'])
 

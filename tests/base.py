@@ -2931,19 +2931,19 @@ class ZuulTestCase(BaseTestCase):
         self.assertCleanZooKeeper()
         ipm = zuul.manager.independent.IndependentPipelineManager
         for tenant in self.scheds.first.sched.abide.tenants.values():
-            for pipeline in tenant.layout.pipelines.values():
-                if isinstance(pipeline.manager, ipm):
-                    self.assertEqual(len(pipeline.queues), 0)
+            for manager in tenant.layout.pipeline_managers.values():
+                if isinstance(manager, ipm):
+                    self.assertEqual(len(manager.state.queues), 0)
 
     def getAllItems(self, tenant_name, pipeline_name):
         tenant = self.scheds.first.sched.abide.tenants.get(tenant_name)
-        manager = tenant.layout.pipelines[pipeline_name].manager
+        manager = tenant.layout.pipeline_managers[pipeline_name]
         items = manager.state.getAllItems()
         return items
 
     def getAllQueues(self, tenant_name, pipeline_name):
         tenant = self.scheds.first.sched.abide.tenants.get(tenant_name)
-        manager = tenant.layout.pipelines[pipeline_name].manager
+        manager = tenant.layout.pipeline_managers[pipeline_name]
         return manager.state.queues
 
     def shutdown(self):
@@ -3090,8 +3090,8 @@ class ZuulTestCase(BaseTestCase):
 
     def getCurrentBuilds(self):
         for tenant in self.scheds.first.sched.abide.tenants.values():
-            for pipeline in tenant.layout.pipelines.values():
-                for item in pipeline.manager.state.getAllItems():
+            for manager in tenant.layout.pipeline_managers.values():
+                for item in manager.state.getAllItems():
                     for build in item.current_build_set.builds.values():
                         yield build
 
@@ -3433,11 +3433,12 @@ class ZuulTestCase(BaseTestCase):
         for tenant in sched.abide.tenants.values():
             with tenant_read_lock(self.zk_client, tenant.name):
                 for pipeline in tenant.layout.pipelines.values():
+                    manager = tenant.layout.pipeline_managers[pipeline.name]
                     with (pipeline_lock(self.zk_client, tenant.name,
                                         pipeline.name) as lock,
                           self.createZKContext(lock) as ctx):
-                        with pipeline.manager.currentContext(ctx):
-                            pipeline.state.refresh(ctx)
+                        with manager.currentContext(ctx):
+                            manager.state.refresh(ctx)
         # return the context in case the caller wants to examine iops
         return ctx
 
@@ -3480,7 +3481,8 @@ class ZuulTestCase(BaseTestCase):
             self.log.info("Running build: %s" % build)
         for tenant in self.scheds.first.sched.abide.tenants.values():
             for pipeline in tenant.layout.pipelines.values():
-                for pipeline_queue in pipeline.queues:
+                manager = tenant.layout.pipeline_managers.get(pipeline.name)
+                for pipeline_queue in manager.state.queues:
                     if len(pipeline_queue.queue) != 0:
                         status = ''
                         for item in pipeline_queue.queue:
@@ -3526,7 +3528,8 @@ class ZuulTestCase(BaseTestCase):
         # Make sure there are no orphaned jobs
         for tenant in self.scheds.first.sched.abide.tenants.values():
             for pipeline in tenant.layout.pipelines.values():
-                for pipeline_queue in pipeline.queues:
+                manager = tenant.layout.pipeline_managers.get(pipeline.name)
+                for pipeline_queue in manager.state.queues:
                     if len(pipeline_queue.queue) != 0:
                         print('pipeline %s queue %s contents %s' % (
                             pipeline.name, pipeline_queue.name,
