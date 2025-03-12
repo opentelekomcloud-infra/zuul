@@ -47,11 +47,12 @@ class AwsProviderImage(BaseProviderImage):
         'values': [str],
     }
     # This is used here and in flavors and labels
-    inheritable_aws_volume_schema = vs.Schema({
+    inheritable_aws_image_schema = vs.Schema({
         Optional('volume-size'): Nullable(int),
         Optional('volume-type', default='gp3'): str,
         Optional('iops'): Nullable(int),
         Optional('throughput'): Nullable(int),
+        Optional('imds-http-tokens'): Nullable(vs.Any('optional', 'required')),
     })
     aws_cloud_schema = vs.Schema({
         vs.Exclusive(Required('image-id'), 'spec'): str,
@@ -62,7 +63,7 @@ class AwsProviderImage(BaseProviderImage):
         assemble(
             BaseProviderImage.schema,
             aws_cloud_schema,
-            inheritable_aws_volume_schema,
+            inheritable_aws_image_schema,
         ),
         RequiredExclusive('image_id', 'image_filters',
                           msg=('Provide either '
@@ -83,12 +84,12 @@ class AwsProviderImage(BaseProviderImage):
     zuul_schema = assemble(
         BaseProviderImage.schema,
         aws_zuul_schema,
-        inheritable_aws_volume_schema,
+        inheritable_aws_image_schema,
         inheritable_aws_zuul_schema,
     )
     inheritable_schema = assemble(
         BaseProviderImage.inheritable_schema,
-        inheritable_aws_volume_schema,
+        inheritable_aws_image_schema,
         inheritable_aws_zuul_schema,
     )
     schema = vs.Union(
@@ -128,14 +129,14 @@ class AwsProviderFlavor(BaseProviderFlavor):
         BaseProviderFlavor.inheritable_schema,
         # This is already included via the image, but listed again
         # here for clarity.
-        AwsProviderImage.inheritable_aws_volume_schema,
+        AwsProviderImage.inheritable_aws_image_schema,
         provider_schema.cloud_flavor,
     )
     schema = vs.All(
         assemble(
             BaseProviderFlavor.schema,
             provider_schema.cloud_flavor,
-            AwsProviderImage.inheritable_aws_volume_schema,
+            AwsProviderImage.inheritable_aws_image_schema,
             aws_flavor_schema,
         ),
         RequiredExclusive('instance_type', 'fleet',
@@ -161,19 +162,19 @@ class AwsProviderLabel(BaseProviderLabel):
         BaseProviderLabel.inheritable_schema,
         # This is already included via the image, but listed again
         # here for clarity.
-        AwsProviderImage.inheritable_aws_volume_schema,
+        AwsProviderImage.inheritable_aws_image_schema,
         provider_schema.ssh_label,
         aws_label_schema,
     )
     schema = assemble(
         BaseProviderLabel.schema,
-        AwsProviderImage.inheritable_aws_volume_schema,
+        AwsProviderImage.inheritable_aws_image_schema,
         provider_schema.ssh_label,
         aws_label_schema,
     )
 
     image_flavor_inheritable_schema = assemble(
-        AwsProviderImage.inheritable_aws_volume_schema,
+        AwsProviderImage.inheritable_aws_image_schema,
     )
 
 
