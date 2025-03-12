@@ -55,8 +55,13 @@
     key-name: zuul
     flavors:
       - name: normal
-        instance-type: t3.medium
-        market-type: spot
+        fleet:
+          instance-types:
+            - t3.nano
+            - t3.micro
+            - t3.small
+            - t3.medium
+          allocation-strategy: price-capacity-optimized
     images:
       - name: debian
         image-id: ami-1e749f67
@@ -65,7 +70,6 @@
     name: aws-us-east-1
     parent: aws-base
     region: us-east-1
-    az:  us-east-1b
 
 - provider:
     name: aws-us-east-1-main
