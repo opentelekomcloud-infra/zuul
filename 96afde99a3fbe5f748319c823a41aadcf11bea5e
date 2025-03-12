@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9b07c2b9_32878658",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-12T00:31:56Z",
+      "side": 1,
+      "message": "The change is correct, but the commit message is wrong.  This shell snippet uses the zuul-client command, but the docs that are being edited are for the deprecated zuul-admin command.\n\nIt is true that the deprecated zuul-admin command does not want a `--id` argument as well, which is why I say the change is correct.",
+      "revId": "96afde99a3fbe5f748319c823a41aadcf11bea5e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
