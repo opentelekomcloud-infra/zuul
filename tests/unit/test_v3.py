@@ -35,6 +35,7 @@ import paramiko
 
 import zuul.configloader
 from zuul.lib import yamlutil as yaml
+from zuul.lib.keystorage import OIDCKeys
 from zuul.model import MergeRequest, SEVERITY_WARNING
 from zuul.zk.blob_store import BlobStore
 
@@ -5512,14 +5513,17 @@ class TestOIDCSigningKeys(ZuulTestCase):
         keystore.getOidcSigningKeyData(algorithm)
 
         # Keys should also be in zk
-        test_keys1 = keystore._loadOidcSigningKeys(algorithm)
-        self.assertEqual(len(test_keys1["keys"]), 1)
+
+        test_keys1 = OIDCKeys.loadOidcSigningKeys(
+            keystore.zk_context, algorithm)
+        self.assertEqual(len(test_keys1.keys), 1)
 
         # Delete the keys
         keystore.deleteOidcSigningKeys(algorithm)
 
         # Keys should be gone
-        test_keys2 = keystore._loadOidcSigningKeys(algorithm)
+        test_keys2 = OIDCKeys.loadOidcSigningKeys(
+            keystore.zk_context, algorithm)
         self.assertIsNone(test_keys2)
 
     def test_oidc_rs256_key_generation(self):
@@ -5530,15 +5534,18 @@ class TestOIDCSigningKeys(ZuulTestCase):
         keystore = self.scheds.first.sched.keystore
 
         # initially there should be no keys
-        test_keys1 = keystore._loadOidcSigningKeys(algorithm)
+        test_keys1 = OIDCKeys.loadOidcSigningKeys(
+            keystore.zk_context, algorithm)
         self.assertIsNone(test_keys1)
 
         # Calling getOidcSigningKeyData() should return keys
         test_keys2 = keystore.getOidcSigningKeyData(algorithm)
-        self.assertEqual(len(test_keys2["keys"]), 1)
+
+        self.assertEqual(len(test_keys2.keys), 1)
         # Keys should also be in zk
-        test_keys3 = keystore._loadOidcSigningKeys(algorithm)
-        self.assertEqual(len(test_keys3["keys"]), 1)
+        test_keys3 = OIDCKeys.loadOidcSigningKeys(
+            keystore.zk_context, algorithm)
+        self.assertEqual(len(test_keys3.keys), 1)
         # And they should be equal
         self.assertEqual(test_keys2, test_keys3)
 
@@ -5560,8 +5567,8 @@ class TestOIDCSigningKeys(ZuulTestCase):
         test_keys1 = keystore.getOidcSigningKeyData(algorithm)
         private_key1, _, version1 = keystore.getLatestOidcSigningKeys(
             algorithm)
-        self.assertEqual(len(test_keys1["keys"]), 1)
-        self.assertEqual(test_keys1["keys"][0]["version"], 0)
+        self.assertEqual(len(test_keys1.keys), 1)
+        self.assertEqual(test_keys1.keys[0]["version"], 0)
         self.assertEqual(version1, 0)
 
         # Do rotation immediatly should not change anything
@@ -5580,20 +5587,20 @@ class TestOIDCSigningKeys(ZuulTestCase):
         time.sleep(rotation_interval + 1)
         keystore.rotateOidcSigningKeys(algorithm, rotation_interval, max_ttl)
         test_keys3 = keystore.getOidcSigningKeyData(algorithm)
+        self.assertEqual(len(test_keys3.keys), 2)
         private_key3, _, version3 = keystore.getLatestOidcSigningKeys(
             algorithm)
-        self.assertEqual(len(test_keys3["keys"]), 2)
         self.assertEqual(
-            test_keys3["keys"][0]["private_key"].encode("utf-8"),
-            test_keys1["keys"][0]["private_key"].encode("utf-8"))
+            test_keys3.keys[0]["private_key"].encode("utf-8"),
+            test_keys1.keys[0]["private_key"].encode("utf-8"))
         self.assertNotEqual(
-            test_keys3["keys"][1]["private_key"].encode("utf-8"),
-            test_keys1["keys"][0]["private_key"].encode("utf-8"))
-        self.assertEqual(test_keys3["keys"][1]["version"], 1)
+            test_keys3.keys[1]["private_key"].encode("utf-8"),
+            test_keys1.keys[0]["private_key"].encode("utf-8"))
+        self.assertEqual(test_keys3.keys[1]["version"], 1)
         self.assertEqual(version3, 1)
         self.assertGreaterEqual(
-            test_keys3["keys"][1]["created"],
-            test_keys1["keys"][0]["created"] + rotation_interval)
+            test_keys3.keys[1]["created"],
+            test_keys1.keys[0]["created"] + rotation_interval)
         self.assertNotEqual(
             encryption.serialize_rsa_private_key(private_key3),
             encryption.serialize_rsa_private_key(private_key1))
@@ -5603,12 +5610,12 @@ class TestOIDCSigningKeys(ZuulTestCase):
         time.sleep(max_ttl + 1)
         keystore.rotateOidcSigningKeys(algorithm, rotation_interval, max_ttl)
         test_keys4 = keystore.getOidcSigningKeyData(algorithm)
+        self.assertEqual(len(test_keys4.keys), 1)
         private_key4, _, version4 = keystore.getLatestOidcSigningKeys(
             algorithm)
-        self.assertEqual(len(test_keys4["keys"]), 1)
         self.assertEqual(
-            test_keys4["keys"][0]["private_key"],
-            test_keys3["keys"][1]["private_key"])
+            test_keys4.keys[0]["private_key"],
+            test_keys3.keys[1]["private_key"])
         self.assertEqual(
             encryption.serialize_rsa_private_key(private_key4),
             encryption.serialize_rsa_private_key(private_key3))

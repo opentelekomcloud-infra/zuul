@@ -25,8 +25,137 @@ import paramiko
 from zuul.exceptions import AlgorithmNotSupportedException
 from zuul.lib import encryption, strings
 from zuul.zk import ZooKeeperBase
+from zuul.zk.zkobject import ZKContext, ZKObject
 
 RSA_KEY_SIZE = 2048
+
+
+class OIDCKeys(ZKObject):
+
+    OIDC_ROOT_PATH = "/keystorage-oidc"
+
+    def __init__(self):
+        super().__init__()
+
+        self._set(
+            schema=1,
+            keys=[],
+            algorithm=None,
+        )
+
+    def getPath(self):
+        return self.getPathByAlgorithm(self.algorithm)
+
+    @classmethod
+    def getPathByAlgorithm(klass, algorithm):
+        return f"{klass.OIDC_ROOT_PATH}/{algorithm}"
+
+    def serialize(self, context):
+        keydata = {
+            'schema': self.schema,
+            'keys': self.keys,
+        }
+
+        return json.dumps(keydata, sort_keys=True).encode("utf8")
+
+    def appendKey(self, private_key, version):
+        if not self._active_context:
+            raise Exception("appendKey must be used with a context manager")
+        key_dict = self._generateKeyDict(private_key, version)
+        self.keys.append(key_dict)
+
+    @staticmethod
+    def _generateKeyDict(private_key, version):
+        return {
+            "version": version,
+            "created": int(time.time()),
+            "private_key": private_key,
+        }
+
+    @classmethod
+    def new(klass, context, algorithm, private_key, version=0):
+        obj = klass()
+        obj._set(algorithm=algorithm)
+        obj._set(keys=[klass._generateKeyDict(private_key, version)])
+        data = obj._trySerialize(context)
+        obj._save(context, data, create=True)
+        return obj
+
+    @classmethod
+    def loadOidcSigningKeys(klass, context, algorithm):
+        path = klass.getPathByAlgorithm(algorithm)
+        try:
+            return klass.fromZK(context, path, algorithm=algorithm)
+        except kazoo.exceptions.NoNodeError:
+            return None
+
+    @classmethod
+    def createAndStoreOidcSigningKeys(
+        klass, context, algorithm, password_bytes):
+        context.log.debug(
+            "Creating OIDC signing keys for algorithm: %s", algorithm)
+
+        private_key = klass.generateOidcSigningKey(algorithm, password_bytes)
+        klass.new(context, algorithm, private_key)
+
+    @classmethod
+    def generateOidcSigningKey(klass, algorithm, password_bytes):
+        if algorithm == "RS256":
+            private_key, public_key = encryption.generate_rsa_keypair()
+            pem_private_key = encryption.serialize_rsa_private_key(
+                private_key, password_bytes)
+            return pem_private_key.decode("utf-8")
+        else:
+            raise AlgorithmNotSupportedException(
+                f"Algorithm {algorithm} is not supported")
+
+    @classmethod
+    def rotateOidcSigningKeys(
+        klass, context, algorithm, password_bytes, rotation_interval, max_ttl):
+        context.log.debug("Rotating OIDC signing keys, algorithm: %s,"
+                          "rotation_interval: %s, max_ttl: %s",
+                          algorithm, rotation_interval, max_ttl)
+        key_data = klass.loadOidcSigningKeys(context, algorithm)
+
+        if not key_data:
+            klass.createAndStoreOidcSigningKeys(context, algorithm)
+        else:
+            # Check if there are old keys needs to be deleted
+            # Here also need to handle the corner case when max_ttl
+            # is bigger than rotation_interval. In this case, multiple
+            # valid keys can exist at the same time. In either case,
+            # find the last key whose created time is smaller than the
+            # current time - max_ttl, then all tokens signed by the
+            # keys before it should be expired and we can remove them.
+            older_than = int(time.time()) - max_ttl
+            with key_data.activeContext(context):
+                for index in range(len(key_data.keys) - 1, -1, -1):
+                    key = key_data.keys[index]
+                    if key["created"] < older_than and index > 0:
+                        context.log.debug("Removing old OIDC keys")
+                        key_data._set(keys=key_data.keys[index:])
+                        break
+
+                # Check if latest key is outdated and create a new one
+                latest_key = key_data.keys[-1]
+                age_seconds = int(time.time()) - latest_key["created"]
+                if age_seconds > rotation_interval:
+                    context.log.debug("Generating new OIDC key")
+                    private_key = OIDCKeys.generateOidcSigningKey(
+                        algorithm, password_bytes)
+                    key_data.appendKey(
+                        private_key=private_key,
+                        version=latest_key["version"] + 1)
+
+    @classmethod
+    def deleteByAlgorithm(klass, context, algorithm):
+        path = klass.getPathByAlgorithm(algorithm)
+        klass._delete(context, path)
+
+    def __eq__(self, other):
+        return (isinstance(other, OIDCKeys) and
+                self.schema == other.schema and
+                self.keys == other.keys)
 
 
 class KeyStorage(ZooKeeperBase):
@@ -38,13 +167,12 @@ class KeyStorage(ZooKeeperBase):
     SECRETS_PATH = PROJECT_PATH + "/secrets"
     SSH_PATH = PROJECT_PATH + "/ssh"
 
-    # /keystorage-oidc/algorithm
-    OIDC_PATH = "/keystorage-oidc/{}"
-
     def __init__(self, zookeeper_client, password, backup=None):
         super().__init__(zookeeper_client)
         self.password = password
         self.password_bytes = password.encode("utf-8")
+
+        self.zk_context = ZKContext(self.client, None, None, self.log)
 
     def _walk(self, root):
         ret = []
@@ -272,61 +400,26 @@ class KeyStorage(ZooKeeperBase):
         signing keys. It creates a new key and/or remove the older
         keys when necessary.
         """
-
-        self.log.debug("Rotating OIDC signing keys, algorithm: %s,"
-                       "rotation_interval: %s, max_ttl: %s",
-                       algorithm, rotation_interval, max_ttl)
-        key_data = self._loadOidcSigningKeys(algorithm)
-
-        if not key_data:
-            self._createAndStoreOidcSigningKeys(algorithm)
-        else:
-            update_required = False
-
-            # Check if there are old keys needs to be deleted
-            # Here also need to handle the corner case when max_ttl
-            # is bigger than rotation_interval. In this case, multiple
-            # valid keys can exist at the same time. In either case,
-            # find the last key whose created time is smaller than the
-            # current time - max_ttl, then all tokens signed by the
-            # keys before it should be expired and we can remove them.
-            older_than = int(time.time()) - max_ttl
-            for index in range(len(key_data["keys"]) - 1, -1, -1):
-                key = key_data["keys"][index]
-                if key["created"] < older_than and index > 0:
-                    self.log.debug("Removing old OIDC keys")
-                    key_data["keys"] = key_data["keys"][index:]
-                    update_required = True
-                    break
-
-            # Check if latest key is outdated and create a new one
-            latest_key = key_data["keys"][-1]
-            age_seconds = int(time.time()) - latest_key["created"]
-            if age_seconds > rotation_interval:
-                self.log.debug("Generating new OIDC key")
-                key_dict = self._generateOidcSigningKeyDict(
-                    algorithm, latest_key["version"] + 1)
-                key_data["keys"].append(key_dict)
-                update_required = True
-
-            if update_required:
-                self.log.debug("Number of keys: %s", len(key_data["keys"]))
-                self._updateOidcSigningKeyData(algorithm, key_data)
+        OIDCKeys.rotateOidcSigningKeys(
+            self.zk_context, algorithm, self.password_bytes,
+            rotation_interval, max_ttl)
 
     def getOidcSigningKeyData(self, algorithm):
         """Return the key data of an algorithm of OIDC singing keys"""
-        oidc_signing_keys = self._loadOidcSigningKeys(algorithm)
-
+        oidc_signing_keys = OIDCKeys.loadOidcSigningKeys(
+            self.zk_context, algorithm)
         if not oidc_signing_keys:
-            self._createAndStoreOidcSigningKeys(algorithm)
-            oidc_signing_keys = self._loadOidcSigningKeys(algorithm)
+            OIDCKeys.createAndStoreOidcSigningKeys(
+                self.zk_context, algorithm, self.password_bytes)
+            oidc_signing_keys = OIDCKeys.loadOidcSigningKeys(
+                self.zk_context, algorithm)
 
         return oidc_signing_keys
 
     def getLatestOidcSigningKeys(self, algorithm):
         """Return the latest key pair of an algorithm of OIDC singing keys"""
         signing_key_data = self.getOidcSigningKeyData(algorithm=algorithm)
-        latest_key = signing_key_data["keys"][-1]
+        latest_key = signing_key_data.keys[-1]
         pem_private_key = latest_key["private_key"].encode("utf-8")
         version = latest_key["version"]
 
@@ -337,64 +430,4 @@ class KeyStorage(ZooKeeperBase):
 
     def deleteOidcSigningKeys(self, algorithm):
         """Delete the complete internal data structure"""
-        key_path = self._getOidcSigningKeysPath(algorithm)
-        with suppress(kazoo.exceptions.NoNodeError):
-            self.kazoo_client.delete(key_path)
-
-    def _getOidcSigningKeysPath(self, algorithm):
-        key_path = self.OIDC_PATH.format(algorithm)
-        return key_path
-
-    def _createAndStoreOidcSigningKeys(self, algorithm):
-        """Create new OIDC signing keys for the algorithmand"""
-
-        self.log.debug(
-            "Creating OIDC signing keys for algorithm: %s", algorithm)
-        key_dict = self._generateOidcSigningKeyDict(algorithm)
-        if key_dict:
-            keydata = {
-                "schema": 1,
-                "keys": [key_dict]
-            }
-            try:
-                self._saveOidcSigningKeys(algorithm, keydata)
-            except kazoo.exceptions.NodeExistsError:
-                # Race condition between multiple schedulers
-                # creating the same secrets key, do nothing
-                pass
-
-    def _updateOidcSigningKeyData(self, algorithm, keydata):
-        """Update the complete internal data structure"""
-        key_path = self._getOidcSigningKeysPath(algorithm)
-        data = json.dumps(keydata, sort_keys=True).encode("utf-8")
-        self.kazoo_client.set(key_path, value=data)
-
-    def _generateOidcSigningKeyDict(self, algorithm, version=0):
-        """Generate a new key and return the internal data structure"""
-        if algorithm == "RS256":
-            private_key, public_key = encryption.generate_rsa_keypair()
-            pem_private_key = encryption.serialize_rsa_private_key(
-                private_key, self.password_bytes)
-            return {
-                "version": version,
-                "created": int(time.time()),
-                "private_key": pem_private_key.decode("utf-8"),
-            }
-        else:
-            raise AlgorithmNotSupportedException(
-                f"Algorithm {algorithm} is not supported")
-
-    def _loadOidcSigningKeys(self, algorithm):
-        """Return the complete internal data structure"""
-        key_path = self._getOidcSigningKeysPath(algorithm)
-        try:
-            data, _ = self.kazoo_client.get(key_path)
-            return json.loads(data)
-        except kazoo.exceptions.NoNodeError:
-            return None
-
-    def _saveOidcSigningKeys(self, algorithm, keydata):
-        """Store the complete internal data structure"""
-        key_path = self._getOidcSigningKeysPath(algorithm)
-        data = json.dumps(keydata, sort_keys=True).encode("utf-8")
-        self.kazoo_client.create(key_path, value=data, makepath=True)
+        OIDCKeys.deleteByAlgorithm(self.zk_context, algorithm)
