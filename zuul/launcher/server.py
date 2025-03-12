@@ -1552,6 +1552,7 @@ class Launcher:
                     endpoint = provider.getEndpoint()
                     endpoints[endpoint.canonical_name] = endpoint
                     endpoint.start()
+                    endpoint.postConfig(provider)
             self.endpoints = endpoints
         return updated
 

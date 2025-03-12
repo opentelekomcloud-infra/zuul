@@ -149,7 +149,7 @@ class BaseProviderEndpoint(metaclass=abc.ABCMeta):
             urllib.parse.quote_plus(self.name),
         ])
 
-    def handleStart(self):
+    def startEndpoint(self):
         """Start the endpoint
 
         This method may start any threads necessary for the endpoint.
@@ -157,12 +157,23 @@ class BaseProviderEndpoint(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError()
 
-    def handleStop(self):
+    def stopEndpoint(self):
         """Stop the endpoint
 
         This method must stop all endpoint threads.
         """
         raise NotImplementedError()
+
+    def postConfig(self, provider):
+        """Perform any endpoint-global actions after reconfiguration
+
+        This will be called any time a tenant layout is updated, once
+        for each provider that uses the endpoint.  It may be called
+        multiple times for the same update, and it may be called even
+        when nothing about the provider or endpoint changed.
+
+        """
+        pass
 
 
 class BaseProviderSchema(metaclass=abc.ABCMeta):
