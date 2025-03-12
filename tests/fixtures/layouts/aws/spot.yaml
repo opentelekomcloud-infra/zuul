@@ -68,6 +68,7 @@
     region: us-east-1
     az: us-east-1b
     security-group-id: testgroup
+    subnet-id: {subnet_id}
 
 - provider:
     name: aws-us-east-1-main
