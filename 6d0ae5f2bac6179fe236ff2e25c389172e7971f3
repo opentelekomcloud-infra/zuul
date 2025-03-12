@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "674eff1f_ea3fe72b",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 650,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-12T08:42:24Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "59e4257e_0cbcf8bd",
+      "revId": "6d0ae5f2bac6179fe236ff2e25c389172e7971f3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b0382957_51cd4491",
@@ -35,6 +53,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "36166a7c_0b28f45c",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 652,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-12T08:42:24Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "b0382957_51cd4491",
+      "revId": "6d0ae5f2bac6179fe236ff2e25c389172e7971f3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d6456a7f_3421778a",
@@ -48,6 +84,30 @@
       "writtenOn": "2025-03-11T14:00:07Z",
       "side": 1,
       "message": "I\u0027m not sure I understand the `get()` here. If we execute a job the tenant will be available. If the intention was to fall back on the global `web_root` this should be already considered as `tenant.web_root` is either the global or the whitelabel `web_root`.\n\nThe following should be enough:\n\n```python\nweb_root \u003d self.sched.abide.tenants[pipeline.tenant.name].web_root\n```",
+      "range": {
+        "startLine": 70,
+        "startChar": 8,
+        "endLine": 71,
+        "endChar": 62
+      },
+      "revId": "6d0ae5f2bac6179fe236ff2e25c389172e7971f3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2e502151_9a3cd173",
+        "filename": "zuul/executor/client.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-12T08:42:24Z",
+      "side": 1,
+      "message": "You are right, I misunderstood that.",
+      "parentUuid": "d6456a7f_3421778a",
       "range": {
         "startLine": 70,
         "startChar": 8,
@@ -95,6 +155,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6c8c32eb_d9269aa7",
+        "filename": "zuul/executor/client.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-12T08:42:24Z",
+      "side": 1,
+      "message": "How about pass it in params[\"zuul_root_url\"]?",
+      "parentUuid": "d5bc5ce8_29c27cf1",
+      "revId": "6d0ae5f2bac6179fe236ff2e25c389172e7971f3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "14e5dfbe_c16cbf60",
         "filename": "zuul/executor/server.py",
         "patchSetId": 5
@@ -106,6 +184,30 @@
       "writtenOn": "2025-03-08T04:33:38Z",
       "side": 1,
       "message": "This needs to handle reading the old data format.",
+      "range": {
+        "startLine": 2460,
+        "startChar": 49,
+        "endLine": 2460,
+        "endChar": 52
+      },
+      "revId": "6d0ae5f2bac6179fe236ff2e25c389172e7971f3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6e8cec0f_32663c8f",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 2460,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-12T08:42:24Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "14e5dfbe_c16cbf60",
       "range": {
         "startLine": 2460,
         "startChar": 49,
@@ -133,6 +235,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6e439cca_80c73edf",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 2462,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-12T08:42:24Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "20597762_e646b9ea",
+      "revId": "6d0ae5f2bac6179fe236ff2e25c389172e7971f3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9af5fab3_b81302b1",
@@ -150,6 +270,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9df36aaf_8bd558e1",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 3573,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-12T08:42:24Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "9af5fab3_b81302b1",
+      "revId": "6d0ae5f2bac6179fe236ff2e25c389172e7971f3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ba4e8a19_4b70fd0c",
@@ -163,6 +301,30 @@
       "writtenOn": "2025-03-08T04:33:38Z",
       "side": 1,
       "message": "I think this will require a model_api revision.",
+      "range": {
+        "startLine": 2770,
+        "startChar": 36,
+        "endLine": 2770,
+        "endChar": 37
+      },
+      "revId": "6d0ae5f2bac6179fe236ff2e25c389172e7971f3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c7d5b18f_28779f75",
+        "filename": "zuul/model.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 2770,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-12T08:42:24Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "ba4e8a19_4b70fd0c",
       "range": {
         "startLine": 2770,
         "startChar": 36,
