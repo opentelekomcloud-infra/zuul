@@ -1456,8 +1456,6 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 ebs_settings['Throughput'] = label.throughput
             template_data = {
                 'KeyName': label.key_name,
-                # TODO
-                # 'SecurityGroupIds': [label.pool.security_group_id],
                 'BlockDeviceMappings': [
                     {
                         'DeviceName': '/dev/sda1',
@@ -1465,6 +1463,10 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     },
                 ],
             }
+
+            if label.security_group_id:
+                template_data['SecurityGroupIds'] = [label.security_group_id]
+
             # TODO
             # if label.imdsv2 == 'required':
             #     template_data['MetadataOptions'] = {
@@ -1658,11 +1660,11 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             ]
         )
 
-        # TODO:
-        # if label.pool.security_group_id:
-        #     args['NetworkInterfaces'][0]['Groups'] = [
-        #         label.pool.security_group_id
-        #     ]
+        if label.security_group_id:
+            args['NetworkInterfaces'][0]['Groups'] = [
+                label.security_group_id
+            ]
+
         # if label.pool.subnet_id:
         #     args['NetworkInterfaces'][0]['SubnetId'] = label.pool.subnet_id
 

@@ -65,7 +65,8 @@
     name: aws-us-east-1
     parent: aws-base
     region: us-east-1
-    az:  us-east-1b
+    az: us-east-1b
+    security-group-id: testgroup
 
 - provider:
     name: aws-us-east-1-main
