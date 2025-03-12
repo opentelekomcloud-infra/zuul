@@ -173,6 +173,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e1ba1fbe_19564c92",
+        "filename": "zuul/executor/client.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-12T09:55:55Z",
+      "side": 1,
+      "message": "Updated in the new Patchset.",
+      "parentUuid": "6c8c32eb_d9269aa7",
+      "revId": "6d0ae5f2bac6179fe236ff2e25c389172e7971f3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "14e5dfbe_c16cbf60",
         "filename": "zuul/executor/server.py",
         "patchSetId": 5
