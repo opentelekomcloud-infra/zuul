@@ -25,8 +25,64 @@ import paramiko
 from zuul.exceptions import AlgorithmNotSupportedException
 from zuul.lib import encryption, strings
 from zuul.zk import ZooKeeperBase
+from zuul.zk.zkobject import ZKContext, ZKObject
 
 RSA_KEY_SIZE = 2048
+
+
+class OIDCKeys(ZKObject):
+
+    OIDC_ROOT_PATH = "/keystorage-oidc"
+    # /keystorage-oidc/algorithm
+    OIDC_PATH = OIDC_ROOT_PATH + "/{}"
+
+    def __init__(self):
+        super().__init__()
+
+        self._set(
+            schema=1,
+            keys=[],
+            algorithm=None,
+        )
+
+    def getPath(self):
+        return self.OIDC_PATH.format(self.algorithm)
+
+    def serialize(self, context):
+        keydata = {
+            'schema': self.schema,
+            'keys': self.keys,
+        }
+
+        return json.dumps(keydata, sort_keys=True).encode("utf8")
+
+    def appendKey(self, version, created, private_key):
+        key_dict = self._generateKeyDict(version, created, private_key)
+        self.keys.append(key_dict)
+
+    @staticmethod
+    def _generateKeyDict(version, created, private_key):
+        return {
+            "version": version,
+            "created": created,
+            "private_key": private_key,
+        }
+
+    @classmethod
+    def new(klass, context, algorithm, version, created, private_key):
+        """Create a new instance and save it in ZooKeeper"""
+
+        obj = klass()
+        obj._set(algorithm=algorithm)
+        obj._set(keys=[klass._generateKeyDict(version, created, private_key)])
+        data = obj._trySerialize(context)
+        obj._save(context, data, create=True)
+        return obj
+
+    def __eq__(self, other):
+        return (isinstance(other, OIDCKeys) and
+                self.schema == other.schema and
+                self.keys == other.keys)
 
 
 class KeyStorage(ZooKeeperBase):
@@ -38,13 +94,16 @@ class KeyStorage(ZooKeeperBase):
     SECRETS_PATH = PROJECT_PATH + "/secrets"
     SSH_PATH = PROJECT_PATH + "/ssh"
 
+    OIDC_ROOT_PATH = "/keystorage-oidc"
     # /keystorage-oidc/algorithm
-    OIDC_PATH = "/keystorage-oidc/{}"
+    OIDC_PATH = OIDC_ROOT_PATH + "/{}"
 
     def __init__(self, zookeeper_client, password, backup=None):
         super().__init__(zookeeper_client)
         self.password = password
         self.password_bytes = password.encode("utf-8")
+
+        self.zk_context = ZKContext(self.client, None, None, self.log)
 
     def _walk(self, root):
         ret = []
@@ -291,32 +350,34 @@ class KeyStorage(ZooKeeperBase):
             # current time - max_ttl, then all tokens signed by the
             # keys before it should be expired and we can remove them.
             older_than = int(time.time()) - max_ttl
-            for index in range(len(key_data["keys"]) - 1, -1, -1):
-                key = key_data["keys"][index]
+            for index in range(len(key_data.keys) - 1, -1, -1):
+                key = key_data.keys[index]
                 if key["created"] < older_than and index > 0:
                     self.log.debug("Removing old OIDC keys")
-                    key_data["keys"] = key_data["keys"][index:]
+                    key_data._set(keys=key_data.keys[index:])
                     update_required = True
                     break
 
             # Check if latest key is outdated and create a new one
-            latest_key = key_data["keys"][-1]
+            latest_key = key_data.keys[-1]
             age_seconds = int(time.time()) - latest_key["created"]
             if age_seconds > rotation_interval:
                 self.log.debug("Generating new OIDC key")
-                key_dict = self._generateOidcSigningKeyDict(
-                    algorithm, latest_key["version"] + 1)
-                key_data["keys"].append(key_dict)
+                private_key = self._generateOidcSigningKey(algorithm)
+                key_data.appendKey(
+                    version=latest_key["version"] + 1,
+                    created=int(time.time()),
+                    private_key=private_key)
                 update_required = True
 
             if update_required:
-                self.log.debug("Number of keys: %s", len(key_data["keys"]))
-                self._updateOidcSigningKeyData(algorithm, key_data)
+                self.log.debug("Number of keys: %s", len(key_data.keys))
+
+                key_data.updateAttributes(self.zk_context)
 
     def getOidcSigningKeyData(self, algorithm):
         """Return the key data of an algorithm of OIDC singing keys"""
         oidc_signing_keys = self._loadOidcSigningKeys(algorithm)
-
         if not oidc_signing_keys:
             self._createAndStoreOidcSigningKeys(algorithm)
             oidc_signing_keys = self._loadOidcSigningKeys(algorithm)
@@ -326,7 +387,7 @@ class KeyStorage(ZooKeeperBase):
     def getLatestOidcSigningKeys(self, algorithm):
         """Return the latest key pair of an algorithm of OIDC singing keys"""
         signing_key_data = self.getOidcSigningKeyData(algorithm=algorithm)
-        latest_key = signing_key_data["keys"][-1]
+        latest_key = signing_key_data.keys[-1]
         pem_private_key = latest_key["private_key"].encode("utf-8")
         version = latest_key["version"]
 
@@ -350,36 +411,18 @@ class KeyStorage(ZooKeeperBase):
 
         self.log.debug(
             "Creating OIDC signing keys for algorithm: %s", algorithm)
-        key_dict = self._generateOidcSigningKeyDict(algorithm)
-        if key_dict:
-            keydata = {
-                "schema": 1,
-                "keys": [key_dict]
-            }
-            try:
-                self._saveOidcSigningKeys(algorithm, keydata)
-            except kazoo.exceptions.NodeExistsError:
-                # Race condition between multiple schedulers
-                # creating the same secrets key, do nothing
-                pass
 
-    def _updateOidcSigningKeyData(self, algorithm, keydata):
-        """Update the complete internal data structure"""
-        key_path = self._getOidcSigningKeysPath(algorithm)
-        data = json.dumps(keydata, sort_keys=True).encode("utf-8")
-        self.kazoo_client.set(key_path, value=data)
+        private_key = self._generateOidcSigningKey(algorithm)
+        OIDCKeys.new(
+            self.zk_context, algorithm, 0, int(time.time()), private_key)
 
-    def _generateOidcSigningKeyDict(self, algorithm, version=0):
-        """Generate a new key and return the internal data structure"""
+    def _generateOidcSigningKey(self, algorithm):
+        """Generate a new key"""
         if algorithm == "RS256":
             private_key, public_key = encryption.generate_rsa_keypair()
             pem_private_key = encryption.serialize_rsa_private_key(
                 private_key, self.password_bytes)
-            return {
-                "version": version,
-                "created": int(time.time()),
-                "private_key": pem_private_key.decode("utf-8"),
-            }
+            return pem_private_key.decode("utf-8")
         else:
             raise AlgorithmNotSupportedException(
                 f"Algorithm {algorithm} is not supported")
@@ -388,13 +431,7 @@ class KeyStorage(ZooKeeperBase):
         """Return the complete internal data structure"""
         key_path = self._getOidcSigningKeysPath(algorithm)
         try:
-            data, _ = self.kazoo_client.get(key_path)
-            return json.loads(data)
+            return OIDCKeys.fromZK(
+                self.zk_context, key_path, algorithm=algorithm)
         except kazoo.exceptions.NoNodeError:
             return None
-
-    def _saveOidcSigningKeys(self, algorithm, keydata):
-        """Store the complete internal data structure"""
-        key_path = self._getOidcSigningKeysPath(algorithm)
-        data = json.dumps(keydata, sort_keys=True).encode("utf-8")
-        self.kazoo_client.create(key_path, value=data, makepath=True)
