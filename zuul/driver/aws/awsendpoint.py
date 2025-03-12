@@ -1,5 +1,5 @@
 # Copyright 2018 Red Hat
-# Copyright 2022-2024 Acme Gating, LLC
+# Copyright 2022-2025 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -148,9 +148,6 @@ class AwsCreateStateMachine(statemachine.StateMachine):
             "image_external_id", image_external_id)
 
         # Restore local objects
-        self.node.quota = self.endpoint.getQuotaForLabel(
-            self.label, self.flavor)
-
         if self.state in (
                 self.HOST_ALLOCATING_START, self.INSTANCE_CREATING_START):
             for instance in self.endpoint.listInstances():
@@ -189,6 +186,15 @@ class AwsCreateStateMachine(statemachine.StateMachine):
 
     def advance(self):
         if self.state == self.START:
+
+            self.node.quota = self.endpoint.getQuotaForLabel(
+                self.label, self.flavor)
+
+            # TODO
+            # self.node.node_properties['fleet'] = bool(self.label.fleet)
+            self.node.node_properties['spot'] = bool(
+                self.flavor.market_type == 'spot')
+
             if self.flavor.dedicated_host:
                 self.state = self.HOST_ALLOCATING_START
             else:
@@ -1455,15 +1461,14 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     del mapping['Ebs']['Encrypted']
                 args['BlockDeviceMappings'] = [mapping]
 
-        # TODO
-        # if flavor.market_type == 'spot':
-        #     args['InstanceMarketOptions'] = {
-        #         'MarketType': 'spot',
-        #         'SpotOptions': {
-        #             'SpotInstanceType': 'one-time',
-        #             'InstanceInterruptionBehavior': 'terminate'
-        #         }
-        #     }
+        if flavor.market_type == 'spot':
+            args['InstanceMarketOptions'] = {
+                'MarketType': 'spot',
+                'SpotOptions': {
+                    'SpotInstanceType': 'one-time',
+                    'InstanceInterruptionBehavior': 'terminate'
+                }
+            }
 
         # TODO
         # if label.imdsv2 == 'required':
