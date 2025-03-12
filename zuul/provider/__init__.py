@@ -106,8 +106,8 @@ class BaseProviderLabel(CNameMixin, metaclass=abc.ABCMeta):
                 attr = attr.output
             if getattr(self, attr, None) is None:
                 setattr(self, attr,
-                        getattr(flavor, attr,
-                                getattr(image, attr, None)))
+                        getattr(flavor, attr, None) or
+                        getattr(image, attr, None))
 
 
 class BaseProviderEndpoint(metaclass=abc.ABCMeta):

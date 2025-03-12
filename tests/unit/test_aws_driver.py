@@ -184,6 +184,9 @@ class TestAwsDriver(BaseCloudDriverTest):
         self.assertEqual(
             ['testgroup'],
             self.run_instances_calls[0]['NetworkInterfaces'][0]['Groups'])
+        self.assertEqual(
+            'required',
+            self.run_instances_calls[0]['MetadataOptions']['HttpTokens'])
         self.assertTrue(pnode.node_properties['spot'])
 
     @simple_layout('layouts/aws/spot.yaml', enable_nodepool=True)
