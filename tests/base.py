@@ -3090,6 +3090,20 @@ class ZuulTestCase(BaseTestCase):
             app.sched.merger.merger_api.hold_in_queue = hold_in_queue
 
     @property
+    def hold_nodeset_requests_in_queue(self):
+        return self.scheds.first.sched.launcher.hold_in_queue
+
+    @hold_nodeset_requests_in_queue.setter
+    def hold_nodeset_requests_in_queue(self, hold_in_queue):
+        for app in self.scheds:
+            app.sched.launcher.hold_in_queue = hold_in_queue
+
+    def releaseNodesetRequests(self, *requests):
+        ctx = self.createZKContext(None)
+        for req in requests:
+            req.updateAttributes(ctx, state=req.State.REQUESTED)
+
+    @property
     def merge_job_history(self):
         history = defaultdict(list)
         for app in self.scheds:
@@ -3211,6 +3225,8 @@ class ZuulTestCase(BaseTestCase):
         for app in self.scheds.filter(matcher):
             sched = app.sched
             for request in self.launcher.api.getNodesetRequests():
+                if request.state == request.State.TEST_HOLD:
+                    continue
                 if request.state not in model.NodesetRequest.FINAL_STATES:
                     return False
                 if sched.pipeline_result_events[request.tenant_name][

@@ -86,3 +86,40 @@
     gate:
       jobs:
         - integration
+
+
+- image:
+    name: ubuntu-xenial
+    type: cloud
+
+- flavor:
+    name: normal
+
+- label:
+    name: ubuntu-xenial
+    image: ubuntu-xenial
+    flavor: normal
+
+- section:
+    name: aws-us-east-1
+    region: us-east-1
+    connection: aws
+    host-key-checking: false
+    boot-timeout: 300
+    launch-timeout: 600
+    launch-attempts: 2
+    object-storage:
+      bucket-name: zuul
+    key-name: zuul
+    flavors:
+      - name: normal
+        instance-type: t3.medium
+    images:
+      - name: ubuntu-xenial
+        image-id: ami-1e749f67
+
+- provider:
+    name: aws-us-east-1-main
+    section: aws-us-east-1
+    labels:
+      - name: ubuntu-xenial
