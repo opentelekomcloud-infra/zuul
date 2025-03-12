@@ -152,6 +152,9 @@ class AwsProviderFlavor(BaseProviderFlavor):
 class AwsProviderLabel(BaseProviderLabel):
     aws_label_schema = vs.Schema({
         Optional('az'): Nullable(str),
+        # TODO: aws accepts a list everywhere we use this; should this
+        # be as_list?
+        Optional('security-group-id'): Nullable(str),
     })
 
     inheritable_schema = assemble(
