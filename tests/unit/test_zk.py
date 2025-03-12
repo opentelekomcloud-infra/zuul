@@ -237,6 +237,14 @@ class TestSharding(ZooKeeperBaseTestCase):
         ) as shard_io:
             self.assertDictEqual(json.load(shard_io), data)
 
+    def test_no_makepath(self):
+        with testtools.ExpectedException(NoNodeError):
+            with BufferedShardWriter(
+                self.zk_client.client, "/test/shards",
+                makepath=False
+            ) as shard_writer:
+                shard_writer.write(b"foobar")
+
     def _test_write_old_read_new(self, shard_count):
         # Write shards in the old format where each shard is
         # compressed individually
@@ -1859,6 +1867,10 @@ class DummyZKObject(DummyZKObjectMixin, ZKObject):
     pass
 
 
+class DummyNoMakepathZKObject(DummyZKObjectMixin, ZKObject):
+    makepath = False
+
+
 class DummyShardedZKObject(DummyZKObjectMixin, ShardedZKObject):
     pass
 
@@ -1991,6 +2003,9 @@ class TestZKObject(ZooKeeperBaseTestCase):
             def exists(self, *args, **kw):
                 return self._real_client.exists(*args, **kw)
 
+            def ensure_path(self, *args, **kw):
+                return self._real_client.ensure_path(*args, **kw)
+
         # Fail an update
         with (tenant_write_lock(self.zk_client, tenant_name) as lock,
               ZKContext(
@@ -2060,6 +2075,11 @@ class TestZKObject(ZooKeeperBaseTestCase):
 
     def test_zk_object(self):
         self._test_zk_object(DummyZKObject)
+
+    def test_zk_object_no_makepath(self):
+        with testtools.ExpectedException(NoNodeError):
+            with ZKContext(self.zk_client, None, None, self.log) as context:
+                DummyNoMakepathZKObject.new(context, name="tenant", foo="bar")
 
     def test_sharded_zk_object(self):
         self._test_zk_object(DummyShardedZKObject)
