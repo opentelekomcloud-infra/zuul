@@ -47,13 +47,17 @@ class AwsProviderImage(BaseProviderImage):
         'values': [str],
     }
     # This is used here and in flavors and labels
-    inheritable_aws_image_schema = vs.Schema({
-        Optional('volume-size'): Nullable(int),
-        Optional('volume-type', default='gp3'): str,
-        Optional('iops'): Nullable(int),
-        Optional('throughput'): Nullable(int),
-        Optional('imds-http-tokens'): Nullable(vs.Any('optional', 'required')),
-    })
+    inheritable_aws_image_schema = assemble(
+        vs.Schema({
+            Optional('volume-size'): Nullable(int),
+            Optional('volume-type', default='gp3'): str,
+            Optional('iops'): Nullable(int),
+            Optional('throughput'): Nullable(int),
+            Optional('imds-http-tokens'): Nullable(
+                vs.Any('optional', 'required')),
+        }),
+        provider_schema.cloud_image,
+    )
     aws_cloud_schema = vs.Schema({
         vs.Exclusive(Required('image-id'), 'spec'): str,
         vs.Exclusive(Required('image-filters'), 'spec'): [aws_image_filters],
