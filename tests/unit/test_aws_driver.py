@@ -1,4 +1,4 @@
-# Copyright 2024 Acme Gating, LLC
+# Copyright 2024-2025 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -161,15 +161,33 @@ class TestAwsDriver(BaseCloudDriverTest):
 
     def _assertProviderNodeAttributes(self, pnode):
         super()._assertProviderNodeAttributes(pnode)
+        if checks := self.test_config.driver.aws.get('node_checks'):
+            checks(self, pnode)
+
+    def check_node_attrs(self, pnode):
         self.assertEqual(
+            1000,
             self.run_instances_calls[0]['BlockDeviceMappings'][0]['Ebs']
-            ['Iops'], 1000)
+            ['Iops'])
         self.assertEqual(
+            200,
             self.run_instances_calls[0]['BlockDeviceMappings'][0]['Ebs']
-            ['Throughput'], 200)
+            ['Throughput'])
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    @driver_config('aws', node_checks=check_node_attrs)
     def test_aws_node_lifecycle(self):
+        self._test_node_lifecycle('debian-normal')
+
+    def check_spot_node_attrs(self, pnode):
+        self.assertEqual(
+            'spot',
+            self.run_instances_calls[0]['InstanceMarketOptions']['MarketType'])
+        self.assertTrue(pnode.node_properties['spot'])
+
+    @simple_layout('layouts/aws/spot.yaml', enable_nodepool=True)
+    @driver_config('aws', node_checks=check_spot_node_attrs)
+    def test_aws_node_lifecycle_spot(self):
         self._test_node_lifecycle('debian-normal')
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
