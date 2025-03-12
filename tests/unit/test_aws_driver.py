@@ -70,14 +70,6 @@ class TestAwsDriver(BaseCloudDriverTest):
             fixtures.EnvironmentVariable('AWS_SECRET_ACCESS_KEY', aws_key))
         self.patch(zuul.driver.aws.awsendpoint, 'CACHE_TTL', 1)
 
-        # Moto doesn't handle some aspects of instance creation, so we
-        # intercept and log the calls.
-        def _fake_run_instances(*args, **kwargs):
-            self.__testcase.run_instances_calls.append(kwargs)
-            if self.__testcase.run_instances_exception:
-                raise self.__testcase.run_instances_exception
-            return self.ec2_client.run_instances_orig(*args, **kwargs)
-
         self.fake_aws = FakeAws()
         self.mock_aws.start()
         # Must start responses after mock_aws
@@ -90,12 +82,12 @@ class TestAwsDriver(BaseCloudDriverTest):
         self.iam = boto3.resource('iam', region_name='us-east-1')
         self.s3.create_bucket(Bucket='zuul')
 
-        self.ec2_client.run_instances_orig = self.ec2_client.run_instances
-        self.ec2_client.run_instances = _fake_run_instances
-
         # A list of args to method calls for validation
         self.run_instances_calls = []
         self.run_instances_exception = None
+        self.create_fleet_calls = []
+        self.create_fleet_results = []
+        self.create_fleet_exception = None
         self.allocate_hosts_exception = None
         self.register_image_calls = []
 
@@ -189,6 +181,37 @@ class TestAwsDriver(BaseCloudDriverTest):
     @driver_config('aws', node_checks=check_spot_node_attrs)
     def test_aws_node_lifecycle_spot(self):
         self._test_node_lifecycle('debian-normal')
+
+    def check_fleet_node_attrs(self, pnode):
+        self.assertEqual(
+            'price-capacity-optimized',
+            self.create_fleet_calls[0]['OnDemandOptions'][
+                'AllocationStrategy'])
+        self.assertTrue(pnode.node_properties['fleet'])
+
+    @simple_layout('layouts/aws/fleet.yaml', enable_nodepool=True)
+    @driver_config('aws', node_checks=check_fleet_node_attrs)
+    def test_aws_node_lifecycle_fleet(self):
+        self._test_node_lifecycle('debian-normal')
+        self.waitUntilSettled()
+
+        # Verify that we clean up unused launch templates.  Start by
+        # checking that we have one from the current config.
+        launch_tempaltes = self.ec2_client.\
+            describe_launch_templates()['LaunchTemplates']
+        self.assertEqual(len(launch_tempaltes), 1)
+
+        # Switch to a config that has no fleet usage (spot is
+        # arbitrary).
+        self.commitConfigUpdate(
+            'org/common-config', 'layouts/aws/spot.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+
+        # Verify that there are no launch templates.
+        launch_tempaltes = self.ec2_client.\
+            describe_launch_templates()['LaunchTemplates']
+        self.assertEqual(len(launch_tempaltes), 0)
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     @driver_config('aws', ec2_quotas={
