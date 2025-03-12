@@ -1345,9 +1345,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                       tags, hostname, log):
         args = dict(
             AutoPlacement='off',
-            # TODO: support AZ
-            # AvailabilityZone=label.pool.az,
-            AvailabilityZone="",
+            AvailabilityZone=label.az,
             InstanceType=flavor.instance_type,
             Quantity=1,
             HostRecovery='off',
@@ -1740,10 +1738,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 'Affinity': 'host',
             })
 
-        # TODO
-        # if label.pool.az:
-        #     placement = args.setdefault('Placement', {})
-        #     placement['AvailabilityZone'] = label.pool.az
+        if label.az:
+            placement = args.setdefault('Placement', {})
+            placement['AvailabilityZone'] = label.az
 
         with self.rate_limiter(log.debug, "Created instance"):
             log.debug("Creating VM %s", hostname)
