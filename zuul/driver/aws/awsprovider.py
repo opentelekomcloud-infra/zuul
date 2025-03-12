@@ -108,12 +108,20 @@ class AwsProviderImage(BaseProviderImage):
 
 
 class AwsProviderFlavor(BaseProviderFlavor):
+    fleet_schema = vs.Schema({
+        vs.Required('instance-types'): [str],  # TODO: as_list?
+        vs.Required('allocation-strategy'): vs.Any(
+            'prioritized', 'price-capacity-optimized',
+            'capacity-optimized', 'diversified', 'lowest-price')
+    })
+
     aws_flavor_schema = vs.Schema({
-        Required('instance-type'): str,
+        vs.Exclusive(Required('instance-type'), 'instance'): str,
         Optional('dedicated-host', default=False): bool,
         Optional('ebs-optimized', default=False): bool,
         Optional('market-type', default='on-demand'): vs.Any(
             'on-demand', 'spot'),
+        vs.Exclusive(Required('fleet'), 'instance'): fleet_schema,
     })
 
     inheritable_schema = assemble(
@@ -123,12 +131,22 @@ class AwsProviderFlavor(BaseProviderFlavor):
         AwsProviderImage.inheritable_aws_volume_schema,
         provider_schema.cloud_flavor,
     )
-    schema = assemble(
-        BaseProviderFlavor.schema,
-        provider_schema.cloud_flavor,
-        AwsProviderImage.inheritable_aws_volume_schema,
-        aws_flavor_schema,
+    schema = vs.All(
+        assemble(
+            BaseProviderFlavor.schema,
+            provider_schema.cloud_flavor,
+            AwsProviderImage.inheritable_aws_volume_schema,
+            aws_flavor_schema,
+        ),
+        RequiredExclusive('instance_type', 'fleet',
+                          msg=('Provide either '
+                               '"instance-type", or "fleet" keys'))
     )
+
+    def __init__(self, flavor_config, provider_config):
+        self.instance_type = None
+        self.fleet = None
+        super().__init__(flavor_config, provider_config)
 
 
 class AwsProviderLabel(BaseProviderLabel):
@@ -224,6 +242,7 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
         flavor = self.flavors[label.flavor]
         image = self.images[label.image]
         return AwsCreateStateMachine(
+            self,
             self.endpoint,
             node,
             hostname,
@@ -264,10 +283,18 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
             if flavor.dedicated_host:
                 host_types.add(flavor.instance_type)
             else:
-                if flavor.instance_type not in instance_types:
-                    instance_types[flavor.instance_type] = set()
-                instance_types[flavor.instance_type].add(
-                    SPOT if flavor.market_type == 'spot' else ON_DEMAND)
+                flavor_instance_types = []
+                if flavor.instance_type:
+                    flavor_instance_types.append(flavor.instance_type)
+                elif flavor.fleet and flavor.fleet.get('instance-types'):
+                    # Include instance-types from fleet config if available
+                    flavor_instance_types.extend(
+                        flavor.fleet['instance-types'])
+                for flavor_instance_type in flavor_instance_types:
+                    if flavor_instance_type not in instance_types:
+                        instance_types[flavor_instance_type] = set()
+                    instance_types[flavor_instance_type].add(
+                        SPOT if flavor.market_type == 'spot' else ON_DEMAND)
             if flavor.volume_type:
                 volume_types.add(flavor.volume_type)
         args = dict(default=math.inf)
