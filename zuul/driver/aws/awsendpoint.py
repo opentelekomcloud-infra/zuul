@@ -1443,25 +1443,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         label_template_names = {}
 
         for label in fleet_labels:
-            ebs_settings = {
-                'DeleteOnTermination': True,
-            }
-            if label.volume_size:
-                ebs_settings['VolumeSize'] = label.volume_size
-            if label.volume_type:
-                ebs_settings['VolumeType'] = label.volume_type
-            if label.iops:
-                ebs_settings['Iops'] = label.iops
-            if label.throughput:
-                ebs_settings['Throughput'] = label.throughput
             template_data = {
                 'KeyName': label.key_name,
-                'BlockDeviceMappings': [
-                    {
-                        'DeviceName': '/dev/sda1',
-                        'Ebs': ebs_settings,
-                    },
-                ],
             }
 
             if label.security_group_id:
@@ -1551,9 +1534,26 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         instance_types = flavor.fleet.get('instance-types', [])
         priority = 0
         for instance_type in instance_types:
+            ebs_settings = {
+                'DeleteOnTermination': True,
+            }
+            if label.volume_size:
+                ebs_settings['VolumeSize'] = label.volume_size
+            if label.volume_type:
+                ebs_settings['VolumeType'] = label.volume_type
+            if label.iops:
+                ebs_settings['Iops'] = label.iops
+            if label.throughput:
+                ebs_settings['Throughput'] = label.throughput
             override_dict = {
                 'ImageId': image_id,
                 'InstanceType': instance_type,
+                'BlockDeviceMappings': [
+                    {
+                        'DeviceName': '/dev/sda1',
+                        'Ebs': ebs_settings,
+                    },
+                ],
             }
             if label.subnet_id:
                 override_dict['SubnetId'] = label.subnet_id
