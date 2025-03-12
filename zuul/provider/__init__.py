@@ -285,6 +285,7 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
             flavors=flavors,
             labels=labels,
         ))
+        self.validateConfig(ret)
         return ret
 
     def deserialize(self, raw, context, extra):
@@ -360,6 +361,17 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
     @abc.abstractmethod
     def getEndpoint(self):
         """Get an endpoint for this provider"""
+        pass
+
+    def validateConfig(self, config):
+        """Validate the full and final config for this provider
+
+        This is called after all schema validation and configuration
+        inheritance has been performed.  This allows us to validate
+        multiple settings from different areas (eg, that a label is
+        valid with a certain flavor config).
+
+        """
         pass
 
     def getPath(self):
