@@ -175,6 +175,9 @@ class TestAwsDriver(BaseCloudDriverTest):
         self.assertEqual(
             'spot',
             self.run_instances_calls[0]['InstanceMarketOptions']['MarketType'])
+        self.assertEqual(
+            'us-east-1b',
+            self.run_instances_calls[0]['Placement']['AvailabilityZone'])
         self.assertTrue(pnode.node_properties['spot'])
 
     @simple_layout('layouts/aws/spot.yaml', enable_nodepool=True)

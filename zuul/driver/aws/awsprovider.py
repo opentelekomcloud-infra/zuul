@@ -150,17 +150,23 @@ class AwsProviderFlavor(BaseProviderFlavor):
 
 
 class AwsProviderLabel(BaseProviderLabel):
+    aws_label_schema = vs.Schema({
+        Optional('az'): Nullable(str),
+    })
+
     inheritable_schema = assemble(
         BaseProviderLabel.inheritable_schema,
         # This is already included via the image, but listed again
         # here for clarity.
         AwsProviderImage.inheritable_aws_volume_schema,
         provider_schema.ssh_label,
+        aws_label_schema,
     )
     schema = assemble(
         BaseProviderLabel.schema,
         AwsProviderImage.inheritable_aws_volume_schema,
         provider_schema.ssh_label,
+        aws_label_schema,
     )
 
     image_flavor_inheritable_schema = assemble(
@@ -233,6 +239,17 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
 
     def getEndpoint(self):
         return self.driver.getEndpoint(self)
+
+    def validateConfig(self, config):
+        for label in config['labels'].values():
+            flavor = config['flavors'][label.flavor]
+            if flavor.dedicated_host:
+                if flavor.market_type == 'spot':
+                    raise Exception(
+                        "Spot instances can not be used on dedicated hosts")
+                if not label.az:
+                    raise Exception(
+                        "Availability-zone is required for dedicated hosts")
 
     def getCreateStateMachine(self, node, image_external_id, log):
         # TODO: decide on a method of producing a hostname

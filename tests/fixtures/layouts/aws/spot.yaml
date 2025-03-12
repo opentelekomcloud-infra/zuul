@@ -65,6 +65,7 @@
     name: aws-us-east-1
     parent: aws-base
     region: us-east-1
+    az:  us-east-1b
 
 - provider:
     name: aws-us-east-1-main
