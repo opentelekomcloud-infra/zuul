@@ -189,7 +189,8 @@ class TestAwsDriver(BaseCloudDriverTest):
             self.run_instances_calls[0]['MetadataOptions']['HttpTokens'])
         self.assertTrue(pnode.node_properties['spot'])
 
-    @simple_layout('layouts/aws/spot.yaml', enable_nodepool=True)
+    @simple_layout('layouts/aws/spot.yaml', enable_nodepool=True,
+                   replace=lambda test: {'subnet_id': test.subnet_id})
     @driver_config('aws', node_checks=check_spot_node_attrs)
     def test_aws_node_lifecycle_spot(self):
         self._test_node_lifecycle('debian-normal')
@@ -216,7 +217,9 @@ class TestAwsDriver(BaseCloudDriverTest):
         # Switch to a config that has no fleet usage (spot is
         # arbitrary).
         self.commitConfigUpdate(
-            'org/common-config', 'layouts/aws/spot.yaml')
+            'org/common-config', 'layouts/aws/spot.yaml',
+            replace=lambda test: {'subnet_id': test.subnet_id})
+
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
         self.waitUntilSettled()
 

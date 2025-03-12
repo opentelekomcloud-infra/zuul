@@ -174,7 +174,8 @@ def model_version(version):
     return decorator
 
 
-def simple_layout(path, driver='gerrit', enable_nodepool=False):
+def simple_layout(path, driver='gerrit', enable_nodepool=False,
+                  replace=None):
     """Specify a layout file for use by a test method.
 
     :arg str path: The path to the layout file.
@@ -197,10 +198,15 @@ def simple_layout(path, driver='gerrit', enable_nodepool=False):
     convenience during the initial stages of the nodepool-in-zuul
     work.  It enables the additional nodepool config objects (which
     are not otherwise enabled by default, but will be later).
+
+    The replace argument, if provided, is expected to be a callable
+    which returns a dict to use with python template replacement.  It
+    is called with the test as an argument.
+
     """
 
     def decorator(test):
-        test.__simple_layout__ = (path, driver)
+        test.__simple_layout__ = (path, driver, replace)
         test.__enable_nodepool__ = enable_nodepool
         return test
     return decorator
@@ -2665,12 +2671,15 @@ class ZuulTestCase(BaseTestCase):
         # appear in the layout.
         if not self.test_config.simple_layout:
             return False
-        path, driver = self.test_config.simple_layout
+        path, driver, replace = self.test_config.simple_layout
 
         files = {}
         path = os.path.join(FIXTURE_DIR, path)
         with open(path) as f:
             data = f.read()
+            if replace:
+                kw = replace(self)
+                data = data.format(**kw)
             layout = yaml.safe_load(data)
             files['zuul.yaml'] = data
         config_projects = []
@@ -3742,7 +3751,7 @@ class ZuulTestCase(BaseTestCase):
             repo.create_tag(tag)
         return before
 
-    def commitConfigUpdate(self, project_name, source_name):
+    def commitConfigUpdate(self, project_name, source_name, replace=None):
         """Commit an update to zuul.yaml
 
         This overwrites the zuul.yaml in the specificed project with
@@ -3760,6 +3769,9 @@ class ZuulTestCase(BaseTestCase):
         files = {}
         with open(source_path, 'r') as f:
             data = f.read()
+            if replace:
+                kw = replace(self)
+                data = data.format(**kw)
             layout = yaml.safe_load(data)
             files['zuul.yaml'] = data
         for item in layout:

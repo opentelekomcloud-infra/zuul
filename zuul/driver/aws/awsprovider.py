@@ -156,6 +156,7 @@ class AwsProviderLabel(BaseProviderLabel):
         # TODO: aws accepts a list everywhere we use this; should this
         # be as_list?
         Optional('security-group-id'): Nullable(str),
+        Optional('subnet-id'): Nullable(str),
     })
 
     inheritable_schema = assemble(
