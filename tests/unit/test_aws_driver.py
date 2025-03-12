@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import base64
 import concurrent.futures
 import contextlib
 import time
@@ -192,6 +193,12 @@ class TestAwsDriver(BaseCloudDriverTest):
             'required',
             self.run_instances_calls[0]['MetadataOptions']['HttpTokens'])
         self.assertTrue(pnode.node_properties['spot'])
+        instance = self.ec2_client.describe_instance_attribute(
+            InstanceId=pnode.aws_instance_id,
+            Attribute='userData',
+        )
+        expected = base64.b64encode(b'testuserdata').decode('utf8')
+        self.assertEqual(expected, instance['UserData']['Value'])
 
     @simple_layout('layouts/aws/spot.yaml', enable_nodepool=True,
                    replace=lambda test: {'subnet_id': test.subnet_id})
@@ -205,6 +212,12 @@ class TestAwsDriver(BaseCloudDriverTest):
             self.create_fleet_calls[0]['OnDemandOptions'][
                 'AllocationStrategy'])
         self.assertTrue(pnode.node_properties['fleet'])
+        instance = self.ec2_client.describe_instance_attribute(
+            InstanceId=pnode.aws_instance_id,
+            Attribute='userData',
+        )
+        expected = base64.b64encode(b'testuserdata').decode('utf8')
+        self.assertEqual(expected, instance['UserData']['Value'])
 
     @simple_layout('layouts/aws/fleet.yaml', enable_nodepool=True)
     @driver_config('aws', node_checks=check_fleet_node_attrs)

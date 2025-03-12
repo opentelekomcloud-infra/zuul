@@ -70,6 +70,7 @@
     security-group-id: testgroup
     subnet-id: {subnet_id}
     public-ipv6: True
+    userdata: testuserdata
 
 - provider:
     name: aws-us-east-1-main

@@ -62,6 +62,11 @@ common_image = vs.Schema({
     Optional('shell-type'): Nullable(str),
 })
 
+# Same as above, but only for cloud providers.
+cloud_image = vs.Schema({
+    Optional('userdata'): Nullable(str),
+})
+
 # The image attributes that, in addition to those above, can appear in
 # a section/provider image or a standalone image (but not in the
 # section body).
