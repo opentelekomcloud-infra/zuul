@@ -155,6 +155,7 @@ class ZKObject:
     io_writer_class = sharding.RawZKIO
     truncate_on_create = False
     delete_on_error = False
+    makepath = True
 
     # Implementations of these two methods are required
     def getPath(self):
@@ -442,11 +443,11 @@ class ZKObject:
             return raw_data
 
     @staticmethod
-    def _retryableSave(io_class, context, create, path, data,
+    def _retryableSave(io_class, context, create, makepath, path, data,
                        version):
         zstat = None
-        with io_class(context.client, path, create=create, version=version
-                      ) as stream:
+        with io_class(context.client, path, create=create, makepath=makepath,
+                      version=version) as stream:
             stream.truncate(0)
             stream.write(data)
             stream.flush()
@@ -477,8 +478,8 @@ class ZKObject:
             else:
                 version = -1
             zstat = self._retry(context, self._retryableSave,
-                                self.io_writer_class, context, create, path,
-                                compressed_data, version)
+                                self.io_writer_class, context, create,
+                                self.makepath, path, compressed_data, version)
             context.profileEvent('set', path)
         except Exception:
             context.log.error(
