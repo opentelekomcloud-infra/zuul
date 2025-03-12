@@ -1277,3 +1277,213 @@ class TestMinReadyTenantVariant(LauncherBaseTestCase):
         }
         self.assertGreaterEqual(len(debian_normal_cfg_hashes), 2)
         self.assertLessEqual(len(debian_normal_cfg_hashes), 3)
+
+
+class TestNodesetRequestPriority(LauncherBaseTestCase):
+    config_file = 'zuul.conf'
+    tenant_config_file = 'config/single-tenant/main-launcher.yaml'
+
+    def test_pipeline_priority(self):
+        "Test that nodes are requested at the correct pipeline priority"
+        self.hold_nodeset_requests_in_queue = True
+
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.setMerged()
+        self.fake_gerrit.addEvent(A.getRefUpdatedEvent())
+        self.waitUntilSettled()
+
+        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        reqs = self.launcher.api.getNodesetRequests()
+
+        # The requests come back sorted by priority. Since we have
+        # three requests for the three changes each with a different
+        # priority.
+
+        # * gate first - high priority - change C
+        self.assertEqual(reqs[0].priority, 100)
+        self.assertEqual(reqs[0].labels, ['label1'])
+        # * check second - normal priority - change B
+        self.assertEqual(reqs[1].priority, 200)
+        self.assertEqual(reqs[1].labels, ['label1'])
+        # * post third - low priority - change A
+        # additionally, the post job defined uses an ubuntu-xenial node,
+        # so we include that check just as an extra verification
+        self.assertEqual(reqs[2].priority, 300)
+        self.assertEqual(reqs[2].labels, ['ubuntu-xenial'])
+
+        self.hold_nodeset_requests_in_queue = False
+        self.releaseNodesetRequests(*reqs)
+
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='2,1'),
+            dict(name='project-test1', result='SUCCESS', changes='2,1'),
+            dict(name='project-test2', result='SUCCESS', changes='2,1'),
+            dict(name='project-merge', result='SUCCESS', changes='3,1'),
+            dict(name='project-test1', result='SUCCESS', changes='3,1'),
+            dict(name='project-test2', result='SUCCESS', changes='3,1'),
+            dict(name='project1-project2-integration',
+                 result='SUCCESS', changes='2,1'),
+            dict(name='project-post', result='SUCCESS'),
+        ], ordered=False)
+
+    @simple_layout('layouts/two-projects-integrated.yaml',
+                   enable_nodepool=True)
+    def test_relative_priority_check(self):
+        "Test that nodes are requested at the relative priority"
+        self.hold_nodeset_requests_in_queue = True
+
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        C = self.fake_gerrit.addFakeChange('org/project1', 'master', 'C')
+        self.fake_gerrit.addEvent(C.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        D = self.fake_gerrit.addFakeChange('org/project2', 'master', 'D')
+        self.fake_gerrit.addEvent(D.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        # The requests come back sorted by priority.
+        reqs = self.launcher.api.getNodesetRequests()
+
+        # Change A, first change for project, high relative priority.
+        self.assertEqual(reqs[0].priority, 200)
+        self.assertEqual(reqs[0].relative_priority, 0)
+
+        # Change C, first change for project1, high relative priority.
+        self.assertEqual(reqs[1].priority, 200)
+        self.assertEqual(reqs[1].relative_priority, 0)
+
+        # Change B, second change for project, lower relative priority.
+        self.assertEqual(reqs[2].priority, 200)
+        self.assertEqual(reqs[2].relative_priority, 1)
+
+        # Change D, first change for project2 shared with project1,
+        # lower relative priority than project1.
+        self.assertEqual(reqs[3].priority, 200)
+        self.assertEqual(reqs[3].relative_priority, 1)
+
+        # Fulfill only the first request
+        ctx = self.createZKContext(None)
+        reqs[0].updateAttributes(ctx, state=reqs[0].State.REQUESTED)
+        for x in iterate_timeout(30, 'fulfill request'):
+            reqs = self.launcher.api.getNodesetRequests()
+            if len(reqs) < 4:
+                break
+        self.waitUntilSettled()
+
+        reqs = self.launcher.api.getNodesetRequests()
+
+        # Change B, now first change for project, equal priority.
+        self.assertEqual(reqs[0].priority, 200)
+        self.assertEqual(reqs[0].relative_priority, 0)
+
+        # Change C, now first change for project1, equal priority.
+        self.assertEqual(reqs[1].priority, 200)
+        self.assertEqual(reqs[1].relative_priority, 0)
+
+        # Change D, first change for project2 shared with project1,
+        # still lower relative priority than project1.
+        self.assertEqual(reqs[2].priority, 200)
+        self.assertEqual(reqs[2].relative_priority, 1)
+
+        self.hold_nodeset_requests_in_queue = False
+        self.releaseNodesetRequests(*reqs)
+        self.waitUntilSettled()
+
+    @simple_layout('layouts/two-projects-integrated.yaml',
+                   enable_nodepool=True)
+    def test_relative_priority_long(self):
+        "Test that nodes are requested at the relative priority"
+        self.hold_nodeset_requests_in_queue = True
+
+        count = 13
+        changes = []
+        for x in range(count):
+            change = self.fake_gerrit.addFakeChange(
+                'org/project', 'master', 'A')
+            self.fake_gerrit.addEvent(change.getPatchsetCreatedEvent(1))
+            self.waitUntilSettled()
+            changes.append(change)
+
+        reqs = self.launcher.api.getNodesetRequests()
+        self.assertEqual(len(reqs), 13)
+        # The requests come back sorted by priority.
+        for x in range(10):
+            self.assertEqual(reqs[x].relative_priority, x)
+        self.assertEqual(reqs[10].relative_priority, 10)
+        self.assertEqual(reqs[11].relative_priority, 10)
+        self.assertEqual(reqs[12].relative_priority, 10)
+
+        # Fulfill only the first request
+        self.releaseNodesetRequests(reqs[0])
+        self.waitUntilSettled()
+
+        reqs = self.launcher.api.getNodesetRequests()
+        self.assertEqual(len(reqs), 12)
+        for x in range(10):
+            self.assertEqual(reqs[x].relative_priority, x)
+        self.assertEqual(reqs[10].relative_priority, 10)
+        self.assertEqual(reqs[11].relative_priority, 10)
+
+        self.hold_nodeset_requests_in_queue = False
+        self.releaseNodesetRequests(*reqs)
+        self.waitUntilSettled()
+
+    @simple_layout('layouts/two-projects-integrated.yaml',
+                   enable_nodepool=True)
+    def test_relative_priority_gate(self):
+        "Test that nodes are requested at the relative priority"
+        self.hold_nodeset_requests_in_queue = True
+
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        B = self.fake_gerrit.addFakeChange('org/project2', 'master', 'B')
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # project does not share a queue with project1 and project2.
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # The requests come back sorted by priority.
+        reqs = self.launcher.api.getNodesetRequests()
+
+        # Change A, first change for shared queue, high relative
+        # priority.
+        self.assertEqual(reqs[0].priority, 100)
+        self.assertEqual(reqs[0].relative_priority, 0)
+
+        # Change C, first change for independent project, high
+        # relative priority.
+        self.assertEqual(reqs[1].priority, 100)
+        self.assertEqual(reqs[1].relative_priority, 0)
+
+        # Change B, second change for shared queue, lower relative
+        # priority.
+        self.assertEqual(reqs[2].priority, 100)
+        self.assertEqual(reqs[2].relative_priority, 1)
+
+        self.hold_nodeset_requests_in_queue = False
+        self.releaseNodesetRequests(*reqs)
+        self.waitUntilSettled()
