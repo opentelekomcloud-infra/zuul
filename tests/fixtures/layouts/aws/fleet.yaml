@@ -76,3 +76,4 @@
     section: aws-us-east-1
     labels:
       - name: debian-normal
+        userdata: testuserdata

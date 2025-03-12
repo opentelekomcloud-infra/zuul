@@ -1478,10 +1478,10 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     'HttpEndpoint': 'enabled',
                 }
 
-            # if label.userdata:
-            #     userdata_base64 = base64.b64encode(
-            #         label.userdata.encode('ascii')).decode('utf-8')
-            #     template_data['UserData'] = userdata_base64
+            if label.userdata:
+                userdata_base64 = base64.b64encode(
+                    label.userdata.encode('utf-8')).decode('utf-8')
+                template_data['UserData'] = userdata_base64
 
             template_args = dict(
                 LaunchTemplateData=template_data,
@@ -1670,8 +1670,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         if flavor.public_ipv6:
             args['NetworkInterfaces'][0]['Ipv6AddressCount'] = 1
 
-        # if label.userdata:
-        #     args['UserData'] = label.userdata
+        if label.userdata:
+            args['UserData'] = label.userdata
 
         # if label.iam_instance_profile:
         #     if 'name' in label.iam_instance_profile:
