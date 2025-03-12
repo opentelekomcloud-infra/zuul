@@ -69,6 +69,7 @@
     az: us-east-1b
     security-group-id: testgroup
     subnet-id: {subnet_id}
+    public-ipv6: True
 
 - provider:
     name: aws-us-east-1-main

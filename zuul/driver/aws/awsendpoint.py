@@ -1667,8 +1667,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         if label.subnet_id:
             args['NetworkInterfaces'][0]['SubnetId'] = label.subnet_id
 
-        # if label.pool.public_ipv6:
-        #     args['NetworkInterfaces'][0]['Ipv6AddressCount'] = 1
+        if flavor.public_ipv6:
+            args['NetworkInterfaces'][0]['Ipv6AddressCount'] = 1
 
         # if label.userdata:
         #     args['UserData'] = label.userdata
