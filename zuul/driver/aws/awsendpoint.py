@@ -1467,17 +1467,16 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             if label.security_group_id:
                 template_data['SecurityGroupIds'] = [label.security_group_id]
 
-            # TODO
-            # if label.imdsv2 == 'required':
-            #     template_data['MetadataOptions'] = {
-            #         'HttpTokens': 'required',
-            #         'HttpEndpoint': 'enabled',
-            #     }
-            # elif label.imdsv2 == 'optional':
-            #     template_data['MetadataOptions'] = {
-            #         'HttpTokens': 'optional',
-            #         'HttpEndpoint': 'enabled',
-            #     }
+            if label.imds_http_tokens == 'required':
+                template_data['MetadataOptions'] = {
+                    'HttpTokens': 'required',
+                    'HttpEndpoint': 'enabled',
+                }
+            elif label.imds_http_tokens == 'optional':
+                template_data['MetadataOptions'] = {
+                    'HttpTokens': 'optional',
+                    'HttpEndpoint': 'enabled',
+                }
 
             # if label.userdata:
             #     userdata_base64 = base64.b64encode(
@@ -1720,17 +1719,16 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 }
             }
 
-        # TODO
-        # if label.imdsv2 == 'required':
-        #     args['MetadataOptions'] = {
-        #         'HttpTokens': 'required',
-        #         'HttpEndpoint': 'enabled',
-        #     }
-        # elif label.imdsv2 == 'optional':
-        #     args['MetadataOptions'] = {
-        #         'HttpTokens': 'optional',
-        #         'HttpEndpoint': 'enabled',
-        #     }
+        if label.imds_http_tokens == 'required':
+            args['MetadataOptions'] = {
+                'HttpTokens': 'required',
+                'HttpEndpoint': 'enabled',
+            }
+        elif label.imds_http_tokens == 'optional':
+            args['MetadataOptions'] = {
+                'HttpTokens': 'optional',
+                'HttpEndpoint': 'enabled',
+            }
 
         if dedicated_host_id:
             placement = args.setdefault('Placement', {})
