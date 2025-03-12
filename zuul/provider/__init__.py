@@ -255,23 +255,6 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
     def getProviderSchema(self):
         return self.schema
 
-    def parseProviderConfig(self, config):
-        """Parse the provider config without any images/labels/flavors
-        so that the other objects can collect any information they
-        need from the cloud region when they are parsed"""
-        schema = self.getProviderSchema()
-        ret = schema(config)
-        return ret
-
-    def parseFullConfig(self, config):
-        ret = self.parseProviderConfig(config)
-        ret.update(dict(
-            images=self.parseImages(config),
-            flavors=self.parseFlavors(config),
-            labels=self.parseLabels(config),
-        ))
-        return ret
-
     def parseConfig(self, config, connection):
         schema = self.getProviderSchema()
         ret = schema(config)
