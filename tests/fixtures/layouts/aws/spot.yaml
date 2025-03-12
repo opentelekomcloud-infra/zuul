@@ -71,6 +71,8 @@
     subnet-id: {subnet_id}
     public-ipv6: True
     userdata: testuserdata
+    iam-instance-profile:
+      name: {iam_profile_name}
 
 - provider:
     name: aws-us-east-1-main

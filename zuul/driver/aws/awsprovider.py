@@ -155,12 +155,21 @@ class AwsProviderFlavor(BaseProviderFlavor):
 
 
 class AwsProviderLabel(BaseProviderLabel):
+    aws_iam_schema = vs.All(
+        vs.Schema({
+            vs.Exclusive(Required('name'), 'iam'): str,
+            vs.Exclusive(Required('arn'), 'iam'): str
+        }),
+        RequiredExclusive('name', 'arn',
+                          msg=('Provide either "name", or "arn" keys'))
+    )
     aws_label_schema = vs.Schema({
         Optional('az'): Nullable(str),
         # TODO: aws accepts a list everywhere we use this; should this
         # be as_list?
         Optional('security-group-id'): Nullable(str),
         Optional('subnet-id'): Nullable(str),
+        Optional('iam-instance-profile'): Nullable(aws_iam_schema),
     })
 
     inheritable_schema = assemble(
