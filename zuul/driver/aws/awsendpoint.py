@@ -1673,15 +1673,15 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         if label.userdata:
             args['UserData'] = label.userdata
 
-        # if label.iam_instance_profile:
-        #     if 'name' in label.iam_instance_profile:
-        #         args['IamInstanceProfile'] = {
-        #             'Name': label.iam_instance_profile['name']
-        #         }
-        #     elif 'arn' in label.iam_instance_profile:
-        #         args['IamInstanceProfile'] = {
-        #             'Arn': label.iam_instance_profile['arn']
-        #         }
+        if label.iam_instance_profile:
+            if 'name' in label.iam_instance_profile:
+                args['IamInstanceProfile'] = {
+                    'Name': label.iam_instance_profile['name']
+                }
+            elif 'arn' in label.iam_instance_profile:
+                args['IamInstanceProfile'] = {
+                    'Arn': label.iam_instance_profile['arn']
+                }
 
         # Default block device mapping parameters are embedded in AMIs.
         # We might need to supply our own mapping before lauching the instance.
