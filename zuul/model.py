@@ -3189,6 +3189,7 @@ class FrozenJob(zkobject.ZKObject):
                   'nodeset_index',
                   'override_branch',
                   'override_checkout',
+                  'pre_timeout',
                   'post_timeout',
                   'required_projects',
                   'semaphores',
@@ -3397,6 +3398,10 @@ class FrozenJob(zkobject.ZKObject):
         data['provides'] = frozenset(data['provides'])
         data['requires'] = frozenset(data['requires'])
         data['tags'] = frozenset(data['tags'])
+
+        # MODEL_API <= 33
+        if not data.get('pre_timeout'):
+            data['pre_timeout'] = None
 
         for job_data_key in self.job_data_attributes:
             job_data = data.pop(job_data_key, None)
@@ -3629,7 +3634,9 @@ class Job(ConfigObject):
         d['intermediate'] = self.intermediate
         d['protected'] = self.protected
         d['voting'] = self.voting
+        d['pre_timeout'] = self.pre_timeout
         d['timeout'] = self.timeout
+        d['post_timeout'] = self.post_timeout
         d['tags'] = list(self.tags)
         d['provides'] = list(self.provides)
         d['requires'] = list(self.requires)
@@ -3700,6 +3707,7 @@ class Job(ConfigObject):
         # project-pipeline.
         self.execution_attributes = dict(
             parent=None,
+            pre_timeout=None,
             timeout=None,
             post_timeout=None,
             variables={},

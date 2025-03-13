@@ -538,6 +538,14 @@ Here is an example of two job definitions:
       this value instead of the branch of the item being tested when
       collecting jobs to run.
 
+   .. attr:: pre-timeout
+
+      The time in seconds that the job will allow all pre-run playbooks to
+      consume before timing out. If set this value must be less than or
+      equal to the job ``timeout`` value as pre-run playbook runtime counts
+      against the job ``timeout``. If left unset then the job ``timeout``
+      value will be used.
+
    .. attr:: timeout
 
       The time in seconds that the job should be allowed to run before
