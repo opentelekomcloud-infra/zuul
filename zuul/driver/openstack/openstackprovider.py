@@ -112,6 +112,7 @@ class OpenstackProviderLabel(BaseProviderLabel):
         Optional('userdata'): Nullable(str),
     })
     inheritable_openstack_label_schema = vs.Schema({
+        Optional('az'): Nullable(str),
         Optional('auto-floating-ip', default=True): bool,
         Optional('boot-from-volume', default=False): bool,
         Optional('networks', default=[]): [str],  # TODO: as_list?
