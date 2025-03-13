@@ -740,6 +740,7 @@ class JobParser(object):
                           vs.Any(ZUUL_REGEX, str)),
                       # validation happens in NodeSetParser
                       'nodeset': vs.Any(dict, str),
+                      'pre-timeout': int,
                       'timeout': int,
                       'post-timeout': int,
                       'attempts': int,
@@ -802,6 +803,7 @@ class JobParser(object):
         'abstract',
         'protected',
         'intermediate',
+        'pre-timeout',
         'timeout',
         'post-timeout',
         'workspace',
@@ -827,6 +829,7 @@ class JobParser(object):
         'hold-following-changes': 'hold_following_changes',
         'files': 'file_matcher',
         'irrelevant-files': 'irrelevant_file_matcher',
+        'pre-timeout': 'pre_timeout',
         'post-timeout': 'post_timeout',
         'pre-run': 'pre_run',
         'post-run': 'post_run',
