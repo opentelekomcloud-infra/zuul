@@ -13,6 +13,7 @@
 # under the License.
 
 import logging
+import math
 
 import zuul.provider.schema as provider_schema
 from zuul.lib.voluputil import (
@@ -25,6 +26,7 @@ from zuul.driver.openstack.openstackendpoint import (
     OpenstackCreateStateMachine,
     OpenstackDeleteStateMachine,
 )
+from zuul.model import QuotaInformation
 from zuul.provider import (
     BaseProvider,
     BaseProviderFlavor,
@@ -154,9 +156,19 @@ class OpenstackProviderSchema(BaseProviderSchema):
     def getProviderSchema(self):
         schema = super().getProviderSchema()
 
+        resource_limits = {
+            'instances': int,
+            'cores': int,
+            'ram': int,
+            'volumes': int,
+            'volume-gb': int,
+        }
+
         openstack_provider_schema = vs.Schema({
             Optional('region'): Nullable(str),
+            Optional('resource-limits', default=dict()): resource_limits,
         })
+
         return assemble(
             schema,
             openstack_provider_schema,
@@ -242,7 +254,10 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
         pass
 
     def getQuotaLimits(self):
-        return self.endpoint.getQuotaLimits()
+        cloud = self.endpoint.getQuotaLimits()
+        zuul = QuotaInformation(default=math.inf, **self.resource_limits)
+        cloud.min(zuul)
+        return cloud
 
     def getQuotaForLabel(self, label):
         flavor = self.flavors[label.flavor]

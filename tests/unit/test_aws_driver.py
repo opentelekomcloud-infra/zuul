@@ -255,6 +255,10 @@ class TestAwsDriver(BaseCloudDriverTest):
     def test_aws_quota(self):
         self._test_quota('debian-normal')
 
+    @simple_layout('layouts/aws/resource-limits.yaml', enable_nodepool=True)
+    def test_aws_resource_limits(self):
+        self._test_quota('debian-normal')
+
     @simple_layout('layouts/aws/nodepool-image-snapshot.yaml',
                    enable_nodepool=True)
     @return_data(

@@ -118,6 +118,11 @@ class TestOpenstackDriver(BaseOpenstackDriverTest, BaseCloudDriverTest):
     def test_openstack_quota(self):
         self._test_quota('debian-normal')
 
+    @simple_layout('layouts/openstack/resource-limits.yaml',
+                   enable_nodepool=True)
+    def test_openstack_resource_limits(self):
+        self._test_quota('debian-normal')
+
     @simple_layout('layouts/openstack/nodepool-image.yaml',
                    enable_nodepool=True)
     @return_data(

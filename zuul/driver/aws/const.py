@@ -12,6 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import itertools
+
 # This is a map of instance types to quota codes.  There does not
 # appear to be an automated way to determine what quota code to use
 # for an instance type, therefore this list was manually created by
@@ -25,6 +27,7 @@
 # type name with the letters in the quota name.  The prefix "u-" for
 # "Running On-Demand High Memory instances" was determined from
 # https://aws.amazon.com/ec2/instance-types/high-memory/
+
 
 ON_DEMAND = 0
 SPOT = 1
@@ -174,3 +177,12 @@ VOLUME_QUOTA_CODES = {
     'standard': dict(storage='L-9CF3C2EB'),
     'st1': dict(storage='L-82ACEF56'),
 }
+
+ALL_QUOTA_CODES = set(itertools.chain(
+    (x for x in itertools.chain.from_iterable(
+        INSTANCE_QUOTA_CODES.values()) if x),
+    HOST_QUOTA_CODES.values(),
+    itertools.chain.from_iterable(
+        (x.values() for x in VOLUME_QUOTA_CODES.values())
+    ),
+))
