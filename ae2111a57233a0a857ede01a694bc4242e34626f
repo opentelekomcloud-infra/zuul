@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "53627353_cf3829ad",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-03-13T14:41:36Z",
+      "side": 1,
+      "message": "Ok, I was thinking that we might not want to accumulate path\u0027s that we don\u0027t have in the cache, but considering the pre-cache hook I think the origin order makes sense.\n\nI think we might want to add a test for that.",
+      "parentUuid": "b1277cde_ce950820",
+      "revId": "ae2111a57233a0a857ede01a694bc4242e34626f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d9ae6ddd_2258a9cc",
         "filename": "zuul/zk/launcher.py",
         "patchSetId": 3
@@ -31,6 +49,24 @@
       "writtenOn": "2025-03-13T14:35:54Z",
       "side": 1,
       "message": "We could probably just return a bool instead of raising an exception; that would probably be more efficient which may make it worthwhile for a cache.",
+      "revId": "ae2111a57233a0a857ede01a694bc4242e34626f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cb83ea35_00fd33b3",
+        "filename": "zuul/zk/launcher.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-03-13T14:41:36Z",
+      "side": 1,
+      "message": "Can do that. I had something similar like `StopIteration` in mind here, but I\u0027m fine changing this to a bool.",
+      "parentUuid": "d9ae6ddd_2258a9cc",
       "revId": "ae2111a57233a0a857ede01a694bc4242e34626f",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
