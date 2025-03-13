@@ -2031,6 +2031,31 @@ class TestScheduler(ZuulTestCase):
         self.assertEqual(B.reported, 2)
         self.assertEqual(C.reported, 2)
 
+    def test_dequeue_only_live(self):
+        # Test that we only dequeue live items
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B.setDependsOn(A, 1)
+
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.scheds.first.sched.dequeue(
+            "tenant-one", "check", "org/project", "1,1", None)
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='project-merge', result='ABORTED', changes='1,1'),
+            dict(name='project-merge', result='SUCCESS', changes='1,1 2,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1 2,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1 2,1'),
+        ], ordered=False)
+
     def test_approval_removal(self):
         # Test that we dequeue a change when it can not merge
         self.executor_server.hold_jobs_in_build = True
