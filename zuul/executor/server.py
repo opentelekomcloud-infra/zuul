@@ -1952,7 +1952,7 @@ class AnsibleJob(object):
         if timeout is not None:
             now = time.time()
             elapsed = now - start
-            timeout = timeout - elapsed
+            timeout = max(0, timeout - elapsed)
         return timeout
 
     def runPlaybooks(self, args):
@@ -2014,14 +2014,15 @@ class AnsibleJob(object):
 
         self.started = True
         time_started = time.time()
+        # If we have a pre-run playbook timeout we use that. Any pre-run
+        # runtime counts against the total timeout for pre-run and run as the
         # timeout value is "total" job timeout which accounts for
         # pre-run and run playbooks. post-run is different because
         # it is used to copy out job logs and we want to do our best
         # to copy logs even when the job has timed out.
-        job_timeout = self.job.timeout
+        job_timeout = self.job.pre_timeout or self.job.timeout
         for index, playbook in enumerate(self.jobdir.pre_playbooks):
             nesting_level_achieved = playbook.nesting_level
-            # TODOv3(pabelanger): Implement pre-run timeout setting.
             ansible_timeout = self.getAnsibleTimeout(time_started, job_timeout)
             pre_status, pre_code = self.runAnsiblePlaybook(
                 playbook, ansible_timeout, self.ansible_version, phase='pre',
@@ -2044,6 +2045,10 @@ class AnsibleJob(object):
              self.cpu_times['children_system']))
 
         if not pre_failed:
+            # Update job_timeout to reset for longer timeout value if
+            # pre-timeout is set
+            job_timeout = self.getAnsibleTimeout(
+                time_started, self.job.timeout)
             # At this point, we have gone all the way down.
             nesting_level_achieved = None
             for index, playbook in enumerate(self.jobdir.playbooks):
