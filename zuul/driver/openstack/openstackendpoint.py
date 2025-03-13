@@ -227,38 +227,11 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
             else:
                 self.image_external = image.external_name
 
-        # props = label.instance_properties.copy()
-        # for k, v in label.dynamic_instance_properties.items():
-        #     try:
-        #         props[k] = v.format(request=self.request.getSafeAttributes())
-        #     except Exception:
-        #         self.log.exception(
-        #             "Error formatting dynamic instance property %s", k)
-        # if not props:
-        #     props = None
-
-        # Put provider.name and image_name in as groups so that ansible
-        # inventory can auto-create groups for us based on each of those
-        # qualities
-        # Also list each of those values directly so that non-ansible
-        # consumption programs don't need to play a game of knowing that
-        # groups[0] is the image name or anything silly like that.
-        # groups_list = [self.provider.name]
-        # groups_list.append(image_name)
-        # groups_list.append(label.name)
-        # meta = dict(
-        #     groups=",".join(groups_list),
-        # )
-        # merge in any instance properties provided from config
-        # if props:
-        #     meta.update(props)
-        # merge nodepool-internal metadata
         meta = {}
         meta.update(tags)
         self.metadata = meta
         self.os_flavor = self.endpoint._findFlavor(
             flavor_name=flavor.flavor_name,
-            # min_ram=self.label.min_ram,
         )
         self.node.quota = quota_from_flavor(self.os_flavor, label=self.label)
         self.node.openstack_server_id = None
