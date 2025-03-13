@@ -31,6 +31,7 @@ from tests.base import (
     MySQLSchemaFixture,
     PostgresqlSchemaFixture,
     ZuulTestCase,
+    iterate_timeout,
     okay_tracebacks,
 )
 
@@ -267,21 +268,23 @@ class TestSQLConnectionMysql(ZuulTestCase):
         self.orderedRelease()
         self.waitUntilSettled()
 
-        # We are pausing a job within this test, so holding the jobs in
-        # build and releasing them in order becomes difficult as the
-        # paused job will either be paused or waiting on the child jobs
-        # to start.
-        # As we are not interested in the order the jobs are running but
-        # only on the results in the database, simply deactivate
-        # hold_jobs_in_build.
-        self.executor_server.hold_jobs_in_build = False
-
         # Add a paused build result
         self.log.debug("Adding paused build result")
         D = self.fake_gerrit.addFakeChange("org/project", "master", "D")
         self.executor_server.returnData(
             "project-merge", D, {"zuul": {"pause": True}})
         self.fake_gerrit.addEvent(D.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        build = self.getBuildByName('project-merge')
+        self.executor_server.release('project-merge')
+        for _ in iterate_timeout(10, "Wait for project-merge to pause"):
+            if build.paused:
+                break
+        # Build has paused we wait at least one second so that the database
+        # record can increment.
+        time.sleep(1)
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
         self.waitUntilSettled()
 
         check_results()
@@ -802,10 +805,22 @@ class TestMQTTConnection(ZuulTestCase):
 
     @okay_tracebacks('Connection refused')
     def test_mqtt_paused_job(self):
+        self.executor_server.hold_jobs_in_build = True
         A = self.fake_gerrit.addFakeChange("org/project", "master", "A")
         # Let the job being paused via the executor
         self.executor_server.returnData("test", A, {"zuul": {"pause": True}})
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        build = self.getBuildByName('test')
+        self.executor_server.release('test')
+        for _ in iterate_timeout(10, "Wait for test to pause"):
+            if build.paused:
+                break
+        # Build has paused we wait at least one second so that the timestamp
+        # record can increment.
+        time.sleep(1)
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
         self.waitUntilSettled()
 
         success_event = self.mqtt_messages.pop()
