@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7a1a8218_367d3ee0",
+        "filename": "zuul/zk/sharding.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-13T14:11:34Z",
+      "side": 1,
+      "message": "I don\u0027t immediately understand why this needs to be a loop instead of passing the makepath argument.\n\n(I understand this should only go through the loop at most twice: fail/create/succeed; but why?)",
+      "revId": "8b5d5e8c0cd7d0c9cd4d11f170a41a70df8dbbd2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
