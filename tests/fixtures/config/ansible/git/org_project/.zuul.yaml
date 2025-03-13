@@ -30,6 +30,7 @@
             dependencies:
               - check-hostvars
         - timeout: {dependencies: check-hostvars}
+        - pre-timeout: {dependencies: check-hostvars}
         - post-timeout: {dependencies: check-secret-names}
         - hello-world: {dependencies: check-secret-names}
         - failpost: {dependencies: hello-world}

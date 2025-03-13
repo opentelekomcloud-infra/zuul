@@ -1279,6 +1279,10 @@ The following variables related to the job are available:
 
       The name of the current Zuul tenant.
 
+   .. var:: pre_timeout
+
+      The pre-run playbook timeout, in seconds.
+
    .. var:: timeout
 
       The job timeout, in seconds.
