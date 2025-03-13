@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a555e0bc_db35b0b5",
+        "filename": "tests/unit/test_supercedent.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 5263
+      },
+      "writtenOn": "2025-03-13T13:24:02Z",
+      "side": 1,
+      "message": "Nit: I\u0027m having trouble parsing this sentence.",
+      "revId": "116c630e362cacdb25211342598374003593fffd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
