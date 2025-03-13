@@ -209,7 +209,9 @@ def zuul_params_from_job(job):
     zuul_params = {
         "job": job.name,
         "voting": job.voting,
+        "pre_timeout": job.pre_timeout,
         "timeout": job.timeout,
+        "post_timeout": job.post_timeout,
         "jobtags": sorted(job.tags),
         "_inheritance_path": list(job.inheritance_path),
     }

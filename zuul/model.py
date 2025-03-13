@@ -3235,6 +3235,7 @@ class FrozenJob(zkobject.ZKObject):
                   'nodeset_index',
                   'override_branch',
                   'override_checkout',
+                  'pre_timeout',
                   'post_timeout',
                   'required_projects',
                   'semaphores',
@@ -3443,6 +3444,9 @@ class FrozenJob(zkobject.ZKObject):
         data['provides'] = frozenset(data['provides'])
         data['requires'] = frozenset(data['requires'])
         data['tags'] = frozenset(data['tags'])
+
+        # MODEL_API <= 33
+        data.setdefault('pre_timeout', None)
 
         for job_data_key in self.job_data_attributes:
             job_data = data.pop(job_data_key, None)
@@ -3675,7 +3679,9 @@ class Job(ConfigObject):
         d['intermediate'] = self.intermediate
         d['protected'] = self.protected
         d['voting'] = self.voting
+        d['pre_timeout'] = self.pre_timeout
         d['timeout'] = self.timeout
+        d['post_timeout'] = self.post_timeout
         d['tags'] = list(self.tags)
         d['provides'] = list(self.provides)
         d['requires'] = list(self.requires)
@@ -3746,6 +3752,7 @@ class Job(ConfigObject):
         # project-pipeline.
         self.execution_attributes = dict(
             parent=None,
+            pre_timeout=None,
             timeout=None,
             post_timeout=None,
             variables={},
@@ -9438,6 +9445,17 @@ class Layout(object):
 
         if job.roles:
             job._resolveRoles(self)
+
+        if (job.pre_timeout and
+            self.tenant.max_job_timeout != -1 and
+            job.pre_timeout > self.tenant.max_job_timeout):
+            raise MaxTimeoutError(job, self.tenant)
+
+        # pre-timeout counts against timeout so can't be any larger than
+        # timeout
+        if (job.pre_timeout and job.timeout and
+            job.pre_timeout > job.timeout):
+            raise MaxTimeoutError(job, self.tenant)
 
         if (job.timeout and
             self.tenant.max_job_timeout != -1 and
