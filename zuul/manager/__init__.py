@@ -2094,12 +2094,13 @@ class PipelineManager(metaclass=ABCMeta):
                     break
 
             if all_completed:
+                resume_time = time.time()
                 self.sched.executor.resumeBuild(build)
                 with build.activeContext(self.current_context):
                     build.paused = False
                     build.addEvent(
                         model.BuildEvent(
-                            event_time=time.time(),
+                            event_time=resume_time,
                             event_type=model.BuildEvent.TYPE_RESUMED))
 
     def _resetDependentBuilds(self, build_set, build):
