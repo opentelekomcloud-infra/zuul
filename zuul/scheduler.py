@@ -2022,6 +2022,8 @@ class Scheduler(threading.Thread):
                             % (item, project.name))
         for shared_queue in pipeline.queues:
             for item in shared_queue.queue:
+                if not item.live:
+                    continue
                 for item_change in item.changes:
                     if item_change.project != change.project:
                         continue
