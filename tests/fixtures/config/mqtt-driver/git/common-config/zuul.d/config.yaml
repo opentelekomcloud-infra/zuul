@@ -32,7 +32,7 @@
 
 - job:
     name: dependent-test
-    run: playbooks/test.yaml
+    run: playbooks/dependent-test.yaml
 
 - project:
     name: org/project

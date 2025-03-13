@@ -1,0 +1,5 @@
+- hosts: all
+  tasks:
+    - name: Pause at least one second to produce confirmable mqtt data
+      pause:
+        seconds: 1

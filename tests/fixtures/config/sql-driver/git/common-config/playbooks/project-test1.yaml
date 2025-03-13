@@ -1,5 +1,8 @@
 - hosts: all
   tasks:
+    - name: Pause at least one second to produce confirmable DB data
+      pause:
+        seconds: 1
     - name: Return artifact data
       zuul_return:
         data:
