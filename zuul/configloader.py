@@ -747,6 +747,7 @@ class JobParser(object):
                           vs.Any(ZUUL_REGEX, str)),
                       # validation happens in NodeSetParser
                       'nodeset': vs.Any(dict, str),
+                      'pre-timeout': int,
                       'timeout': int,
                       'post-timeout': int,
                       'attempts': int,
@@ -809,6 +810,7 @@ class JobParser(object):
         'abstract',
         'protected',
         'intermediate',
+        'pre-timeout',
         'timeout',
         'post-timeout',
         'workspace',
@@ -834,6 +836,7 @@ class JobParser(object):
         'hold-following-changes': 'hold_following_changes',
         'files': 'file_matcher',
         'irrelevant-files': 'irrelevant_file_matcher',
+        'pre-timeout': 'pre_timeout',
         'post-timeout': 'post_timeout',
         'pre-run': 'pre_run',
         'post-run': 'post_run',
@@ -933,6 +936,17 @@ class JobParser(object):
             job.post_review = True
             job.allowed_projects = frozenset((
                 conf['_source_context'].project_name,))
+
+        if (conf.get('pre-timeout') and
+            self.pcontext.tenant.max_job_timeout != -1 and
+            int(conf['pre-timeout']) > self.pcontext.tenant.max_job_timeout):
+            raise MaxTimeoutError(job, self.pcontext.tenant)
+
+        # pre-timeout counts against timeout so can't be any larger than
+        # timeout
+        if (conf.get('pre-timeout') and conf.get('timeout') and
+            int(conf['pre-timeout']) > int(conf['timeout'])):
+            raise MaxTimeoutError(job, self.pcontext.tenant)
 
         if (conf.get('timeout') and
             self.pcontext.tenant.max_job_timeout != -1 and

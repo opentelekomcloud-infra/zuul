@@ -4276,6 +4276,12 @@ class FunctionalAnsibleMixIn(object):
             post_flag_path = os.path.join(
                 self.jobdir_root, build_timeout.uuid + '.post.flag')
             self.assertTrue(os.path.exists(post_flag_path))
+        build_pre_timeout = self.getJobFromHistory(
+            'pre-timeout', result='RETRY_LIMIT')
+        with self.jobLog(build_pre_timeout):
+            post_flag_path = os.path.join(
+                self.jobdir_root, build_pre_timeout.uuid + '.post.flag')
+            self.assertTrue(os.path.exists(post_flag_path))
         build_post_timeout = self.getJobFromHistory('post-timeout')
         with self.jobLog(build_post_timeout):
             self.assertEqual(build_post_timeout.result, 'POST_FAILURE')

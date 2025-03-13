@@ -2587,6 +2587,7 @@ class ZuulWebAPI(object):
         del params['secret_parent_data']
         params['job'] = job.name
         params['zuul']['buildset'] = None
+        params['pre_timeout'] = job.pre_timeout
         params['timeout'] = job.timeout
         params['post_timeout'] = job.post_timeout
         params['override_branch'] = job.override_branch
