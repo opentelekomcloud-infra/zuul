@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b1277cde_ce950820",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-13T14:35:54Z",
+      "side": 1,
+      "message": "Why did you change the order of this?\n\nThe cached_paths are used in the walkTree method which is called when the cache is restarted.  That allows us to bring the cache up-to-date for even the things that we don\u0027t cache but handle in the preCacheHook.  But this change will mean that we no longer see those items.",
+      "revId": "ae2111a57233a0a857ede01a694bc4242e34626f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d9ae6ddd_2258a9cc",
+        "filename": "zuul/zk/launcher.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-13T14:35:54Z",
+      "side": 1,
+      "message": "We could probably just return a bool instead of raising an exception; that would probably be more efficient which may make it worthwhile for a cache.",
+      "revId": "ae2111a57233a0a857ede01a694bc4242e34626f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
