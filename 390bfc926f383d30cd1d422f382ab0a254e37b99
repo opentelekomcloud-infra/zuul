@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1aac36bb_4558598b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-13T23:23:10Z",
+      "side": 1,
+      "message": "One open question I have is whether or not the pre-timeout (and possibly post-timeout) values should be included in the zuul job vars dict. Currently it looks like we only supply the main timeout value there.",
+      "revId": "390bfc926f383d30cd1d422f382ab0a254e37b99",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
