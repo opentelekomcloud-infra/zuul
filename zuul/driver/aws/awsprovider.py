@@ -76,6 +76,8 @@ class AwsProviderImage(BaseProviderImage):
     inheritable_aws_zuul_schema = vs.Schema({
         Optional('import-method', default='snapshot'): vs.Any(
             'snapshot', 'image', 'ebs-direct'),
+        Optional('image-format', default='raw'): vs.Any(
+            'ova', 'vhd', 'vhdx', 'vmdk', 'raw'),
         # None is an acceptable explicit value for imds-support
         Optional('imds-support', default=None): vs.Any('v2.0', None),
         Optional('architecture', default='x86_64'): str,
@@ -105,6 +107,7 @@ class AwsProviderImage(BaseProviderImage):
         self.image_id = None
         self.image_filters = None
         super().__init__(image_config, provider_config)
+        self.format = getattr(self, 'image_format', None)
         # Implement provider defaults
         if self.connection_type is None:
             self.connection_type = 'ssh'

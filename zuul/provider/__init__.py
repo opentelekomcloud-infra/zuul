@@ -53,8 +53,6 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
                 new_config[k] = provider_config[k]
 
         self.__dict__.update(self.schema(new_config))
-        # TODO: generate this automatically from config
-        self.format = 'raw'
 
 
 class BaseProviderFlavor(CNameMixin, metaclass=abc.ABCMeta):
