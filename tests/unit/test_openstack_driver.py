@@ -97,9 +97,20 @@ class TestOpenstackDriver(BaseOpenstackDriverTest, BaseCloudDriverTest):
         super()._assertProviderNodeAttributes(pnode)
         self.assertEqual('fakecloud', pnode.cloud)
         self.assertEqual('region1', pnode.region)
+        if checks := self.test_config.driver.openstack.get('node_checks'):
+            checks(self, pnode)
 
     @simple_layout('layouts/openstack/nodepool.yaml', enable_nodepool=True)
     def test_openstack_node_lifecycle(self):
+        self._test_node_lifecycle('debian-normal')
+
+    def check_more_attrs(self, pnode):
+        self.assertEqual('foo', pnode.az)
+
+    @simple_layout('layouts/openstack/more.yaml', enable_nodepool=True)
+    @driver_config('openstack', node_checks=check_more_attrs)
+    def test_openstack_node_lifecycle_more(self):
+        # Test with more options than the normal test
         self._test_node_lifecycle('debian-normal')
 
     @simple_layout('layouts/openstack/nodepool.yaml', enable_nodepool=True)

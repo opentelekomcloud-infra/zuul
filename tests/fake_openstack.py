@@ -126,6 +126,7 @@ class FakeOpenstackSession:
             server_list = []
             for server in self.cloud.servers:
                 data = server._get_dict()
+                data['status'] = 'ACTIVE'
                 data['hostId'] = data.pop('host_id')
                 data['OS-EXT-AZ:availability_zone'] = data.pop('location').zone
                 data['os-extended-volumes:volumes_attached'] =\
@@ -171,8 +172,8 @@ class FakeOpenstackConnection:
 
     def create_server(self, wait=None, name=None, image=None,
                       flavor=None, config_drive=None, key_name=None,
-                      nics=None, meta=None):
-        location = FakeOpenstackLocation(zone=None)
+                      nics=None, meta=None, availability_zone=None):
+        location = FakeOpenstackLocation(zone=availability_zone)
         if self.cloud._fake_needs_floating_ip:
             addresses = dict(
                 public=[],
@@ -193,7 +194,7 @@ class FakeOpenstackConnection:
             host_id='fake_host_id',
             location=location,
             volumes=[],
-            status='ACTIVE',
+            status='BUILDING',
             addresses=addresses,
             interface_ip=interface_ip,
             flavor=flavor,
