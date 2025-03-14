@@ -534,12 +534,13 @@ class ZKBranchCacheMixin:
 
             event.branch_protected = protected
         else:
-            # This can happen if the branch was deleted in GitHub/GitLab.
-            # In this case we assume that the branch COULD have
-            # been protected before. The cache update is handled by
-            # the push event, so we don't touch the cache here
-            # again.
-            event.branch_protected = True
+            # This can happen if the branch was deleted in
+            # GitHub/GitLab. In this case we assume that the branch
+            # COULD have been protected before. However, if the event
+            # says the branch was created we probably never loaded any
+            # configuration from it. The cache update is handled by the
+            # push event, so we don't touch the cache here again.
+            event.branch_protected = not event.branch_created
 
     def clearBranchCache(self, projects=None):
         """Clear the branch cache
