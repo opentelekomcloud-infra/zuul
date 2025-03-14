@@ -34,6 +34,24 @@
       "parentUuid": "7a1a8218_367d3ee0",
       "revId": "8b5d5e8c0cd7d0c9cd4d11f170a41a70df8dbbd2",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7e0ffea4_a5bf3a46",
+        "filename": "zuul/zk/sharding.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-03-14T07:30:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8601efe2_7a0dc62e",
+      "revId": "8b5d5e8c0cd7d0c9cd4d11f170a41a70df8dbbd2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
