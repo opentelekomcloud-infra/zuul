@@ -1839,6 +1839,34 @@ class TestGithubUnprotectedBranches(ZuulTestCase):
         branches = github_connection.getProjectBranches(project, tenant)
         self.assertEqual(branches, ["master"])
 
+    def test_branch_fast_create_delete(self):
+        """Test that a fast create/delete of an unprotected branch
+        doesn't trigger a reconfig.
+        """
+        # Record previous tenant reconfiguration time
+        before = self.scheds.first.sched.tenant_layout_state.get(
+            'tenant-one', EMPTY_LAYOUT_STATE)
+
+        # Notify zuul about the new branch that no longer exists
+        branch_head = random_sha1()
+        self.fake_github.emitEvent(
+            self.fake_github.getPushEvent(
+                'org/project2',
+                new_rev=branch_head,
+                ref='refs/heads/deleted'))
+        self.fake_github.emitEvent(
+            self.fake_github.getPushEvent(
+                'org/project2',
+                new_rev='0' * 40,
+                old_rev=branch_head,
+                ref='refs/heads/deleted'))
+        self.waitUntilSettled()
+
+        # Make sure the tenant hasn't been reconfigured due to the event
+        after = self.scheds.first.sched.tenant_layout_state.get(
+            'tenant-one', EMPTY_LAYOUT_STATE)
+        self.assertEqual(before, after)
+
     # This test verifies that a PR is considered in case it was created for
     # a branch just has been set to protected before a tenant reconfiguration
     # took place.
