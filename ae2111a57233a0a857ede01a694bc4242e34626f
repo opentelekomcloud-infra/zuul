@@ -36,6 +36,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "86d992d4_54cdbe8f",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-03-14T09:25:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "53627353_cf3829ad",
+      "revId": "ae2111a57233a0a857ede01a694bc4242e34626f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d9ae6ddd_2258a9cc",
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "Can do that. I had something similar like `StopIteration` in mind here, but I\u0027m fine changing this to a bool.",
       "parentUuid": "d9ae6ddd_2258a9cc",
+      "revId": "ae2111a57233a0a857ede01a694bc4242e34626f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e2158105_4e64357d",
+        "filename": "zuul/zk/launcher.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-03-14T09:25:01Z",
+      "side": 1,
+      "message": "I\u0027ve change this to return a sentinel value when the cache update should not happen. Returning a bool felt a bit intrusive as we\u0027d need to adapt each end every return in the pre-cache hook. I think it\u0027s also error prone, as it\u0027s not immediately clear what True/False means in this context.\n\nHope that works for you",
+      "parentUuid": "cb83ea35_00fd33b3",
       "revId": "ae2111a57233a0a857ede01a694bc4242e34626f",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
