@@ -1334,6 +1334,8 @@ class FakeNodepool(object):
             data['resources'] = self.resources
         if self.remote_ansible:
             data['connection_type'] = 'ssh'
+        if os.environ.get("ZUUL_REMOTE_USER"):
+            data['username'] = os.environ.get("ZUUL_REMOTE_USER")
         if 'fakeuser' in node_type:
             data['username'] = 'fakeuser'
         if 'windows' in node_type:
