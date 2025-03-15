@@ -1146,6 +1146,12 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
         self.assertEqual(1, len(nodes_by_label['debian-emea']))
 
 
+# It looks like Moto isn't super thread safe when listing instances. Jinja
+# can explode when the moto reservations dictionary changes size while
+# creating an instances listing. This isn't all that different to a network
+# error or a cloud error so we just accept this as an acceptable exception in
+# the test log.
+@okay_tracebacks('RuntimeError: dictionary changed size during iteration')
 class TestMinReadyTenantVariant(LauncherBaseTestCase):
     tenant_config_file = "config/launcher-min-ready/tenant-variant.yaml"
 
