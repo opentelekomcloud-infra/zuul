@@ -35,6 +35,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "61bf8591_a12ea382",
+        "filename": "zuul/executor/common.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-15T23:45:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "90e8aee7_89a2f7ad",
+      "revId": "dffc907290679b0e854a6fcc46f3883f6b16660e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "21ef7527_22fb4262",
@@ -48,6 +66,24 @@
       "writtenOn": "2025-03-15T22:51:21Z",
       "side": 1,
       "message": "Two things occur to me here:\n\n1) nit: we can use data.setdefault(\u0027pre_timeout\u0027, None)\n2) as written, if pre_timeout is 0 we\u0027re going to switch it to None\n\nI\u0027m not sure #2 is wrong; they\u0027re equivalent right now.  But I will note that if we implement #1 it fixes #2.\n\nSo maybe we should?  At least just so we don\u0027t have type switching going on behind our backs.",
+      "revId": "dffc907290679b0e854a6fcc46f3883f6b16660e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d1d956dd_4ed9b8fe",
+        "filename": "zuul/model.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 3404,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-15T23:45:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "21ef7527_22fb4262",
       "revId": "dffc907290679b0e854a6fcc46f3883f6b16660e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
