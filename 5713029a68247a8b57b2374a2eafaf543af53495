@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b3b3e018_585a93d8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-15T17:22:14Z",
+      "side": 1,
+      "message": "This was seen in https://zuul.opendev.org/t/zuul/build/cc6301ae29614cf09b5e0b50bf3b5168/log/job-output.txt#4255",
+      "revId": "5713029a68247a8b57b2374a2eafaf543af53495",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
