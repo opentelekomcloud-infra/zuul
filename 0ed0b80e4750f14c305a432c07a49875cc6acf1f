@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6078cad_a6acb99c",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-17T13:48:36Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "0fe1eeaf_20ffdc54",
+      "revId": "0ed0b80e4750f14c305a432c07a49875cc6acf1f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e25851c0_d371c52e",
@@ -35,6 +53,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "07423a5f_f0e6b111",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-17T13:48:36Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "e25851c0_d371c52e",
+      "revId": "0ed0b80e4750f14c305a432c07a49875cc6acf1f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "afc69708_6e6c22d4",
@@ -48,6 +84,24 @@
       "writtenOn": "2025-03-13T10:04:58Z",
       "side": 1,
       "message": "Could we always set this to `int(time.time()` here instead of passing this as an argument?",
+      "revId": "0ed0b80e4750f14c305a432c07a49875cc6acf1f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c0ab529b_191ddc47",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-17T13:48:36Z",
+      "side": 1,
+      "message": "I think so, there is so far no case that should pass a different time.",
+      "parentUuid": "afc69708_6e6c22d4",
       "revId": "0ed0b80e4750f14c305a432c07a49875cc6acf1f",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -75,6 +129,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9c55549_7864402e",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-17T13:48:36Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "37d5735c_1065eeaf",
+      "range": {
+        "startLine": 97,
+        "startChar": 4,
+        "endLine": 99,
+        "endChar": 38
+      },
+      "revId": "0ed0b80e4750f14c305a432c07a49875cc6acf1f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f4bed9cb_13f37cc8",
@@ -88,6 +166,24 @@
       "writtenOn": "2025-03-13T10:04:58Z",
       "side": 1,
       "message": "I\u0027m wondering if the key gen/rotation/delete should be integrated into the OIDCKeys class. Currently OIDCKeys feels a little tacked-on and not like it has some real functionality.",
+      "revId": "0ed0b80e4750f14c305a432c07a49875cc6acf1f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "699a2f4a_91eb887d",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-17T13:48:36Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "f4bed9cb_13f37cc8",
       "revId": "0ed0b80e4750f14c305a432c07a49875cc6acf1f",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
