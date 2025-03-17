@@ -125,6 +125,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7d29cd23_67a9eb62",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 14
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-03-17T16:03:03Z",
+      "side": 1,
+      "message": "Hi @jim@acmegating.com, during the implementation of the switch to `ZKObject`, I found myself rewriting most of the code. Also, the dependent changes needs to be updated as well, because we need to change from `obj[\u0027keys\u0027]` to `obj.keys`. So I think it makes sense to directly do the switch in this change instead of two changes one after another.\nAnd the implementation of the TreeCache can be added independently on top of it.",
+      "parentUuid": "0a6ae518_12ec27a7",
+      "revId": "1de03103ee344cff2a8b4a354abff14cd532be49",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "71323df8_35519124",
         "filename": "zuul/lib/keystorage.py",
         "patchSetId": 14
