@@ -36,6 +36,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff5eb6a9_b7663b28",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-17T16:39:44Z",
+      "side": 1,
+      "message": "Got it; I agree that is the behavior we would expect to see with the current code.  I can\u0027t think of a better way to handle it that is consistent with how we use project names currently (any better way I can think of would require a more explicit distinction between project names and canonical names; and making that kind of change would be a much larger effort).  So I think we\u0027re just going to have to document the caveat that you mentioned.",
+      "parentUuid": "f1a60075_e74d8d81",
+      "revId": "3c6ae20dc9ed54943c666d521b060b8bde2f4fbb",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f299d702_8a366063",
