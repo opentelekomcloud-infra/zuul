@@ -29,7 +29,7 @@ NODE_BYTE_SIZE_LIMIT = 1000000
 
 
 class RawZKIO(io.RawIOBase):
-    def __init__(self, client, path, create=False, version=-1):
+    def __init__(self, client, path, create=False, makepath=True, version=-1):
         self.client = client
         self.path = path
         self.bytes_read = 0
@@ -39,6 +39,7 @@ class RawZKIO(io.RawIOBase):
         self.znodes_read = 0
         self.znodes_written = 0
         self.create = create
+        self.makepath = makepath
         self.version = version
         self.zstat = None
 
@@ -72,7 +73,7 @@ class RawZKIO(io.RawIOBase):
         start = time.perf_counter()
         if self.create:
             _, self.zstat = self.client.create(
-                self.path, data, makepath=True, include_data=True)
+                self.path, data, makepath=self.makepath, include_data=True)
         else:
             self.zstat = self.client.set(self.path, data,
                                          version=self.version)
@@ -83,10 +84,11 @@ class RawZKIO(io.RawIOBase):
 
 
 class RawShardIO(RawZKIO):
-    def __init__(self, *args, old_format=False, **kw):
+    def __init__(self, *args, old_format=False, makepath=True, **kw):
         # MODEL_API < 31
         self.old_format = old_format
-        super().__init__(*args, **kw)
+        self.makepath = makepath
+        super().__init__(*args, makepath=makepath, **kw)
 
     def truncate(self, size=None):
         if size != 0:
@@ -161,12 +163,23 @@ class RawShardIO(RawZKIO):
         if not (len(data_bytes) <= NODE_BYTE_SIZE_LIMIT):
             raise RuntimeError("Shard too large")
         start = time.perf_counter()
-        self.client.create(
-            "{}/".format(self.path),
-            data_bytes,
-            sequence=True,
-            makepath=True,
-        )
+        # The path we pass to a shard writer is  e.g. '/foo/bar'. Now,
+        # for shards the makepath argument should only apply to '/foo'
+        # but not the 'bar' subnode as it holds the individual shards
+        # and will also be deleted recursively on e.g. a truncate.
+        while True:
+            try:
+                self.client.create(
+                    "{}/".format(self.path),
+                    data_bytes,
+                    sequence=True,
+                )
+                break
+            except NoNodeError:
+                if not self.makepath:
+                    raise
+                self.client.ensure_path(self.path)
+
         self.cumulative_write_time += time.perf_counter() - start
         self.bytes_written += len(data_bytes)
         self.znodes_written += 1
@@ -220,10 +233,10 @@ class BufferedZKReader(io.BufferedReader):
 
 
 class BufferedShardWriter(io.BufferedWriter):
-    def __init__(self, client, path, create=False, version=-1):
+    def __init__(self, client, path, create=False, makepath=True, version=-1):
         self.__old_format = COMPONENT_REGISTRY.model_api < 31
-        self.__raw = RawShardIO(client, path, create=create, version=version,
-                                old_format=self.__old_format)
+        self.__raw = RawShardIO(client, path, create=create, makepath=makepath,
+                                version=version, old_format=self.__old_format)
         super().__init__(self.__raw, NODE_BYTE_SIZE_LIMIT)
 
     @property
