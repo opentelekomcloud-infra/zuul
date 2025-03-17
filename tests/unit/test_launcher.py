@@ -17,6 +17,7 @@ import math
 import os
 import textwrap
 import time
+import uuid
 from collections import defaultdict
 from unittest import mock
 
@@ -1052,6 +1053,58 @@ class TestLauncher(LauncherBaseTestCase):
                     pnode.refresh(ctx)
                 except NoNodeError:
                     break
+
+    @simple_layout('layouts/nodepool-multi-provider.yaml',
+                   enable_nodepool=True)
+    @driver_config('test_launcher', quotas={
+        'instances': 1,
+    })
+    def test_relative_priority(self):
+        # Test that we spread quota use out among multiple providers
+        self.waitUntilSettled()
+
+        client = LauncherClient(self.zk_client, None)
+        # Create a request so the following requests can't be fulfilled
+        # due to instance quota.
+        request0 = self.requestNodes(["debian-normal"])
+        nodes0 = self.getNodes(request0)
+        self.assertEqual(1, len(nodes0))
+
+        requests = []
+        ctx = self.createZKContext(None)
+        for _ in range(2):
+            request = model.NodesetRequest.new(
+                ctx,
+                tenant_name="tenant-one",
+                pipeline_name="test",
+                buildset_uuid=uuid.uuid4().hex,
+                job_uuid=uuid.uuid4().hex,
+                job_name="foobar",
+                labels=["debian-normal"],
+                priority=100,
+                request_time=time.time(),
+                zuul_event_id=uuid.uuid4().hex,
+                span_info=None,
+            )
+            requests.append(request)
+
+        # Revise relative priority, so that the last requests has
+        # the highest relative priority.
+        request1_p2, request2_p1 = requests
+        client.reviseRequest(request1_p2, relative_priority=2)
+        client.reviseRequest(request2_p1, relative_priority=1)
+
+        # Delete the initial request to free up the instance
+        request0.delete(ctx)
+        # Last request should be fulfilled
+        for _ in iterate_timeout(10, "request to be fulfilled"):
+            request2_p1.refresh(ctx)
+            if request2_p1.state == request2_p1.State.FULFILLED:
+                break
+
+        # Lower priority request should not be fulfilled
+        request1_p2.refresh(ctx)
+        self.assertEqual(request1_p2.State.ACCEPTED, request1_p2.state)
 
 
 class TestMinReadyLauncher(LauncherBaseTestCase):

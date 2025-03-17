@@ -2856,6 +2856,53 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
             if not provider_nodes:
                 break
 
+    def test_nodeset_request_revision(self):
+        labels = ["foo", "bar"]
+        context = ZKContext(self.zk_client, None, None, self.log)
+        request = model.NodesetRequest.new(
+            context,
+            tenant_name="tenant",
+            pipeline_name="check",
+            buildset_uuid=uuid.uuid4().hex,
+            job_uuid=uuid.uuid4().hex,
+            job_name="foobar",
+            labels=labels,
+            priority=100,
+            request_time=time.time(),
+            zuul_event_id=None,
+            span_info=None,
+            _relative_priority=100,
+        )
+        self.assertEqual(100, request.relative_priority)
+
+        # Wait for request to show up in the cache
+        for _ in iterate_timeout(10, "request to show up"):
+            request_list = self.api.getNodesetRequests()
+            if len(request_list):
+                break
+
+        self.assertEqual(len(request_list), 1)
+        for req in request_list:
+            cached_request = self.api.getNodesetRequest(req.uuid)
+            self.assertEqual(100, request.relative_priority)
+
+        model.NodesetRequestRevision.new(
+            context, request=request, relative_priority=50)
+        for _ in iterate_timeout(10, "revision to be applied"):
+            if cached_request.relative_priority == 50:
+                break
+
+        # Relative priority should still be the initial value
+        self.assertEqual(100, request.relative_priority)
+
+        # Refresh request inc. revision
+        request.refresh(context)
+        self.assertEqual(50, request.relative_priority)
+
+        # Update revision
+        request.revise(context, relative_priority=10)
+        self.assertEqual(10, request.relative_priority)
+
     def test_node_quota_cache(self):
         context = ZKContext(self.zk_client, None, None, self.log)
 
