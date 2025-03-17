@@ -16,6 +16,24 @@
       "message": "Moving this line introduces the possibility of a data race when the build is recorded as resumed in ZK, but the actual resume fails. Granted, we don\u0027t have any real reconciliation, but an issue might still shake itself out in practice e.g. due to other events arriving later and calling `_resumeBuilds()` again.\n\nCould we instead create the event time before the resuming the build instead?\n\n            if all_completed:\n                resume_time \u003d time.time()\n                self.sched.executor.resumeBuild(build)\n                with build.activeContext(self.current_context):\n                    build.paused \u003d False\n                    build.addEvent(\n                        model.BuildEvent(\n                            event_time\u003dresume_time,\n                            event_type\u003dmodel.BuildEvent.TYPE_RESUMED))",
       "revId": "1fa39a01eed3d12b91af331d420cc9ec943f380e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd9b19cd_11d73385",
+        "filename": "zuul/manager/__init__.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 2103,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-17T15:36:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "de5c84bc_cd5f2f07",
+      "revId": "1fa39a01eed3d12b91af331d420cc9ec943f380e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
