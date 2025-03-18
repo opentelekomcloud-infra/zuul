@@ -185,6 +185,12 @@ Database
       <https://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls>`_
       for more information.
 
+      Zuul supports PostgreSQL, MySQL, and MariaDB.  Supported
+      SQLAlchemy dialects and drivers are: ``postgresql://``,
+      ``mysql+pymysql://``, and ``mariadb+pymysql``.
+
+      If using MariaDB, be sure to use the ``mariadb`` dialect.
+
       The driver will automatically set up the database creating and managing
       the necessary tables. Therefore the provided user should have sufficient
       permissions to manage the database. For example:

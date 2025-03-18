@@ -43,7 +43,7 @@ PROVIDES_TABLE = 'zuul_provides'
 
 def rename_index(connection, table, old, new):
     dialect_name = connection.engine.dialect.name
-    if dialect_name == 'mysql':
+    if dialect_name in ('mysql', 'mariadb'):
         statement = f"""
             alter table {table}
             rename index {old}
@@ -350,7 +350,7 @@ def upgrade1(connection, table_prefix):
     # identical to one on the buildset table, and the other should be
     # identical to one on the buildset_ref table).
     # Disable FK checks from this point forward.
-    if dialect_name == 'mysql':
+    if dialect_name in ('mysql', 'mariadb'):
         connection.execute(sa.text("set foreign_key_checks = 0"))
 
     statement = f"""
@@ -384,7 +384,7 @@ def rollback(connection, table_prefix):
         f"drop table if exists {prefixed_buildset_new}"))
     connection.execute(sa.text(
         f"drop table if exists {prefixed_buildset_ref}"))
-    if dialect_name == 'mysql':
+    if dialect_name in ('mysql', 'mariadb'):
         connection.execute(sa.text("set foreign_key_checks = 1"))
 
 
@@ -405,7 +405,7 @@ def upgrade2(connection, table_prefix):
     # Temporarily drop the FK constraints that reference the old build
     # table. (This conditional is why we're renaming all the indexes
     # and constraints to be consistent across different backends).
-    if dialect_name == 'mysql':
+    if dialect_name in ('mysql', 'mariadb'):
         op.drop_constraint(table_prefix + 'zuul_artifact_ibfk_1',
                            prefixed_artifact, 'foreignkey')
         op.drop_constraint(table_prefix + 'zuul_build_event_ibfk_1',
@@ -465,7 +465,7 @@ def upgrade2(connection, table_prefix):
     # did so with checks disabled, but postgres was able to validate
     # them.  We could have skipped the earlier add for mysql, but this
     # keeps the code simpler and more consistent, and is still fast).
-    if dialect_name == 'mysql':
+    if dialect_name in ('mysql', 'mariadb'):
         statement = f"""
         alter table {prefixed_build}
         drop foreign key {prefixed_build_new}_buildset_id_fkey,
@@ -557,7 +557,7 @@ def upgrade2(connection, table_prefix):
         ['uuid'])
 
     # Re-enable FK checks for mysql
-    if dialect_name == 'mysql':
+    if dialect_name in ('mysql', 'mariadb'):
         connection.execute(sa.text("set foreign_key_checks = 1"))
 
 
@@ -566,7 +566,7 @@ def upgrade(table_prefix=''):
     # handling.
     connection = op.get_bind()
     dialect_name = connection.engine.dialect.name
-    if dialect_name not in ['mysql', 'postgresql']:
+    if dialect_name not in ('mysql', 'mariadb', 'postgresql'):
         raise Exception(f"Unsupported dialect {dialect_name}")
 
     log = logging.getLogger('zuul.SQLMigration')
@@ -574,7 +574,7 @@ def upgrade(table_prefix=''):
         upgrade1(connection, table_prefix)
     except Exception:
         try:
-            if dialect_name == 'mysql':
+            if dialect_name in ('mysql', 'mariadb'):
                 log.error("Early error in schema migration, rolling back")
                 rollback(connection, table_prefix)
         except Exception:
