@@ -39,7 +39,10 @@ BUILD_EVENT_TABLE = 'zuul_build_event'
 ARTIFACT_TABLE = 'zuul_artifact'
 PROVIDES_TABLE = 'zuul_provides'
 
-STATEMENT_TIMEOUT_RE = re.compile(r'/\* statement_timeout=(\d+) \*/')
+POSTGRES_STATEMENT_TIMEOUT_RE = re.compile(
+    r'/\* postgres_statement_timeout=(\d+) \*/')
+MARIADB_STATEMENT_TIMEOUT_RE = re.compile(
+    r'/\* mariadb_statement_timeout=(\d+) \*/')
 
 SQL_MAX_STRING_LENGTH = 255
 
@@ -50,12 +53,23 @@ SQL_MAX_STRING_LENGTH = 255
 # this using the SQLAlchemy query API, so instead, we add a comment as
 # a hint, and here we parse that comment and execute the "SET".  The
 # comment remains in the query sent to the server, but that's okay --
-# it may even help an operator in debugging.
+# it may even help an operator in debugging.  The same is true for
+# mariadb, except that we need to actually alter the statement instead
+# of executing another one.
 @sa.event.listens_for(sa.Engine, "before_cursor_execute")
-def _set_timeout(conn, cursor, stmt, params, context, executemany):
-    match = STATEMENT_TIMEOUT_RE.search(stmt)
+def _set_timeout(conn, cursor, stmt, params, context, executemany,
+                 retval=True):
+    match = POSTGRES_STATEMENT_TIMEOUT_RE.search(stmt)
     if match:
         cursor.execute("SET LOCAL statement_timeout=%s" % match.groups())
+    else:
+        match = MARIADB_STATEMENT_TIMEOUT_RE.search(stmt)
+        if match:
+            stmt = ("SET STATEMENT "
+                    f"max_statement_time={float(match.groups()[0]) / 1000} "
+                    f"for {stmt}")
+    return (stmt, params)
+
 
 
 class ChangeType(sa.TypeDecorator):
@@ -194,6 +208,7 @@ class DatabaseSession(object):
         # the more common case).
         if not (project or change or uuid):
             q = q.with_hint(build_table, 'USE INDEX (PRIMARY)', 'mysql')
+            q = q.with_hint(build_table, 'USE INDEX (PRIMARY)', 'mariadb')
 
         # Avoid joining the provides table unless necessary; postgres
         # has created some poor query plans in that case.  Currently
@@ -251,11 +266,14 @@ class DatabaseSession(object):
             q = q.prefix_with(
                 f'/*+ MAX_EXECUTION_TIME({query_timeout}) */',
                 dialect='mysql')
-            # For Postgres, we add a comment that we parse in our
-            # event handler.
+            # For Postgres and mariadb, we add a comment that we parse
+            # in our event handler.
             q = q.with_statement_hint(
-                f'/* statement_timeout={query_timeout} */',
+                f'/* postgres_statement_timeout={query_timeout} */',
                 dialect_name='postgresql')
+            q = q.with_statement_hint(
+                f'/* mariadb_statement_timeout={query_timeout} */',
+                dialect_name='mariadb')
 
         ids = [x[0] for x in q.all()]
         # We use two queries here, principally because mariadb does
@@ -345,6 +363,7 @@ class DatabaseSession(object):
         # See note above about the hint.
         if not (project):
             q = q.with_hint(build_table, 'USE INDEX (PRIMARY)', 'mysql')
+            q = q.with_hint(build_table, 'USE INDEX (PRIMARY)', 'mariadb')
 
         q = self.listFilter(q, buildset_table.c.tenant, tenant)
         q = self.listFilter(q, buildset_table.c.pipeline, pipeline)
@@ -374,11 +393,14 @@ class DatabaseSession(object):
             q = q.prefix_with(
                 f'/*+ MAX_EXECUTION_TIME({query_timeout}) */',
                 dialect='mysql')
-            # For Postgres, we add a comment that we parse in our
-            # event handler.
+            # For Postgres and mariadb, we add a comment that we parse
+            # in our event handler.
             q = q.with_statement_hint(
-                f'/* statement_timeout={query_timeout} */',
+                f'/* postgres_statement_timeout={query_timeout} */',
                 dialect_name='postgresql')
+            q = q.with_statement_hint(
+                f'/* mariadb_statement_timeout={query_timeout} */',
+                dialect_name='mariadb')
 
         ids = [x[0] for x in q.all()]
         # contains_eager allows us to perform eager loading on the
@@ -448,7 +470,11 @@ class DatabaseSession(object):
         # See note above about the hint.
         if not (project or change or uuid):
             q = q.with_hint(buildset_table, 'USE INDEX (PRIMARY)', 'mysql')
-            q = q.with_hint(buildset_ref_table, 'USE INDEX (PRIMARY)', 'mysql')
+            q = q.with_hint(buildset_table, 'USE INDEX (PRIMARY)', 'mariadb')
+            q = q.with_hint(buildset_ref_table, 'USE INDEX (PRIMARY)',
+                            'mysql')
+            q = q.with_hint(buildset_ref_table, 'USE INDEX (PRIMARY)',
+                            'mariadb')
 
         q = self.listFilter(q, buildset_table.c.tenant, tenant)
         q = self.listFilterFuzzy(q, buildset_table.c.pipeline, pipeline)
@@ -482,11 +508,14 @@ class DatabaseSession(object):
             q = q.prefix_with(
                 f'/*+ MAX_EXECUTION_TIME({query_timeout}) */',
                 dialect='mysql')
-            # For Postgres, we add a comment that we parse in our
-            # event handler.
+            # For Postgres and mariadb, we add a comment that we parse
+            # in our event handler.
             q = q.with_statement_hint(
-                f'/* statement_timeout={query_timeout} */',
+                f'/* postgres_statement_timeout={query_timeout} */',
                 dialect_name='postgresql')
+            q = q.with_statement_hint(
+                f'/* mariadb_statement_timeout={query_timeout} */',
+                dialect_name='mariadb')
 
         ids = [x[0] for x in q.all()]
         bq = self.session().query(self.connection.buildSetModel).\
