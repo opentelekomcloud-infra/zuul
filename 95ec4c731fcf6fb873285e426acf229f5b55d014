@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2d6e5b8_6bd958e3",
+        "filename": "tests/base.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-03-18T13:05:34Z",
+      "side": 1,
+      "message": "We could also allow a callable OR dict for the replace argument. This way we\u0027d not need a lambda just to return a dict.",
+      "revId": "95ec4c731fcf6fb873285e426acf229f5b55d014",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
