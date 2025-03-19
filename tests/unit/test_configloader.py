@@ -33,6 +33,7 @@ from tests.base import (
     okay_tracebacks,
     simple_layout,
 )
+from tests.unit.test_launcher import LauncherBaseTestCase
 
 
 class TestConfigLoader(ZuulTestCase):
@@ -1378,7 +1379,7 @@ class TestDefaultBranch(ZuulTestCase):
         self.assertEqual('develop', md.default_branch)
 
 
-class TestNodepoolConfig(ZuulTestCase):
+class TestNodepoolConfig(LauncherBaseTestCase):
     config_file = 'zuul-connections-nodepool.conf'
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)

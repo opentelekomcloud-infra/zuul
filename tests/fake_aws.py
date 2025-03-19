@@ -254,6 +254,19 @@ class FakeAwsProviderEndpoint(AwsProviderEndpoint):
                 raise self.__testcase.run_instances_exception
             return self.ec2_client.run_instances_orig(*args, **kwargs)
 
+        # Moto doesn't handle all features correctly (e.g.
+        # instance-requirements, volume attributes) when creating
+        # fleet in fake mode, we need to intercept the create_fleet
+        # call and validate the args we supply. Results are also
+        # intercepted for validate instance attributes
+        def _fake_create_fleet(*args, **kwargs):
+            self.__testcase.create_fleet_calls.append(kwargs)
+            if self.__testcase.create_fleet_exception:
+                raise self.__testcase.create_fleet_exception
+            result = self.ec2_client.create_fleet_orig(*args, **kwargs)
+            self.__testcase.create_fleet_results.append(result)
+            return result
+
         def _fake_allocate_hosts(*args, **kwargs):
             if self.__testcase.allocate_hosts_exception:
                 raise self.__testcase.allocate_hosts_exception
@@ -272,6 +285,8 @@ class FakeAwsProviderEndpoint(AwsProviderEndpoint):
 
         self.ec2_client.run_instances_orig = self.ec2_client.run_instances
         self.ec2_client.run_instances = _fake_run_instances
+        self.ec2_client.create_fleet_orig = self.ec2_client.create_fleet
+        self.ec2_client.create_fleet = _fake_create_fleet
         self.ec2_client.allocate_hosts_orig = self.ec2_client.allocate_hosts
         self.ec2_client.allocate_hosts = _fake_allocate_hosts
         self.ec2_client.register_image_orig = self.ec2_client.register_image
