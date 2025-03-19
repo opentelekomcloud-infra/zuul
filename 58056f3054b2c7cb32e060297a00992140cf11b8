@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "58056f3054b2c7cb32e060297a00992140cf11b8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cb3a959_4c674740",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-19T23:10:38Z",
+      "side": 1,
+      "message": "recheck a number of zuul test reliability improvements have gone in",
+      "revId": "58056f3054b2c7cb32e060297a00992140cf11b8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
