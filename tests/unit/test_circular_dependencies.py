@@ -2566,10 +2566,12 @@ class TestGerritCircularDependencies(ZuulTestCase):
 
     # Start check tests
 
-    def _test_job_deduplication_check(self):
+    def _test_job_deduplication_check(self, files_a=None, files_b=None):
         self.executor_server.hold_jobs_in_build = True
-        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
-        B = self.fake_gerrit.addFakeChange('org/project2', 'master', 'B')
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                           files=files_a)
+        B = self.fake_gerrit.addFakeChange('org/project2', 'master', 'B',
+                                           files=files_b)
 
         # A <-> B
         A.data["commitMessage"] = "{}\n\nDepends-On: {}\n".format(
@@ -2660,6 +2662,24 @@ class TestGerritCircularDependencies(ZuulTestCase):
             # This is not deduplicated, though it would be under auto
             dict(name="common-job", result="SUCCESS", changes="2,1 1,1",
                  ref='refs/changes/01/1/1'),
+        ], ordered=False)
+        self._assert_job_deduplication_check()
+
+    @simple_layout('layouts/job-dedup-file-filters.yaml')
+    def test_job_deduplication_check_file_filters(self):
+        files_a = {
+            "irrelevant/file": "deadbeef",
+        }
+        files_b = {
+            "relevant/file": "decafbad",
+        }
+        self._test_job_deduplication_check(files_a, files_b)
+        self.assertHistory([
+            dict(name="project1-job", result="SUCCESS", changes="2,1 1,1"),
+            dict(name="common-job", result="SUCCESS", changes="2,1 1,1"),
+            dict(name="project2-job", result="SUCCESS", changes="2,1 1,1"),
+            # This is deduplicated
+            # dict(name="common-job", result="SUCCESS", changes="2,1 1,1"),
         ], ordered=False)
         self._assert_job_deduplication_check()
 

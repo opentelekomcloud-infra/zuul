@@ -5002,6 +5002,11 @@ class JobGraph(object):
                          other_job, other_job_change,
                          primary_job, primary_job_change)
                 primary_job.other_refs.append(other_job.ref)
+                # If the jobs matched for any of the changes, we need
+                # to run it.
+                matches_change = (primary_job.matches_change
+                                  or other_job.matches_change)
+                primary_job._set(matches_change=matches_change)
                 self._removeJob(other_job)
 
 
