@@ -2677,6 +2677,8 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             tenant_name=None,
             host_keys=[],
             quota=QuotaInformation(),
+            # This is provided to the job verbatim
+            node_properties={},
             # Attributes that are not serialized
             is_locked=False,
             create_state_machine=None,
@@ -2774,6 +2776,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             slot=self.slot,
             tenant_name=self.tenant_name,
             username=self.username,
+            node_properties=self.node_properties,
         )
 
 
