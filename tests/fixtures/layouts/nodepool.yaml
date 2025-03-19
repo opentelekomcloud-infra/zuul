@@ -166,4 +166,5 @@
         iops: 1000
       - name: debian-large
       - name: debian-dedicated
+        az: us-east-1b
       - name: debian-invalid
