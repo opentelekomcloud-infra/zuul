@@ -34,7 +34,7 @@ from zuul.driver.github.githubconnection import GithubShaCache
 from zuul.zk.layout import LayoutState
 from zuul.lib import strings
 from zuul.merger.merger import Repo
-from zuul.model import MergeRequest, EnqueueEvent, DequeueEvent
+from zuul.model import MergeRequest, EnqueueEvent, DequeueEvent, PromoteEvent
 from zuul.zk.change_cache import ChangeKey
 
 from tests.util import random_sha1
@@ -1311,6 +1311,75 @@ class TestGithubDriver(ZuulTestCase):
                                           old_sha=new_sha,
                                           new_sha='0' * 40,
                                           modified_files=['README.md'])
+
+    @simple_layout('layouts/dependent-github.yaml', driver='github')
+    def test_direct_promote_change_github(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_github.openFakePullRequest('org/project', 'master', 'A')
+        B = self.fake_github.openFakePullRequest('org/project', 'master', 'B')
+
+        self.fake_github.emitEvent(A.addLabel('merge'))
+        self.fake_github.emitEvent(B.addLabel('merge'))
+
+        self.waitUntilSettled()
+
+        # Initial project-merge job for A
+        self.assertEqual(len(self.builds), 1)
+        self.assertEqual(self.builds[0].name, 'project-merge')
+        self.assertTrue(self.builds[0].hasChanges(A))
+
+        self.executor_server.release('.*-merge')
+        self.waitUntilSettled()
+
+        # Test jobs for A and project-merge job for A,B
+        self.assertEqual(len(self.builds), 3)
+        self.assertEqual(self.builds[0].name, 'project-test1')
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertEqual(self.builds[1].name, 'project-test2')
+        self.assertTrue(self.builds[1].hasChanges(A))
+        self.assertEqual(self.builds[2].name, 'project-merge')
+        self.assertTrue(self.builds[2].hasChanges(A, B))
+
+        # Promote change B to the head of the gate queue
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{B.number},{B.head_sha}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # We should have the same order of builds, just with change B
+        # before change A:
+        # Initial project-merge job for B
+        self.assertEqual(len(self.builds), 1)
+        self.assertEqual(self.builds[0].name, 'project-merge')
+        self.assertTrue(self.builds[0].hasChanges(B))
+
+        self.executor_server.release('.*-merge')
+        self.waitUntilSettled()
+
+        # Test jobs for B and project-merge job for B,A
+        self.assertEqual(len(self.builds), 3)
+        self.assertEqual(self.builds[0].name, 'project-test1')
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertEqual(self.builds[1].name, 'project-test2')
+        self.assertTrue(self.builds[1].hasChanges(B))
+        self.assertEqual(self.builds[2].name, 'project-merge')
+        self.assertTrue(self.builds[2].hasChanges(B, A))
+
+        # Release test jobs for B so it can be reported and merged
+        self.executor_server.release('project-test.*')
+        self.waitUntilSettled()
+
+        # Due to the promote, B should be merged while A is still open
+        self.assertTrue(B.is_merged)
+        self.assertFalse(A.is_merged)
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        # Finally, A also got merged
+        self.assertTrue(A.is_merged)
 
     @simple_layout('layouts/basic-github.yaml', driver='github')
     def test_direct_dequeue_change_github(self):

@@ -1955,8 +1955,14 @@ class Scheduler(threading.Thread):
                     if not item.live:
                         continue
                     for item_change in item.changes:
-                        if (item_change.number == number and
-                            item_change.patchset == patchset):
+                        # We cannot use the getChangeKey method to look
+                        # up the change directly from the project source
+                        # as we are missing the project information.
+                        # Convert the change number and patchset from
+                        # our enqueued items to string to compare them
+                        # with the event data.
+                        if (str(item_change.number) == number and
+                            str(item_change.patchset) == patchset):
                             promote_operations.setdefault(
                                 shared_queue, []).append(item)
                             found = True
