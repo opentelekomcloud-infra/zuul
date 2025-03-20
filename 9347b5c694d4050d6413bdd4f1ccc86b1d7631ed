@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "2cdd7134_dee070ba",
+        "filename": ".zuul.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 388,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-20T20:51:10Z",
+      "side": 1,
+      "message": "We can add this to package.json and avoid needing to change this.",
+      "revId": "9347b5c694d4050d6413bdd4f1ccc86b1d7631ed",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "4cf9a97f_538384f1",
@@ -14,6 +31,40 @@
       "writtenOn": "2025-01-30T11:49:01Z",
       "side": 1,
       "message": "recheck",
+      "revId": "9347b5c694d4050d6413bdd4f1ccc86b1d7631ed",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d49f4e3_261105ff",
+        "filename": "Dockerfile",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-20T20:51:10Z",
+      "side": 1,
+      "message": "I mention elsewhere that we can put this argument in package.json for yarn start.  I don\u0027t know if we can do it for build, but I think it\u0027s worth looking into.",
+      "revId": "9347b5c694d4050d6413bdd4f1ccc86b1d7631ed",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b466504_b415efbc",
+        "filename": "playbooks/dashboard/run.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-20T20:51:10Z",
+      "side": 1,
+      "message": "Instead of encoding this here, we can put the argument in package.json for the start command.",
       "revId": "9347b5c694d4050d6413bdd4f1ccc86b1d7631ed",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
