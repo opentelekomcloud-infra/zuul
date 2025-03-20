@@ -1037,6 +1037,9 @@ class TestLineMapping(AnsibleZuulTestCase):
         self.waitUntilSettled()
         self.assertEqual(self.getJobFromHistory('file-comments').result,
                          'SUCCESS')
+
+        # comment line mapping should decrease by 1 since the header
+        # line does not exist in the file at the commit
         self.assertEqual(len(A.comments), 2)
         comments = sorted(A.comments, key=lambda x: x['line'])
         self.assertEqual(comments[0],
@@ -1056,6 +1059,70 @@ class TestLineMapping(AnsibleZuulTestCase):
                 "range": {
                     "end_character": 26,
                     "end_line": 14,
+                    "start_character": 0,
+                    "start_line": 12
+                },
+                "reviewer": {
+                    "email": "zuul@example.com",
+                    "name": "Zuul",
+                    "username": "jenkins"
+                }
+            }
+        )
+
+    def test_line_mapping_large_change_no_rebase(self):
+        with open(os.path.join(FIXTURE_DIR,
+                               'config/line-mapping/git/',
+                               'org_project/README')) as f:
+            content_lines = f.read().split("\n")
+
+        # Delete line 14 and then insert 11 lines at line 14
+        content_lines_at_A = content_lines[:13] + ["change_1"] * 11
+        file_dict = {'README': "\n".join(content_lines_at_A)}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+
+        # Delete line 15 to line 24 and then insert a line at line 15
+        content_lines_at_B = content_lines_at_A[:14]
+        file_dict = {'README': "\n".join(content_lines_at_B)}
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B',
+                                           files=file_dict)
+        
+        # Delete line 15 to line 24 and then insert a line at line 15
+        content_lines_at_C = content_lines_at_B + ["change_2"]
+        file_dict = {'README': "\n".join(content_lines_at_C)}
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'C',
+                                           files=file_dict)
+
+        # C -> B -> A
+        B.setDependsOn(A, 1)
+        C.setDependsOn(B, 1)
+
+        self.fake_gerrit.addEvent(C.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(self.getJobFromHistory('file-comments').result,
+                         'SUCCESS')
+
+        # comment line mapping should stay the same since there is no rebase
+        self.assertEqual(len(C.comments), 2)
+        comments = sorted(C.comments, key=lambda x: x['line'])
+        self.assertEqual(comments[0],
+                         {'file': 'README',
+                          'line': 15,
+                          'message': 'interesting comment',
+                          'reviewer': {'email': 'zuul@example.com',
+                                       'name': 'Zuul',
+                                       'username': 'jenkins'}}
+        )
+        self.assertEqual(
+            comments[1],
+            {
+                "file": "README",
+                "line": 15,
+                "message": "That's a cool section",
+                "range": {
+                    "end_character": 26,
+                    "end_line": 15,
                     "start_character": 0,
                     "start_line": 12
                 },
