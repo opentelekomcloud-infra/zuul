@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f3d0c683_244823c0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-20T15:44:43Z",
+      "side": 1,
+      "message": "recheck the test failure was a zk exception unlikely to be related to this change",
+      "revId": "d1f5c9dbe136fb68713b796265fd195af8c5c5d2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b21b0a47_08577086",
