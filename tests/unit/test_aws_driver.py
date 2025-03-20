@@ -172,12 +172,18 @@ class TestAwsDriver(BaseCloudDriverTest):
         self._test_node_lifecycle('debian-normal')
 
     def check_spot_node_attrs(self, pnode):
+        # The basic test above sets few options; we set many more
+        # options in the spot check (so that we don't have run a test
+        # for every option).
         self.assertEqual(
             'spot',
             self.run_instances_calls[0]['InstanceMarketOptions']['MarketType'])
         self.assertEqual(
             'us-east-1b',
             self.run_instances_calls[0]['Placement']['AvailabilityZone'])
+        self.assertEqual(
+            ['testgroup'],
+            self.run_instances_calls[0]['NetworkInterfaces'][0]['Groups'])
         self.assertTrue(pnode.node_properties['spot'])
 
     @simple_layout('layouts/aws/spot.yaml', enable_nodepool=True)
