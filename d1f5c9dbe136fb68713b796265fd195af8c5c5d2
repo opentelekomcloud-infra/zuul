@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b21b0a47_08577086",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1420,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-20T01:23:46Z",
+      "side": 1,
+      "message": "I\u0027m not sure this property of ZuulRegex\u0027s actually matters here as the content in zk is the raw config not the parsed config right?\n\nAnyway in my local testing/debugging I tried adding `__repr__` and `__str__` to ZuulRegex to get pretty printed output but that seemed to explode reading data back from zk? However, it could\u0027ve been other regexes that were having problems with that maybe? In any case it seems like (de)serialization works otherwise at least when testing with `test_regex_project`.",
+      "revId": "d1f5c9dbe136fb68713b796265fd195af8c5c5d2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
