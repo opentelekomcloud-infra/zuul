@@ -34,7 +34,7 @@ from zuul.driver.github.githubconnection import GithubShaCache
 from zuul.zk.layout import LayoutState
 from zuul.lib import strings
 from zuul.merger.merger import Repo
-from zuul.model import MergeRequest, EnqueueEvent, DequeueEvent
+from zuul.model import MergeRequest, EnqueueEvent, DequeueEvent, PromoteEvent
 from zuul.zk.change_cache import ChangeKey
 
 from tests.util import random_sha1
@@ -1311,6 +1311,44 @@ class TestGithubDriver(ZuulTestCase):
                                           old_sha=new_sha,
                                           new_sha='0' * 40,
                                           modified_files=['README.md'])
+
+    @simple_layout('layouts/gate-github.yaml', driver='github')
+    def test_direct_promote_change_github(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_github.openFakePullRequest('org/project', 'master', 'A')
+        B = self.fake_github.openFakePullRequest('org/project', 'master', 'B')
+
+        self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
+        self.fake_github.emitEvent(B.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # Before the promote change A comes first
+        self.assertEqual(len(self.builds), 4)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertTrue(self.builds[1].hasChanges(A))
+        self.assertTrue(self.builds[2].hasChanges(A, B))
+        self.assertTrue(self.builds[3].hasChanges(A, B))
+
+        # Promote change B to the head of the gate queue
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{B.number},{B.head_sha}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After the promote change B comes first
+        self.assertEqual(len(self.builds), 4)
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertTrue(self.builds[1].hasChanges(B))
+        self.assertTrue(self.builds[2].hasChanges(B, A))
+        self.assertTrue(self.builds[3].hasChanges(B, A))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertTrue(B.is_merged)
+        self.assertTrue(A.is_merged)
 
     @simple_layout('layouts/basic-github.yaml', driver='github')
     def test_direct_dequeue_change_github(self):
