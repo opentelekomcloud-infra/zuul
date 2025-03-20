@@ -1005,6 +1005,7 @@ class Repo(object):
         cur_commit = None
         with self.createRepoObject(zuul_event_id) as repo:
             out = repo.git.log(L='%s,%s:%s' % (lineno, lineno, filename))
+        self.log.info("Git log: %s" % (out))
         for l in out.split('\n'):
             if cur_commit is None:
                 m = self.commit_re.match(l)
