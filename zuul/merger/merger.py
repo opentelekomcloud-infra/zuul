@@ -75,7 +75,7 @@ class SparsePaths(enum.Enum):
 
 class Repo(object):
     commit_re = re.compile(r'^commit ([0-9a-f]{40})$')
-    diff_re = re.compile(r'^@@ -\d+,\d \+(\d+),\d @@$')
+    diff_re = re.compile(r'^@@ -\d+,\d+ \+(\d+),\d @@$')
     retry_attempts = 3
     retry_interval = 30
 
@@ -1012,6 +1012,11 @@ class Repo(object):
                     if m.group(1) == commit:
                         cur_commit = commit
                 continue
+            else:
+                # We should break when we finish scanning
+                # the diff in the specified commit
+                if commit_re.match(l):
+                    break
             m = self.diff_re.match(l)
             if m:
                 return int(m.group(1))
