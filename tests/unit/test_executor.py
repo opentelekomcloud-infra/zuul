@@ -1067,6 +1067,53 @@ class TestLineMapping(AnsibleZuulTestCase):
             }
         )
 
+    def test_line_mapping_no_rebase(self):
+        footer = 'this is the change\n'
+
+        with open(os.path.join(FIXTURE_DIR,
+                               'config/line-mapping/git/',
+                               'org_project/README')) as f:
+            content = f.read()
+
+        # The change under test adds a line to the end.
+        file_dict = {'README': content + footer}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(self.getJobFromHistory('file-comments').result,
+                         'SUCCESS')
+        self.assertEqual(len(A.comments), 2)
+        comments = sorted(A.comments, key=lambda x: x['line'])
+        self.assertEqual(comments[0],
+                         {'file': 'README',
+                          'line': 15,
+                          'message': 'interesting comment',
+                          'reviewer': {'email': 'zuul@example.com',
+                                       'name': 'Zuul',
+                                       'username': 'jenkins'}}
+        )
+        self.assertEqual(
+            comments[1],
+            {
+                "file": "README",
+                "line": 15,
+                "message": "That's a cool section",
+                "range": {
+                    "end_character": 26,
+                    "end_line": 15,
+                    "start_character": 0,
+                    "start_line": 12
+                },
+                "reviewer": {
+                    "email": "zuul@example.com",
+                    "name": "Zuul",
+                    "username": "jenkins"
+                }
+            }
+        )
+
 
 class ExecutorFactsMixin:
     # These should be overridden in child classes.
