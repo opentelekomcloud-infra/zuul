@@ -39,6 +39,14 @@ class OpenstackProviderImage(BaseProviderImage):
         'name': str,
         'values': [str],
     }
+
+    # This is used here and in flavors and labels
+    inheritable_openstack_image_schema = assemble(
+        vs.Schema({
+            Optional('volume-size'): Nullable(int),
+        }),
+        provider_schema.cloud_image,
+    )
     openstack_cloud_schema = vs.Schema({
         vs.Exclusive(Required('image-id'), 'spec'): str,
         vs.Exclusive(Required('image-filters'), 'spec'): [
@@ -50,6 +58,7 @@ class OpenstackProviderImage(BaseProviderImage):
         assemble(
             BaseProviderImage.schema,
             openstack_cloud_schema,
+            inheritable_openstack_image_schema,
         ),
         RequiredExclusive('image_id', 'image_filters',
                           msg=('Provide either '
@@ -66,11 +75,13 @@ class OpenstackProviderImage(BaseProviderImage):
     zuul_schema = assemble(
         BaseProviderImage.schema,
         openstack_zuul_schema,
+        inheritable_openstack_image_schema,
         inheritable_openstack_zuul_schema,
     )
 
     inheritable_schema = assemble(
         BaseProviderImage.inheritable_schema,
+        inheritable_openstack_image_schema,
         inheritable_openstack_zuul_schema,
     )
     schema = vs.Union(
@@ -97,20 +108,18 @@ class OpenstackProviderFlavor(BaseProviderFlavor):
 
     inheritable_schema = assemble(
         BaseProviderFlavor.inheritable_schema,
+        OpenstackProviderImage.inheritable_openstack_image_schema,
         provider_schema.cloud_flavor,
     )
     schema = assemble(
         BaseProviderFlavor.schema,
         provider_schema.cloud_flavor,
+        OpenstackProviderImage.inheritable_openstack_image_schema,
         openstack_flavor_schema,
     )
 
 
 class OpenstackProviderLabel(BaseProviderLabel):
-    openstack_label_schema = vs.Schema({
-        Optional('volume-size'): Nullable(int),
-        Optional('userdata'): Nullable(str),
-    })
     inheritable_openstack_label_schema = vs.Schema({
         Optional('az'): Nullable(str),
         Optional('auto-floating-ip', default=True): bool,
@@ -120,14 +129,15 @@ class OpenstackProviderLabel(BaseProviderLabel):
     })
     inheritable_schema = assemble(
         BaseProviderLabel.inheritable_schema,
+        OpenstackProviderImage.inheritable_openstack_image_schema,
         provider_schema.ssh_label,
         inheritable_openstack_label_schema,
     )
     schema = assemble(
         BaseProviderLabel.schema,
+        OpenstackProviderImage.inheritable_openstack_image_schema,
         provider_schema.ssh_label,
         inheritable_openstack_label_schema,
-        openstack_label_schema,
     )
 
 
