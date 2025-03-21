@@ -93,6 +93,7 @@ def tests(session):
     session.run_always('zuul-manage-ansible', '-v')
     procs = max(int(multiprocessing.cpu_count() * 0.7), 1)
     session.run('stestr', 'run', '--slowest', f'--concurrency={procs}',
+                '--suppress-attachments',
                 *session.posargs)
 
 

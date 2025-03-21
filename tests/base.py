@@ -1693,7 +1693,7 @@ class MySQLSchemaFixture(fixtures.Fixture):
         connected = False
         # Set this to True to enable pymyql connection debugging. It is very
         # verbose so we leave it off by default.
-        pymysql.connections.DEBUG = False
+        pymysql.connections.DEBUG = True
         try:
             db = pymysql.connect(host=self.host,
                                  port=self.port,
@@ -1740,7 +1740,7 @@ class MySQLSchemaFixture(fixtures.Fixture):
         connected = False
         # Set this to True to enable pymyql connection debugging. It is very
         # verbose so we leave it off by default.
-        pymysql.connections.DEBUG = False
+        pymysql.connections.DEBUG = True
         try:
             db = pymysql.connect(host=self.host,
                                  port=self.port,
