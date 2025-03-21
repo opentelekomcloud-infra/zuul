@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d6d0da52_7d915c9c",
+        "filename": "zuul/driver/sql/sqlconnection.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-21T15:30:55Z",
+      "side": 1,
+      "message": "Doing some quick local repl testing and looking at the docs [0] `match.groups()[0]` should have a string type which is not divisible by 1000 results in: `TypeError: unsupported operand type(s) for /: \u0027str\u0027 and \u0027int\u0027`. I think you may need to cast to an int/float here.\n\nThen I also wonder about the division resulting in fractional results. Will mariadb respect timeouts in floating point or do they also need to be whole integers. If whole integer is required may need to do something like `max(1, int(int(match.groups()[0]) / 1000))`\n\n[0] https://docs.python.org/3/library/re.html#re.Match.groups",
+      "range": {
+        "startLine": 69,
+        "startChar": 42,
+        "endLine": 69,
+        "endChar": 66
+      },
+      "revId": "a82c5338f04cc0bcd4551cb6d7db5b47d78ae9b9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
