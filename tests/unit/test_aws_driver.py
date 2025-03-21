@@ -185,6 +185,10 @@ class TestAwsDriver(BaseCloudDriverTest):
             ['testgroup'],
             self.run_instances_calls[0]['NetworkInterfaces'][0]['Groups'])
         self.assertEqual(
+            1,
+            self.run_instances_calls[0]['NetworkInterfaces'][0][
+                'Ipv6AddressCount'])
+        self.assertEqual(
             'required',
             self.run_instances_calls[0]['MetadataOptions']['HttpTokens'])
         self.assertTrue(pnode.node_properties['spot'])
