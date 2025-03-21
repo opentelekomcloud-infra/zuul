@@ -22,6 +22,30 @@
       },
       "revId": "a82c5338f04cc0bcd4551cb6d7db5b47d78ae9b9",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "74d4f027_130bb89a",
+        "filename": "zuul/driver/sql/sqlconnection.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-21T15:58:41Z",
+      "side": 1,
+      "message": "I looked it up and the value can be supplied as a double: https://mariadb.com/kb/en/aborting-statements/ this means the `max(1, stuff)` call isn\u0027t necessary and the code in ps5 lgtm.",
+      "parentUuid": "d6d0da52_7d915c9c",
+      "range": {
+        "startLine": 69,
+        "startChar": 42,
+        "endLine": 69,
+        "endChar": 66
+      },
+      "revId": "a82c5338f04cc0bcd4551cb6d7db5b47d78ae9b9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
