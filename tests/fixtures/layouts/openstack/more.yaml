@@ -50,8 +50,7 @@
     boot-timeout: 120
     launch-timeout: 600
     launch-attempts: 2
-    # TODO
-    # key-name: zuul
+    key-name: zuul
     flavors:
       - name: normal
         flavor-name: Fake Flavor
@@ -71,4 +70,3 @@
     section: openstack
     labels:
       - name: debian-normal
-        key-name: zuul
