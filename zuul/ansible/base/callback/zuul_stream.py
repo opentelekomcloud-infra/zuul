@@ -554,13 +554,17 @@ class CallbackModule(default.CallbackModule):
 
         if not is_localhost and is_task:
             self._stop_streamers()
-        if result._task.action in ('command', 'shell',
-                                   'win_command', 'win_shell'):
+        if result._task.action in (
+                'command', 'ansible.builtin.command',
+                'shell', 'ansible.builtin.shell',
+                'win_command', 'ansible.windows.win_command',
+                'win_shell', 'ansible.windows.win_shell'):
             stdout_lines = zuul_filter_result(result_dict)
             # We don't have streaming for localhost and windows modules so get
             # standard out after the fact.
             if is_localhost or result._task.action in (
-                    'win_command', 'win_shell'):
+                    'win_command', 'ansible.windows.win_command',
+                    'win_shell', 'ansible.windows.win_shell'):
                 for line in stdout_lines:
                     hostname = self._get_hostname(result)
                     self._log("%s | %s " % (hostname, line))
