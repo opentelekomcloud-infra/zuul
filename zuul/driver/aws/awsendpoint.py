@@ -1554,9 +1554,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             override_dict = {
                 'ImageId': image_id,
                 'InstanceType': instance_type,
-                # TODO
-                # 'SubnetId': label.subnet_id,
             }
+            if label.subnet_id:
+                override_dict['SubnetId'] = label.subnet_id
             if flavor.fleet['allocation-strategy'] in [
                 'prioritized', 'capacity-optimized-prioritized']:
                 override_dict['Priority'] = priority
@@ -1664,8 +1664,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 label.security_group_id
             ]
 
-        # if label.pool.subnet_id:
-        #     args['NetworkInterfaces'][0]['SubnetId'] = label.pool.subnet_id
+        if label.subnet_id:
+            args['NetworkInterfaces'][0]['SubnetId'] = label.subnet_id
 
         # if label.pool.public_ipv6:
         #     args['NetworkInterfaces'][0]['Ipv6AddressCount'] = 1
