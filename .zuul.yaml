@@ -59,7 +59,10 @@
     description: |
       Zuul unit tests with ZooKeeper running
     parent: nox
-    nodeset: ubuntu-jammy
+    # Run on debian-bookworm by default so that we get python 3.11 and
+    # mariadb 10.11 together. The mariadb 10.6 on Ubuntu Jammy has problems
+    # with per test case database schemas.
+    nodeset: debian-bookworm
     pre-run: playbooks/zuul-nox/pre.yaml
     post-run: playbooks/zuul-nox/post-system-logs.yaml
     vars:
@@ -79,7 +82,6 @@
 - job:
     name: zuul-nox-remote
     parent: nox
-    nodeset: ubuntu-jammy
     timeout: 2700  # 45 minutes
     pre-run: playbooks/zuul-nox/pre.yaml
     post-run: playbooks/zuul-nox/post-system-logs.yaml
