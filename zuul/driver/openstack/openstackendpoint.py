@@ -208,8 +208,7 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
         self.image = image
         self.server = None
         self.hostname = hostname
-        # TODO: implement az
-        self.az = None
+        self.az = label.az
         super().__init__(node.create_state)
         self.attempts = node.create_state.get("attempts", 0)
         self.image_external_id = node.create_state.get(
@@ -493,6 +492,9 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
         return quota_from_flavor(flavor, label=label)
 
     def getAZs(self):
+        # TODO: This is currently unused; it's unclear if we will need
+        # to incorporate this into the node reuse process in the
+        # launcher.
         azs = self._listAZs()
         if not azs:
             # If there are no zones, return a list containing None so that
