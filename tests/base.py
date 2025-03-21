@@ -1712,7 +1712,7 @@ class MySQLSchemaFixture(fixtures.Fixture):
         finally:
             db.close()
 
-        self.dburi = 'mysql+pymysql://{name}:{passwd}@{host}:{port}/{name}'\
+        self.dburi = 'mariadb+pymysql://{name}:{passwd}@{host}:{port}/{name}'\
             .format(
                 name=self.name,
                 passwd=self.passwd,
