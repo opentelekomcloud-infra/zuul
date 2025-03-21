@@ -1686,9 +1686,10 @@ class MySQLSchemaFixture(fixtures.Fixture):
         else:
             self.name = self.test_id.split('.')[-1]
             self.passwd = self.name
-        self.log.debug("Creating database %s", self.name)
         self.host = os.environ.get('ZUUL_MYSQL_HOST', '127.0.0.1')
         self.port = int(os.environ.get('ZUUL_MYSQL_PORT', 3306))
+        self.log.debug("Creating database %s:%s:%s",
+                       self.host, self.port, self.name)
         db = pymysql.connect(host=self.host,
                              port=self.port,
                              user="openstack_citest",
@@ -1708,6 +1709,8 @@ class MySQLSchemaFixture(fixtures.Fixture):
                 # Database exists
                 pass
             else:
+                self.log.debug("Double check connection details %s:%s:%s",
+                               self.host, self.port, self.name)
                 raise
         finally:
             db.close()
