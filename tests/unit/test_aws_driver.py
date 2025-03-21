@@ -114,15 +114,12 @@ class TestAwsDriver(BaseCloudDriverTest):
                 CidrBlock='203.0.113.128/25', VpcId=self.vpc['Vpc']['VpcId'])
             self.subnet_id = self.subnet['Subnet']['SubnetId']
 
-        profile = self.iam.create_instance_profile(
-            InstanceProfileName='not-a-real-profile')
-        self.instance_profile_name = profile.name
-        self.instance_profile_arn = profile.arn
-
         self.security_group = self.ec2_client.create_security_group(
             GroupName='zuul-nodes', VpcId=self.vpc['Vpc']['VpcId'],
             Description='Zuul Nodes')
         self.security_group_id = self.security_group['GroupId']
+        self.profile = self.iam.create_instance_profile(
+            InstanceProfileName='not-a-real-profile')
 
         self.patch(AwsDriver, '_endpoint_class', FakeAwsProviderEndpoint)
         self.patch(FakeAwsProviderEndpoint,
@@ -201,7 +198,10 @@ class TestAwsDriver(BaseCloudDriverTest):
         self.assertEqual(expected, instance['UserData']['Value'])
 
     @simple_layout('layouts/aws/spot.yaml', enable_nodepool=True,
-                   replace=lambda test: {'subnet_id': test.subnet_id})
+                   replace=lambda test: {
+                       'subnet_id': test.subnet_id,
+                       'iam_profile_name': test.profile.name,
+                   })
     @driver_config('aws', node_checks=check_spot_node_attrs)
     def test_aws_node_lifecycle_spot(self):
         self._test_node_lifecycle('debian-normal')
@@ -235,7 +235,10 @@ class TestAwsDriver(BaseCloudDriverTest):
         # arbitrary).
         self.commitConfigUpdate(
             'org/common-config', 'layouts/aws/spot.yaml',
-            replace=lambda test: {'subnet_id': test.subnet_id})
+            replace=lambda test: {
+                'subnet_id': test.subnet_id,
+                'iam_profile_name': test.profile.name,
+            })
 
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
         self.waitUntilSettled()
