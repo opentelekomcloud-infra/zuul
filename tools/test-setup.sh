@@ -58,3 +58,8 @@ if [ $LSBDISTCODENAME == 'xenial' ]; then
     sudo apt-get update
     sudo apt-get --assume-yes install bubblewrap
 fi
+
+# Allow the zuul user to collect mariadb logs when the job completes
+echo "zuul ALL = (root:root) NOPASSWD: /usr/bin/journalctl -u mariadb" | sudo tee /etc/sudoers.d/zuul_mariadb
+sudo chown root:root /etc/sudoers.d/zuul_mariadb
+sudo chmod 0440 /etc/sudoers.d/zuul_mariadb

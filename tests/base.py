@@ -1686,15 +1686,20 @@ class MySQLSchemaFixture(fixtures.Fixture):
         else:
             self.name = self.test_id.split('.')[-1]
             self.passwd = self.name
-        self.log.debug("Creating database %s", self.name)
         self.host = os.environ.get('ZUUL_MYSQL_HOST', '127.0.0.1')
         self.port = int(os.environ.get('ZUUL_MYSQL_PORT', 3306))
-        db = pymysql.connect(host=self.host,
-                             port=self.port,
-                             user="openstack_citest",
-                             passwd="openstack_citest",
-                             db="openstack_citest")
+        self.log.debug("Creating database %s:%s:%s",
+                       self.host, self.port, self.name)
+        connected = False
+        pymysql.connections.DEBUG=True
         try:
+            db = pymysql.connect(host=self.host,
+                                 port=self.port,
+                                 user="openstack_citest",
+                                 passwd="openstack_citest",
+                                 db="openstack_citest")
+            pymysql.connections.DEBUG=False
+            connected = True
             with db.cursor() as cur:
                 cur.execute("create database %s" % self.name)
                 cur.execute(
@@ -1708,9 +1713,13 @@ class MySQLSchemaFixture(fixtures.Fixture):
                 # Database exists
                 pass
             else:
+                self.log.exception("Double check connection details %s:%s:%s",
+                                   self.host, self.port, self.name)
                 raise
         finally:
-            db.close()
+            if connected:
+                db.close()
+            pymysql.connections.DEBUG=False
 
         self.dburi = 'mariadb+pymysql://{name}:{passwd}@{host}:{port}/{name}'\
             .format(
@@ -1724,20 +1733,31 @@ class MySQLSchemaFixture(fixtures.Fixture):
             self.addCleanup(self.cleanup)
 
     def cleanup(self):
-        self.log.debug("Deleting database %s", self.name)
-        db = pymysql.connect(host=self.host,
-                             port=self.port,
-                             user="openstack_citest",
-                             passwd="openstack_citest",
-                             db="openstack_citest",
-                             read_timeout=90)
+        self.log.debug("Deleting database %s:%s:%s",
+                       self.host, self.port, self.name)
+        connected = False
+        pymysql.connections.DEBUG=True
         try:
+            db = pymysql.connect(host=self.host,
+                                 port=self.port,
+                                 user="openstack_citest",
+                                 passwd="openstack_citest",
+                                 db="openstack_citest",
+                                 read_timeout=90)
+            connected = True
+            pymysql.connections.DEBUG=False
             with db.cursor() as cur:
                 cur.execute("drop database %s" % self.name)
                 cur.execute("drop user '%s'@''" % self.name)
                 cur.execute("flush privileges")
+        except:
+            self.log.exception("Double check connection details %s:%s:%s",
+                               self.host, self.port, self.name)
+            raise
         finally:
-            db.close()
+            if connected:
+                db.close()
+            pymysql.connections.DEBUG=False
 
 
 class PostgresqlSchemaFixture(fixtures.Fixture):
