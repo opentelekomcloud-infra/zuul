@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5d1df072_cb70c609",
+        "filename": "zuul/executor/sensors/process.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-22T23:07:05Z",
+      "side": 1,
+      "message": "Looking at https://github.com/b/statsd_spec?tab\u003dreadme-ov-file#gauges the valid ranges for gauges do appear to be bounded. I dug into this more and the kernel does provide a max_pid value so we read and use that instead of math.inf. That addresses the statsd concern too.",
+      "revId": "5946f20ecc2a0cbc46058ce2c7ae954a47027916",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
