@@ -61,6 +61,7 @@ import zuul.ansible.logconfig
 from zuul.executor.sensors.cpu import CPUSensor
 from zuul.executor.sensors.hdd import HDDSensor
 from zuul.executor.sensors.pause import PauseSensor
+from zuul.executor.sensors.process import ProcessSensor
 from zuul.executor.sensors.startingbuilds import StartingBuildsSensor
 from zuul.executor.sensors.ram import RAMSensor
 from zuul.executor.common import zuul_params_from_job
@@ -3813,6 +3814,7 @@ class ExecutorServer(BaseMergeServer):
             cpu_sensor,
             HDDSensor(self.statsd, base_key, config),
             self.pause_sensor,
+            ProcessSensor(self.statsd, base_key, config),
             RAMSensor(self.statsd, base_key, config),
             StartingBuildsSensor(self.statsd, base_key,
                                  self, cpu_sensor.max_load_avg, config),
