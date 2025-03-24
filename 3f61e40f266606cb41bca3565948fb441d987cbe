@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f30b1c76_a0b32057",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-24T15:49:08Z",
+      "side": 1,
+      "message": "The followup change shows this probably isn\u0027t safe yet.",
+      "revId": "3f61e40f266606cb41bca3565948fb441d987cbe",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
