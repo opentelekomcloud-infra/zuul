@@ -464,8 +464,9 @@ class KubeFwd(object):
             self.stop()
             raise Exception("Unable to start kubectl port forward")
         self.fwd = fwd
-        self.log.info('Started Kubectl port forward on port {}'.format(
-            self.port))
+        pgid = os.getpgid(self.fwd.pid)
+        self.log.info('Started Kubectl port forward on port %s with '
+                      'process group %s', self.port, pgid)
 
     def stop(self):
         try:
