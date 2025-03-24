@@ -389,7 +389,6 @@
               nox_install_bindep: false
             nodeset: ubuntu-jammy
         - zuul-nox-py311
-        - zuul-nox-py311-multi-scheduler
         - zuul-nox-py312
         - zuul-nox-upgrade
         - zuul-build-dashboard-openstack-whitelabel
@@ -413,6 +412,9 @@
             dependencies: zuul-build-image
         - zuul-nox-zuul-client
         - zuul-build-python-release
+    experimental:
+      jobs:
+        - zuul-nox-py311-multi-scheduler
     gate:
       jobs:
         - zuul-upload-image
