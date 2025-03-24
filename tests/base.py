@@ -1693,8 +1693,7 @@ class MySQLSchemaFixture(fixtures.Fixture):
         connected = False
         pymysql.connections.DEBUG=True
         try:
-            db = pymysql.connect(host=self.host,
-                                 port=self.port,
+            db = pymysql.connect(unix_socket='/var/run/mysqld/mysqld.sock',
                                  user="openstack_citest",
                                  passwd="openstack_citest",
                                  db="openstack_citest")
@@ -1740,8 +1739,7 @@ class MySQLSchemaFixture(fixtures.Fixture):
         connected = False
         pymysql.connections.DEBUG=True
         try:
-            db = pymysql.connect(host=self.host,
-                                 port=self.port,
+            db = pymysql.connect(unix_socket='/var/run/mysqld/mysqld.sock',
                                  user="openstack_citest",
                                  passwd="openstack_citest",
                                  db="openstack_citest",
