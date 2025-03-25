@@ -162,6 +162,17 @@
       python_version: "3.12"
 
 - job:
+    name: zuul-nox-py313
+    parent: zuul-nox-py311
+    nodeset: ubuntu-noble
+    vars:
+      python_use_pyenv: true
+      # pyenv installs a very specific version for us. Just use that for now
+      # while we gather early data.
+      nox_force_python: "3.13.2t"
+      python_version: "3.13"
+
+- job:
     name: zuul-build-dashboard
     parent: build-javascript-deployment
     description: |
@@ -391,6 +402,7 @@
         - zuul-nox-py311
         - zuul-nox-py311-multi-scheduler
         - zuul-nox-py312
+        - zuul-nox-py313
         - zuul-nox-upgrade
         - zuul-build-dashboard-openstack-whitelabel
         - zuul-build-dashboard-software-factory
@@ -423,6 +435,7 @@
             nodeset: ubuntu-jammy
         - zuul-nox-py311
         - zuul-nox-py312
+        - zuul-nox-py313
         - zuul-nox-upgrade
         - zuul-build-dashboard
         - nodejs-run-lint:
