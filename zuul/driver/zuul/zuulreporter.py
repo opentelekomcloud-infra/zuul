@@ -41,14 +41,14 @@ class ZuulReporter(BaseReporter):
             if not build.job.image_build_name:
                 continue
             image_name = build.job.image_build_name
-            image = self.pipeline.tenant.layout.images[image_name]
+            image = item.manager.tenant.layout.images[image_name]
             for artifact in get_artifacts_from_result_data(
                     build.result_data,
                     logger=self.log):
                 if metadata := artifact.get('metadata'):
                     if metadata.get('type') == 'zuul_image':
                         iba = sched.createImageBuildArtifact(
-                            self.pipeline.tenant.name, image, build,
+                            item.manager.tenant.name, image, build,
                             metadata, artifact['url'],
                             self.image_validated)
                         sched.createImageUploads(iba)
