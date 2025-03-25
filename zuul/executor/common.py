@@ -37,7 +37,7 @@ def construct_build_params(uuid, connections, job, item, pipeline,
     Alternatively they contain enough information to load into another build
     environment - for example, a local runner.
     """
-    tenant = pipeline.tenant
+    tenant = item.manager.tenant
     change = item.getChangeForJob(job)
     project = dict(
         name=change.project.name,

@@ -101,7 +101,7 @@ class GerritReporter(BaseReporter):
                                       phase1, phase2,
                                       zuul_event_id=item.event)
 
-    def getSubmitAllowNeeds(self):
+    def getSubmitAllowNeeds(self, manager):
         """Get a list of code review labels that are allowed to be
         "needed" in the submit records for a change, with respect
         to this queue.  In other words, the list of review labels
