@@ -1500,6 +1500,8 @@ class ZuulWebAPI(object):
             auth_info['default_realm'] = root_realm
         read_protected = bool(self.zuulweb.abide.api_root.access_rules)
         auth_info['read_protected'] = read_protected
+        auth_info['auth_log_file_requests'] =\
+            self.zuulweb.auth_log_file_requests
         return self._handleInfo(info.toDict())
 
     @cherrypy.expose
@@ -1522,6 +1524,8 @@ class ZuulWebAPI(object):
             auth_info['read_protected'] = read_protected
             # TODO: remove this after NIZ transition is complete
             auth_info['niz'] = bool(self.zuulweb.tenant_providers[tenant_name])
+            auth_info['auth_log_file_requests'] =\
+                self.zuulweb.auth_log_file_requests
         return self._handleInfo(info)
 
     def _handleInfo(self, info):
@@ -3037,6 +3041,12 @@ class ZuulWeb(object):
             self.config, 'fingergw', 'tls_ca')
         self.finger_tls_verify_hostnames = get_default(
             self.config, 'fingergw', 'tls_verify_hostnames', default=True)
+
+        # NOTE: taking this from the zuul.conf for now, but we might want
+        # to make this configurable per-tenant in the future
+        self.auth_log_file_requests = get_default(
+            self.config, "web", "auth_log_file_requests", default=False
+        )
 
         api = ZuulWebAPI(self)
         self.api = api

@@ -2022,6 +2022,7 @@ class TestInfo(BaseTestWeb):
                         "realms": {},
                         "default_realm": None,
                         "read_protected": False,
+                        "auth_log_file_requests": False,
                     }
                 },
                 "stats": {
@@ -2082,6 +2083,7 @@ class TestWebCapabilitiesInfo(TestInfo):
             },
             'default_realm': 'myOIDC1',
             'read_protected': False,
+            'auth_log_file_requests': False,
         }
         if niz is not None:
             info['info']['capabilities']['auth']['niz'] = niz
