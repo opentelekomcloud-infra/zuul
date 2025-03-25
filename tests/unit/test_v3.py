@@ -6354,7 +6354,8 @@ class TestDataReturn(AnsibleZuulTestCase):
 
         # Make sure skipped jobs are not reported as failing
         tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
-        status = tenant.layout.pipelines["check"].formatStatusJSON(
+        status = tenant.layout.pipeline_managers[
+            "check"].pipeline.formatStatusJSON(
             tenant.layout.pipeline_managers["check"])
         self.assertEqual(
             status["change_queues"][0]["heads"][0][0]["failing_reasons"], [])
@@ -9397,7 +9398,8 @@ class TestProvidesRequiresMysql(ZuulTestCase):
 
         # Verify the waiting status for both jobs is "repo state"
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        status = tenant.layout.pipelines["gate"].formatStatusJSON(
+        status = tenant.layout.pipeline_managers[
+            "gate"].pipeline.formatStatusJSON(
             tenant.layout.pipeline_managers["gate"])
         jobs = status["change_queues"][0]["heads"][0][0]["jobs"]
         self.assertEqual(jobs[0]["waiting_status"], 'repo state')
@@ -9410,7 +9412,8 @@ class TestProvidesRequiresMysql(ZuulTestCase):
         self.waitUntilSettled()
 
         # Verify the nodepool waiting status
-        status = tenant.layout.pipelines["gate"].formatStatusJSON(
+        status = tenant.layout.pipeline_managers[
+            "gate"].pipeline.formatStatusJSON(
             tenant.layout.pipeline_managers["gate"])
         jobs = status["change_queues"][0]["heads"][0][0]["jobs"]
         self.assertEqual(jobs[0]["waiting_status"],
@@ -9425,7 +9428,8 @@ class TestProvidesRequiresMysql(ZuulTestCase):
         self.waitUntilSettled()
 
         # Verify the executor waiting status
-        status = tenant.layout.pipelines["gate"].formatStatusJSON(
+        status = tenant.layout.pipeline_managers[
+            "gate"].pipeline.formatStatusJSON(
             tenant.layout.pipeline_managers["gate"])
         jobs = status["change_queues"][0]["heads"][0][0]["jobs"]
         self.assertEqual(jobs[0]["waiting_status"], 'executor')
@@ -9438,7 +9442,8 @@ class TestProvidesRequiresMysql(ZuulTestCase):
         self.executor_api.release()
         self.waitUntilSettled()
 
-        status = tenant.layout.pipelines["gate"].formatStatusJSON(
+        status = tenant.layout.pipeline_managers[
+            "gate"].pipeline.formatStatusJSON(
             tenant.layout.pipeline_managers["gate"])
         jobs = status["change_queues"][0]["heads"][0][0]["jobs"]
         self.assertIsNone(jobs[0]["waiting_status"])
@@ -9454,7 +9459,8 @@ class TestProvidesRequiresMysql(ZuulTestCase):
 
         self.assertEqual(len(self.builds), 1)
 
-        status = tenant.layout.pipelines["gate"].formatStatusJSON(
+        status = tenant.layout.pipeline_managers[
+            "gate"].pipeline.formatStatusJSON(
             tenant.layout.pipeline_managers["gate"])
 
         # First change

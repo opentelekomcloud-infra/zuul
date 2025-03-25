@@ -1161,8 +1161,8 @@ class ZuulWebAPI(object):
             # in the pipeline management event queue and don't need to
             # take the detour via the tenant management event queue.
             pipeline_name = body['pipeline']
-            pipeline = tenant.layout.pipelines.get(pipeline_name)
-            if pipeline is None:
+            manager = tenant.layout.pipeline_managers.get(pipeline_name)
+            if manager is None:
                 raise cherrypy.HTTPError(400, 'Unknown pipeline')
 
             event = DequeueEvent(
@@ -1196,14 +1196,16 @@ class ZuulWebAPI(object):
         # in the pipeline management event queue and don't need to
         # take the detour via the tenant management event queue.
         pipeline_name = body['pipeline']
-        pipeline = tenant.layout.pipelines.get(pipeline_name)
-        if pipeline is None:
+        manager = tenant.layout.pipeline_managers.get(pipeline_name)
+        if manager is None:
             raise cherrypy.HTTPError(400, 'Unknown pipeline')
 
         if 'change' in body:
-            return self._enqueue(tenant, project, pipeline, body['change'])
+            return self._enqueue(tenant, project, manager.pipeline,
+                                 body['change'])
         elif all(p in body for p in ['ref', 'oldrev', 'newrev']):
-            return self._enqueue_ref(tenant, project, pipeline, body['ref'],
+            return self._enqueue_ref(tenant, project,
+                                     manager.pipeline, body['ref'],
                                      body['oldrev'], body['newrev'])
         else:
             raise cherrypy.HTTPError(400, 'Invalid request body')
@@ -1248,8 +1250,8 @@ class ZuulWebAPI(object):
         # Validate the pipeline so we can enqueue the event directly
         # in the pipeline management event queue and don't need to
         # take the detour via the tenant management event queue.
-        pipeline = tenant.layout.pipelines.get(pipeline_name)
-        if pipeline is None:
+        manager = tenant.layout.pipeline_managers.get(pipeline_name)
+        if manager is None:
             raise cherrypy.HTTPError(400, 'Unknown pipeline')
 
         event = PromoteEvent(tenant_name, pipeline_name, changes)
@@ -1982,9 +1984,9 @@ class ZuulWebAPI(object):
     @cherrypy.tools.check_tenant_auth()
     def pipelines(self, tenant_name, tenant, auth):
         ret = []
-        for pipeline, pipeline_config in tenant.layout.pipelines.items():
+        for pipeline_name, manager in tenant.layout.pipeline_managers.items():
             triggers = []
-            for trigger in pipeline_config.triggers:
+            for trigger in manager.pipeline.triggers:
                 if isinstance(trigger.connection, BaseConnection):
                     name = trigger.connection.connection_name
                 else:
@@ -1994,7 +1996,7 @@ class ZuulWebAPI(object):
                     "name": name,
                     "driver": trigger.driver.name,
                 })
-            ret.append({"name": pipeline, "triggers": triggers})
+            ret.append({"name": pipeline_name, "triggers": triggers})
 
         return ret
 
