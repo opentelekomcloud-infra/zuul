@@ -1158,11 +1158,9 @@ class TestScheduler(ZuulTestCase):
         time.sleep(2)
 
         found_job = None
-        pipeline = self.scheds.first.sched.abide.tenants[
-            'tenant-one'].layout.pipelines['gate']
         manager = self.scheds.first.sched.abide.tenants[
             'tenant-one'].layout.pipeline_managers['gate']
-        pipeline_status = pipeline.formatStatusJSON(
+        pipeline_status = manager.pipeline.formatStatusJSON(
             manager,
             self.scheds.first.sched.globals.websocket_url)
         for queue in pipeline_status['change_queues']:
@@ -4288,7 +4286,7 @@ class TestScheduler(ZuulTestCase):
         ], ordered=False)
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines), 0)
+        self.assertEqual(len(tenant.layout.pipeline_managers), 0)
 
     def test_live_reconfiguration_del_tenant(self):
         # Test tenant deletion while changes are enqueued
@@ -4441,9 +4439,9 @@ class TestScheduler(ZuulTestCase):
 
         def get_job():
             tenant = self.scheds.first.sched.abide.tenants['tenant-one']
-            for pipeline in tenant.layout.pipelines.values():
-                pipeline_status = pipeline.formatStatusJSON(
-                    tenant.layout.pipeline_managers[pipeline.name],
+            for manager in tenant.layout.pipeline_managers.values():
+                pipeline_status = manager.pipeline.formatStatusJSON(
+                    manager,
                     self.scheds.first.sched.globals.websocket_url)
                 for queue in pipeline_status['change_queues']:
                     for head in queue['heads']:
@@ -4674,9 +4672,8 @@ class TestScheduler(ZuulTestCase):
         # Ensure that the status json has the ref so we can render it in the
         # web ui.
         tenant = self.scheds.first.sched.abide.tenants['tenant-one']
-        pipeline = tenant.layout.pipelines['periodic']
         manager = tenant.layout.pipeline_managers['periodic']
-        pipeline_status = pipeline.formatStatusJSON(
+        pipeline_status = manager.pipeline.formatStatusJSON(
             manager,
             self.scheds.first.sched.globals.websocket_url)
 
@@ -4850,7 +4847,7 @@ class TestScheduler(ZuulTestCase):
         report_mock.side_effect = Exception('Gerrit failed to report')
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check = tenant.layout.pipelines['check']
+        check = tenant.layout.pipeline_managers['check'].pipeline
 
         check.success_actions = sorted(check.success_actions,
                                        key=lambda x: x.name)
@@ -5489,34 +5486,39 @@ For CI problems and help debugging, contact ci@example.org"""
             "dependencies was unable to be automatically merged with the "
             "current state of its repository. Please rebase the change and "
             "upload a new patchset.",
-            tenant.layout.pipelines['check'].merge_conflict_message)
+            tenant.layout.pipeline_managers['check'].
+            pipeline.merge_conflict_message)
         self.assertEqual(
             "The merge failed! For more information...",
-            tenant.layout.pipelines['gate'].merge_conflict_message)
+            tenant.layout.pipeline_managers['gate'].
+            pipeline.merge_conflict_message)
 
         self.assertEqual(
-            len(tenant.layout.pipelines['check'].merge_conflict_actions), 1)
+            len(tenant.layout.pipeline_managers['check'].
+                pipeline.merge_conflict_actions), 1)
         self.assertEqual(
-            len(tenant.layout.pipelines['gate'].merge_conflict_actions), 2)
+            len(tenant.layout.pipeline_managers['gate'].
+                pipeline.merge_conflict_actions), 2)
 
         self.assertTrue(isinstance(
-            tenant.layout.pipelines['check'].merge_conflict_actions[0],
+            tenant.layout.pipeline_managers['check'].
+            pipeline.merge_conflict_actions[0],
             gerritreporter.GerritReporter))
 
         self.assertTrue(
             (
-                isinstance(tenant.layout.pipelines['gate'].
-                           merge_conflict_actions[0],
+                isinstance(tenant.layout.pipeline_managers['gate'].
+                           pipeline.merge_conflict_actions[0],
                            zuul.driver.smtp.smtpreporter.SMTPReporter) and
-                isinstance(tenant.layout.pipelines['gate'].
-                           merge_conflict_actions[1],
+                isinstance(tenant.layout.pipeline_managers['gate'].
+                           pipeline.merge_conflict_actions[1],
                            gerritreporter.GerritReporter)
             ) or (
-                isinstance(tenant.layout.pipelines['gate'].
-                           merge_conflict_actions[0],
+                isinstance(tenant.layout.pipeline_managers['gate'].
+                           pipeline.merge_conflict_actions[0],
                            gerritreporter.GerritReporter) and
-                isinstance(tenant.layout.pipelines['gate'].
-                           merge_conflict_actions[1],
+                isinstance(tenant.layout.pipeline_managers['gate'].
+                           pipeline.merge_conflict_actions[1],
                            zuul.driver.smtp.smtpreporter.SMTPReporter)
             )
         )
@@ -5532,34 +5534,39 @@ For CI problems and help debugging, contact ci@example.org"""
             "dependencies was unable to be automatically merged with the "
             "current state of its repository. Please rebase the change and "
             "upload a new patchset.",
-            tenant.layout.pipelines['check'].merge_conflict_message)
+            tenant.layout.pipeline_managers['check'].
+            pipeline.merge_conflict_message)
         self.assertEqual(
             "The merge failed! For more information...",
-            tenant.layout.pipelines['gate'].merge_conflict_message)
+            tenant.layout.pipeline_managers['gate'].
+            pipeline.merge_conflict_message)
 
         self.assertEqual(
-            len(tenant.layout.pipelines['check'].merge_conflict_actions), 1)
+            len(tenant.layout.pipeline_managers['check'].
+                pipeline.merge_conflict_actions), 1)
         self.assertEqual(
-            len(tenant.layout.pipelines['gate'].merge_conflict_actions), 2)
+            len(tenant.layout.pipeline_managers['gate'].
+                pipeline.merge_conflict_actions), 2)
 
         self.assertTrue(isinstance(
-            tenant.layout.pipelines['check'].merge_conflict_actions[0],
+            tenant.layout.pipeline_managers['check'].
+            pipeline.merge_conflict_actions[0],
             gerritreporter.GerritReporter))
 
         self.assertTrue(
             (
-                isinstance(tenant.layout.pipelines['gate'].
-                           merge_conflict_actions[0],
+                isinstance(tenant.layout.pipeline_managers['gate'].
+                           pipeline.merge_conflict_actions[0],
                            zuul.driver.smtp.smtpreporter.SMTPReporter) and
-                isinstance(tenant.layout.pipelines['gate'].
-                           merge_conflict_actions[1],
+                isinstance(tenant.layout.pipeline_managers['gate'].
+                           pipeline.merge_conflict_actions[1],
                            gerritreporter.GerritReporter)
             ) or (
-                isinstance(tenant.layout.pipelines['gate'].
-                           merge_conflict_actions[0],
+                isinstance(tenant.layout.pipeline_managers['gate'].
+                           pipeline.merge_conflict_actions[0],
                            gerritreporter.GerritReporter) and
-                isinstance(tenant.layout.pipelines['gate'].
-                           merge_conflict_actions[1],
+                isinstance(tenant.layout.pipeline_managers['gate'].
+                           pipeline.merge_conflict_actions[1],
                            zuul.driver.smtp.smtpreporter.SMTPReporter)
             )
         )
@@ -5703,7 +5710,8 @@ For CI problems and help debugging, contact ci@example.org"""
         "Test a pipeline will only report to the disabled trigger when failing"
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(3, tenant.layout.pipelines['check'].disable_at)
+        self.assertEqual(
+            3, tenant.layout.pipeline_managers['check'].pipeline.disable_at)
         self.assertEqual(
             0,
             tenant.layout.pipeline_managers[
@@ -5815,7 +5823,8 @@ For CI problems and help debugging, contact ci@example.org"""
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
 
-        self.assertEqual(3, tenant.layout.pipelines['check'].disable_at)
+        self.assertEqual(
+            3, tenant.layout.pipeline_managers['check'].pipeline.disable_at)
         self.assertEqual(
             0,
             tenant.layout.pipeline_managers[
@@ -8183,7 +8192,8 @@ class TestSemaphore(ZuulTestCase):
         self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
 
-        status = tenant.layout.pipelines["check"].formatStatusJSON(
+        status = tenant.layout.pipeline_managers[
+            "check"].pipeline.formatStatusJSON(
             tenant.layout.pipeline_managers["check"])
         jobs = status["change_queues"][0]["heads"][0][0]["jobs"]
         self.assertEqual(jobs[0]["waiting_status"],
