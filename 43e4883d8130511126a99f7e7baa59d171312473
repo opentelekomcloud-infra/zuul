@@ -33,6 +33,24 @@
       "message": "Don\u0027t change the spec; it\u0027s not supposed to be live documentation (also, we can delete the spec now anyway).",
       "revId": "43e4883d8130511126a99f7e7baa59d171312473",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2cdeac4_6353f6e1",
+        "filename": "doc/source/developer/specs/kubernetes-operator.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-03-25T12:03:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bdbc04d7_0e81dcf5",
+      "revId": "43e4883d8130511126a99f7e7baa59d171312473",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
