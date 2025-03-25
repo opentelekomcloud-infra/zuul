@@ -1481,7 +1481,7 @@ class PipelineParser(object):
 
     def fromYaml(self, conf):
         self.schema(conf)
-        pipeline = model.Pipeline(conf['name'], self.pcontext.tenant)
+        pipeline = model.Pipeline(conf['name'])
         pipeline.source_context = conf['_source_context']
         pipeline.start_mark = conf['_start_mark']
         pipeline.allow_other_connections = conf.get(
