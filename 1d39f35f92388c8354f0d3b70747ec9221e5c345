@@ -34,6 +34,24 @@
       "parentUuid": "8bc13281_f816b286",
       "revId": "1d39f35f92388c8354f0d3b70747ec9221e5c345",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "32219694_8d2a6b97",
+        "filename": "tests/unit/test_github_driver.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1856,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-03-25T10:30:44Z",
+      "side": 1,
+      "message": "Ah, now that makes sense.",
+      "parentUuid": "2970f2cc_4093618d",
+      "revId": "1d39f35f92388c8354f0d3b70747ec9221e5c345",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
