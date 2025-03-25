@@ -384,7 +384,7 @@ class TestScaleOutScheduler(ZuulTestCase):
         ], ordered=False)
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines), 0)
+        self.assertEqual(len(tenant.layout.pipeline_managers), 0)
         stat = self.zk_client.client.exists(pipeline_zk_path)
         self.assertIsNone(stat)
 

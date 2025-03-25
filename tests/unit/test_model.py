@@ -83,7 +83,7 @@ class TestJob(BaseTestCase):
         self.manager.current_context = self.zk_context
         self.manager.state = model.PipelineState()
         self.manager.state._set(manager=self.manager)
-        self.layout.addPipeline(self.pipeline, self.manager)
+        self.layout.addPipelineManager(self.manager)
         with self.zk_context as ctx:
             self.queue = model.ChangeQueue.new(
                 ctx, manager=self.manager)
