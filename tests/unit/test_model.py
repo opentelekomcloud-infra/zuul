@@ -74,7 +74,7 @@ class TestJob(BaseTestCase):
         self.tpc = model.TenantProjectConfig(self.project)
         self.tpc.trusted = True
         self.tenant.addTPC(self.tpc)
-        self.pipeline = model.Pipeline('gate', self.tenant)
+        self.pipeline = model.Pipeline('gate')
         self.pipeline.source_context = self.context
         self.manager = mock.Mock()
         self.manager.pipeline = self.pipeline
@@ -83,7 +83,7 @@ class TestJob(BaseTestCase):
         self.manager.current_context = self.zk_context
         self.manager.state = model.PipelineState()
         self.manager.state._set(manager=self.manager)
-        self.layout.addPipelineManager(self.self.manager)
+        self.layout.addPipelineManager(self.manager)
         with self.zk_context as ctx:
             self.queue = model.ChangeQueue.new(
                 ctx, manager=self.manager)

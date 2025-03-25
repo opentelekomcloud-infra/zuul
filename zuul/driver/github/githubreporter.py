@@ -64,10 +64,13 @@ class GithubReporter(BaseReporter):
         self._review_body = self.config.get('review-body')
         if not isinstance(self._unlabels, list):
             self._unlabels = [self._unlabels]
-        self.context = "{}/{}".format(pipeline.tenant.name, pipeline.name)
 
         if 'status-url' in self.config and parse_context:
             parse_context.accumulator.addError(GithubStatusUrlDeprecation)
+
+    def getContext(self, manager):
+        return "{}/{}".format(manager.tenant.name,
+                              manager.pipeline.name)
 
     def report(self, item, phase1=True, phase2=True):
         """Report on an event."""
@@ -203,10 +206,12 @@ class GithubReporter(BaseReporter):
         log.debug(
             'Reporting change %s, params %s, '
             'context: %s, state: %s, description: %s, url: %s',
-            change, self.config, self.context, state, description, url)
+            change, self.config, self.getContext(item.manager),
+            state, description, url)
 
         self.connection.setCommitStatus(
-            project, sha, state, url, description, self.context,
+            project, sha, state, url, description,
+            self.getContext(item.manager),
             zuul_event_id=item.event)
 
     def mergePull(self, item, change):
@@ -301,7 +306,7 @@ class GithubReporter(BaseReporter):
 
         log.debug(
             "Updating check for change %s, params %s, context %s, message: %s",
-            change, self.config, self.context, message
+            change, self.config, self.getContext(item.manager), message
         )
 
         details_url = item.formatItemUrl()
@@ -333,7 +338,7 @@ class GithubReporter(BaseReporter):
             sha,
             status,
             completed,
-            self.context,
+            self.getContext(item.manager),
             details_url,
             message,
             file_comments,
@@ -396,7 +401,7 @@ class GithubReporter(BaseReporter):
 
         return merge_message
 
-    def getSubmitAllowNeeds(self):
+    def getSubmitAllowNeeds(self, manager):
         """Get a list of code review labels that are allowed to be
         "needed" in the submit records for a change, with respect
         to this queue.  In other words, the list of review labels
@@ -411,7 +416,7 @@ class GithubReporter(BaseReporter):
             return []
 
         # we return a status so return the status we report to github
-        return [self.context]
+        return [self.getContext(manager)]
 
 
 def getSchema():

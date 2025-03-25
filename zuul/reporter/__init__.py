@@ -49,11 +49,13 @@ class BaseReporter(object, metaclass=abc.ABCMeta):
 
         """
 
-    def getSubmitAllowNeeds(self):
+    def getSubmitAllowNeeds(self, manager):
         """Get a list of code review labels that are allowed to be
         "needed" in the submit records for a change, with respect
         to this queue.  In other words, the list of review labels
         this reporter itself is likely to set before submitting.
+
+        :arg PipelineManager manager: The pipeline manager for the queue.
         """
         return []
 
