@@ -201,7 +201,7 @@ class PipelineManager(metaclass=ABCMeta):
         # this queue itself is likely to set before submitting.
         allow_needs = set()
         for action_reporter in self.pipeline.success_actions:
-            allow_needs.update(action_reporter.getSubmitAllowNeeds())
+            allow_needs.update(action_reporter.getSubmitAllowNeeds(self))
         return allow_needs
 
     def eventMatches(self, event, change):
@@ -1170,7 +1170,7 @@ class PipelineManager(metaclass=ABCMeta):
 
     def _useNodepoolFallback(self, log, job):
         labels = {n.label for n in job.nodeset.getNodes()}
-        for provider in self.pipeline.tenant.layout.providers.values():
+        for provider in self.tenant.layout.providers.values():
             labels -= set(provider.labels.keys())
             if not labels:
                 return False
@@ -1327,7 +1327,7 @@ class PipelineManager(metaclass=ABCMeta):
         # First collect all the config errors that are not related to the
         # current item.
         parent_error_keys = list(
-            self.pipeline.tenant.layout.loading_errors.error_keys)
+            self.tenant.layout.loading_errors.error_keys)
         for item_ahead in item.items_ahead:
             parent_error_keys.extend(
                 e.key for e in item.item_ahead.getConfigErrors())
@@ -2413,7 +2413,7 @@ class PipelineManager(metaclass=ABCMeta):
                           change_queue, change_queue.window)
 
                 zuul_driver = self.sched.connections.drivers['zuul']
-                tenant = self.pipeline.tenant
+                tenant = self.tenant
                 with trace.use_span(tracing.restoreSpan(item.span_info)):
                     for change in item.changes:
                         source = change.project.source
@@ -2442,7 +2442,7 @@ class PipelineManager(metaclass=ABCMeta):
             if item.layout_uuid:
                 layout = self.getLayout(item)
             if not layout:
-                layout = self.pipeline.tenant.layout
+                layout = self.tenant.layout
 
             try:
                 for change in item.changes:
@@ -2559,7 +2559,7 @@ class PipelineManager(metaclass=ABCMeta):
                 queuekey = f'{key}.queue.{queuename}'
 
                 # Handle per-branch queues
-                layout = self.pipeline.tenant.layout
+                layout = self.tenant.layout
                 queue_config = layout.queues.get(item.queue.name)
                 per_branch = queue_config and queue_config.per_branch
                 if per_branch and item.queue.project_branches:
@@ -2627,7 +2627,7 @@ class PipelineManager(metaclass=ABCMeta):
         if end is None:
             end = time.time()
         pipeline = self.pipeline
-        tenant = pipeline.tenant
+        tenant = self.tenant
         stats_key = f'zuul.tenant.{tenant.name}.pipeline.{pipeline.name}'
         if elapsed:
             dt = start
