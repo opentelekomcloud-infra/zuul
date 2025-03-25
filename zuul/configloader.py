@@ -2788,7 +2788,7 @@ class TenantParser(object):
                     with parse_context.accumulator.catchErrors():
                         manager = self.createManager(parse_context, pipeline,
                                                      tenant)
-                        layout.addPipeline(pipeline, manager)
+                        layout.addPipelineManager(manager)
 
         for nodeset in parsed_config.nodesets:
             with parse_context.errorContext(stanza='nodeset', conf=nodeset):
@@ -2820,7 +2820,8 @@ class TenantParser(object):
                 with parse_context.errorContext(stanza='job', conf=job):
                     with parse_context.accumulator.catchErrors():
                         job.validateReferences(layout)
-        for pipeline in layout.pipelines.values():
+        for manager in layout.pipeline_managers.values():
+            pipeline = manager.pipeline
             with parse_context.errorContext(stanza='pipeline', conf=pipeline):
                 with parse_context.accumulator.catchErrors():
                     pipeline.validateReferences(layout)
@@ -3367,7 +3368,7 @@ class ConfigLoader(object):
             # have their own version of reality.  We do not support
             # creating, updating, or deleting pipelines in dynamic
             # layout changes.
-            layout.pipelines = tenant.layout.pipelines
+            layout.pipeline_managers = tenant.layout.pipeline_managers
 
             # NOTE: the semaphore definitions are copied from the
             # static layout here. For semaphores there should be no
