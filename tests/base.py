@@ -3311,7 +3311,7 @@ class ZuulTestCase(BaseTestCase):
                         self.log.debug(
                             f"Tenant trigger queue {tenant.name} not empty")
                     return False
-                for pipeline_name in tenant.layout.pipelines:
+                for pipeline_name in tenant.layout.pipeline_managers:
                     if sched.pipeline_management_events[tenant.name][
                         pipeline_name
                     ].hasEvents():
@@ -3432,10 +3432,9 @@ class ZuulTestCase(BaseTestCase):
         ctx = None
         for tenant in sched.abide.tenants.values():
             with tenant_read_lock(self.zk_client, tenant.name):
-                for pipeline in tenant.layout.pipelines.values():
-                    manager = tenant.layout.pipeline_managers[pipeline.name]
+                for manager in tenant.layout.pipeline_managers.values():
                     with (pipeline_lock(self.zk_client, tenant.name,
-                                        pipeline.name) as lock,
+                                        manager.pipeline.name) as lock,
                           self.createZKContext(lock) as ctx):
                         with manager.currentContext(ctx):
                             manager.state.refresh(ctx)
@@ -3480,8 +3479,7 @@ class ZuulTestCase(BaseTestCase):
         for build in self.builds:
             self.log.info("Running build: %s" % build)
         for tenant in self.scheds.first.sched.abide.tenants.values():
-            for pipeline in tenant.layout.pipelines.values():
-                manager = tenant.layout.pipeline_managers.get(pipeline.name)
+            for manager in tenant.layout.pipeline_managers.values():
                 for pipeline_queue in manager.state.queues:
                     if len(pipeline_queue.queue) != 0:
                         status = ''
@@ -3489,7 +3487,7 @@ class ZuulTestCase(BaseTestCase):
                             status += item.formatStatus()
                         self.log.info(
                             'Tenant %s pipeline %s queue %s contents:' % (
-                                tenant.name, pipeline.name,
+                                tenant.name, manager.pipeline.name,
                                 pipeline_queue.name))
                         for l in status.split('\n'):
                             if l.strip():
@@ -3527,12 +3525,11 @@ class ZuulTestCase(BaseTestCase):
     def assertEmptyQueues(self):
         # Make sure there are no orphaned jobs
         for tenant in self.scheds.first.sched.abide.tenants.values():
-            for pipeline in tenant.layout.pipelines.values():
-                manager = tenant.layout.pipeline_managers.get(pipeline.name)
+            for manager in tenant.layout.pipeline_managers.values():
                 for pipeline_queue in manager.state.queues:
                     if len(pipeline_queue.queue) != 0:
                         print('pipeline %s queue %s contents %s' % (
-                            pipeline.name, pipeline_queue.name,
+                            manager.pipeline.name, pipeline_queue.name,
                             pipeline_queue.queue))
                     self.assertEqual(len(pipeline_queue.queue), 0,
                                      "Pipelines queues should be empty")
