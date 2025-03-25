@@ -42,6 +42,9 @@ python3-dev [compile test platform:dpkg platform:apk]
 python3-devel [compile test platform:rpm]
 bubblewrap [!platform:ubuntu-xenial]
 socat
+# libre2 requires libabsl and pybind when built from source
+pybind11-dev [compile test platform:dpkg]
+libabsl-dev [compile test platform:dpkg]
 libre2-dev [compile test platform:dpkg]
 libre2-9 [platform:debian-bullseye platform:debian-bookworm]
 libre2-5 [platform:debian-buster]
