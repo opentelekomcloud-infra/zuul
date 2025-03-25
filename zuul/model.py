@@ -555,13 +555,8 @@ class Pipeline(object):
     STATE_NORMAL = 'normal'
     STATE_ERROR = 'error'
 
-    def __init__(self, name, tenant):
+    def __init__(self, name):
         self.name = name
-        # Note that pipelines are not portable across tenants (new
-        # pipeline objects must be made when a tenant is
-        # reconfigured).  A pipeline requires a tenant in order to
-        # reach the currently active layout for that tenant.
-        self.tenant = tenant
         self.allow_other_connections = True
         self.connections = []
         self.source_context = None
