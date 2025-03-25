@@ -16,6 +16,24 @@
       "message": "How about we bump the node_version here instead of the other places?",
       "revId": "0748abccca956ca6068e120beffff5a7ed938412",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "546e01a6_12b078e6",
+        "filename": ".zuul.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 31083
+      },
+      "writtenOn": "2025-03-25T14:43:08Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "5991cbed_bf0284f8",
+      "revId": "0748abccca956ca6068e120beffff5a7ed938412",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }

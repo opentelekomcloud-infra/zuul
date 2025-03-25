@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "74760290_08d6193f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 31083
+      },
+      "writtenOn": "2025-03-25T14:43:08Z",
+      "side": 1,
+      "message": "Had to keep the node_version var for the build-dashboard jobs, since their base job sets it to `14` [1] which overrides the project var. We could also think about upgrading the default version in the js-build job.\n\n[1] https://opendev.org/zuul/zuul-jobs/src/branch/master/zuul.d/js-jobs.yaml#L40",
+      "revId": "80c6679229cdb951339bbb18abb463f7acdea010",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
