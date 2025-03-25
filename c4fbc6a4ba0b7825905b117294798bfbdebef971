@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "129c8c95_e01aeeb6",
+        "filename": ".zuul.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 9311
+      },
+      "writtenOn": "2025-03-25T19:55:56Z",
+      "side": 1,
+      "message": "Is it useful to keep 312? It looks like the container uses 311, so I think we could drop 312.",
+      "revId": "c4fbc6a4ba0b7825905b117294798bfbdebef971",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
