@@ -29,7 +29,8 @@ class GerritDriver(Driver, ConnectionInterface, TriggerInterface,
     def reconfigure(self, tenant):
         connection_checker_map = {}
         connection_filter_map = {}
-        for pipeline in tenant.layout.pipelines.values():
+        for manager in tenant.layout.pipeline_managers.values():
+            pipeline = manager.pipeline
             for trigger in pipeline.triggers:
                 if isinstance(trigger, gerrittrigger.GerritTrigger):
                     con = trigger.connection
