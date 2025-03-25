@@ -42,10 +42,13 @@ class PagureReporter(BaseReporter):
         self._commit_status = self.config.get('status', None)
         self._create_comment = self.config.get('comment', True)
         self._merge = self.config.get('merge', False)
-        self.context = "{}/{}".format(pipeline.tenant.name, pipeline.name)
 
         if 'status-url' in self.config and parse_context:
             parse_context.accumulator.addError(PagureStatusUrlDeprecation)
+
+    def getContext(self, manager):
+        return "{}/{}".format(manager.tenant.name,
+                              manager.pipeline.name)
 
     def report(self, item, phase1=True, phase2=True):
         """Report on an event."""
@@ -120,10 +123,11 @@ class PagureReporter(BaseReporter):
             'Reporting change %s, params %s, '
             'context: %s, state: %s, description: %s, url: %s' %
             (change, self.config,
-             self.context, state, description, url))
+             self.getContext(item.manager), state, description, url))
 
         self.connection.setCommitStatus(
-            project, change_number, state, url, description, self.context)
+            project, change_number, state, url, description,
+            self.getContext(item.manager))
 
     def mergePull(self, item, change):
         project = change.project.name
@@ -144,7 +148,7 @@ class PagureReporter(BaseReporter):
             'Merge of change %s failed after 2 attempts, giving up' %
             change)
 
-    def getSubmitAllowNeeds(self):
+    def getSubmitAllowNeeds(self, manager):
         return []
 
 
