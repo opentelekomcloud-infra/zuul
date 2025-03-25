@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b3433e4c_5e0bf3f7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-03-25T12:09:11Z",
+      "side": 1,
+      "message": "\u003e We probably could do something in the configloader to check that the substitution keys in reporters are valid, and then make a configurating warning to let people know that they\u0027re using a deprecated substitution key. That is a step that we could do before this change if we wanted to. I\u0027m not sure how important we think that is, given that checking pipeline definitions is not an onerous manual task.\n\nyeah, I\u0027m also not sure if this is necessary given that pipelines are centrally defined and it should be pretty easy to grep for that.\n\nWe can also postpone this change still for some time. I don\u0027t see any urgency, but I wanted to finish the cleanup that I started.\n\n\u003e Perhaps we should remove the other two deprecated keys at the same time?\n\ndone in PS5",
+      "revId": "6b364f39a2955dc1520a1c1ce5d563a9d08fb0b7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
