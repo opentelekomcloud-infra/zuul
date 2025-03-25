@@ -16,6 +16,24 @@
       "message": "I don\u0027t think this is used.  But if you do want to add it for future use, it has a typo that should be fixed: \"gallery\" needs an extra \"l\".",
       "revId": "7615c0eac7493f735d39dee550a726c0482e0087",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f55300d7_4a438c54",
+        "filename": "web/src/pages/PipelineOverview.jsx",
+        "patchSetId": 1
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 31083
+      },
+      "writtenOn": "2025-03-25T09:48:39Z",
+      "side": 1,
+      "message": "Right, that makes so sense here. Removed.",
+      "parentUuid": "cac4e308_8ad67d28",
+      "revId": "7615c0eac7493f735d39dee550a726c0482e0087",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
