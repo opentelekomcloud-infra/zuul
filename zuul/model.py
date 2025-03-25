@@ -626,46 +626,6 @@ class Pipeline(object):
                         this=self.name,
                         other=pipeline))
 
-    def formatStatusJSON(self, manager, websocket_url=None):
-        j_pipeline = dict(name=self.name,
-                          description=self.description,
-                          state=manager.state.state,
-                          manager=manager.type)
-        j_pipeline['triggers'] = [
-            {'driver': t.driver.name} for t in self.triggers
-        ]
-        j_queues = []
-        j_pipeline['change_queues'] = j_queues
-        for queue in manager.state.queues:
-            if not queue.queue:
-                continue
-            j_queue = dict(name=queue.name)
-            j_queues.append(j_queue)
-            j_queue['heads'] = []
-            j_queue['window'] = queue.window
-
-            if queue.project_branches and queue.project_branches[0][1]:
-                j_queue['branch'] = queue.project_branches[0][1]
-            else:
-                j_queue['branch'] = None
-
-            j_changes = []
-            for e in queue.queue:
-                if not e.item_ahead:
-                    if j_changes:
-                        j_queue['heads'].append(j_changes)
-                    j_changes = []
-                j_changes.append(e.formatJSON(websocket_url))
-                if (len(j_changes) > 1 and
-                        (j_changes[-2]['remaining_time'] is not None) and
-                        (j_changes[-1]['remaining_time'] is not None)):
-                    j_changes[-1]['remaining_time'] = max(
-                        j_changes[-2]['remaining_time'],
-                        j_changes[-1]['remaining_time'])
-            if j_changes:
-                j_queue['heads'].append(j_changes)
-        return j_pipeline
-
 
 class PipelineState(zkobject.ZKObject):
 
@@ -1096,8 +1056,7 @@ class PipelineSummary(zkobject.ShardedZKObject):
         return f"{PipelineState.pipelinePath(self.manager)}/status"
 
     def update(self, context, zuul_globals):
-        status = self.manager.pipeline.formatStatusJSON(
-            self.manager,
+        status = self.manager.formatStatusJSON(
             zuul_globals.websocket_url)
         self.updateAttributes(context, status=status)
 
