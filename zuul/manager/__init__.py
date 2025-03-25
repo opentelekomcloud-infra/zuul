@@ -2634,3 +2634,43 @@ class PipelineManager(metaclass=ABCMeta):
         else:
             dt = (end - start) * 1000
         self.sched.statsd.timing(f'{stats_key}.{key}', dt)
+
+    def formatStatusJSON(self, websocket_url=None):
+        j_pipeline = dict(name=self.pipeline.name,
+                          description=self.pipeline.description,
+                          state=self.state.state,
+                          manager=self.type)
+        j_pipeline['triggers'] = [
+            {'driver': t.driver.name} for t in self.pipeline.triggers
+        ]
+        j_queues = []
+        j_pipeline['change_queues'] = j_queues
+        for queue in self.state.queues:
+            if not queue.queue:
+                continue
+            j_queue = dict(name=queue.name)
+            j_queues.append(j_queue)
+            j_queue['heads'] = []
+            j_queue['window'] = queue.window
+
+            if queue.project_branches and queue.project_branches[0][1]:
+                j_queue['branch'] = queue.project_branches[0][1]
+            else:
+                j_queue['branch'] = None
+
+            j_changes = []
+            for e in queue.queue:
+                if not e.item_ahead:
+                    if j_changes:
+                        j_queue['heads'].append(j_changes)
+                    j_changes = []
+                j_changes.append(e.formatJSON(websocket_url))
+                if (len(j_changes) > 1 and
+                        (j_changes[-2]['remaining_time'] is not None) and
+                        (j_changes[-1]['remaining_time'] is not None)):
+                    j_changes[-1]['remaining_time'] = max(
+                        j_changes[-2]['remaining_time'],
+                        j_changes[-1]['remaining_time'])
+            if j_changes:
+                j_queue['heads'].append(j_changes)
+        return j_pipeline
