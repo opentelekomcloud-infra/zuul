@@ -624,7 +624,7 @@ class Pipeline(object):
         # valid.
 
         for pipeline in self.supercedes:
-            if not layout.pipelines.get(pipeline):
+            if not layout.pipeline_managers.get(pipeline):
                 raise Exception(
                     'The pipeline "{this}" supercedes an unknown pipeline '
                     '{other}.'.format(
@@ -9583,13 +9583,12 @@ class Layout(object):
                 "Provider %s is already defined" % provider.name)
         self.providers[provider.name] = provider
 
-    def addPipeline(self, pipeline, manager):
-        if pipeline.name in self.pipelines:
+    def addPipelineManager(self, manager):
+        if manager.pipeline.name in self.pipeline_managers:
             raise Exception(
-                "Pipeline %s is already defined" % pipeline.name)
+                "Pipeline %s is already defined" % manager.pipeline.name)
 
-        self.pipelines[pipeline.name] = pipeline
-        self.pipeline_managers[pipeline.name] = manager
+        self.pipeline_managers[manager.pipeline.name] = manager
 
     def addProjectTemplate(self, project_template):
         for job in project_template.embeddedJobs():
