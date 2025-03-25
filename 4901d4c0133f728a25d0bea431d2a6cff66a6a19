@@ -16,6 +16,40 @@
       "message": "recheck",
       "revId": "4901d4c0133f728a25d0bea431d2a6cff66a6a19",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed809238_a0fd052c",
+        "filename": "zuul/executor/sensors/process.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-25T14:47:59Z",
+      "side": 1,
+      "message": "Huh, I\u0027m surprised this passed the linter.  I think when I do string continuations with paretheses:\n\n  x \u003d (f\u0027foo\u0027\n       f\u0027bar{x}\u0027)\n\nThe linter throws a fit about the \u0027foo\u0027 fstring not needing to be an fstring.\n\nMaybe I\u0027ll switch to backslashes.  :)",
+      "revId": "4901d4c0133f728a25d0bea431d2a6cff66a6a19",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25620f93_de38b2fa",
+        "filename": "zuul/executor/sensors/process.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-25T14:47:59Z",
+      "side": 1,
+      "message": "This code is probably faster if the file does not exist than if it does.  If we wanted to microoptimize for the other case, we could skip the exists check and just catch FileNotFoundError.",
+      "revId": "4901d4c0133f728a25d0bea431d2a6cff66a6a19",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
