@@ -56,9 +56,8 @@ SQL_MAX_STRING_LENGTH = 255
 # it may even help an operator in debugging.  The same is true for
 # mariadb, except that we need to actually alter the statement instead
 # of executing another one.
-@sa.event.listens_for(sa.Engine, "before_cursor_execute")
-def _set_timeout(conn, cursor, stmt, params, context, executemany,
-                 retval=True):
+@sa.event.listens_for(sa.Engine, "before_cursor_execute", retval=True)
+def _set_timeout(conn, cursor, stmt, params, context, executemany):
     match = POSTGRES_STATEMENT_TIMEOUT_RE.search(stmt)
     if match:
         cursor.execute("SET LOCAL statement_timeout=%s" % match.groups())
