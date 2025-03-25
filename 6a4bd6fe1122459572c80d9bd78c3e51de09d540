@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "554b3a7d_e7caf4e2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 30559
+      },
+      "writtenOn": "2025-03-25T06:22:46Z",
+      "side": 1,
+      "message": "Test results:\n\n- Job `nox-linters` called the new role via `ensure-nox`: https://zuul.opendev.org/t/zuul/build/fb233076657a4f6194d23bbbf00c2464/log/job-output.txt#377-434\n\n- Job `zuul-build-python-release` called the new role via `ensure-pyproject-build`: https://zuul.opendev.org/t/zuul/build/0d4a5280b6e5448fad506b39e65c4355/log/job-output.txt#571-606\n\nWorking as expected.",
+      "revId": "6a4bd6fe1122459572c80d9bd78c3e51de09d540",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
