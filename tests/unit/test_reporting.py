@@ -141,9 +141,9 @@ class TestReporting(ZuulTestCase):
         self.assertHistory([])
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        pipeline = tenant.layout.pipelines['check']
+        manager = tenant.layout.pipeline_managers['check']
         reporter = self.scheds.first.connections.getSqlReporter(
-            pipeline)
+            manager.pipeline)
         with self.scheds.first.connections.getSqlConnection().\
              engine.connect() as conn:
 
@@ -170,9 +170,9 @@ class TestReporting(ZuulTestCase):
         self.assertHistory([])
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        pipeline = tenant.layout.pipelines['check']
+        manager = tenant.layout.pipeline_managers['check']
         reporter = self.scheds.first.connections.getSqlReporter(
-            pipeline)
+            manager.pipeline)
         with self.scheds.first.connections.getSqlConnection().\
              engine.connect() as conn:
 

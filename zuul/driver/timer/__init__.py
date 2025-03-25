@@ -108,7 +108,8 @@ class TimerDriver(Driver, TriggerInterface):
 
     def _addJobs(self, tenant):
         jobs = {}
-        for pipeline in tenant.layout.pipelines.values():
+        for manager in tenant.layout.pipeline_managers.values():
+            pipeline = manager.pipeline
             for ef in pipeline.event_filters:
                 if not isinstance(ef.trigger, timertrigger.TimerTrigger):
                     continue
