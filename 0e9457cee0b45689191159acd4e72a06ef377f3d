@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "46e3ab76_5740a62a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-25T14:49:21Z",
+      "side": 1,
+      "message": "\u003e We should really switch over to using containers so we can have all 3 running. We\u0027ll still need one \"main\" server for most of the tests, and it\u0027s fine for it to be mariadb, so this change will still be relevant. But we should be looking at getting explicit coverage of all 3 in the specialized tests (like we do for postgres).\n\nYa I think this is a good first step towards making that possible. Next steps would probably be to switch test-setup.sh to running postgres, mariadb, and mysql via containers, adding a mariadb / mysql fixture differentiator (probably turn the current fixture into a base class then select the dialect in child classes), then mix those into the specialized tests where we want to cover all three DBs.",
+      "revId": "0e9457cee0b45689191159acd4e72a06ef377f3d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
