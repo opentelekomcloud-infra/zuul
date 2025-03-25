@@ -16,6 +16,24 @@
       "message": "Is it useful to keep 312? It looks like the container uses 311, so I think we could drop 312.",
       "revId": "c4fbc6a4ba0b7825905b117294798bfbdebef971",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "21e8a759_a44e9e0e",
+        "filename": ".zuul.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-25T23:26:06Z",
+      "side": 1,
+      "message": "For now yes because we aren\u0027t even sure yet what 3.13 compatibility and performance looks like. Having the side by side data is useful before we decide to drop if we do decide to drop 3.12.",
+      "parentUuid": "129c8c95_e01aeeb6",
+      "revId": "c4fbc6a4ba0b7825905b117294798bfbdebef971",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
