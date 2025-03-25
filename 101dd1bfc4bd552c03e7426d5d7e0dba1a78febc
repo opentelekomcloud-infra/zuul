@@ -33,6 +33,23 @@
       "message": "recheck gather more data",
       "revId": "101dd1bfc4bd552c03e7426d5d7e0dba1a78febc",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bd36b495_b8405761",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-25T16:52:29Z",
+      "side": 1,
+      "message": "Don\u0027t need to rerun tests on this anymore. Mordred dug up the upstream issue which has since been fixed (but not in distro packages): https://jira.mariadb.org/browse/MDEV-35663\n\nMy change to drop flush privileges is correct for us and we don\u0027t need newer mariadb.",
+      "revId": "101dd1bfc4bd552c03e7426d5d7e0dba1a78febc",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
