@@ -127,6 +127,24 @@ function makeRequest(url, method, data) {
   return res
 }
 
+function getLogFile(url, requestConfig = {}) {
+  const apiOrigin = new URL(getZuulUrl()).origin
+  const urlOrigin = new URL(url).origin
+  let headers = {}
+
+  const authLogRequests = process.env.AUTH_LOG_REQUESTS === 'true'
+
+  // If we serve the log files from the same origin as the api, pass auth
+  // headers to the log endpoint.
+  // This is optional and can be enabled by setting AUTH_LOG_REQUESTS=true
+  // as an env var during build time
+  if (authLogRequests && authToken && urlOrigin === apiOrigin) {
+    headers['Authorization'] = `Bearer ${authToken}`
+  }
+  const config = {headers: headers, ...requestConfig}
+  return Axios.get(url, config)
+}
+
 // Direct APIs
 function fetchInfo() {
   return makeRequest('info')
@@ -408,6 +426,7 @@ export {
   fetchUserAuthorizations,
   getAuthToken,
   getHomepageUrl,
+  getLogFile,
   getStreamUrl,
   promote,
 }

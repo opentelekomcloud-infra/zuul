@@ -1,4 +1,10 @@
-import { getHomepageUrl } from './api'
+import { getHomepageUrl, getLogFile, setAuthToken } from './api'
+import axios from 'axios'
+jest.mock('axios')
+
+afterEach(() => {
+  jest.clearAllMocks()
+})
 
 it('should should return the homepage url', () => {
   const homepage = 'https://my-zuul.com/'
@@ -61,3 +67,73 @@ it('should return the subdir homepage url', () => {
      expect(getHomepageUrl()).toEqual(homepage)
    }
  })
+
+it('should not request logs with auth header per default', () => {
+  Object.defineProperty(process.env, 'REACT_APP_ZUUL_API', {
+    value: 'https://example.com/api/'
+  })
+
+  // same origin but we're not expecting auth headers, because
+  // we have not explicitly enabled that
+  const logFileUrl = 'https://example.com/logs/build-output.txt'
+  setAuthToken('foobar')
+
+  getLogFile(logFileUrl)
+  expect(axios.get).toHaveBeenCalledTimes(1)
+  expect(axios.get).toHaveBeenCalledWith(logFileUrl, { headers: {} })
+})
+
+it('should request logs with auth header if enabled', () => {
+  Object.defineProperty(process.env, 'REACT_APP_ZUUL_API', {
+    value: 'https://example.com/api/'
+  })
+  Object.defineProperty(process.env, 'AUTH_LOG_REQUESTS', {
+    value: 'true'
+  })
+
+  const logFileUrl = 'https://example.com/logs/build-output.txt'
+  setAuthToken('foobar')
+
+  getLogFile(logFileUrl)
+  expect(axios.get).toHaveBeenCalledTimes(1)
+  expect(axios.get).toHaveBeenCalledWith(logFileUrl, {
+    headers: { Authorization: 'Bearer foobar' }
+  })
+})
+
+it('should request logs without auth header if origins don\'t match', () => {
+  Object.defineProperty(process.env, 'REACT_APP_ZUUL_API', {
+    value: 'https://example.com/api/'
+  })
+  Object.defineProperty(process.env, 'AUTH_LOG_REQUESTS', {
+    value: 'true'
+  })
+
+  // api and log endpoint have different origins, so we must not pass auth
+  // headers
+  const logFileUrl = 'https://example.org/logs/build-output.txt'
+  setAuthToken('foobar')
+
+  getLogFile(logFileUrl)
+  expect(axios.get).toHaveBeenCalledTimes(1)
+  expect(axios.get).toHaveBeenCalledWith(logFileUrl, { headers: {} })
+})
+
+it('should pass additional request configs to axios', () => {
+  Object.defineProperty(process.env, 'REACT_APP_ZUUL_API', {
+    value: 'https://example.com/api/'
+  })
+  Object.defineProperty(process.env, 'AUTH_LOG_REQUESTS', {
+    value: 'true'
+  })
+
+  const logFileUrl = 'https://example.com/logs/build-output.txt'
+  setAuthToken('foobar')
+
+  getLogFile(logFileUrl, { transformResponse: [] })
+  expect(axios.get).toHaveBeenCalledTimes(1)
+  expect(axios.get).toHaveBeenCalledWith(logFileUrl, {
+    headers: { Authorization: 'Bearer foobar' },
+    transformResponse: [],
+  })
+})
