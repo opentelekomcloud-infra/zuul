@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-import Axios from 'axios'
+import * as API from '../api'
 
 export const LOGFILE_FETCH_REQUEST = 'LOGFILE_FETCH_REQUEST'
 export const LOGFILE_FETCH_SUCCESS = 'LOGFILE_FETCH_SUCCESS'
@@ -109,7 +109,7 @@ export function fetchLogfile(buildId, file, state) {
     const url = build.log_url + file
     dispatch(requestLogfile())
     try {
-      const response = await Axios.get(url, { transformResponse: [] })
+      const response = await API.getLogFile(url, { transformResponse: [] })
       dispatch(receiveLogfile(buildId, file, response.data))
     } catch(error) {
       dispatch(failedLogfile(error, url))

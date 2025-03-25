@@ -12,8 +12,6 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-import Axios from 'axios'
-
 import * as API from '../api'
 
 import { fetchLogfile } from './logfile'
@@ -324,7 +322,7 @@ function fetchBuildOutput(buildId, state) {
     const url = build.log_url.substr(0, build.log_url.lastIndexOf('/') + 1)
     dispatch(requestBuildOutput())
     try {
-      const response = await Axios.get(url + 'job-output.json.gz')
+      const response = await API.getLogFile(url + 'job-output.json.gz')
       dispatch(receiveBuildOutput(buildId, response.data))
     } catch (error) {
       if (!error.request) {
@@ -335,7 +333,7 @@ function fetchBuildOutput(buildId, state) {
       }
       try {
         // Try without compression
-        const response = await Axios.get(url + 'job-output.json')
+        const response = await API.getLogFile(url + 'job-output.json')
         dispatch(receiveBuildOutput(buildId, response.data))
       } catch (error) {
         dispatch(failedBuildOutput(buildId, error, url))
@@ -367,7 +365,7 @@ export function fetchBuildManifest(buildId, state) {
         artifact.metadata.type === 'zuul_manifest'
       ) {
         try {
-          const response = await Axios.get(artifact.url)
+          const response = await API.getLogFile(artifact.url)
           return dispatch(receiveBuildManifest(buildId, response.data))
         } catch(error) {
           // Show the error since we expected a manifest but did not
