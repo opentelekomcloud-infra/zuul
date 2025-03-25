@@ -88,7 +88,7 @@ class TestJob(BaseTestCase):
             self.queue = model.ChangeQueue.new(
                 ctx, manager=self.manager)
         self.pcontext = configloader.ParseContext(
-            self.connections, None, self.tenant, AnsibleManager())
+            self.connections, None, AnsibleManager())
 
         private_key_file = os.path.join(FIXTURE_DIR, 'private.pem')
         with open(private_key_file, "rb") as f:
