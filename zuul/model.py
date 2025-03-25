@@ -45,6 +45,7 @@ from zuul.exceptions import (
     NodesetNotFoundError,
     ProjectNotFoundError,
     ProjectNotPermittedError,
+    UnknownConnection,
 )
 from zuul.lib.re2util import filter_allowed_disallowed
 from zuul.lib import tracing
@@ -9542,6 +9543,18 @@ class Layout(object):
             raise Exception(
                 "Pipeline %s is already defined" % manager.pipeline.name)
 
+        if self.tenant.allowed_reporters is not None:
+            for action in manager.pipeline.actions:
+                if (action.connection.connection_name not in
+                    self.tenant.allowed_reporters):
+                    raise UnknownConnection(action.connection.connection_name)
+
+        if self.tenant.allowed_triggers is not None:
+            for trigger in manager.pipeline.triggers:
+                if (trigger.connection.connection_name not in
+                    self.tenant.allowed_triggers):
+                    raise UnknownConnection(trigger.connection.connection_name)
+
         self.pipeline_managers[manager.pipeline.name] = manager
 
     def addProjectTemplate(self, project_template):
@@ -10050,6 +10063,8 @@ class Tenant(object):
         self.exclude_locked_branches = False
         self.default_base_job = None
         self.layout = None
+        self.allowed_triggers = None
+        self.allowed_reporters = None
         # The unparsed configuration from the main zuul config for
         # this tenant.
         self.unparsed_config = None
