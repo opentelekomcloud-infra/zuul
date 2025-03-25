@@ -1725,11 +1725,10 @@ class ApiRootParser(object):
 class ParseContext(object):
     """Hold information about a particular run of the parser"""
 
-    def __init__(self, connections, scheduler, tenant, ansible_manager):
+    def __init__(self, connections, scheduler, ansible_manager):
         self.loading_errors = model.LoadingErrors()
         self.connections = connections
         self.scheduler = scheduler
-        self.tenant = tenant
         self.ansible_manager = ansible_manager
         self.pragma_parser = PragmaParser(self)
         self.pipeline_parser = PipelineParser(self)
@@ -1903,7 +1902,7 @@ class TenantParser(object):
         self.getSchema()(conf)
         tenant = model.Tenant(conf['name'])
         pcontext = ParseContext(self.connections, self.scheduler,
-                                tenant, ansible_manager)
+                                ansible_manager)
         if conf.get('max-changes-per-pipeline') is not None:
             tenant.max_changes_per_pipeline = conf['max-changes-per-pipeline']
         if conf.get('max-dependencies') is not None:
@@ -3333,7 +3332,7 @@ class ConfigLoader(object):
         tenant = item.manager.tenant
         log = get_annotated_logger(self.log, zuul_event_id)
         pcontext = ParseContext(self.connections, self.scheduler,
-                                tenant, ansible_manager)
+                                ansible_manager)
         if include_config_projects:
             config = model.ParsedConfig()
             for project in tenant.config_projects:
