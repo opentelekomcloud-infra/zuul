@@ -1524,13 +1524,8 @@ class PipelineParser(object):
         seen_connections = set()
         for conf_key, action in self.reporter_actions.items():
             reporter_set = []
-            allowed_reporters = self.pcontext.tenant.allowed_reporters
             if conf_copy.get(conf_key):
-                for reporter_name, params \
-                    in conf_copy.get(conf_key).items():
-                    if allowed_reporters is not None and \
-                       reporter_name not in allowed_reporters:
-                        raise UnknownConnection(reporter_name)
+                for reporter_name, params in conf_copy.get(conf_key).items():
                     reporter = self.pcontext.connections.getReporter(
                         reporter_name, pipeline, params, self.pcontext)
                     reporter.setAction(conf_key)
@@ -1586,10 +1581,6 @@ class PipelineParser(object):
 
             with self.pcontext.confAttr(conf, 'trigger', {}) as trigger_dict:
                 for connection_name, trigger_config in trigger_dict.items():
-                    if (self.pcontext.tenant.allowed_triggers is not None and
-                        (connection_name not in
-                         self.pcontext.tenant.allowed_triggers)):
-                        raise UnknownConnection(connection_name)
                     trigger = self.pcontext.connections.getTrigger(
                         connection_name, trigger_config)
                     pipeline.triggers.append(trigger)
