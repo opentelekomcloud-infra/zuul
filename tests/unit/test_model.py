@@ -74,7 +74,7 @@ class TestJob(BaseTestCase):
         self.tpc = model.TenantProjectConfig(self.project)
         self.tpc.trusted = True
         self.tenant.addTPC(self.tpc)
-        self.pipeline = model.Pipeline('gate', self.tenant)
+        self.pipeline = model.Pipeline('gate')
         self.pipeline.source_context = self.context
         self.manager = mock.Mock()
         self.manager.pipeline = self.pipeline

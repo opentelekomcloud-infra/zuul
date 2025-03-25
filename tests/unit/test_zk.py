@@ -2459,7 +2459,7 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
     def test_pipeline_state_new_object(self):
         # Test the initialize-on-refresh code path with no existing object
         tenant = model.Tenant('tenant')
-        pipeline = model.Pipeline('gate', tenant)
+        pipeline = model.Pipeline('gate')
         layout = model.Layout(tenant)
         tenant.layout = layout
         manager = mock.Mock()
@@ -2475,7 +2475,7 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
     def test_pipeline_state_existing_object(self):
         # Test the initialize-on-refresh code path with a pre-existing object
         tenant = model.Tenant('tenant')
-        pipeline = model.Pipeline('gate', tenant)
+        pipeline = model.Pipeline('gate')
         layout = model.Layout(tenant)
         tenant.layout = layout
         manager = mock.Mock()
@@ -2499,7 +2499,7 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
     def test_pipeline_change_list_new_object(self):
         # Test the initialize-on-refresh code path with no existing object
         tenant = model.Tenant('tenant')
-        pipeline = model.Pipeline('gate', tenant)
+        pipeline = model.Pipeline('gate')
         layout = model.Layout(tenant)
         tenant.layout = layout
         manager = mock.Mock()
@@ -2520,7 +2520,7 @@ class TestPipelineInit(ZooKeeperBaseTestCase):
         # Test the initialize-on-refresh code path if we don't have
         # the lock.  This should fail.
         tenant = model.Tenant('tenant')
-        pipeline = model.Pipeline('gate', tenant)
+        pipeline = model.Pipeline('gate')
         layout = model.Layout(tenant)
         tenant.layout = layout
         manager = mock.Mock()

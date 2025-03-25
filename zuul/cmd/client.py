@@ -1088,7 +1088,7 @@ class Client(zuul.cmd.ZuulApp):
 
         with tenant_read_lock(zk_client, args.tenant, self.log):
             path = f'/zuul/tenant/{safe_tenant}/pipeline/{safe_pipeline}'
-            pipeline = Pipeline(args.pipeline, tenant)
+            pipeline = Pipeline(args.pipeline)
             with pipeline_lock(
                     zk_client, args.tenant, args.pipeline
             ) as plock:

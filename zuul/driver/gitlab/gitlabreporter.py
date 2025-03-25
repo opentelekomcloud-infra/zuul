@@ -137,7 +137,7 @@ class GitlabReporter(BaseReporter):
             'Merge of change %s failed after 2 attempts, giving up' %
             change)
 
-    def getSubmitAllowNeeds(self):
+    def getSubmitAllowNeeds(self, manager):
         return []
 
 
