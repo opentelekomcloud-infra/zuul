@@ -9254,61 +9254,104 @@ class UnparsedConfig(object):
                 raise ConfigItemUnknownError(item)
 
 
-class ParsedConfig(object):
+class ParsedConfig:
     """A collection of parsed config objects."""
 
     def __init__(self):
         self.pragmas = []
+        self.pragma_errors = []
         self.pipelines = []
+        self.pipeline_errors = []
         self.jobs = []
+        self.job_errors = []
         self.project_templates = []
+        self.project_template_errors = []
         self.projects = []
+        self.project_errors = []
+        # projects_by_regex uses the same error list as project_errors
         self.projects_by_regex = {}
         self.nodesets = []
+        self.nodeset_errors = []
         self.secrets = []
+        self.secret_errors = []
         self.semaphores = []
+        self.semaphore_errors = []
         self.queues = []
+        self.queue_errors = []
         self.images = []
+        self.image_errors = []
         self.flavors = []
+        self.flavor_errors = []
         self.labels = []
+        self.label_errors = []
         self.sections = []
+        self.section_errors = []
         self.providers = []
+        self.provider_errors = []
 
     def copy(self):
-        r = ParsedConfig()
+        r = self.__class__()
         r.pragmas = self.pragmas[:]
+        r.pragma_errors = self.pragma_errors[:]
         r.pipelines = self.pipelines[:]
+        r.pipeline_errors = self.pipeline_errors[:]
         r.jobs = self.jobs[:]
+        r.job_errors = self.job_errors[:]
         r.project_templates = self.project_templates[:]
+        r.project_template_errors = self.project_template_errors[:]
         r.projects = self.projects[:]
+        r.project_errors = self.project_errors[:]
         r.projects_by_regex = copy.copy(self.projects_by_regex)
         r.nodesets = self.nodesets[:]
+        r.nodeset_errors = self.nodeset_errors[:]
         r.secrets = self.secrets[:]
+        r.secret_errors = self.secret_errors[:]
         r.semaphores = self.semaphores[:]
+        r.semaphore_errors = self.semaphore_errors[:]
         r.queues = self.queues[:]
+        r.queue_errors = self.queue_errors[:]
         r.images = self.images[:]
+        r.image_errors = self.image_errors[:]
         r.flavors = self.flavors[:]
+        r.flavor_errors = self.flavor_errors[:]
         r.labels = self.labels[:]
+        r.label_errors = self.label_errors[:]
         r.sections = self.sections[:]
+        r.section_errors = self.section_errors[:]
         r.providers = self.providers[:]
+        r.provider_errors = self.provider_errors[:]
         return r
 
     def extend(self, conf):
         if isinstance(conf, ParsedConfig):
             self.pragmas.extend(conf.pragmas)
+            self.pragma_errors.extend(conf.pragma_errors)
             self.pipelines.extend(conf.pipelines)
+            self.pipeline_errors.extend(conf.pipeline_errors)
             self.jobs.extend(conf.jobs)
+            self.job_errors.extend(conf.job_errors)
             self.project_templates.extend(conf.project_templates)
+            self.project_template_errors.extend(conf.project_template_errors)
             self.projects.extend(conf.projects)
+            self.project_errors.extend(conf.project_errors)
             self.nodesets.extend(conf.nodesets)
+            self.nodeset_errors.extend(conf.nodeset_errors)
             self.secrets.extend(conf.secrets)
+            self.secret_errors.extend(conf.secret_errors)
             self.semaphores.extend(conf.semaphores)
+            self.semaphore_errors.extend(conf.semaphore_errors)
             self.queues.extend(conf.queues)
+            self.queue_errors.extend(conf.queue_errors)
             self.images.extend(conf.images)
+            self.image_errors.extend(conf.image_errors)
             self.flavors.extend(conf.flavors)
+            self.flavor_errors.extend(conf.flavor_errors)
             self.labels.extend(conf.labels)
+            self.label_errors.extend(conf.label_errors)
             self.sections.extend(conf.sections)
+            self.section_errors.extend(conf.section_errors)
             self.providers.extend(conf.providers)
+            self.provider_errors.extend(conf.provider_errors)
             for regex, projects in conf.projects_by_regex.items():
                 self.projects_by_regex.setdefault(regex, []).extend(projects)
             return
