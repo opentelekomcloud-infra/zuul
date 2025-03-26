@@ -141,18 +141,16 @@ def indent(s):
 
 
 class LocalAccumulator:
-    """An error accumulator that wraps another accumulator (like
-    LoadingErrors) while holding local context information.
-    """
-    def __init__(self, accumulator, source_context=None, stanza=None,
+    """An error accumulator that holds local context information."""
+    def __init__(self, error_list, source_context=None, stanza=None,
                  conf=None, attr=None):
-        self.accumulator = accumulator
+        self.error_list = error_list
         self.source_context = source_context
         self.stanza = stanza
         self.conf = conf
         self.attr = attr
 
-    def extend(self, source_context=None, stanza=None,
+    def extend(self, error_list=None, source_context=None, stanza=None,
                conf=None, attr=None):
         """Return a new accumulator that extends this one with additional
         info"""
@@ -162,7 +160,9 @@ class LocalAccumulator:
             else:
                 conf_context = getattr(conf, 'source_context', None)
             source_context = source_context or conf_context
-        return LocalAccumulator(self.accumulator,
+        if error_list is None:
+            error_list = self.error_list
+        return LocalAccumulator(error_list,
                                 source_context or self.source_context,
                                 stanza or self.stanza,
                                 conf or self.conf,
@@ -273,7 +273,7 @@ class LocalAccumulator:
             short_error=error_text,
             severity=error_severity,
             name=error_name)
-        self.accumulator.addError(config_error)
+        self.error_list.append(config_error)
 
 
 class ZuulSafeLoader(yaml.EncryptedLoader):
@@ -1726,7 +1726,6 @@ class ParseContext(object):
     """Hold information about a particular run of the parser"""
 
     def __init__(self, connections, scheduler, ansible_manager):
-        self.loading_errors = model.LoadingErrors()
         self.connections = connections
         self.scheduler = scheduler
         self.ansible_manager = ansible_manager
@@ -1744,7 +1743,8 @@ class ParseContext(object):
         self.provider_parser = ProviderParser(self)
         self.project_template_parser = ProjectTemplateParser(self)
         self.project_parser = ProjectParser(self)
-        acc = LocalAccumulator(self.loading_errors)
+        self.error_list = []
+        acc = LocalAccumulator(self.error_list)
         # Currently we use thread local storage to ensure that we
         # don't accidentally use the error context stack from one of
         # our threadpool workers.  In the future, we may be able to
@@ -2995,7 +2995,8 @@ class TenantParser(object):
         # Don't call this method from dynamic reconfiguration because
         # it interacts with drivers and connections.
         layout = model.Layout(tenant, layout_uuid)
-        layout.loading_errors = parse_context.loading_errors
+        for e in parse_context.error_list:
+            layout.loading_errors.addError(e)
         self.log.debug("Created layout id %s", layout.uuid)
         self._addLayoutItems(layout, tenant, data, parse_context)
         return layout
@@ -3348,7 +3349,8 @@ class ConfigLoader(object):
                                          False, item, pcontext)
 
         layout = model.Layout(tenant, item.layout_uuid)
-        layout.loading_errors = pcontext.loading_errors
+        for e in pcontext.error_list:
+            layout.loading_errors.addError(e)
         log.debug("Created layout id %s", layout.uuid)
         if not include_config_projects:
             # NOTE: the actual pipeline objects (complete with queues
