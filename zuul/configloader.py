@@ -2578,7 +2578,10 @@ class TenantParser(object):
         # context used by other classes.  Note that we do not check
         # pragma against load classes -- they are always read.
         for config_pragma in unparsed_config.pragmas:
-            with pcontext.errorContext(stanza='pragma', conf=config_pragma):
+            with pcontext.errorContext(
+                    error_list=parsed_config.pragma_errors,
+                    stanza='pragma',
+                    conf=config_pragma):
                 with pcontext.accumulator.catchErrors():
                     pcontext.pragma_parser.fromYaml(config_pragma)
 
@@ -2586,8 +2589,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_pipeline)
             if 'pipeline' not in classes:
                 continue
-            with pcontext.errorContext(stanza='pipeline',
-                                       conf=config_pipeline):
+            with pcontext.errorContext(
+                    error_list=parsed_config.pipeline_errors,
+                    stanza='pipeline',
+                    conf=config_pipeline):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.pipelines.append(
                         pcontext.pipeline_parser.fromYaml(config_pipeline))
@@ -2596,7 +2601,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_image)
             if 'image' not in classes:
                 continue
-            with pcontext.errorContext(stanza='image', conf=config_image):
+            with pcontext.errorContext(
+                    error_list=parsed_config.image_errors,
+                    stanza='image',
+                    conf=config_image):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.images.append(
                         pcontext.image_parser.fromYaml(config_image))
@@ -2605,7 +2613,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_flavor)
             if 'flavor' not in classes:
                 continue
-            with pcontext.errorContext(stanza='flavor', conf=config_flavor):
+            with pcontext.errorContext(
+                    error_list=parsed_config.flavor_errors,
+                    stanza='flavor',
+                    conf=config_flavor):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.flavors.append(
                         pcontext.flavor_parser.fromYaml(config_flavor))
@@ -2614,7 +2625,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_label)
             if 'label' not in classes:
                 continue
-            with pcontext.errorContext(stanza='label', conf=config_label):
+            with pcontext.errorContext(
+                    error_list=parsed_config.label_errors,
+                    stanza='label',
+                    conf=config_label):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.labels.append(
                         pcontext.label_parser.fromYaml(config_label))
@@ -2623,7 +2637,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_section)
             if 'section' not in classes:
                 continue
-            with pcontext.errorContext(stanza='section', conf=config_section):
+            with pcontext.errorContext(
+                    error_list=parsed_config.section_errors,
+                    stanza='section',
+                    conf=config_section):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.sections.append(
                         pcontext.section_parser.fromYaml(config_section))
@@ -2632,8 +2649,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_provider)
             if 'provider' not in classes:
                 continue
-            with pcontext.errorContext(stanza='provider',
-                                       conf=config_provider):
+            with pcontext.errorContext(
+                    error_list=parsed_config.provider_errors,
+                    stanza='provider',
+                    conf=config_provider):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.providers.append(
                         pcontext.provider_parser.fromYaml(config_provider))
@@ -2642,7 +2661,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_nodeset)
             if 'nodeset' not in classes:
                 continue
-            with pcontext.errorContext(stanza='nodeset', conf=config_nodeset):
+            with pcontext.errorContext(
+                    error_list=parsed_config.nodeset_errors,
+                    stanza='nodeset',
+                    conf=config_nodeset):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.nodesets.append(
                         pcontext.nodeset_parser.fromYaml(config_nodeset))
@@ -2651,7 +2673,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_secret)
             if 'secret' not in classes:
                 continue
-            with pcontext.errorContext(stanza='secret', conf=config_secret):
+            with pcontext.errorContext(
+                    error_list=parsed_config.secret_errors,
+                    stanza='secret',
+                    conf=config_secret):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.secrets.append(
                         pcontext.secret_parser.fromYaml(config_secret))
@@ -2660,7 +2685,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_job)
             if 'job' not in classes:
                 continue
-            with pcontext.errorContext(stanza='job', conf=config_job):
+            with pcontext.errorContext(
+                    error_list=parsed_config.job_errors,
+                    stanza='job',
+                    conf=config_job):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.jobs.append(
                         pcontext.job_parser.fromYaml(config_job))
@@ -2669,8 +2697,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_semaphore)
             if 'semaphore' not in classes:
                 continue
-            with pcontext.errorContext(stanza='semaphore',
-                                       conf=config_semaphore):
+            with pcontext.errorContext(
+                    error_list=parsed_config.semaphore_errors,
+                    stanza='semaphore',
+                    conf=config_semaphore):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.semaphores.append(
                         pcontext.semaphore_parser.fromYaml(config_semaphore))
@@ -2679,7 +2709,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_queue)
             if 'queue' not in classes:
                 continue
-            with pcontext.errorContext(stanza='queue', conf=config_queue):
+            with pcontext.errorContext(
+                    error_list=parsed_config.queue_errors,
+                    stanza='queue',
+                    conf=config_queue):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.queues.append(
                         pcontext.queue_parser.fromYaml(config_queue))
@@ -2688,8 +2721,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_template)
             if 'project-template' not in classes:
                 continue
-            with pcontext.errorContext(stanza='project-template',
-                                       conf=config_template):
+            with pcontext.errorContext(
+                    error_list=parsed_config.project_template_errors,
+                    stanza='project-template',
+                    conf=config_template):
                 with pcontext.accumulator.catchErrors():
                     parsed_config.project_templates.append(
                         pcontext.project_template_parser.fromYaml(
@@ -2699,7 +2734,10 @@ class TenantParser(object):
             classes = self._getLoadClasses(tenant, config_project)
             if 'project' not in classes:
                 continue
-            with pcontext.errorContext(stanza='project', conf=config_project):
+            with pcontext.errorContext(
+                    error_list=parsed_config.project_errors,
+                    stanza='project',
+                    conf=config_project):
                 with pcontext.accumulator.catchErrors():
                     # we need to separate the regex projects as they are
                     # processed differently later
@@ -2773,25 +2811,37 @@ class TenantParser(object):
                         parse_context, dynamic_layout=False):
         # TODO(jeblair): make sure everything needing
         # reference_exceptions has it; add tests if needed.
+
+        # In this method we are adding items to a layout, so the error
+        # accumulator is the tenant error list, not the parsed_config
+        # per-object error lists.
         if not dynamic_layout:
+            for e in parsed_config.pipeline_errors:
+                layout.loading_errors.addError(e)
             for pipeline in parsed_config.pipelines:
-                with parse_context.errorContext(stanza='pipeline',
-                                                conf=pipeline):
+                with parse_context.errorContext(
+                        stanza='pipeline', conf=pipeline):
                     with parse_context.accumulator.catchErrors():
                         manager = self.createManager(parse_context, pipeline,
                                                      tenant)
                         layout.addPipelineManager(manager)
 
+        for e in parsed_config.nodeset_errors:
+            layout.loading_errors.addError(e)
         for nodeset in parsed_config.nodesets:
             with parse_context.errorContext(stanza='nodeset', conf=nodeset):
                 with parse_context.accumulator.catchErrors():
                     layout.addNodeSet(nodeset)
 
+        for e in parsed_config.secret_errors:
+            layout.loading_errors.addError(e)
         for secret in parsed_config.secrets:
             with parse_context.errorContext(stanza='secret', conf=secret):
                 with parse_context.accumulator.catchErrors():
                     layout.addSecret(secret)
 
+        for e in parsed_config.job_errors:
+            layout.loading_errors.addError(e)
         for job in parsed_config.jobs:
             with parse_context.errorContext(stanza='job', conf=job):
                 with parse_context.accumulator.catchErrors():
@@ -2826,31 +2876,43 @@ class TenantParser(object):
             shadow_layout = model.Layout(tenant)
         else:
             shadow_layout = layout
+        for e in parsed_config.semaphore_errors:
+            shadow_layout.loading_errors.addError(e)
         for semaphore in parsed_config.semaphores:
             with parse_context.errorContext(stanza='semaphore',
                                             conf=semaphore):
                 with parse_context.accumulator.catchErrors():
                     shadow_layout.addSemaphore(semaphore)
+        for e in parsed_config.image_errors:
+            shadow_layout.loading_errors.addError(e)
         for image in parsed_config.images:
             with parse_context.errorContext(stanza='image',
                                             conf=image):
                 with parse_context.accumulator.catchErrors():
                     shadow_layout.addImage(image)
+        for e in parsed_config.flavor_errors:
+            shadow_layout.loading_errors.addError(e)
         for flavor in parsed_config.flavors:
             with parse_context.errorContext(stanza='flavor',
                                             conf=flavor):
                 with parse_context.accumulator.catchErrors():
                     shadow_layout.addFlavor(flavor)
+        for e in parsed_config.label_errors:
+            shadow_layout.loading_errors.addError(e)
         for label in parsed_config.labels:
             with parse_context.errorContext(stanza='label',
                                             conf=label):
                 with parse_context.accumulator.catchErrors():
                     shadow_layout.addLabel(label)
+        for e in parsed_config.section_errors:
+            shadow_layout.loading_errors.addError(e)
         for section in parsed_config.sections:
             with parse_context.errorContext(stanza='section',
                                             conf=section):
                 with parse_context.accumulator.catchErrors():
                     shadow_layout.addSection(section)
+        for e in parsed_config.provider_errors:
+            shadow_layout.loading_errors.addError(e)
         for provider_config in parsed_config.providers:
             with parse_context.errorContext(stanza='provider',
                                             conf=provider_config):
@@ -2885,17 +2947,23 @@ class TenantParser(object):
                         flat_config)
                     shadow_layout.addProvider(provider)
 
+        for e in parsed_config.queue_errors:
+            layout.loading_errors.addError(e)
         for queue in parsed_config.queues:
             with parse_context.errorContext(stanza='queue', conf=queue):
                 with parse_context.accumulator.catchErrors():
                     layout.addQueue(queue)
 
+        for e in parsed_config.project_template_errors:
+            layout.loading_errors.addError(e)
         for template in parsed_config.project_templates:
             with parse_context.errorContext(stanza='project-template',
                                             conf=template):
                 with parse_context.accumulator.catchErrors():
                     layout.addProjectTemplate(template)
 
+        for e in parsed_config.project_errors:
+            layout.loading_errors.addError(e)
         for parsed_project in parsed_config.projects:
             with parse_context.errorContext(stanza='project',
                                             conf=parsed_project):
