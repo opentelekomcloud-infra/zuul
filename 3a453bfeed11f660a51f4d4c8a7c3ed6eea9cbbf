@@ -16,6 +16,23 @@
       "message": "https://jira.mariadb.org/browse/MDEV-35663 Seems to confirm that dropping flush privileges should fix this problem for us. I can stop rechecking the child changes to gather more data now.",
       "revId": "3a453bfeed11f660a51f4d4c8a7c3ed6eea9cbbf",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5f6be981_46703b87",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-26T17:13:15Z",
+      "side": 1,
+      "message": "recheck this ran in rax-dfw which seems to be having slow networking today. I don\u0027t think this is related to the change.",
+      "revId": "3a453bfeed11f660a51f4d4c8a7c3ed6eea9cbbf",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
