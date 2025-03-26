@@ -1692,15 +1692,22 @@ class MySQLSchemaFixture(fixtures.Fixture):
         else:
             self.name = self.test_id.split('.')[-1]
             self.passwd = self.name
-        self.log.debug("Creating database %s", self.name)
         self.host = os.environ.get('ZUUL_MYSQL_HOST', '127.0.0.1')
         self.port = int(os.environ.get('ZUUL_MYSQL_PORT', 3306))
-        db = pymysql.connect(host=self.host,
-                             port=self.port,
-                             user="openstack_citest",
-                             passwd="openstack_citest",
-                             db="openstack_citest")
+        self.log.debug("Creating database %s:%s:%s",
+                       self.host, self.port, self.name)
+        connected = False
+        # Set this to True to enable pymyql connection debugging. It is very
+        # verbose so we leave it off by default.
+        pymysql.connections.DEBUG = False
         try:
+            db = pymysql.connect(host=self.host,
+                                 port=self.port,
+                                 user="openstack_citest",
+                                 passwd="openstack_citest",
+                                 db="openstack_citest")
+            pymysql.connections.DEBUG = False
+            connected = True
             with db.cursor() as cur:
                 cur.execute("create database %s" % self.name)
                 cur.execute(
@@ -1708,7 +1715,9 @@ class MySQLSchemaFixture(fixtures.Fixture):
                         user=self.name, passwd=self.passwd))
                 cur.execute("grant all on {name}.* to '{name}'@''".format(
                     name=self.name))
-                cur.execute("flush privileges")
+                # Do not flush privileges here. It is only necessary when
+                # modifying the db tables directly (INSERT, UPDATE, DELETE)
+                # not when using CREATE USER, DROP USER, and/or GRANT.
         except pymysql.err.ProgrammingError as e:
             if e.args[0] == 1007:
                 # Database exists
@@ -1716,7 +1725,9 @@ class MySQLSchemaFixture(fixtures.Fixture):
             else:
                 raise
         finally:
-            db.close()
+            pymysql.connections.DEBUG = False
+            if connected:
+                db.close()
 
         self.dburi = 'mysql+pymysql://{name}:{passwd}@{host}:{port}/{name}'\
             .format(
@@ -1730,20 +1741,31 @@ class MySQLSchemaFixture(fixtures.Fixture):
             self.addCleanup(self.cleanup)
 
     def cleanup(self):
-        self.log.debug("Deleting database %s", self.name)
-        db = pymysql.connect(host=self.host,
-                             port=self.port,
-                             user="openstack_citest",
-                             passwd="openstack_citest",
-                             db="openstack_citest",
-                             read_timeout=90)
+        self.log.debug("Deleting database %s:%s:%s",
+                       self.host, self.port, self.name)
+        connected = False
+        # Set this to True to enable pymyql connection debugging. It is very
+        # verbose so we leave it off by default.
+        pymysql.connections.DEBUG = False
         try:
+            db = pymysql.connect(host=self.host,
+                                 port=self.port,
+                                 user="openstack_citest",
+                                 passwd="openstack_citest",
+                                 db="openstack_citest",
+                                 read_timeout=90)
+            connected = True
+            pymysql.connections.DEBUG = False
             with db.cursor() as cur:
                 cur.execute("drop database %s" % self.name)
                 cur.execute("drop user '%s'@''" % self.name)
-                cur.execute("flush privileges")
+                # Do not flush privileges here. It is only necessary when
+                # modifying the db tables directly (INSERT, UPDATE, DELETE)
+                # not when using CREATE USER, DROP USER, and/or GRANT.
         finally:
-            db.close()
+            pymysql.connections.DEBUG = False
+            if connected:
+                db.close()
 
 
 class PostgresqlSchemaFixture(fixtures.Fixture):
