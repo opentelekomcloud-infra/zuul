@@ -34,6 +34,7 @@ from tests.base import (
 )
 
 from zuul.executor.sensors.startingbuilds import StartingBuildsSensor
+from zuul.executor.sensors.process import ProcessSensor
 from zuul.executor.sensors.ram import RAMSensor
 from zuul.executor.server import squash_variables
 from zuul.model import NodeSet, Group
@@ -848,6 +849,189 @@ class TestGovernor(ZuulTestCase):
             FIXTURE_DIR, 'cgroup', 'memory.stat.bad')
         self.executor_server.manageLoad()
         self.assertFalse(self.executor_server.accepting_work)
+
+    @mock.patch('os.getloadavg')
+    @mock.patch('psutil.virtual_memory')
+    @okay_tracebacks("invalid literal for int() with base 10: 'foo'")
+    def test_process_governor(self, vm_mock, loadavg_mock):
+        # Set up load average and memory sensors to accept work.
+        class Dummy(object):
+            pass
+        ram = Dummy()
+        ram.percent = 20.0  # 20% used
+        ram.total = 8 * 1024 * 1024 * 1024  # 8GiB
+        vm_mock.return_value = ram
+        loadavg_mock.return_value = (0.0, 0.0, 0.0)
+
+        # Test no limit
+        process_sensor = [x for x in self.executor_server.sensors
+                          if isinstance(x, ProcessSensor)][0]
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.max')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.max')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        self.executor_server.manageLoad()
+        self.assertTrue(self.executor_server.accepting_work)
+
+        # Test typical runtime values
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.8k')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.8k')
+        self.executor_server.manageLoad()
+        self.assertTrue(self.executor_server.accepting_work)
+
+        # Test within 5%
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.15600')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.15600')
+        self.executor_server.manageLoad()
+        self.assertFalse(self.executor_server.accepting_work)
+
+        # Test within 10 keep running
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.150')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.100')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.150')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.100')
+        self.executor_server.manageLoad()
+        self.assertTrue(self.executor_server.accepting_work)
+
+        # Test within 10 stop
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.150')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.141')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.150')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.141')
+        self.executor_server.manageLoad()
+        self.assertFalse(self.executor_server.accepting_work)
+
+        # Test at limit
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        self.executor_server.manageLoad()
+        self.assertFalse(self.executor_server.accepting_work)
+
+        # Test no limit only root cgroup files
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.max')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        self.executor_server.manageLoad()
+        self.assertTrue(self.executor_server.accepting_work)
+
+        # Test typical runtime values only root cgroup files
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.8k')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        self.executor_server.manageLoad()
+        self.assertTrue(self.executor_server.accepting_work)
+
+        # Test at limit only root cgroup files
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        self.executor_server.manageLoad()
+        self.assertFalse(self.executor_server.accepting_work)
+
+        # Test no limit only user cgroup files
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.max')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        self.executor_server.manageLoad()
+        self.assertTrue(self.executor_server.accepting_work)
+
+        # Test typical runtime values only user cgroup files
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.8k')
+        self.executor_server.manageLoad()
+        self.assertTrue(self.executor_server.accepting_work)
+
+        # Test at limit only user cgroup files
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.16k')
+        self.executor_server.manageLoad()
+        self.assertFalse(self.executor_server.accepting_work)
+
+        # Test no cgroup files found
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'doesnotexist')
+        self.executor_server.manageLoad()
+        self.assertTrue(self.executor_server.accepting_work)
+
+        # Test inability to parse cgroup files
+        process_sensor._root_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.foo')
+        process_sensor._root_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.foo')
+        process_sensor._user_cgroup_max_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.foo')
+        process_sensor._user_cgroup_cur_file = os.path.join(
+            FIXTURE_DIR, 'cgroup', 'pids.foo')
+        self.executor_server.manageLoad()
+        self.assertTrue(self.executor_server.accepting_work)
 
     @mock.patch('os.getloadavg')
     @mock.patch('os.statvfs')
