@@ -4241,12 +4241,10 @@ class TestWebUnprotectedBranches(ZuulTestCase, WebMixin):
         config errors when no protected branch exists."""
         self.startWebServer()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-
-        project2 = list(tenant.untrusted_projects)[1]
-        tpc2 = tenant.project_configs[project2.canonical_name]
+        layout = tenant.layout
 
         # project2 should have no parsed branch
-        self.assertEqual(0, len(tpc2.parsed_branch_config.keys()))
+        self.assertNotIn('project2-job', layout.jobs)
 
         # Zuul-web should not display any config errors
         config_errors = self.get_url(
