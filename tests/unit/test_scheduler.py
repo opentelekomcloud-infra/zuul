@@ -3748,6 +3748,7 @@ class TestScheduler(ZuulTestCase):
     def test_queue_names(self):
         "Test shared change queue names"
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        self.waitUntilSettled()
         (trusted, project1) = tenant.getProject('org/project1')
         (trusted, project2) = tenant.getProject('org/project2')
         # Change queues are created lazy by the dependent pipeline manager
@@ -3760,6 +3761,8 @@ class TestScheduler(ZuulTestCase):
         with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
               self.createZKContext(lock) as ctx,
               gate.manager.currentContext(ctx)):
+            gate.change_list.refresh(ctx)
+            gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
         q1 = gate.getQueue(project1.canonical_name, None)
@@ -3770,6 +3773,7 @@ class TestScheduler(ZuulTestCase):
     @simple_layout("layouts/template-queue.yaml")
     def test_template_queue(self):
         "Test a shared queue can be constructed from a project-template"
+        self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         (trusted, project1) = tenant.getProject('org/project1')
         (trusted, project2) = tenant.getProject('org/project2')
@@ -3784,6 +3788,8 @@ class TestScheduler(ZuulTestCase):
         with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
               self.createZKContext(lock) as ctx,
               gate.manager.currentContext(ctx)):
+            gate.change_list.refresh(ctx)
+            gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
         q1 = gate.getQueue(project1.canonical_name, None)
@@ -3794,6 +3800,7 @@ class TestScheduler(ZuulTestCase):
     @simple_layout("layouts/template-project-queue.yaml")
     def test_template_project_queue(self):
         "Test a shared queue can be constructed from a project-template"
+        self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         (trusted, project1) = tenant.getProject('org/project1')
         (trusted, project2) = tenant.getProject('org/project2')
@@ -3808,6 +3815,8 @@ class TestScheduler(ZuulTestCase):
         with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
               self.createZKContext(lock) as ctx,
               gate.manager.currentContext(ctx)):
+            gate.change_list.refresh(ctx)
+            gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
         q1 = gate.getQueue(project1.canonical_name, None)
@@ -3818,6 +3827,7 @@ class TestScheduler(ZuulTestCase):
     @simple_layout("layouts/regex-template-queue.yaml")
     def test_regex_template_queue(self):
         "Test a shared queue can be constructed from a regex project-template"
+        self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         (trusted, project1) = tenant.getProject('org/project1')
         (trusted, project2) = tenant.getProject('org/project2')
@@ -3831,6 +3841,8 @@ class TestScheduler(ZuulTestCase):
         with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
               self.createZKContext(lock) as ctx,
               gate.manager.currentContext(ctx)):
+            gate.change_list.refresh(ctx)
+            gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
         q1 = gate.getQueue(project1.canonical_name, None)
@@ -3842,6 +3854,7 @@ class TestScheduler(ZuulTestCase):
     @skipIfMultiScheduler()
     def test_regex_queue(self):
         "Test a shared queue can be constructed from a regex project"
+        self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         (trusted, project1) = tenant.getProject('org/project1')
         (trusted, project2) = tenant.getProject('org/project2')
@@ -3855,6 +3868,8 @@ class TestScheduler(ZuulTestCase):
         with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
               self.createZKContext(lock) as ctx,
               gate.manager.currentContext(ctx)):
+            gate.change_list.refresh(ctx)
+            gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
         q1 = gate.getQueue(project1.canonical_name, None)
