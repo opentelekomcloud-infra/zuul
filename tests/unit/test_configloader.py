@@ -844,6 +844,7 @@ class TestUnparsedConfigCache(ZuulTestCase):
         self.assertEqual(upb_project_cache.entries['zuul.yaml'].ltime,
                          project_cache.ltime)
 
+    @okay_tracebacks('cannot schedule new futures after shutdown')
     def test_cache_use(self):
         sched = self.scheds.first.sched
         # Stop cleanup jobs so it's not removing projects from
