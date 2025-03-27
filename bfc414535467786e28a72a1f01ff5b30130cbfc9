@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "39218b43_41a32575",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-27T23:57:55Z",
+      "side": 1,
+      "message": "I\u0027m ok with this. I think dogfooding niz is an important way to get it shipped in a happy state. That said I think we should have a rough idea of what our fallback plan is if we decide niz needs more work. In some cases that may be fixing niz in others we may need to revert back to smaller test nodes and make that work for an interim period.",
+      "revId": "bfc414535467786e28a72a1f01ff5b30130cbfc9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
