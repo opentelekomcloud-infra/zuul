@@ -1650,20 +1650,14 @@ class TestGithubUnprotectedBranches(ZuulTestCase):
     scheduler_count = 1
 
     def test_unprotected_branches(self):
-        tenant = self.scheds.first.sched.abide.tenants\
-            .get('tenant-one')
-
-        project1 = list(tenant.untrusted_projects)[0]
-        project2 = list(tenant.untrusted_projects)[1]
-
-        tpc1 = tenant.project_configs[project1.canonical_name]
-        tpc2 = tenant.project_configs[project2.canonical_name]
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        layout = tenant.layout
 
         # project1 should have parsed master
-        self.assertIn('master', tpc1.parsed_branch_config.keys())
+        self.assertIn('project1-job', layout.jobs)
 
         # project2 should have no parsed branch
-        self.assertEqual(0, len(tpc2.parsed_branch_config.keys()))
+        self.assertNotIn('project2-job', layout.jobs)
 
         # now enable branch protection and trigger reload
         github = self.fake_github.getGithubClient()
@@ -1676,12 +1670,11 @@ class TestGithubUnprotectedBranches(ZuulTestCase):
         self.waitUntilSettled()
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        tpc1 = tenant.project_configs[project1.canonical_name]
-        tpc2 = tenant.project_configs[project2.canonical_name]
+        layout = tenant.layout
 
         # project1 and project2 should have parsed master now
-        self.assertIn('master', tpc1.parsed_branch_config.keys())
-        self.assertIn('master', tpc2.parsed_branch_config.keys())
+        self.assertIn('project1-job', layout.jobs)
+        self.assertIn('project2-job', layout.jobs)
 
     def test_filtered_branches_in_build(self):
         """
@@ -2080,22 +2073,14 @@ class TestGithubLockedBranches(ZuulTestCase):
     scheduler_count = 1
 
     def test_exclude_locked_branches(self):
-        tenant = self.scheds.first.sched.abide.tenants\
-            .get('tenant-one')
-
-        project1 = list(tenant.untrusted_projects)[0]
-        project2 = list(tenant.untrusted_projects)[1]
-        project3 = list(tenant.untrusted_projects)[2]
-
-        tpc1 = tenant.project_configs[project1.canonical_name]
-        tpc2 = tenant.project_configs[project2.canonical_name]
-        tpc3 = tenant.project_configs[project3.canonical_name]
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        layout = tenant.layout
 
         # projects 1 and 2  should have parsed master
-        self.assertIn('master', tpc1.parsed_branch_config.keys())
-        self.assertIn('master', tpc2.parsed_branch_config.keys())
+        self.assertIn('project1-job', layout.jobs)
+        self.assertIn('project2-job', layout.jobs)
         # project 3 should not because it excludes unprotected
-        self.assertEqual(0, len(tpc3.parsed_branch_config.keys()))
+        self.assertNotIn('project3-job', layout.jobs)
 
         # now lock project2 and trigger reload
         github = self.fake_github.getGithubClient()
@@ -2109,14 +2094,12 @@ class TestGithubLockedBranches(ZuulTestCase):
         self.waitUntilSettled()
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        tpc1 = tenant.project_configs[project1.canonical_name]
-        tpc2 = tenant.project_configs[project2.canonical_name]
-        tpc3 = tenant.project_configs[project3.canonical_name]
+        layout = tenant.layout
 
         # project2 should no longer have a master branch
-        self.assertIn('master', tpc1.parsed_branch_config.keys())
-        self.assertEqual(0, len(tpc2.parsed_branch_config.keys()))
-        self.assertEqual(0, len(tpc3.parsed_branch_config.keys()))
+        self.assertIn('project1-job', layout.jobs)
+        self.assertNotIn('project2-job', layout.jobs)
+        self.assertNotIn('project3-job', layout.jobs)
 
         # Lock project 3 as well and ensure it's still excluded
         repo = github.repo_from_project('org/project3')
@@ -2129,14 +2112,12 @@ class TestGithubLockedBranches(ZuulTestCase):
         self.waitUntilSettled()
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        tpc1 = tenant.project_configs[project1.canonical_name]
-        tpc2 = tenant.project_configs[project2.canonical_name]
-        tpc3 = tenant.project_configs[project3.canonical_name]
+        layout = tenant.layout
 
         # project3 is still excluded, but for a different reason
-        self.assertIn('master', tpc1.parsed_branch_config.keys())
-        self.assertEqual(0, len(tpc2.parsed_branch_config.keys()))
-        self.assertEqual(0, len(tpc3.parsed_branch_config.keys()))
+        self.assertIn('project1-job', layout.jobs)
+        self.assertNotIn('project2-job', layout.jobs)
+        self.assertNotIn('project3-job', layout.jobs)
 
     @driver_config('github', branch_protection_rules={
         'org/project2': {
@@ -2148,23 +2129,15 @@ class TestGithubLockedBranches(ZuulTestCase):
     def test_exclude_locked_branches_startup(self):
         # Make sure that we exclude locked branches on startup as well
         # (this exercises a different code path in the branch cache).
-        tenant = self.scheds.first.sched.abide.tenants\
-            .get('tenant-one')
-
-        project1 = list(tenant.untrusted_projects)[0]
-        project2 = list(tenant.untrusted_projects)[1]
-        project3 = list(tenant.untrusted_projects)[2]
-
-        tpc1 = tenant.project_configs[project1.canonical_name]
-        tpc2 = tenant.project_configs[project2.canonical_name]
-        tpc3 = tenant.project_configs[project3.canonical_name]
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        layout = tenant.layout
 
         # project 1 should have parsed master
-        self.assertIn('master', tpc1.parsed_branch_config.keys())
-        # project 1 should not have a master branch because it's locked
-        self.assertEqual(0, len(tpc2.parsed_branch_config.keys()))
+        self.assertIn('project1-job', layout.jobs)
+        # project 2 should not have a master branch because it's locked
+        self.assertNotIn('project2-job', layout.jobs)
         # project 3 should not because it excludes unprotected
-        self.assertEqual(0, len(tpc3.parsed_branch_config.keys()))
+        self.assertNotIn('project3-job', layout.jobs)
 
 
 class TestGithubLockedBranchesValidation(ZuulTestCase):
