@@ -750,12 +750,12 @@ class TestMQTTConnection(ZuulTestCase):
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
 
-        success_event = self.mqtt_messages.pop()
-        start_event = self.mqtt_messages.pop()
+        success_event_check = self.mqtt_messages.pop()
+        start_event_check = self.mqtt_messages.pop()
 
-        self.assertEquals(start_event.get('topic'),
+        self.assertEquals(start_event_check.get('topic'),
                           'tenant-one/zuul_start/check/org/project/master')
-        mqtt_payload = start_event['msg']
+        mqtt_payload = start_event_check['msg']
         self.assertEquals(mqtt_payload['project'], 'org/project')
         self.assertEqual(len(mqtt_payload['commit_id']), 40)
         self.assertEquals(mqtt_payload['owner'], 'username')
@@ -769,10 +769,12 @@ class TestMQTTConnection(ZuulTestCase):
         test_job = [b for b in builds if b['job_name'] == 'test'][0]
         self.assertNotIn('returned_data', test_job)
 
-        self.assertEquals(success_event.get('topic'),
+        self.assertEquals(success_event_check.get('topic'),
                           'tenant-one/zuul_buildset/check/org/project/master')
-        mqtt_payload = success_event['msg']
+        mqtt_payload = success_event_check['msg']
         self.assertEquals(mqtt_payload['project'], 'org/project')
+        self.assertEquals(mqtt_payload['pipeline'], 'check')
+        self.assertEquals(mqtt_payload['queue'], '')
         self.assertEquals(mqtt_payload['branch'], 'master')
         self.assertEquals(mqtt_payload['buildset']['result'], 'SUCCESS')
         builds = mqtt_payload['buildset']['builds']
@@ -802,6 +804,16 @@ class TestMQTTConnection(ZuulTestCase):
         self.assertIn('uuid', mqtt_payload)
         self.assertEquals(dependent_test_job['dependencies'], ['test'])
         self.assertIn('test', dependent_test_job['job_dependencies'])
+
+        A.addApproval("Code-Review", 2)
+        self.fake_gerrit.addEvent(A.addApproval("Approved", 1))
+        self.waitUntilSettled()
+
+        success_event_gate = self.mqtt_messages.pop()
+        mqtt_payload = success_event_gate['msg']
+        self.assertEquals(mqtt_payload['project'], 'org/project')
+        self.assertEquals(mqtt_payload['pipeline'], 'gate')
+        self.assertEquals(mqtt_payload['queue'], 'integrated')
 
     @okay_tracebacks('Connection refused')
     def test_mqtt_paused_job(self):
