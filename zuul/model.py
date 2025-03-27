@@ -189,6 +189,11 @@ class QuotaInformation:
     def add(self, other):
         self._add_subtract(other, True)
 
+    def min(self, other):
+        for resource, theirs in other.quota.items():
+            ours = self.quota.get(resource, self.default)
+            self.quota[resource] = min(ours, theirs)
+
     def nonNegative(self):
         for resource, value in self.quota.items():
             if value < 0:

@@ -30,6 +30,7 @@ from zuul.driver.aws.const import (
     SPOT,
     ON_DEMAND,
     VOLUME_QUOTA_CODES,
+    ALL_QUOTA_CODES,
 )
 from zuul.model import QuotaInformation
 from zuul.provider import (
@@ -211,10 +212,17 @@ class AwsProviderSchema(BaseProviderSchema):
             vs.Required('bucket-name'): str,
         }
 
+        resource_limits = {k: int for k in ALL_QUOTA_CODES}
+        resource_limits['instances'] = int
+        resource_limits['cores'] = int
+        resource_limits['ram'] = int
+
         aws_provider_schema = vs.Schema({
             Required('region'): str,
             Optional('object-storage'): Nullable(object_storage),
+            Optional('resource-limits', default=dict()): resource_limits,
         })
+
         return assemble(
             schema,
             aws_provider_schema,
@@ -383,7 +391,11 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
                 if resource == 'storage':
                     value *= 1000
                 args[code] = value
-        return QuotaInformation(**args)
+
+        cloud = QuotaInformation(**args)
+        zuul = QuotaInformation(default=math.inf, **self.resource_limits)
+        cloud.min(zuul)
+        return cloud
 
     def getQuotaForLabel(self, label):
         flavor = self.flavors[label.flavor]
