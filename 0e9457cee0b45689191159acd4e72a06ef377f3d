@@ -33,6 +33,23 @@
       "message": "recheck failed in testing finger gw. I don\u0027t think this is related to the database",
       "revId": "0e9457cee0b45689191159acd4e72a06ef377f3d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f17fa9cc_a2ef3460",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-27T22:26:25Z",
+      "side": 1,
+      "message": "recheck flaky tests don\u0027t seem to be db specific",
+      "revId": "0e9457cee0b45689191159acd4e72a06ef377f3d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
