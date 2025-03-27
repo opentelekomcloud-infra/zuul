@@ -226,7 +226,9 @@ class TestStreamingBase(tests.base.AnsibleZuulTestCase):
                 found = False
                 for gw in self.scheds.first.sched.component_registry.\
                     all('fingergw'):
-                    if gw.zone == zone:
+                    if gw.zone == zone and gw.port != 0:
+                        # We need to wait for the component to be registered
+                        # and for it to be listening on a valid port.
                         found = True
                         break
                 if found:
