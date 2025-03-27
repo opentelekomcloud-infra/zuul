@@ -1036,20 +1036,14 @@ class TestGitlabUnprotectedBranches(ZuulTestCase):
     # To make this work with multiple schedulers, we might want to wait
     # until all schedulers completed their tenant reconfiguration.
     def test_unprotected_branches(self):
-        tenant = self.scheds.first.sched.abide.tenants\
-            .get('tenant-one')
-
-        project1 = list(tenant.untrusted_projects)[0]
-        project2 = list(tenant.untrusted_projects)[1]
-
-        tpc1 = tenant.project_configs[project1.canonical_name]
-        tpc2 = tenant.project_configs[project2.canonical_name]
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        layout = tenant.layout
 
         # project1 should have parsed master
-        self.assertIn('master', tpc1.parsed_branch_config.keys())
+        self.assertIn('project1-job', layout.jobs)
 
         # project2 should have no parsed branch
-        self.assertEqual(0, len(tpc2.parsed_branch_config.keys()))
+        self.assertNotIn('project2-job', layout.jobs)
 
         # now enable branch protection and trigger reload
         self.fake_gitlab.protectBranch('org', 'project2', 'master')
@@ -1058,12 +1052,11 @@ class TestGitlabUnprotectedBranches(ZuulTestCase):
         self.waitUntilSettled()
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        tpc1 = tenant.project_configs[project1.canonical_name]
-        tpc2 = tenant.project_configs[project2.canonical_name]
+        layout = tenant.layout
 
         # project1 and project2 should have parsed master now
-        self.assertIn('master', tpc1.parsed_branch_config.keys())
-        self.assertIn('master', tpc2.parsed_branch_config.keys())
+        self.assertIn('project1-job', layout.jobs)
+        self.assertIn('project2-job', layout.jobs)
 
     def test_filtered_branches_in_build(self):
         """
