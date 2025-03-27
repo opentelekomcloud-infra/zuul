@@ -2,6 +2,9 @@
     name: used-job
     run: playbooks/used-job.yaml
 
+- job:
+    name: project2-job
+
 - project:
     check:
       jobs:
