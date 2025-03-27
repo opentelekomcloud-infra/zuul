@@ -3760,6 +3760,8 @@ class TestScheduler(ZuulTestCase):
         with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
               self.createZKContext(lock) as ctx,
               gate.manager.currentContext(ctx)):
+            gate.change_list.refresh(ctx)
+            gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
         q1 = gate.getQueue(project1.canonical_name, None)
@@ -3784,6 +3786,8 @@ class TestScheduler(ZuulTestCase):
         with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
               self.createZKContext(lock) as ctx,
               gate.manager.currentContext(ctx)):
+            gate.change_list.refresh(ctx)
+            gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
         q1 = gate.getQueue(project1.canonical_name, None)
@@ -3808,6 +3812,8 @@ class TestScheduler(ZuulTestCase):
         with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
               self.createZKContext(lock) as ctx,
               gate.manager.currentContext(ctx)):
+            gate.change_list.refresh(ctx)
+            gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
         q1 = gate.getQueue(project1.canonical_name, None)
@@ -3831,6 +3837,8 @@ class TestScheduler(ZuulTestCase):
         with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
               self.createZKContext(lock) as ctx,
               gate.manager.currentContext(ctx)):
+            gate.change_list.refresh(ctx)
+            gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
         q1 = gate.getQueue(project1.canonical_name, None)
@@ -3855,6 +3863,8 @@ class TestScheduler(ZuulTestCase):
         with (pipeline_lock(self.zk_client, tenant.name, gate.name) as lock,
               self.createZKContext(lock) as ctx,
               gate.manager.currentContext(ctx)):
+            gate.change_list.refresh(ctx)
+            gate.state.refresh(ctx)
             gate.manager.getChangeQueue(fake_a, None)
             gate.manager.getChangeQueue(fake_b, None)
         q1 = gate.getQueue(project1.canonical_name, None)
