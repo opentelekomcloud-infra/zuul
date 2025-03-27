@@ -2,6 +2,9 @@
     name: project-test
     run: playbooks/project-test.yaml
 
+- job:
+    name: project1-job
+
 - project:
     name: org/project1
     check:
