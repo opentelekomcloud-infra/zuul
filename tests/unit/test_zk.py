@@ -539,10 +539,12 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
 
         # Simulate the client side
         client = ExecutorApi(self.zk_client)
+        self.addCleanup(client.stop)
         # Simulate the server side
         server = ExecutorApi(self.zk_client,
                              build_request_callback=rq_put,
                              build_event_callback=eq_put)
+        self.addCleanup(server.stop)
 
         # Scheduler submits request
         request = BuildRequest(
@@ -631,10 +633,12 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
 
         # Simulate the client side
         client = ExecutorApi(self.zk_client)
+        self.addCleanup(client.stop)
         # Simulate the server side
         server = ExecutorApi(self.zk_client,
                              build_request_callback=rq_put,
                              build_event_callback=eq_put)
+        self.addCleanup(server.stop)
 
         # Scheduler submits request
         request = BuildRequest(
@@ -684,11 +688,13 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
 
         # Simulate the client side
         client = HoldableExecutorApi(self.zk_client)
+        self.addCleanup(client.stop)
         client.hold_in_queue = True
         # Simulate the server side
         server = ExecutorApi(self.zk_client,
                              build_request_callback=rq_put,
                              build_event_callback=eq_put)
+        self.addCleanup(server.stop)
 
         # Scheduler submits request
         request = BuildRequest(
@@ -726,6 +732,7 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
 
         # Simulate the client side
         client = ExecutorApi(self.zk_client)
+        self.addCleanup(client.stop)
 
         # Scheduler submits request
         request = BuildRequest(
@@ -737,6 +744,7 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
         server = ExecutorApi(self.zk_client,
                              build_request_callback=rq_put,
                              build_event_callback=eq_put)
+        self.addCleanup(server.stop)
 
         exec_a = self.getRequest(client, request.uuid)
         client.remove(sched_a)
@@ -757,6 +765,7 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
 
         # Simulate the client side
         client = ExecutorApi(self.zk_client)
+        self.addCleanup(client.stop)
 
         # Scheduler submits two requests
         request_a = BuildRequest(
@@ -777,6 +786,7 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
         server = ExecutorApi(self.zk_client,
                              build_request_callback=rq_put,
                              build_event_callback=eq_put)
+        self.addCleanup(server.stop)
 
         count = 0
         for exec_request in server.next():
@@ -798,6 +808,7 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
         # Test that lostBuildRequests() returns unlocked running build
         # requests
         executor_api = ExecutorApi(self.zk_client)
+        self.addCleanup(executor_api.stop)
 
         br = BuildRequest(
             "A", "zone", None, "job", "job_uuid", "tenant", "pipeline", '1')
@@ -855,6 +866,7 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
     def test_lost_build_request_params(self):
         # Test cleaning up orphaned request parameters
         executor_api = ExecutorApi(self.zk_client)
+        self.addCleanup(executor_api.stop)
 
         br = BuildRequest(
             "A", "zone", None, "job", "job_uuid", "tenant", "pipeline", '1')
@@ -894,6 +906,7 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
 
         # Simulate the client side
         client = ExecutorApi(self.zk_client)
+        self.addCleanup(client.stop)
         client.submit(
             BuildRequest(
                 "A", None, None, "job", "job_uuid",
@@ -903,6 +916,7 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
         server = ExecutorApi(self.zk_client,
                              build_request_callback=rq_put,
                              build_event_callback=eq_put)
+        self.addCleanup(server.stop)
 
         # Scheduler submits request
         request_queue.get(timeout=30)
@@ -928,10 +942,12 @@ class TestExecutorApi(ZooKeeperBaseTestCase):
 
         # Simulate the client side
         client = ExecutorApi(self.zk_client)
+        self.addCleanup(client.stop)
         # Simulate the server side
         server = ExecutorApi(self.zk_client,
                              build_request_callback=rq_put,
                              build_event_callback=eq_put)
+        self.addCleanup(server.stop)
 
         # Scheduler submits request
         request = BuildRequest(
