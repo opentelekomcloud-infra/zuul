@@ -265,6 +265,7 @@ class FunctionalZuulStreamMixIn:
                 r"""compute1 \| ok: \{'string': '\d.""", text)
             self.assertLogLine(
                 r'fake \| skipping: Conditional result was False', text)
+            self.assertLogLine(r'compute1 \| Testing raw', text)
 
     def test_command_split_streams(self):
         job = self._run_job('command', split=True)
