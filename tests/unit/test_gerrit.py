@@ -1285,6 +1285,53 @@ class TestGerritConnectionPreFilter(ZuulTestCase):
         self.waitUntilSettled()
 
 
+class TestGerritConnectionReplication(ZuulTestCase):
+    config_file = 'zuul-gerrit-replication.conf'
+    tenant_config_file = 'config/single-tenant/main.yaml'
+
+    def test_new_patchset_replication_complete(self):
+        # TODO(clarkb) Be more explicit about order of operations
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
+        self.fake_gerrit.addEvent(A.getPatchsetReplicationStartedEvent(1))
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        self.fake_gerrit.addEvent(A.getPatchsetReplicatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+            dict(name='project-merge', result='SUCCESS', changes='2,1'),
+            dict(name='project-test1', result='SUCCESS', changes='2,1'),
+            dict(name='project-test2', result='SUCCESS', changes='2,1'),
+            dict(name='project1-project2-integration',
+                 result='SUCCESS', changes='2,1'),
+        ], ordered=False)
+
+    def test_new_patchset_replication_timeout(self):
+        # TODO(clarkb) Be more explicit about order of operations
+        # TODO(clarkb) Check that A times out somehow.
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
+        self.fake_gerrit.addEvent(A.getPatchsetReplicationStartedEvent(1))
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+            dict(name='project-merge', result='SUCCESS', changes='2,1'),
+            dict(name='project-test1', result='SUCCESS', changes='2,1'),
+            dict(name='project-test2', result='SUCCESS', changes='2,1'),
+            dict(name='project1-project2-integration',
+                 result='SUCCESS', changes='2,1'),
+        ], ordered=False)
+
+
 class TestGerritUnicodeRefs(ZuulTestCase):
     config_file = 'zuul-gerrit-web.conf'
     tenant_config_file = 'config/single-tenant/main.yaml'

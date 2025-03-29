@@ -333,9 +333,10 @@ class PeekQueue:
     # seconds beyond the 10 second propagation delay.
     timeout = 20
 
-    def __init__(self, handler):
+    def __init__(self, handler, replication_timeout):
         self.queue = collections.deque()
         self.handler = handler
+        self.replication_timeout = replication_timeout
         self.change_merged_cache = cachetools.LRUCache(128)
 
     def append(self, event):
@@ -345,8 +346,11 @@ class PeekQueue:
         if not self.queue:
             return
 
+        # Try to do two things:
+        # Hold events until they have replicated and
         # Attempt to match ref-updated events with change-merged
         # events.
+        ref_replication = collections.defaultdict(list)
         ref_updates = {}
         new_event_list = collections.deque()
         latest_time = 0
@@ -357,9 +361,34 @@ class PeekQueue:
             ref = refupdate.get('refName')
             latest_time = max(event["timestamp"], latest_time)
             inserted = False
-            if (kind == 'ref-updated' and
-                ((not ref.startswith('refs/')) or
-                 ref.startswith('refs/heads/'))):
+            if kind == 'ref-replication-scheduled':
+                # Note we can get many ref-replication-scheduled events for
+                # a single ref-replication-done event. We can also get
+                # overlapping ref-replication-scheduled events for the same
+                # ref. For this reason we don't use the -done events and
+                # instead rely on counting matching pairs of -scheduled and
+                # ref-replicated events. When all have paired up or we timeout
+                # the related events are consisted valid.
+                #
+                # Replication events don't use the same refUpdate and refName
+                # conventions...
+                ref = data.get('ref')
+                project = data.get('project')
+                ref_replication[(project, ref)].append(event)
+            elif kind == 'ref-replicated':
+                ref = data.get('ref')
+                project = data.get('project')
+                replication_events = ref_replication[(project, ref)]
+                # TODO(clarkb) Is it necessary to wait for success?
+                if (len(replication_events) and
+                    data.get("status") == "succeeded"):
+                    # Its possible we start listening when things have already
+                    # started replicating. In that case we'll empty the
+                    # replication events list early.
+                    replication_events.pop()
+            elif (kind == 'ref-updated' and
+                  ((not ref.startswith('refs/')) or
+                    ref.startswith('refs/heads/'))):
                 # This is a ref-updated event for a branch, we
                 # want to find its change-merged event.
                 newrev = refupdate.get('newRev')
@@ -390,11 +419,25 @@ class PeekQueue:
 
         while new_event_list:
             event = new_event_list.popleft()
+            delay = None
             data = event["payload"]
             kind = data.get('type')
+            refupdate = data.get('refUpdate', {})
+            project = refupdate.get('project')
+            ref = refupdate.get('refName')
+            # TODO(clarkb) is there a better way to do this for the various
+            # gerrit event messages?
+            if not project and not ref:
+                if "change" in data:
+                    project = data["change"].get('project')
+                    ref = data["patchSet"].get('ref')
+                else:
+                    # Replication events have a different data structure
+                    ref = data.get('ref')
+                    project = data.get('project')
             ok = False
             if kind == 'ref-updated':
-                refupdate = data.get('refUpdate')
+                # TODO(clarkb) Handle replication delay here
                 newrev = refupdate.get('newRev')
                 if newrev in ref_updates:
                     # We're waiting on data for this one
@@ -415,13 +458,25 @@ class PeekQueue:
                 else:
                     # Not a branch ref-update
                     ok = True
+            elif self.replication_timeout <= 0:
+                # We are not configured to look at Gerrit replication
+                # targets. Ignore replication status.
+                ok = True
+            elif ref and project and ref_replication[(project, ref)]:
+                time_since_event = time.time() - event["timestamp"]
+                if time_since_event >= self.replication_timeout:
+                    # Waited long enough for replication
+                    ok = True
+                else:
+                    # If replication hasn't completed wait longer
+                    ok = False
+                    # Wait at least one second for replication to complete.
+                    delay = min(self.replication_timeout - time_since_event, 1)
             else:
-                # Not a ref-update at all
+                # Not a ref-update and not waiting for replication
                 ok = True
             if not ok:
-                # if we're still waiting for an event, don't send
-                # any more so that we preserve the order.
-                return
+                return delay
 
             self.queue.remove(event)
             self.handler(event)
@@ -434,16 +489,16 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
         'cache-eviction',  # evict-cache plugin
         'fetch-ref-replicated',
         'fetch-ref-replication-scheduled',
-        'ref-replicated',
-        'ref-replication-scheduled',
         'ref-replication-done'
     )
 
     log = logging.getLogger("zuul.GerritEventConnector")
 
-    def __init__(self, connection):
+    def __init__(self, connection, replication_timeout):
         super().__init__(connection)
-        self._peek_queue = PeekQueue(self._peekQueueHandler)
+        self.replication_timeout = replication_timeout
+        self._peek_queue = PeekQueue(
+            self._peekQueueHandler, replication_timeout)
 
     def _getEventProcessor(self, event):
         return GerritEventProcessor(self, event).run
@@ -466,7 +521,7 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
     def _dispatchEvents(self):
         # This is the first half of the event dispatcher.  It reads
-        # events from the webhook event queue and passes them to a
+        # events from the ssh stream event queue and passes them to a
         # concurrent executor for pre-processing.
 
         # This overrides the superclass in order to add the peek queue.
@@ -489,7 +544,7 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
             self._peek_queue.append(event)
             self._peek_queue.run()
-        self._peek_queue.run(end=True)
+        return self._peek_queue.run(end=True)
 
     def _peekQueueHandler(self, event):
         # Called when the peek queue has decided an event should be processed
@@ -537,6 +592,12 @@ class GerritEventProcessor:
     def _handleEvent(self, connection_event):
         timestamp = connection_event["timestamp"]
         data = connection_event["payload"]
+        kind = data.get("type")
+        if kind in ["ref-replication-scheduled", "ref-replicated"]:
+            # There are no events that need subsequent processing
+            # the replication state for other events has already
+            # been processed
+            return []
         event = GerritTriggerEvent.fromGerritEventDict(
             data, timestamp, self.connection, self.zuul_event_id)
         min_change_ltime = self.zk_client.getCurrentLtime()
@@ -618,7 +679,10 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
     refname_bad_sequences = re2.compile(
         r"[ \\*\[?:^~\x00-\x1F\x7F]|"  # Forbidden characters
         r"@{|\.\.|\.$|^@$|/$|^/|//+")  # everything else we can check with re2
-    replication_timeout = 300
+    # TODO(clarkb) is it safe to overload this variable when we now use this
+    # value to check for replication in the PeekQueue? We may want to keep this
+    # old behavior for existing installs and use a new name?
+    # replication_timeout = 300
     replication_retry_interval = 5
     _poller_class = GerritChecksPoller
     _ref_watcher_class = GitWatcher
@@ -667,6 +731,8 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
             self.event_source = self.EVENT_SOURCE_KINESIS
         elif self.connection_config.get('gcloud_pubsub_project', None):
             self.event_source = self.EVENT_SOURCE_GCLOUD_PUBSUB
+        self.replication_timeout = int(self.connection_config.get(
+            'replication_timeout', 0))
 
         # Thread for whatever event source we use
         self.event_thread = None
@@ -1369,13 +1435,14 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         #               an unrecognized event log *and* a traceback if they
         #               do not contain full project information, we skip them
         #               here to keep logs clean.
-        if data.get('type') in GerritEventConnector.IGNORED_EVENTS:
+        event_type = data.get('type')
+        if event_type in GerritEventConnector.IGNORED_EVENTS:
             return
         # Due to notedb, an high percentage of all events Zuul
         # processes are ref-updated of the /meta ref, and that is
         # unlikely to be used in Zuul.  Skip those here so that we
         # reduce traffic on the event queue.
-        if data.get('type') == 'ref-updated':
+        if event_type == 'ref-updated':
             refname = data.get('refUpdate', {}).get('refName', '')
             if (refname.startswith('refs/changes/') and
                 refname.endswith('/meta')):
@@ -1386,10 +1453,12 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         event = GerritTriggerEvent.fromGerritEventDict(
             data, None, self, None)
 
-        # If the event might trigger Zuul reconfiguration actions, we
-        # keep it; otherwise check to see if it matches our
-        # pre-filters:
+        # If the event communicates replication info or might trigger
+        # reconfiguration actions we keep it; otherwise check to see if
+        # it matches our pre-filters:
         if not (
+                event_type == "ref-replication-scheduled" or
+                event_type == "ref-replicated" or
                 event._branch_ref_update or
                 event.default_branch_changed or
                 event.change_number):
@@ -2069,7 +2138,8 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         self.ref_watcher_thread.start()
 
     def startEventConnector(self):
-        self.gerrit_event_connector = GerritEventConnector(self)
+        self.gerrit_event_connector = GerritEventConnector(
+            self, self.replication_timeout)
         self.gerrit_event_connector.start()
 
     def stopEventConnector(self):
