@@ -653,6 +653,7 @@ class TestWeb(BaseTestWeb):
             {'name': 'check', 'triggers': [gerrit_trigger]},
             {'name': 'gate', 'triggers': [gerrit_trigger]},
             {'name': 'post', 'triggers': [gerrit_trigger]},
+            {'name': 'promote', 'triggers': [gerrit_trigger]},
             {'name': 'periodic', 'triggers': [timer_trigger]},
         ]
         self.assertEqual(expected_list, data)
@@ -934,6 +935,53 @@ class TestWeb(BaseTestWeb):
                              'workspace_checkout': True,
                              }
                         ]],
+                    }, {'name': 'promote',
+                        'jobs': [[
+                            {'abstract': False,
+                             'ansible_split_streams': None,
+                             'ansible_version': None,
+                             'attempts': 3,
+                             'branches': [],
+                             'deduplicate': 'auto',
+                             'dependencies': [],
+                             'description': None,
+                             'files': [],
+                             'final': False,
+                             'failure_output': [],
+                             'image_build_name': None,
+                             'intermediate': False,
+                             'irrelevant_files': [],
+                             'match_on_config_updates': True,
+                             'name': 'project-promote',
+                             'override_checkout': None,
+                             'parent': 'base',
+                             'post_review': None,
+                             'post_run': [],
+                             'cleanup_run': [],
+                             'pre_run': [],
+                             'protected': None,
+                             'provides': [],
+                             'required_projects': [],
+                             'requires': [],
+                             'roles': [],
+                             'run': [],
+                             'semaphores': [],
+                             'source_context': {'branch': 'master',
+                                                'path': 'zuul.yaml',
+                                                'project': 'common-config'},
+                             'tags': [],
+                             'timeout': None,
+                             'variables': {},
+                             'extra_variables': {},
+                             'group_variables': {},
+                             'host_variables': {},
+                             'include_vars': [],
+                             'variant_description': '',
+                             'voting': True,
+                             'workspace_scheme': 'golang',
+                             'workspace_checkout': True,
+                             }
+                        ]],
                     }
                     ]
                 }]
@@ -1081,7 +1129,7 @@ class TestWeb(BaseTestWeb):
 
     def test_jobs_list(self):
         jobs = self.get_url("api/tenant/tenant-one/jobs").json()
-        self.assertEqual(len(jobs), 10)
+        self.assertEqual(len(jobs), 11)
 
         resp = self.get_url("api/tenant/non-tenant/jobs")
         self.assertEqual(404, resp.status_code)
@@ -1237,11 +1285,11 @@ class TestWeb(BaseTestWeb):
             'zuul': {
                 '_inheritance_path': [
                     '<Job base branches: None source: '
-                    'common-config/zuul.yaml@master#53>',
+                    'common-config/zuul.yaml@master#61>',
                     '<Job project-test1 branches: None source: '
-                    'common-config/zuul.yaml@master#66>',
+                    'common-config/zuul.yaml@master#74>',
                     '<Job project-test1 branches: None source: '
-                    'common-config/zuul.yaml@master#138>'],
+                    'common-config/zuul.yaml@master#157>'],
                 'build': '00000000000000000000000000000000',
                 'buildset': None,
                 'branch': 'master',
