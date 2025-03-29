@@ -33,7 +33,6 @@ from zuul.lib import strings
 from zuul.driver.gerrit import GerritDriver
 from zuul.driver.gerrit.gerritconnection import (
     GerritConnection,
-    GerritEventProcessor,
     PeekQueue,
 )
 
@@ -1179,7 +1178,6 @@ class TestGerritConnection(ZuulTestCase):
         # Gerrit emits change-merged events after ref-updated events for the
         # change; make sure that job configuration changes take effect
         # for post pipelines that trigger off of ref-updated.
-        GerritEventProcessor.delay = 10.0
         in_repo_conf = textwrap.dedent(
             """
             - job:
@@ -1198,9 +1196,11 @@ class TestGerritConnection(ZuulTestCase):
         self.fake_gerrit.addEvent(A.getRefUpdatedEvent())
         self.fake_gerrit.addEvent(A.getChangeMergedEvent())
         self.waitUntilSettled()
+        print(self.history)
         self.assertHistory([
             dict(name='project-post', result='SUCCESS'),
             dict(name='new-post-job', result='SUCCESS'),
+            dict(name='project-promote', result='SUCCESS'),
         ], ordered=False)
 
 
@@ -1285,6 +1285,72 @@ class TestGerritConnectionPreFilter(ZuulTestCase):
 
         self.fake_gerrit.startEventConnector()
         self.waitUntilSettled()
+
+
+class TestGerritConnectionReplication(ZuulTestCase):
+    config_file = 'zuul-gerrit-replication.conf'
+    tenant_config_file = 'config/single-tenant/main.yaml'
+
+    def test_new_patchset_replication_patchset(self):
+        # TODO(clarkb) Be more explicit about order of operations
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
+        self.fake_gerrit.addEvent(A.getPatchsetReplicationStartedEvent(1))
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        self.fake_gerrit.addEvent(A.getPatchsetReplicatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+            dict(name='project-merge', result='SUCCESS', changes='2,1'),
+            dict(name='project-test1', result='SUCCESS', changes='2,1'),
+            dict(name='project-test2', result='SUCCESS', changes='2,1'),
+            dict(name='project1-project2-integration',
+                 result='SUCCESS', changes='2,1'),
+        ], ordered=False)
+
+    def test_new_patchset_replication_merged(self):
+        # TODO(clarkb) Be more explicit about order of operations
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.setMerged()
+        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
+        B.setMerged()
+        self.fake_gerrit.addEvent(A.getChangeMergedReplicationStartedEvent())
+        self.fake_gerrit.addEvent(A.getChangeMergedEvent())
+        self.fake_gerrit.addEvent(B.getChangeMergedEvent())
+        self.fake_gerrit.addEvent(A.getChangeMergedReplicatedEvent())
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='project-promote', result='SUCCESS', changes='1,1'),
+            dict(name='project-promote', result='SUCCESS', changes='2,1'),
+        ], ordered=False)
+
+    # TODO(clarkb) Add a ref updated test case
+
+    def test_new_patchset_replication_timeout(self):
+        # TODO(clarkb) Be more explicit about order of operations
+        # TODO(clarkb) Check that A times out somehow.
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
+        self.fake_gerrit.addEvent(A.getPatchsetReplicationStartedEvent(1))
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+            dict(name='project-merge', result='SUCCESS', changes='2,1'),
+            dict(name='project-test1', result='SUCCESS', changes='2,1'),
+            dict(name='project-test2', result='SUCCESS', changes='2,1'),
+            dict(name='project1-project2-integration',
+                 result='SUCCESS', changes='2,1'),
+        ], ordered=False)
 
 
 class TestGerritUnicodeRefs(ZuulTestCase):
@@ -1703,7 +1769,7 @@ class TestGerritPeekQueue(BaseTestCase):
         def handler(x):
             handled.append(x)
 
-        q = PeekQueue(handler)
+        q = PeekQueue(handler, 0)
 
         # Check noop
         q.run()
@@ -1769,12 +1835,15 @@ class TestGerritPeekQueue(BaseTestCase):
         self.assertEqual([], handled)
 
         # This is what the loop will acutally do
+        q.timeout = 0
+        delay = q.run()
+        self.assertEqual(delay, None)
         q.run()
-        q.run(end=True)
         expected = [orig[0], orig[1]]
         self.assertEqual(expected, handled)
         self.assertEqual(1, handled[0].zuul_event_ltime)
         self.assertEqual(2, handled[1].zuul_event_ltime)
+        q.timeout = 10
 
         # Check if Gerrit changes the event order; it doesn't do this
         # today, but we want to defend against that.
@@ -1813,7 +1882,7 @@ class TestGerritPeekQueue(BaseTestCase):
         def handler(x):
             handled.append(x)
 
-        q = PeekQueue(handler)
+        q = PeekQueue(handler, 0)
 
         orig = [
             self.make_ref_updated_event('refs/heads/master', 'new1', 1),
