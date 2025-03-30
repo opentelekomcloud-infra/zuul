@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "339eaf4a_ff98c710",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-30T00:09:55Z",
+      "side": 1,
+      "message": "This is possibly a bug in our test events. At least for change-merged events it seems like refName is set. I will need to check stream-events for for patchset-created as well. If ref-updated, change-merged, and patchset-created all have a refName attribute then that should be sufficient for our needs as that should cover branch updates, tag updates, new patchests (a super set of new changes) and changes merging.\n\nIf we can confirm that then the test event data simply needs to be updated and then this code can be cleaned up.",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "26531418_bdae39cd",
         "filename": "zuul/driver/gerrit/gerritconnection.py",
         "patchSetId": 1
