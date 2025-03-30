@@ -1,0 +1,78 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "082d008a_ed585122",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1311,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-30T00:02:17Z",
+      "side": 1,
+      "message": "It would be a good idea to also test with change-merged events since those may be constructed differently than patchset-created. That would need to trigger post jobs?",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "26531418_bdae39cd",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-30T00:02:17Z",
+      "side": 1,
+      "message": "I think the way to do this is process the replication state first and exit early if we are not ok. Then process any other state like the ref-update vs change-merged ordering.",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7af227b5_d28fae11",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-30T00:02:17Z",
+      "side": 1,
+      "message": "We should clear out `ref_replication[(project,ref)]` here so that we don\u0027t become unbalanced by timing out.",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a39448bd_b0980275",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 543,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-30T00:02:17Z",
+      "side": 1,
+      "message": "I think we can drop this entire calculation and move it into PeekQueue. That way we can get a replication delay and a ref-updated/change-merged delay value after the first pass of all events.",
+      "range": {
+        "startLine": 541,
+        "startChar": 12,
+        "endLine": 543,
+        "endChar": 28
+      },
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
