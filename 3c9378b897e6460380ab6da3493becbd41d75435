@@ -73,6 +73,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "c4ec2534_c3c786a7",
+        "filename": "zuul/ansible/base/library/win_zuul_console.ps1",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-31T22:51:20Z",
+      "side": 1,
+      "message": "I switched to C:\\ProgramData\\Zuul\\Zuul since it\u0027s the same place but with more supporting documentation for the path.",
+      "parentUuid": "6dd6b080_4e579ae1",
+      "revId": "3c9378b897e6460380ab6da3493becbd41d75435",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c93f37a9_ff935800",
         "filename": "zuul/ansible/win_zuul_console.cs",
         "patchSetId": 1
