@@ -59,7 +59,7 @@
     description: |
       Zuul unit tests with ZooKeeper running
     parent: nox
-    nodeset: debian-bookworm
+    nodeset: ubuntu-jammy
     pre-run: playbooks/zuul-nox/pre.yaml
     post-run: playbooks/zuul-nox/post-system-logs.yaml
     vars:
@@ -79,7 +79,7 @@
 - job:
     name: zuul-nox-remote
     parent: nox
-    nodeset: debian-bookworm
+    nodeset: ubuntu-jammy
     timeout: 2700  # 45 minutes
     pre-run: playbooks/zuul-nox/pre.yaml
     post-run: playbooks/zuul-nox/post-system-logs.yaml
