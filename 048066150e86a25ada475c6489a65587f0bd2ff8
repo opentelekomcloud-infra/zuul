@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c3294f4_f592fd33",
+        "filename": "test-requirements.txt",
+        "patchSetId": 15
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-31T21:57:09Z",
+      "side": 1,
+      "message": "You shouldn\u0027t need to duplicate this in test-requirements.",
+      "range": {
+        "startLine": 11,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 7
+      },
+      "revId": "048066150e86a25ada475c6489a65587f0bd2ff8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4dbd883_9a473273",
+        "filename": "tests/unit/test_web.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 4415,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-31T21:57:09Z",
+      "side": 1,
+      "message": "How about using pyJWT to validate the input?",
+      "revId": "048066150e86a25ada475c6489a65587f0bd2ff8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}

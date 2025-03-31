@@ -72,6 +72,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2004e7de_3567ba1a",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 1143,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-31T21:57:09Z",
+      "side": 1,
+      "message": "I\u0027m guessing you meant zuul-executor, not zuul-scheduler.\n\nIt\u0027s true that it\u0027s required, but we default it to None and I don\u0027t think we blow up if it\u0027s set that way.  Maybe leaving these checks in for now is best, but maybe we should write a future change to have the scheduler process abort on start if it\u0027s not set.",
+      "parentUuid": "73f12a02_c5f773fd",
+      "revId": "de82e9cb2eddbd1c78f2857485866ebf36e89714",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "22c9c5b8_a72d2874",
         "filename": "zuul/web/__init__.py",
         "patchSetId": 9
@@ -137,6 +155,24 @@
       "side": 1,
       "message": "I double checked the pyjwt lib, it serves as a client for loading jwk data from jwks endpoinds, not for generating jwks content itself. So I think we can not use it here.",
       "parentUuid": "298c8153_2a2c15b1",
+      "revId": "de82e9cb2eddbd1c78f2857485866ebf36e89714",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3ea75c60_608c3964",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 1178,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-31T21:57:09Z",
+      "side": 1,
+      "message": "Thanks for checking.  I don\u0027t love that authlib is a huge new library that we\u0027re basically using to create a dictionary -- and we know how to create the dictionary, you already wrote the code.  And that code doesn\u0027t involve any cryptographic functions, just copying the right parameters.  Moreover, using our existing library, pyJWT, we can validate the output from this.  So we can get the external validation that Simon desires that way (I think we should do that regardless of how the JSON is generated).\n\nI\u0027m not ready to say this is a blocker, but I don\u0027t think that involving another library automatically makes this \"more secure\".  Other libraries come with their own potential vulnerabilities, and their dependencies do as well -- plus they introduce complexities if their dependencies change.  It\u0027s a larger attack area that we need to be aware of.\n\nI like pyJWT because it is a very simple library, and very actively used and maintained.  authlib is a much more complex library with fewer users (but it\u0027s growing).\n\nNote that the authlib maintainers appear to be splitting out the jose package: https://docs.authlib.org/en/latest/jose/index.html\n\nIf we want to use authlib, perhaps we should actually use joserfc instead?  If we use authlib now, will we need to migrate later anyway if/when they remove it?\n\nThe nice thing about authlib is that it should make it quite easy to add new key types.  But with our limited key types, we may not take advantage of that.\n\nI looked at some other options, and I don\u0027t see any that I like better than either using authlib or using nothing.\n\nIf we do switch to authlib (or joserfc), then should we drop pyJWT and use the similar methods from there instead?  It seems very strange to have both for such simple tasks.\n\nIn summary:\n\nMy preference would be to create the dictionary from scratch in the zuul/lib/encryption library, and then use pyJWT to validate that implementation in unit tests.\n\nI\u0027m not at the point of -1ing this because of that, but I\u0027d like to continue the discussion about the trade-offs of pulling in another library, and if we do, whether we should retire use of pyJWT.",
+      "parentUuid": "feb4f494_64654eb0",
       "revId": "de82e9cb2eddbd1c78f2857485866ebf36e89714",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
