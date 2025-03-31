@@ -67,6 +67,23 @@
       "message": "recheck more seemingly unrelated errors",
       "revId": "0e9457cee0b45689191159acd4e72a06ef377f3d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "809cef20_b713d449",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-03-31T20:30:54Z",
+      "side": 1,
+      "message": "recheck this failed on a test case with a race that I fixed separately",
+      "revId": "0e9457cee0b45689191159acd4e72a06ef377f3d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
