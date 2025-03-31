@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cfe1be94_918a6ca0",
+        "filename": "zuul/manager/__init__.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-03-31T13:18:02Z",
+      "side": 1,
+      "message": "nit: I think it\u0027s not necessary to re-initialize the layout cache from line 81 here as we re-create the manager after a reconfiguration.",
+      "revId": "4022a7e78d000f037de4dce6095e4fd599746cc8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
