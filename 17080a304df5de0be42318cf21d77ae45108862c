@@ -33,6 +33,80 @@
       "message": "recheck",
       "revId": "17080a304df5de0be42318cf21d77ae45108862c",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f23fe6b4_5ea7b8f9",
+        "filename": "tests/fixtures/config/secrets/git/org_project2/zuul-oidc-multi.yaml",
+        "patchSetId": 8
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-31T21:57:30Z",
+      "side": 1,
+      "message": "I think we should exercise the following:\n\n1) Renaming the secret in the job.  ie:\n\n```\n- job:\n    secrets:\n      - secret: project2-oidc-secret0\n        name: login_secret\n```  \n\nNote that I intentionally named the secret with hyphens since that\u0027s not allowed in Ansible, but when we rename it to login_secret, that will be what Ansible sees.  We should test that login_secret overrides a job variable with the same name.  This is worth exercising because we have new variable merging code for the OIDC secrets.\n\n2) Return secret vars precedence:\n\nUse zuul_return to return a secret variable with the same name as a secret (eg, \"login_secret\" in the above example), and ensure that the job sees the oidc secret, not the returned value (real secrets have precedence over returned secret data).\n\n3) Pass-to-parent:\n```\n- job:\n    name: child-job\n    parent: parent-job\n    secrets:\n      - secret: something\n        pass-to-parent: true\n```\n\nThat should make the secret available in all of the playbooks of the parent job, so we will need to validate the behavior in a playbook that runs from the parent job, not the child job.",
+      "revId": "17080a304df5de0be42318cf21d77ae45108862c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e19f4518_62f855c9",
+        "filename": "tests/unit/test_v3.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 7974,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-31T21:57:30Z",
+      "side": 1,
+      "message": "This would also be a good place to use pyJWT to validate the token.",
+      "revId": "17080a304df5de0be42318cf21d77ae45108862c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af0744e8_caf307ad",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 692,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-31T21:57:30Z",
+      "side": 1,
+      "message": "Note that this section has a significant functional conflict with the recently proposed stack to reuse configuration objects.  It will be easy to adapt one to the other, but which one we need to change depends on which we want to merge first.\n\n(The short version is that all of these checks will move to addLayoutItems.)",
+      "revId": "17080a304df5de0be42318cf21d77ae45108862c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "385cbafb_0f0b1eeb",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 2422,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-03-31T21:57:30Z",
+      "side": 1,
+      "message": "I think mergeSecretVars needs to know the OIDC secrets so that it can remove return variables with oidc secret key names.",
+      "range": {
+        "startLine": 2422,
+        "startChar": 39,
+        "endLine": 2422,
+        "endChar": 46
+      },
+      "revId": "17080a304df5de0be42318cf21d77ae45108862c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
