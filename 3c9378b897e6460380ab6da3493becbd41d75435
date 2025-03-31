@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35cbbeb2_30ca1625",
+        "filename": "zuul/ansible/base/library/win_zuul_console.ps1",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2025-03-31T13:35:30Z",
+      "side": 1,
+      "message": "I\u0027m not following this comment - do you mean somewhere else in the module directory? (I don\u0027t see an embedded python script in this file which is what my brain is wanting to read this sentence to mean)",
+      "revId": "3c9378b897e6460380ab6da3493becbd41d75435",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fdfc9b24_36eb07bc",
+        "filename": "zuul/ansible/base/library/win_zuul_console.ps1",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2025-03-31T13:35:30Z",
+      "side": 1,
+      "message": "Rabbit Hole:\n\nThere is a python package called platformdirs https://platformdirs.readthedocs.io/en/latest/api.html#windows which has variables for various types of dirs on different platforms. Their docs led me to https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid which lists a bunch of known folders on Windows. https://learn.microsoft.com/en-us/dotnet/api/system.environment.specialfolder?view\u003dnet-9.0\u0026redirectedfrom\u003dMSDN has a list of them that show up in the environment. That can be used from PowerShell like:\n\n  [Environment]::GetFolderPath(\"ApplicationData\")\n\nPerhaps ApplicationData/Zuul would be more like the global /tmp/ than All Users/Zuul? I see cache files and other program specific but ephemeral files there.",
+      "revId": "3c9378b897e6460380ab6da3493becbd41d75435",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
