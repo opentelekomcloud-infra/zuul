@@ -2,8 +2,9 @@ version: "3"
 
 services:
   mysql:
-    container_name: zuul-test-mysql
-    image: mysql:8.0
+    container_name: zuul-test-mariadb
+    # Roughly matches version in Ubuntu Noble
+    image: mariadb:10.11
     environment:
       - MYSQL_ROOT_PASSWORD=insecure_worker
     ports:
