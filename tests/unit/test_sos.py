@@ -629,7 +629,8 @@ class TestScaleOutScheduler(ZuulTestCase):
             self.assertEqual(reqs[2]['_oid'], '200-0000000003')
             self.assertEqual(reqs[2]['relative_priority'], 1)
 
-        self.fake_nodepool.unpause()
+            self.fake_nodepool.unpause()
+            self.waitUntilSettled(matcher=[app])
         self.waitUntilSettled()
 
     @simple_layout('layouts/two-projects-integrated.yaml')
@@ -679,7 +680,8 @@ class TestScaleOutScheduler(ZuulTestCase):
             self.assertEqual(reqs[2]['_oid'], '100-0000000001')
             self.assertEqual(reqs[2]['relative_priority'], 1)
 
-        self.fake_nodepool.unpause()
+            self.fake_nodepool.unpause()
+            self.waitUntilSettled(matcher=[app])
         self.waitUntilSettled()
 
     @simple_layout('layouts/timer-jitter-slow.yaml')
