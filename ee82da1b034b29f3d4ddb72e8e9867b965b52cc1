@@ -16,6 +16,24 @@
       "message": "I think this needs to be an opt-in feature, because it could break existing logs authentication in certain configuration. For example, if the logs are protected with mod_auth_openidc in Apache reverse proxy with \u0027AuthType auth-openidc\u0027, that configured to be authorized if either an oidc session exists or a valid \"Authorization: Bear\" token that can be only verified by configured `OIDCOAuthVerifySharedKeys`.\nIn this case, the added Authorization header could not be verified and would cause `Unauthorized\u0027 error.",
       "revId": "ee82da1b034b29f3d4ddb72e8e9867b965b52cc1",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3a7df3ba_fbdc0da4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 31083
+      },
+      "writtenOn": "2025-03-31T14:18:04Z",
+      "side": 1,
+      "message": "Made this optional, see PS2",
+      "parentUuid": "de51235b_2a89777a",
+      "revId": "ee82da1b034b29f3d4ddb72e8e9867b965b52cc1",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
