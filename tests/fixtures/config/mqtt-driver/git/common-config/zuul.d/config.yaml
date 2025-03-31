@@ -22,6 +22,37 @@
       mqtt:
         topic: "{tenant}/zuul_buildset/{pipeline}/{project}/{branch}"
 
+- pipeline:
+    name: gate
+    manager: dependent
+    success-message: Build succeeded (gate).
+    trigger:
+      gerrit:
+        - event: comment-added
+          approval:
+            - Approved: 1
+    start:
+      gerrit:
+        Verified: 0
+      mqtt:
+        topic: "{tenant}/zuul_start/{pipeline}/{project}/{branch}"
+        # This doesn't make sense here -- there should be no return
+        # data yet, which is why we include it in this test.
+        include-returned-data: True
+    success:
+      gerrit:
+        Verified: 2
+        submit: true
+      mqtt:
+        topic: "{tenant}/zuul_buildset/{pipeline}/{project}/{branch}"
+        include-returned-data: True
+    failure:
+      mqtt:
+        topic: "{tenant}/zuul_buildset/{pipeline}/{project}/{branch}"
+      gerrit:
+        Verified: -2
+    precedence: high
+
 - job:
     name: base
     parent: null
@@ -36,7 +67,14 @@
 
 - project:
     name: org/project
+    queue: integrated
     check:
+      jobs:
+        - test
+        - dependent-test:
+            dependencies:
+              - test
+    gate:
       jobs:
         - test
         - dependent-test:

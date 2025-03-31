@@ -58,6 +58,7 @@ class MQTTReporter(BaseReporter):
             'tenant': item.pipeline.tenant.name,
             'zuul_ref': buildset.ref,
             'pipeline': item.pipeline.name,
+            'queue': item.queue.name,
             'changes': changes,
             'project': item.changes[0].project.name,
             'branch': getattr(item.changes[0], 'branch', ''),
