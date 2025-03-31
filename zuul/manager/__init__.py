@@ -106,12 +106,6 @@ class PipelineManager(metaclass=ABCMeta):
             self.current_context = None
 
     def _postConfig(self):
-        # After a reconfiguration, we need to forget anything built
-        # from the old layout.
-        # TODO: we may be able to preserve change queues if projects
-        # haven't changed their pipeline participation.
-        self._layout_cache = {}
-
         layout = self.tenant.layout
         self.buildChangeQueues(layout)
         # Make sure we have state and change list objects.  We
