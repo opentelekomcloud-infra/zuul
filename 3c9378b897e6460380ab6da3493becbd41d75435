@@ -89,6 +89,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e641096d_2ce05697",
+        "filename": "zuul/ansible/base/library/win_zuul_console.ps1",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2025-04-01T15:03:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c4ec2534_c3c786a7",
+      "revId": "3c9378b897e6460380ab6da3493becbd41d75435",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c93f37a9_ff935800",
