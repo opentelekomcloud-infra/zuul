@@ -175,6 +175,24 @@
       "parentUuid": "feb4f494_64654eb0",
       "revId": "de82e9cb2eddbd1c78f2857485866ebf36e89714",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0b7a639b_c2ead816",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 1178,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-04-01T09:20:32Z",
+      "side": 1,
+      "message": "My main concern is mainly around validation and making sure we are messing things up in a very subtle way. I don\u0027t have a strong opinion on whether to use pyJWT or joserfc but would definitely go for the lib with the smaller footprint (joserfc over authlib).\n\nI\u0027m also fine with rolling this into a separate module in Zuul. I think one part that felt a bit wrong was casually creating a JWT right in the middle of the request handler. So having this better encapsulated and some testing/validation around it sounds good to me.",
+      "parentUuid": "3ea75c60_608c3964",
+      "revId": "de82e9cb2eddbd1c78f2857485866ebf36e89714",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
