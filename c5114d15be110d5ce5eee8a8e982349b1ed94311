@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d014ad08_e363de45",
+        "filename": "zuul/model.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 10447,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-04-01T09:46:54Z",
+      "side": 1,
+      "message": "nit: this class might be a good candidate to use `__slots__`",
+      "revId": "c5114d15be110d5ce5eee8a8e982349b1ed94311",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4966feca_a6b8d0c0",
+        "filename": "zuul/model.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 10596,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-04-01T09:46:54Z",
+      "side": 1,
+      "message": "nit: we could make this a defaultdict",
+      "revId": "c5114d15be110d5ce5eee8a8e982349b1ed94311",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7091e324_19dd5203",
+        "filename": "zuul/model.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 10665,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-04-01T09:46:54Z",
+      "side": 1,
+      "message": "nit: with a defaultdict this method could be as simple as\n\n    return branch in self.config_object_cache[canonical_project_name]",
+      "revId": "c5114d15be110d5ce5eee8a8e982349b1ed94311",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
