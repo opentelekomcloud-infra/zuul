@@ -1617,6 +1617,7 @@ class Launcher:
         self.trigger_events[tenant_name].put(event.trigger_name, event)
 
     def checkMissingImages(self):
+        self.log.debug("Checking for missing images")
         for tenant_name, providers in self.tenant_providers.items():
             images_by_project_branch = {}
             for provider in providers:
@@ -1628,11 +1629,11 @@ class Launcher:
                 images_by_project_branch.items():
                 self.addImageBuildEvent(tenant_name, project_canonical_name,
                                         branch, image_names)
+        self.log.debug("Done checking for missing images")
 
     def checkMissingImage(self, tenant_name, image, images_by_project_branch):
         # If there is already a successful build for
         # this image, skip.
-        self.log.debug("Checking for missing images")
         seen_formats = set()
         for iba in self.image_build_registry.getArtifactsForImage(
                 image.canonical_name):
@@ -1643,6 +1644,8 @@ class Launcher:
             # formats
             return
 
+        self.log.debug("Missing format %s for image %s",
+                       image.format, image.canonical_name)
         # Collect images with the same project-branch so we can build
         # them in one buildset.
         key = (image.project_canonical_name, image.branch)
