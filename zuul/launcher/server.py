@@ -34,6 +34,7 @@ import paramiko
 import requests
 
 from zuul import exceptions, model
+import zuul.lib.repl
 from zuul.lib import commandsocket, tracing
 from zuul.lib.collections import DefaultKeyDict
 from zuul.lib.config import get_default
@@ -61,6 +62,8 @@ from zuul.zk.zkobject import ZKContext
 
 COMMANDS = (
     commandsocket.StopCommand,
+    commandsocket.ReplCommand,
+    commandsocket.NoReplCommand,
 )
 
 # What gets written to disk in a single write() call; should be a
@@ -668,6 +671,7 @@ class Launcher:
         self._running = True
         self.config = config
         self.connections = connections
+        self.repl = None
         # All tenants and all providers
         self.tenant_providers = {}
         # Only endpoints corresponding to connections handled by this
@@ -709,6 +713,8 @@ class Launcher:
 
         self.command_map = {
             commandsocket.StopCommand.name: self.stop,
+            commandsocket.ReplCommand.name: self.startRepl,
+            commandsocket.NoReplCommand.name: self.stopRepl,
         }
         command_socket = get_default(
             self.config, "launcher", "command_socket",
@@ -1496,6 +1502,7 @@ class Launcher:
         self._running = False
         self.wake_event.set()
         self.component_info.state = self.component_info.STOPPED
+        self.stopRepl()
         self._command_running = False
         self.command_socket.stop()
         self.connections.stop()
@@ -1525,6 +1532,18 @@ class Launcher:
                     self.command_map[command](*args)
             except Exception:
                 self.log.exception("Exception while processing command")
+
+    def startRepl(self):
+        if self.repl:
+            return
+        self.repl = zuul.lib.repl.REPLServer(self)
+        self.repl.start()
+
+    def stopRepl(self):
+        if not self.repl:
+            return
+        self.repl.stop()
+        self.repl = None
 
     def createZKContext(self, lock, log):
         return ZKContext(self.zk_client, lock, self.stop_event, log)
