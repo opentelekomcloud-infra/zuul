@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "17d64122a6ebfad6bd3e2b151ef8d30b3cbaf0b8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d8944a37_07db6d8e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13252
+      },
+      "writtenOn": "2025-04-02T10:48:53Z",
+      "side": 1,
+      "message": "ah, sorry, should have looked into the logs first:\n\nERROR: Failed to build installable wheels for some pyproject.toml based projects (google-re2)",
+      "revId": "17d64122a6ebfad6bd3e2b151ef8d30b3cbaf0b8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
