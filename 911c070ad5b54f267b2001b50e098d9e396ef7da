@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b831a87f_d01dec8e",
+        "filename": "tests/unit/test_zk.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1729,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-02T17:17:33Z",
+      "side": 1,
+      "message": "Do we also need to delete and sync key_foo?",
+      "revId": "911c070ad5b54f267b2001b50e098d9e396ef7da",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "052d538b_3fdef991",
+        "filename": "tests/unit/test_zk.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1781,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-02T17:17:33Z",
+      "side": 1,
+      "message": "I suspect we may need to delete and sync key1 here since key 2 seems to be none? (Does prune prune key2 and not key1?).",
+      "revId": "911c070ad5b54f267b2001b50e098d9e396ef7da",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e853edbb_53be324e",
+        "filename": "tests/unit/test_zk.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1835,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-02T17:17:33Z",
+      "side": 1,
+      "message": "Do we need to delete and sync against other_cache?",
+      "revId": "911c070ad5b54f267b2001b50e098d9e396ef7da",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46fd237b_f4706564",
+        "filename": "tests/unit/test_zk.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1848,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-02T17:17:33Z",
+      "side": 1,
+      "message": "Do we need to delete and sync against other_cache?",
+      "revId": "911c070ad5b54f267b2001b50e098d9e396ef7da",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
