@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "21f1c88f_50c3e181",
+        "filename": "tests/unit/test_zk.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1729,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-02T17:25:50Z",
+      "side": 1,
+      "message": "No, we only need to consider the last thing we set in the cache since the events are guaranteed to arrive in order.",
+      "parentUuid": "b831a87f_d01dec8e",
+      "revId": "911c070ad5b54f267b2001b50e098d9e396ef7da",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "052d538b_3fdef991",
         "filename": "tests/unit/test_zk.py",
         "patchSetId": 1
@@ -31,6 +49,24 @@
       "writtenOn": "2025-04-02T17:17:33Z",
       "side": 1,
       "message": "I suspect we may need to delete and sync key1 here since key 2 seems to be none? (Does prune prune key2 and not key1?).",
+      "revId": "911c070ad5b54f267b2001b50e098d9e396ef7da",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c3be910_16bd92dc",
+        "filename": "tests/unit/test_zk.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1781,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-02T17:25:50Z",
+      "side": 1,
+      "message": "This should be fine too, because as soon as key2 is removed (even if not done by us), no more cache writes happen.",
+      "parentUuid": "052d538b_3fdef991",
       "revId": "911c070ad5b54f267b2001b50e098d9e396ef7da",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -54,6 +90,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b8922d2f_4e70e3c0",
+        "filename": "tests/unit/test_zk.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1835,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-02T17:25:50Z",
+      "side": 1,
+      "message": "No: there isn\u0027t anything left there, and the watcher won\u0027t try to fetch deleted data anyway.  By the same reasoning, the addition to this test is probably not necessary but harmless.",
+      "parentUuid": "e853edbb_53be324e",
+      "revId": "911c070ad5b54f267b2001b50e098d9e396ef7da",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "46fd237b_f4706564",
         "filename": "tests/unit/test_zk.py",
         "patchSetId": 1
@@ -65,6 +119,24 @@
       "writtenOn": "2025-04-02T17:17:33Z",
       "side": 1,
       "message": "Do we need to delete and sync against other_cache?",
+      "revId": "911c070ad5b54f267b2001b50e098d9e396ef7da",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "27eff174_86bfb074",
+        "filename": "tests/unit/test_zk.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1848,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-02T17:25:50Z",
+      "side": 1,
+      "message": "Same as above, we probably don\u0027t even need the first one.",
+      "parentUuid": "46fd237b_f4706564",
       "revId": "911c070ad5b54f267b2001b50e098d9e396ef7da",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
