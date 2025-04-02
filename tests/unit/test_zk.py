@@ -1702,6 +1702,17 @@ class TestChangeCache(ZooKeeperBaseTestCase):
         super().setUp()
         self.cache = DummyChangeCache(self.zk_client, DummyConnection())
 
+    def _deleteAndSync(self, key):
+        # Run this at the end of the tests to ensure that the cache is
+        # in sync before shutdown.
+        try:
+            self.zk_client.client.delete(self.cache._cachePath(key._hash))
+        except NoNodeError:
+            pass
+        for _ in iterate_timeout(10, "cache to sync"):
+            if key._hash not in self.cache:
+                break
+
     def test_insert(self):
         change_foo = DummyChange("project", {"foo": "bar"})
         change_bar = DummyChange("project", {"bar": "foo"})
@@ -1715,6 +1726,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
 
         compressed_size, uncompressed_size = self.cache.estimateDataSize()
         self.assertTrue(compressed_size != uncompressed_size != 0)
+        self._deleteAndSync(key_bar)
 
     def test_update(self):
         change = DummyChange("project", {"foo": "bar"})
@@ -1728,6 +1740,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
         updated_change = self.cache.get(key)
         self.assertIs(change, updated_change)
         self.assertEqual(change.number, 123)
+        self._deleteAndSync(key)
 
     def test_delete(self):
         change = DummyChange("project", {"foo": "bar"})
@@ -1739,6 +1752,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
         # Deleting an non-existent key should not raise an exception
         invalid_key = ChangeKey('conn', 'project', 'change', 'invalid', '1')
         self.cache.delete(invalid_key)
+        self._deleteAndSync(key)
 
     def test_concurrent_delete(self):
         change = DummyChange("project", {"foo": "bar"})
@@ -1752,6 +1766,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
         self.cache.delete(key, old_version)
         # The change should still be in the cache
         self.assertIsNotNone(self.cache.get(key))
+        self._deleteAndSync(key)
 
     def test_prune(self):
         change1 = DummyChange("project", {"foo": "bar"})
@@ -1763,6 +1778,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
         self.cache.prune([key1], max_age=0)
         self.assertIsNotNone(self.cache.get(key1))
         self.assertIsNone(self.cache.get(key2))
+        self._deleteAndSync(key2)
 
     def test_concurrent_update(self):
         change = DummyChange("project", {"foo": "bar"})
@@ -1772,6 +1788,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
         # Attempt to update with the old change stat
         with testtools.ExpectedException(ConcurrentUpdateError):
             self.cache.set(key, change, change.cache_version - 1)
+        self._deleteAndSync(key)
 
     def test_change_update_retry(self):
         change = DummyChange("project", {"foobar": 0})
@@ -1796,6 +1813,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
         updated_change = self.cache.updateChangeWithRetry(
             key, change, updater)
         self.assertEqual(updated_change.foobar, 2)
+        self._deleteAndSync(key)
 
     def test_cache_sync(self):
         other_cache = DummyChangeCache(self.zk_client, DummyConnection())
@@ -1814,6 +1832,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
 
         other_cache.delete(key)
         self.assertIsNone(self.cache.get(key))
+        self._deleteAndSync(key)
 
     def test_cache_sync_on_start(self):
         key = ChangeKey('conn', 'project', 'change', 'foo', '1')
@@ -1826,6 +1845,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
         other_cache.cleanup()
         other_cache.cleanup()
         self.assertIsNotNone(other_cache.get(key))
+        self._deleteAndSync(key)
 
     def test_cleanup(self):
         change = DummyChange("project", {"foo": "bar"})
@@ -1849,6 +1869,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
         self.assertEqual(len(self.cache._data_cleanup_candidates), 0)
         self.assertEqual(
             len(self.zk_client.client.get_children(self.cache.data_root)), 1)
+        self._deleteAndSync(key)
 
     def test_watch_cleanup(self):
         change = DummyChange("project", {"foo": "bar"})
@@ -1865,6 +1886,7 @@ class TestChangeCache(ZooKeeperBaseTestCase):
         for _ in iterate_timeout(10, "watch to be removed"):
             if change.cache_stat.key._hash not in self.cache._watched_keys:
                 break
+        # No need for extra waiting here
 
 
 class DummyZKObjectMixin:
