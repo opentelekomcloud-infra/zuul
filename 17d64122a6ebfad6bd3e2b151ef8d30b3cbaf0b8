@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "026ef1f9_1b5f6eaf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13252
+      },
+      "writtenOn": "2025-04-02T10:23:29Z",
+      "side": 1,
+      "message": "approved the dependency now, likely needs a recheck once it is merged",
+      "revId": "17d64122a6ebfad6bd3e2b151ef8d30b3cbaf0b8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
