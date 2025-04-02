@@ -353,21 +353,22 @@ class PipelineManager(metaclass=ABCMeta):
 
     def reportEnqueue(self, item):
         if not self.pipeline.state.disabled:
-            self.log.info("Reporting enqueue, action %s item %s" %
-                          (self.pipeline.enqueue_actions, item))
+            log = get_annotated_logger(self.log, item.event)
+            log.info("Reporting enqueue, action %s item %s" %
+                     (self.pipeline.enqueue_actions, item))
             ret = self.sendReport(self.pipeline.enqueue_actions, item)
             if ret:
-                self.log.error("Reporting item enqueued %s received: %s" %
-                               (item, ret))
+                log.error("Reporting item enqueued %s received: %s" %
+                          (item, ret))
 
     def reportStart(self, item):
         if not self.pipeline.state.disabled:
-            self.log.info("Reporting start, action %s item %s" %
-                          (self.pipeline.start_actions, item))
+            log = get_annotated_logger(self.log, item.event)
+            log.info("Reporting start, action %s item %s" %
+                     (self.pipeline.start_actions, item))
             ret = self.sendReport(self.pipeline.start_actions, item)
             if ret:
-                self.log.error("Reporting item start %s received: %s" %
-                               (item, ret))
+                log.error("Reporting item start %s received: %s" % (item, ret))
 
     def reportNormalBuildsetEnd(self, build_set, action, final, result=None):
         # Report a buildset end if there are jobs or errors
@@ -379,14 +380,15 @@ class PipelineManager(metaclass=ABCMeta):
 
     def reportDequeue(self, item, quiet=False):
         if not (self.pipeline.state.disabled or quiet):
-            self.log.info(
+            log = get_annotated_logger(self.log, item.event)
+            log.info(
                 "Reporting dequeue, action %s item%s",
                 self.pipeline.dequeue_actions,
                 item,
             )
             ret = self.sendReport(self.pipeline.dequeue_actions, item)
             if ret:
-                self.log.error(
+                log.error(
                     "Reporting item dequeue %s received: %s", item, ret
                 )
         # This might be called after canceljobs, which also sets a
