@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2169620_b600ad36",
+        "filename": "zuul/connection/__init__.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 642,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-03T15:12:43Z",
+      "side": 1,
+      "message": "This change means we will always dispatch events even if the wake event was not set. That may result in running the dispatch method far more often than we did previously. This probably matters most for the gerrit peekqueue implementation as it will do extra work that doesn\u0027t produce actionable events in some cases.\n\nAn alternative approach that might work with less cpu spinning would be to always clear the event but only call dispatch events if it was previously set. Something like:\n\n```\nif self._dispatcher_wake_event.is_set() and not self._stopped:\n    delay \u003d self._dispatchEvents()\nself._dispatcher_wake_event.clear()\n```\n\nIf _dispatchEvents shouldn\u0027t set wake event itself or this option might be safer/more defenseive to future changes:\n\n```\nevent_set \u003d self._dispatcher_wake_event.is_set()\nself._dispatcher_wake_event.clear()\nif event_set and not self._stopped:\n    delay \u003d self._dispatchEvents()\n```\n\nThis way dispatchEvents can side effect the event if we need it to but we\u0027ll always clear it otherwise and avoid running dispatch events unnecessarily.",
+      "revId": "c540ccbaab48eaa2d209443dd91495007f80ee1d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
