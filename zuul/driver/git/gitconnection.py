@@ -178,6 +178,8 @@ class GitConnection(ZKChangeCacheMixin, BaseConnection):
     def onStop(self):
         self.log.debug("Stopping Git Watcher")
         self._stop_watcher_thread()
+        if self._change_cache:
+            self._change_cache.stop()
 
     def _stop_watcher_thread(self):
         if self.watcher_thread:

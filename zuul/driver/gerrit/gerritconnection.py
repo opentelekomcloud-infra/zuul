@@ -1995,6 +1995,8 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         self.stopPollerThread()
         self.stopRefWatcherThread()
         self.stopEventConnector()
+        if self._change_cache:
+            self._change_cache.stop()
 
     def getEventQueue(self):
         return getattr(self, "event_queue", None)

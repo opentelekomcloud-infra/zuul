@@ -585,6 +585,8 @@ class GitlabConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
     def onStop(self):
         if hasattr(self, 'gitlab_event_connector'):
             self._stop_event_connector()
+        if self._change_cache:
+            self._change_cache.stop()
 
     def getWebController(self, zuul_web):
         return GitlabWebController(zuul_web, self)
