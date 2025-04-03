@@ -26,12 +26,14 @@ from tests.base import (
     BaseTestCase,
     simple_layout,
     gerrit_config,
+    iterate_timeout,
     skipIfMultiScheduler,
     ZuulTestCase,
 )
 from zuul.lib import strings
 from zuul.driver.gerrit import GerritDriver
 from zuul.driver.gerrit.gerritconnection import (
+    ChangeNetworkConflict,
     GerritConnection,
     GerritEventProcessor,
     PeekQueue,
@@ -1021,30 +1023,76 @@ class TestGerritConnection(ZuulTestCase):
     tenant_config_file = 'config/single-tenant/main.yaml'
 
     def test_zuul_query_ltime(self):
-        # Add a lock around the event queue iterator so that we can
-        # ensure that multiple events arrive before the first is
-        # processed.
-        lock = threading.Lock()
-
-        orig_iterEvents = self.fake_gerrit.gerrit_event_connector.\
-            event_queue._iterEvents
-
-        def _iterEvents(*args, **kw):
-            with lock:
-                return orig_iterEvents(*args, **kw)
-
-        self.patch(self.fake_gerrit.gerrit_event_connector.event_queue,
-                   '_iterEvents', _iterEvents)
-
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
         B.setDependsOn(A, 1)
-        # Hold the connection queue processing so these events get
-        # processed together
-        with lock:
-            self.fake_gerrit.addEvent(A.addApproval('Code-Review', 2))
-            self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
-            self.fake_gerrit.addEvent(B.addApproval('Code-Review', 2))
+
+        # We want the three events below to proceed so that all three
+        # events are processed simultaneously by three threads.  We
+        # will allow the first event we submit to complete its change
+        # network and therefore perform all the queries.  The other
+        # two events should receive ChangeNetworkConflict errors and
+        # eventually use the results of the first network.  To
+        # accomplish that, we: Allow the network to proceed if it
+        # includes change A (this will be our first network) * Wait
+        # for two ChangeNetworkConflict errors to occur
+        permission_barrier = threading.Barrier(2)
+        permission_event = threading.Event()
+        cn_manager = self.fake_gerrit.change_network_manager
+        orig_permission = cn_manager.permissionToProceed
+
+        def permissionToProceed(future):
+            if permission_event.is_set():
+                # We're past the critical section, revert to normal
+                # behavior.
+                return orig_permission(future)
+            try:
+                changes = [int(c.stable_id) for c in future.changes]
+                if 1 in changes:
+                    # This change network includes change A; this is a
+                    # characteristic of the first event, so we let it
+                    # through.
+                    return orig_permission(future)
+                for _ in iterate_timeout(30, "queries to occur"):
+                    # Wait until the first change network has expanded
+                    # to include both changes so that it will
+                    # conflict.
+                    for f in cn_manager.futures:
+                        if len(f.changes) > 1:
+                            return orig_permission(future)
+            except ChangeNetworkConflict:
+                # The second and third events will conflict; once the
+                # barrier tells us that they have both gotten to this
+                # point, we can allow the first network to finish and
+                # these two threads to resume normal operation (they
+                # will use the results of their failed networks to try
+                # again.
+                permission_barrier.wait()
+                permission_event.set()
+                raise
+
+        self.patch(self.fake_gerrit.change_network_manager,
+                   'permissionToProceed', permissionToProceed)
+
+        orig_complete = cn_manager.setComplete
+
+        def setComplete(future):
+            # The first change network must wait here until the second
+            # and third have seen conflict errors from it, so that it
+            # is not removed from the manager before they see the
+            # conflict.
+            permission_event.wait()
+            return orig_complete(future)
+
+        self.patch(self.fake_gerrit.change_network_manager,
+                   'setComplete', setComplete)
+
+        # These are the three events with critical ordering described
+        # above.
+        self.fake_gerrit.addEvent(A.addApproval('Code-Review', 2))
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(B.addApproval('Code-Review', 2))
+
         self.waitUntilSettled()
         self.assertHistory([])
         # One query for each change in the above cluster of events.
