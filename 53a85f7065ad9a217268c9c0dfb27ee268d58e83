@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2b5c7d85_106aeeaf",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1311,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-03T02:23:55Z",
+      "side": 1,
+      "message": "I did try this but waitUntilSettled looks at zookeeper queues and those don\u0027t seem to ever clear out if we don\u0027t process things? I\u0027ll have to investigate this approach further to see if I can make it work.",
+      "parentUuid": "452d2975_e3beed1a",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0d09af50_f7096335",
         "filename": "zuul/driver/gerrit/gerritconnection.py",
         "patchSetId": 1
@@ -49,6 +67,24 @@
       "writtenOn": "2025-04-01T21:59:39Z",
       "side": 1,
       "message": "typo: considered",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c23db66_7f9b873f",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-03T02:23:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0d09af50_f7096335",
       "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -70,6 +106,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "df777d36_c74bdd80",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-03T02:23:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "339eaf4a_ff98c710",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "26531418_bdae39cd",
@@ -87,6 +141,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "61a97426_bb4e0685",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-03T02:23:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "26531418_bdae39cd",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7af227b5_d28fae11",
@@ -100,6 +172,24 @@
       "writtenOn": "2025-03-30T00:02:17Z",
       "side": 1,
       "message": "We should clear out `ref_replication[(project,ref)]` here so that we don\u0027t become unbalanced by timing out.",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d441ffb3_db17687e",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-03T02:23:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7af227b5_d28fae11",
       "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -127,6 +217,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3fd128d7_557f92d1",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 543,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-03T02:23:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a39448bd_b0980275",
+      "range": {
+        "startLine": 541,
+        "startChar": 12,
+        "endLine": 543,
+        "endChar": 28
+      },
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1fc9997b_2ae40824",
@@ -144,6 +258,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6cc71d4f_2d5a6d46",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 600,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-03T02:23:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1fc9997b_2ae40824",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "92d7856a_1131f53c",
@@ -157,6 +289,24 @@
       "writtenOn": "2025-04-01T21:59:39Z",
       "side": 1,
       "message": "This value is: the amount of time we will wait for a git commit to actually show up in the repo after the change is merged.  It\u0027s only used in the isMerged check.\n\nI want to do something different here, but I actually do think the best thing to do would be to use a different variable.  I think these two things (replication for triggering, and replication for isMerged) are different enough that they don\u0027t need to interact.\n\nSo let\u0027s avoid scope creep and just focus on triggering for now, and use two different variables/values.  It might be clearest to use replication_timeout to be the triggering timeout (what you\u0027re working on), and then make a new variable, like ismerged_replication_timeout\u003d300 or something for the ismerged check.",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "efe3a89c_28691a78",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 685,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-03T02:23:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "92d7856a_1131f53c",
       "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
