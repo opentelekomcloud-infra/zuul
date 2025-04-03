@@ -41,6 +41,7 @@ from zuul.exceptions import (
     SEVERITY_ERROR,
     SEVERITY_WARNING,
     LabelForbiddenError,
+    MaxTimeoutError,
     NodesetNotFoundError,
     ProjectNotPermittedError,
 )
@@ -9280,9 +9281,22 @@ class Layout(object):
     def getJobs(self, name):
         return self.jobs.get(name, [])
 
-    def addJob(self, job):
+    def _checkAddJob(self, job):
         if isinstance(job.nodeset, NodeSet):
             self._checkAddNodeset(job.nodeset)
+
+        if (job.timeout and
+            self.tenant.max_job_timeout != -1 and
+            job.timeout > self.tenant.max_job_timeout):
+            raise MaxTimeoutError(job, self.tenant)
+
+        if (job.post_timeout and
+            self.tenant.max_job_timeout != -1 and
+            job.post_timeout > self.tenant.max_job_timeout):
+            raise MaxTimeoutError(job, self.tenant)
+
+    def addJob(self, job):
+        self._checkAddJob(job)
         # We can have multiple variants of a job all with the same
         # name, but these variants must all be defined in the same repo.
         # Unless the repo is permitted to shadow another.  If so, and
@@ -9430,8 +9444,7 @@ class Layout(object):
 
     def addProjectTemplate(self, project_template):
         for job in project_template.embeddedJobs():
-            if isinstance(job.nodeset, NodeSet):
-                self._checkAddNodeset(job.nodeset)
+            self._checkAddJob(job)
 
         template_list = self.project_templates.get(project_template.name)
         if template_list is not None:
@@ -9453,8 +9466,7 @@ class Layout(object):
 
     def addProjectConfig(self, project_canonical_name, project_config):
         for job in project_config.embeddedJobs():
-            if isinstance(job.nodeset, NodeSet):
-                self._checkAddNodeset(job.nodeset)
+            self._checkAddJob(job)
 
         source_tpc = self.tenant.getTPC(
             project_config.source_context.project_canonical_name)
