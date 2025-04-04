@@ -841,13 +841,11 @@ class Scheduler(threading.Thread):
             start_ltime = self.zk_client.getCurrentLtime()
             # lock and refresh the pipeline
             for tenant in self.abide.tenants.values():
-                for pipeline in tenant.layout.pipelines.values():
+                for manager in tenant.layout.pipeline_managers.values():
                     with (pipeline_lock(
                             self.zk_client, tenant.name,
-                            pipeline.name) as lock,
+                            manager.pipeline.name) as lock,
                           self.createZKContext(lock, self.log) as ctx):
-                        manager = tenant.layout.pipeline_managers.get(
-                            pipeline.name)
                         manager.state.refresh(ctx, read_only=True)
                         # add any blobstore references
                         for item in manager.state.getAllItems(
@@ -906,8 +904,8 @@ class Scheduler(threading.Thread):
         tenant = self.abide.tenants.get(tenant_name)
         if tenant is None:
             raise ValueError(f'Unknown tenant {event.tenant_name}')
-        pipeline = tenant.layout.pipelines.get(pipeline_name)
-        if pipeline is None:
+        manager = tenant.layout.pipeline_managers.get(pipeline_name)
+        if manager is None:
             raise ValueError(f'Unknown pipeline {event.pipeline_name}')
 
         self.pipeline_management_events[tenant_name][pipeline_name].put(
@@ -1017,11 +1015,11 @@ class Scheduler(threading.Thread):
         if not self.statsd:
             return
         try:
-            for pipeline in tenant.layout.pipelines.values():
+            for manager in tenant.layout.pipeline_managers.values():
                 # stats.gauges.zuul.tenant.<tenant>.pipeline.
                 #    <pipeline>.current_changes
                 key = 'zuul.tenant.%s.pipeline.%s' % (
-                    tenant.name, pipeline.name)
+                    tenant.name, manager.pipeline.name)
                 self.statsd.gauge(key + '.current_changes', 0)
         except Exception:
             self.log.exception("Exception reporting initial "
@@ -1766,9 +1764,9 @@ class Scheduler(threading.Thread):
         # This is called from _doReconfigureEvent while holding the
         # layout lock
         if old_tenant:
-            for name, old_pipeline in old_tenant.layout.pipelines.items():
+            for name, old_manager in \
+                    old_tenant.layout.pipeline_managers.items():
                 new_manager = tenant.layout.pipeline_managers.get(name)
-                old_manager = old_tenant.layout.pipeline_managers.get(name)
                 if not new_manager:
                     with old_manager.currentContext(context):
                         try:
@@ -1776,14 +1774,15 @@ class Scheduler(threading.Thread):
                         except Exception:
                             self.log.exception(
                                 "Failed to cleanup deleted pipeline %s:",
-                                old_pipeline)
+                                old_manager.pipeline)
 
         self.management_events[tenant.name].initialize()
         self.trigger_events[tenant.name].initialize()
         self.connections.reconfigureDrivers(tenant)
 
         # TODOv3(jeblair): remove postconfig calls?
-        for pipeline in tenant.layout.pipelines.values():
+        for manager in tenant.layout.pipeline_managers.values():
+            pipeline = manager.pipeline
             self.pipeline_management_events[tenant.name][
                 pipeline.name].initialize()
             self.pipeline_trigger_events[tenant.name][
@@ -1848,14 +1847,14 @@ class Scheduler(threading.Thread):
         # Called when a tenant is deleted during reconfiguration
         self.log.info("Removing tenant %s during reconfiguration" %
                       (tenant,))
-        for pipeline in tenant.layout.pipelines.values():
-            manager = tenant.layout.pipeline_managers.get(pipeline.name)
+        for manager in tenant.layout.pipeline_managers.values():
             with manager.currentContext(context):
                 try:
                     self._reconfigureDeletePipeline(manager)
                 except Exception:
                     self.log.exception(
-                        "Failed to cleanup deleted pipeline %s:", pipeline)
+                        "Failed to cleanup deleted pipeline %s:",
+                        manager.pipeline)
 
         # Delete the tenant root path for this tenant in ZooKeeper to remove
         # all tenant specific event queues
@@ -2019,8 +2018,8 @@ class Scheduler(threading.Thread):
         tenant = self.abide.tenants.get(event.tenant_name)
         if tenant is None:
             raise ValueError('Unknown tenant %s' % event.tenant_name)
-        pipeline = tenant.layout.pipelines.get(event.pipeline_name)
-        if pipeline is None:
+        manager = tenant.layout.pipeline_managers.get(event.pipeline_name)
+        if manager is None:
             raise ValueError('Unknown pipeline %s' % event.pipeline_name)
         manager = tenant.layout.pipeline_managers.get(event.pipeline_name)
         canonical_name = event.project_hostname + '/' + event.project_name
@@ -2057,10 +2056,9 @@ class Scheduler(threading.Thread):
         tenant = self.abide.tenants.get(event.tenant_name)
         if tenant is None:
             raise ValueError(f'Unknown tenant {event.tenant_name}')
-        pipeline = tenant.layout.pipelines.get(event.pipeline_name)
-        if pipeline is None:
-            raise ValueError(f'Unknown pipeline {event.pipeline_name}')
         manager = tenant.layout.pipeline_managers.get(event.pipeline_name)
+        if manager is None:
+            raise ValueError(f'Unknown pipeline {event.pipeline_name}')
         canonical_name = event.project_hostname + '/' + event.project_name
         (trusted, project) = tenant.getProject(canonical_name)
         if project is None:
@@ -2115,7 +2113,7 @@ class Scheduler(threading.Thread):
         for tenant in tenants:
             if tenant.name in notified:
                 continue
-            for pipeline_name in tenant.layout.pipelines.keys():
+            for pipeline_name in tenant.layout.pipeline_managers.keys():
                 event = PipelineSemaphoreReleaseEvent()
                 self.pipeline_management_events[
                     tenant.name][pipeline_name].put(
@@ -2126,13 +2124,12 @@ class Scheduler(threading.Thread):
         self.log.debug("Checking if all builds are complete")
         waiting = False
         for tenant in self.abide.tenants.values():
-            for pipeline in tenant.layout.pipelines.values():
-                manager = tenant.layout.pipeline_managers[pipeline.name]
+            for manager in tenant.layout.pipeline_managers.values():
                 for item in manager.state.getAllItems():
                     for build in item.current_build_set.getBuilds():
                         if build.result is None:
                             self.log.debug("%s waiting on %s" %
-                                           (pipeline.manager, build))
+                                           (manager, build))
                             waiting = True
         if not waiting:
             self.log.debug("All builds are complete")
@@ -2719,11 +2716,11 @@ class Scheduler(threading.Thread):
             tenant = self.abide.tenants.get(event.tenant_name)
             if tenant is None:
                 raise ValueError(f'Unknown tenant {event.tenant_name}')
-            pipeline = tenant.layout.pipelines.get(event.pipeline_name)
-            if pipeline is None:
+            manager = tenant.layout.pipeline_managers.get(event.pipeline_name)
+            if manager is None:
                 raise ValueError(f'Unknown pipeline {event.pipeline_name}')
             self.pipeline_management_events[tenant.name][
-                pipeline.name
+                manager.pipeline.name
             ].put(event)
             event_forwarded = True
         except Exception:
