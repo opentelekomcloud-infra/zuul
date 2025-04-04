@@ -4145,6 +4145,29 @@ class Job(ConfigObject):
             raise ProjectNotFoundError(unknown_projects)
         return new_projects
 
+    def _resolveAllowedProjects(self, layout):
+        # This method does the inverse of other resolve methods: it
+        # returns the unqualified project name even if the input is
+        # the canonical name.  That's because when we're performing
+        # that check, we always use the unqualified name (ie, tempest
+        # might be allowed to run a nova job regardless of whether
+        # it's from the same connection.
+        if self.allowed_projects is None:
+            return None
+        allowed = set()
+        for project_name in self.allowed_projects:
+            # Don't try to resolve the source context project
+            # name; it's definitely in the tenant, and if it's
+            # ambiguous, that doesn't matter.  It may have been
+            # set automatically because of a secret.
+            if project_name != self.source_context.project_name:
+                (trusted, project) = layout.tenant.getProject(project_name)
+                if project is None:
+                    raise ProjectNotFoundError(project_name)
+                project_name = project.name
+            allowed.add(project_name)
+        return allowed
+
     def _resolveIncludeVars(self, layout):
         new_include_vars = []
         for iv in self.include_vars:
@@ -4371,6 +4394,14 @@ class Job(ConfigObject):
         required_projects.update(other._resolveRequiredProjects(layout))
         self.required_projects = required_projects
 
+    def updateAllowedProjects(self, other, layout):
+        other_allowed_projects = other._resolveAllowedProjects(layout)
+        if self._get('allowed_projects') is not None:
+            self.allowed_projects = self.allowed_projects.intersection(
+                other_allowed_projects)
+        else:
+            self.allowed_projects = other_allowed_projects
+
     @staticmethod
     def _deepUpdate(a, b):
         # Merge nested dictionaries if possible, otherwise, overwrite
@@ -4548,13 +4579,8 @@ class Job(ConfigObject):
             self.updateIncludeVars(other, layout)
         if other._get('required_projects') is not None:
             self.updateRequiredProjects(other, layout)
-        if (other._get('allowed_projects') is not None and
-            self._get('allowed_projects') is not None):
-            self.allowed_projects = frozenset(
-                self.allowed_projects.intersection(
-                    other.allowed_projects))
-        elif other._get('allowed_projects') is not None:
-            self.allowed_projects = other.allowed_projects
+        if other._get('allowed_projects') is not None:
+            self.updateAllowedProjects(other, layout)
         if other._get('semaphores') is not None:
             # Sort the list of semaphores to avoid issues with
             # contention (where two jobs try to start at the same time
@@ -9331,6 +9357,9 @@ class Layout(object):
 
         if job.include_vars:
             job._resolveIncludeVars(self)
+
+        if job.allowed_projects:
+            job._resolveAllowedProjects(self)
 
         if (job.timeout and
             self.tenant.max_job_timeout != -1 and
