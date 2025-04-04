@@ -52,6 +52,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ebc84c9_b54210d6",
+        "filename": "tests/fixtures/config/secrets/git/org_project2/zuul-oidc-multi.yaml",
+        "patchSetId": 8
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-04T06:56:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f23fe6b4_5ea7b8f9",
+      "revId": "17080a304df5de0be42318cf21d77ae45108862c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e19f4518_62f855c9",
@@ -65,6 +83,24 @@
       "writtenOn": "2025-03-31T21:57:30Z",
       "side": 1,
       "message": "This would also be a good place to use pyJWT to validate the token.",
+      "revId": "17080a304df5de0be42318cf21d77ae45108862c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5b0b51a0_0e787205",
+        "filename": "tests/unit/test_v3.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 7974,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-04T06:56:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e19f4518_62f855c9",
       "revId": "17080a304df5de0be42318cf21d77ae45108862c",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -86,6 +122,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "57a96950_8b2e606c",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 692,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-04T06:56:21Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "af0744e8_caf307ad",
+      "revId": "17080a304df5de0be42318cf21d77ae45108862c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "385cbafb_0f0b1eeb",
@@ -99,6 +153,30 @@
       "writtenOn": "2025-03-31T21:57:30Z",
       "side": 1,
       "message": "I think mergeSecretVars needs to know the OIDC secrets so that it can remove return variables with oidc secret key names.",
+      "range": {
+        "startLine": 2422,
+        "startChar": 39,
+        "endLine": 2422,
+        "endChar": 46
+      },
+      "revId": "17080a304df5de0be42318cf21d77ae45108862c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6413ad8f_d4e37ef6",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 2422,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-04T06:56:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "385cbafb_0f0b1eeb",
       "range": {
         "startLine": 2422,
         "startChar": 39,
