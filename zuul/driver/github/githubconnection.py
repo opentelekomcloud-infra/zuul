@@ -1325,6 +1325,8 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         # connection.
         if hasattr(self, 'github_event_connector'):
             self._stop_event_connector()
+        if self._change_cache:
+            self._change_cache.stop()
 
     def _start_event_connector(self):
         self.github_event_connector = self._event_connector_class(self)

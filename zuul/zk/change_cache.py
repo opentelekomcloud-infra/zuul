@@ -172,6 +172,7 @@ class AbstractChangeCache(ZooKeeperSimpleBase, Iterable, abc.ABC):
             f"zuul.ChangeCache.{connection.connection_name}")
 
         super().__init__(client)
+        self._stopped = False
         self.connection = connection
         self.root_path = f"{CHANGE_CACHE_ROOT}/{connection.connection_name}"
         self.cache_root = f"{self.root_path}/cache"
@@ -187,6 +188,9 @@ class AbstractChangeCache(ZooKeeperSimpleBase, Iterable, abc.ABC):
         # cleanup iteration.
         self._data_cleanup_candidates = set()
         self.kazoo_client.ChildrenWatch(self.cache_root, self._cacheWatcher)
+
+    def stop(self):
+        self._stopped = True
 
     def _dataPath(self, data_uuid):
         return f"{self.data_root}/{data_uuid}"
@@ -209,6 +213,8 @@ class AbstractChangeCache(ZooKeeperSimpleBase, Iterable, abc.ABC):
 
         new_keys = cache_keys - self._watched_keys
         for key in new_keys:
+            if self._stopped:
+                return
             ExistingDataWatch(self.kazoo_client,
                               f"{self.cache_root}/{key}",
                               self._cacheItemWatcher)
@@ -221,6 +227,8 @@ class AbstractChangeCache(ZooKeeperSimpleBase, Iterable, abc.ABC):
         key, data_uuid = self._loadKey(data)
         self.log.debug("Noticed update to key %s data uuid %s",
                        key, data_uuid)
+        if self._stopped:
+            return
         self._get(key, data_uuid, zstat)
 
     def _loadKey(self, data):
