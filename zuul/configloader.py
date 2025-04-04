@@ -1975,10 +1975,9 @@ class TenantParser(object):
 
         for branch_future in as_completed(branch_futures.keys()):
             tpc = branch_futures[branch_future]
-            trusted, _ = tenant.getProject(tpc.project.canonical_name)
             source_context = model.SourceContext(
                 tpc.project.canonical_name, tpc.project.name,
-                tpc.project.connection_name, None, None, trusted)
+                tpc.project.connection_name, None, None)
             with pcontext.errorContext(source_context=source_context):
                 with pcontext.accumulator.catchErrors():
                     self._getProjectBranches(tenant, tpc,
@@ -2387,8 +2386,7 @@ class TenantParser(object):
         # accumulates a list of all merger jobs submitted.
         source_context = model.SourceContext(
             project.canonical_name, project.name,
-            project.connection_name, branch, '', False,
-            tpc.implied_branch_matchers)
+            project.connection_name, branch, '')
         # We keep a local accumulator here because we're in a
         # threadpool so we can't use the parse context stack.
         error_accumulator = error_accumulator.extend(source_context)
@@ -2581,14 +2579,14 @@ class TenantParser(object):
 
     def filterConfigProjectYAML(self, data):
         # Any config object may appear in a config project.
-        return data.copy(trusted=True)
+        return data
 
     def filterUntrustedProjectYAML(self, data, parse_context):
         if data and data.pipelines:
             with parse_context.errorContext(stanza='pipeline',
                                             conf=data.pipelines[0]):
                 parse_context.accumulator.addError(PipelineNotPermittedError())
-        return data.copy(trusted=False)
+        return data
 
     def _getLoadClasses(self, tenant, conf_object):
         project = conf_object.get('_source_context').project_canonical_name
@@ -2987,7 +2985,7 @@ class TenantParser(object):
             # Set a merge mode if we don't have one for this project.
             # This can happen if there are only regex project stanzas
             # but no specific project stanzas.
-            (trusted, project) = tenant.getProject(project_name)
+            _, project = tenant.getProject(project_name)
             project_metadata = layout.getProjectMetadata(project_name)
             tpc = tenant.project_configs[project.canonical_name]
             if project_metadata.merge_mode is None:
@@ -3001,7 +2999,7 @@ class TenantParser(object):
             if tpc.merge_modes is not None:
                 source_context = model.SourceContext(
                     project.canonical_name, project.name,
-                    project.connection_name, None, None, trusted)
+                    project.connection_name, None, None)
                 with parse_context.errorContext(
                         source_context=source_context):
                     if project_metadata.merge_mode not in tpc.merge_modes:
@@ -3296,8 +3294,7 @@ class ConfigLoader(object):
                 if data:
                     source_context = model.SourceContext(
                         project.canonical_name, project.name,
-                        project.connection_name, branch, fn, trusted,
-                        tpc.implied_branch_matchers)
+                        project.connection_name, branch, fn)
                     with pcontext.errorContext(source_context=source_context):
                         # Prevent mixing configuration source
                         conf_root = fn.split('/')[0]
