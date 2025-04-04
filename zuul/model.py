@@ -3718,7 +3718,7 @@ class Job(ConfigObject):
         '''
         d = {}
         d['name'] = self.name
-        d['branches'] = self._branches
+        d['branches'] = self.getBranches(tenant)
         d['override_checkout'] = self.override_checkout
         d['files'] = self._files
         d['irrelevant_files'] = self._irrelevant_files
@@ -3790,8 +3790,8 @@ class Job(ConfigObject):
             hold_following_changes=False,
             failure_message=None,
             success_message=None,
-            branch_matcher=None,
-            _branches=(),
+            explicit_branch_matcher=None,
+            implied_branch_matcher=None,
             file_matcher=None,
             _files=(),
             irrelevant_file_matcher=None,  # skip-if
@@ -3882,6 +3882,7 @@ class Job(ConfigObject):
             override_control=override_control,
             # Finalize individual attributes (context or execution):
             final_control=final_control,
+            project_pipeline=False,
         )
 
         self.attributes = {}
@@ -4118,11 +4119,13 @@ class Job(ConfigObject):
         ln = 0
         if self.start_mark:
             ln = self.start_mark.line + 1
-        return '<Job %s branches: %s source: %s#%s>' % (
-            self.name,
-            self.branch_matcher,
-            self.source_context,
-            ln)
+        return ('<Job %s explicit branches: %s implied branches: %s '
+                'source: %s#%s>' % (
+                    self.name,
+                    self.explicit_branch_matcher,
+                    self.implied_branch_matcher,
+                    self.source_context,
+                    ln))
 
     def __getattr__(self, name):
         v = self.__dict__.get(name)
@@ -4361,14 +4364,58 @@ class Job(ConfigObject):
         if changed:
             self.roles = tuple(newroles)
 
-    def getBranches(self):
+    def getBranches(self, tenant):
         # Return the raw branch list that match this job
-        return self._branches
+        bm = self.getBranchMatcher(tenant)
+        if bm:
+            # bm is a ManchAny
+            return [x._regex for x in bm.matchers]
+        return None
 
-    def setBranchMatcher(self, matchers):
-        # Set the branch matcher to match any of the supplied branches
-        self._branches = [x._regex for x in matchers]
-        self.branch_matcher = change_matcher.MatchAny(matchers)
+    def setExplicitBranchMatchers(self, matchers):
+        self.explicit_branch_matcher = change_matcher.MatchAny(matchers)
+
+    def setImpliedBranchMatchers(self, matchers):
+        self.implied_branch_matcher = change_matcher.MatchAny(matchers)
+
+    def getBranchMatcher(self, tenant):
+        # Explicit branch matchers always win
+        if self.explicit_branch_matcher is not None:
+            return self.explicit_branch_matcher
+
+        # Project pipeline jobs never use implicit branch matchers
+        if self.project_pipeline:
+            return None
+
+        # noop job has no source context:
+        if self.source_context:
+            source_tpc = tenant.getTPC(
+                self.source_context.project_canonical_name)
+            if self.source_context.implied_branch_matchers is not None:
+                use_ibm = self.source_context.implied_branch_matchers
+            else:
+                use_ibm = source_tpc.implied_branch_matchers
+            # If there was an explicit pragma to use implied branch
+            # matchers or not, honor it
+            if use_ibm is True:
+                ibm = (self.source_context.implied_branch_matcher or
+                       self.implied_branch_matcher)
+                return ibm
+            if use_ibm is False:
+                return None
+            # If we were defined in a trusted context in this tenant (and
+            # there's no pragma), then we do not use implied branch
+            # matchers.
+            if source_tpc.trusted:
+                return None
+
+            # If this project only has one branch, don't use implied
+            # branch matchers.  This way central job repos can work.
+            branches = tenant.getProjectBranches(
+                self.source_context.project_canonical_name)
+            if len(branches) == 1:
+                return None
+        return self.implied_branch_matcher
 
     def setFileMatcher(self, files):
         # Set the file matcher to match any of the change files
@@ -4702,7 +4749,7 @@ class Job(ConfigObject):
 
         self.inheritance_path = self.inheritance_path + (repr(other),)
 
-    def changeMatchesBranch(self, change, override_branch=None):
+    def changeMatchesBranch(self, tenant, change, override_branch=None):
         if override_branch is None:
             branch_change = change
         else:
@@ -4711,8 +4758,8 @@ class Job(ConfigObject):
             branch_change = Branch(change.project)
             branch_change.branch = override_branch
 
-        if self.branch_matcher and not self.branch_matcher.matches(
-                branch_change):
+        branch_matcher = self.getBranchMatcher(tenant)
+        if branch_matcher and not branch_matcher.matches(branch_change):
             return False
 
         return True
@@ -9750,6 +9797,7 @@ class Layout(object):
                 if override_branch not in branches:
                     override_branch = None
             if not variant.changeMatchesBranch(
+                    self.tenant,
                     change,
                     override_branch=override_branch):
                 log.debug("Variant %s did not match %s", repr(variant), change)
@@ -9843,7 +9891,7 @@ class Layout(object):
             # jobs which match.
             override_checkouts = {}
             for variant in job_list.jobs[jobname]:
-                if variant.changeMatchesBranch(change):
+                if variant.changeMatchesBranch(self.tenant, change):
                     self._updateOverrideCheckouts(override_checkouts, variant)
             try:
                 variants = self.collectJobs(
@@ -9885,7 +9933,7 @@ class Layout(object):
             # variants
             matched = False
             for variant in job_list.jobs[jobname]:
-                if variant.changeMatchesBranch(change):
+                if variant.changeMatchesBranch(self.tenant, change):
                     final_job.applyVariant(variant, self, semaphore_handler)
                     if self.tenant.isTrusted(
                             variant.source_context.project_canonical_name):
