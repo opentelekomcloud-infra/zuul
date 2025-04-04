@@ -199,8 +199,7 @@ class TestGithubCrossRepoDeps(ZuulTestCase):
         self.waitUntilSettled()
 
         self.assertEqual(len(self.builds), 1)
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['check'].getAllItems()
+        items = self.getAllItems('tenant-one', 'check')
         self.assertEqual(len(items), 3)
 
         # Update B to point at A1 instead of A

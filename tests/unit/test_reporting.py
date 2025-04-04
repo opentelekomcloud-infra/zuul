@@ -40,16 +40,13 @@ class TestReporting(ZuulTestCase):
             'check'].put(event)
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
-
         # A should have been reported two times: start, cancel
         self.assertEqual(2, A.reported)
         self.assertEqual(2, len(A.messages))
         self.assertIn("Build started (check)", A.messages[0])
         self.assertIn("Build canceled (check)", A.messages[1])
         # There shouldn't be any successful items
-        self.assertEqual(len(check_pipeline.getAllItems()), 0)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 0)
         # But one canceled
         self.assertEqual(self.countJobResults(self.history, "ABORTED"), 1)
 

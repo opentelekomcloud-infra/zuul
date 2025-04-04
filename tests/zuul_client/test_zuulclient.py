@@ -352,8 +352,7 @@ class TestZuulClientAdmin(BaseTestWeb):
 
         self.waitUntilSettled()
 
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         enqueue_times = {}
         for item in items:
             enqueue_times[str(item.changes[0])] = item.enqueue_time
@@ -379,7 +378,7 @@ class TestZuulClientAdmin(BaseTestWeb):
         self.waitUntilSettled()
 
         # ensure that enqueue times are durable
-        items = tenant.layout.pipelines['gate'].getAllItems()
+        items = self.getAllItems('tenant-one', 'gate')
         for item in items:
             self.assertEqual(
                 enqueue_times[str(item.changes[0])], item.enqueue_time)

@@ -292,23 +292,21 @@ class TestGerritToGithubCRD(ZuulTestCase):
         # A Depends-On: B
         A.data['commitMessage'] = '%s\n\nDepends-On: %s\n' % (
             A.subject, B.url)
-        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
 
         # Add two dependent changes...
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 2)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 2)
 
         # ...make sure the live one is not duplicated...
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 2)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 2)
 
         # ...but the non-live one is able to be.
         self.fake_github.emitEvent(B.getPullRequestEditedEvent())
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 3)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 3)
 
         # Release jobs in order to avoid races with change A jobs
         # finishing before change B jobs.
@@ -331,7 +329,7 @@ class TestGerritToGithubCRD(ZuulTestCase):
             'project-merge', 'github/project2').changes
         self.assertEqual(changes, '1,%s' %
                          (B.head_sha,))
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(len(self.getAllQueues('tenant-one', 'check')), 0)
 
         self.assertIn('Build succeeded', A.messages[0])
 
@@ -755,22 +753,21 @@ class TestGithubToGerritCRD(ZuulTestCase):
         # A Depends-On: B
         event = A.editBody('Depends-On: %s\n' % (B.data['url'],))
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
 
         # Add two dependent changes...
         self.fake_github.emitEvent(event)
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 2)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 2)
 
         # ...make sure the live one is not duplicated...
         self.fake_github.emitEvent(A.getPullRequestEditedEvent())
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 2)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 2)
 
         # ...but the non-live one is able to be.
         self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
-        self.assertEqual(len(check_pipeline.getAllItems()), 3)
+        self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 3)
 
         # Release jobs in order to avoid races with change A jobs
         # finishing before change B jobs.
