@@ -22,8 +22,8 @@ class SerialPipelineManager(SharedQueuePipelineManager):
 
     def constructChangeQueue(self, queue_name):
         return model.ChangeQueue.new(
-            self.pipeline.manager.current_context,
-            pipeline=self.pipeline,
+            self.current_context,
+            manager=self,
             window=1,
             window_floor=1,
             window_ceiling=1,

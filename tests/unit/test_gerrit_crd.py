@@ -427,7 +427,8 @@ class TestGerritCRD(ZuulTestCase):
 
         self.assertEqual(self.history[0].changes, '2,1 1,1')
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
     def test_crd_check_git_depends(self):
         "Test single-repo dependencies in independent pipelines"
@@ -450,7 +451,8 @@ class TestGerritCRD(ZuulTestCase):
         self.assertEqual(self.history[0].changes, '1,1')
         self.assertEqual(self.history[-1].changes, '1,1 2,1')
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
         self.assertIn('Build succeeded', A.messages[0])
         self.assertIn('Build succeeded', B.messages[0])
@@ -516,8 +518,9 @@ class TestGerritCRD(ZuulTestCase):
         # Make sure the items still share a change queue, and the
         # first one is not live.
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 1)
-        queue = tenant.layout.pipelines['check'].queues[0]
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 1)
+        queue = tenant.layout.pipeline_managers['check'].state.queues[0]
         first_item = queue.queue[0]
         for item in queue.queue:
             self.assertEqual(item.queue, first_item.queue)
@@ -534,7 +537,8 @@ class TestGerritCRD(ZuulTestCase):
         self.assertEqual(B.reported, 0)
 
         self.assertEqual(self.history[0].changes, '2,1 1,1')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
     @skipIfMultiScheduler()
     def test_crd_check_reconfiguration(self):
@@ -571,8 +575,8 @@ class TestGerritCRD(ZuulTestCase):
         # Make sure none of the items share a change queue, and all
         # are live.
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        check_pipeline = tenant.layout.pipelines['check']
-        self.assertEqual(len(check_pipeline.queues), 3)
+        check_pipeline = tenant.layout.pipeline_managers['check']
+        self.assertEqual(len(check_pipeline.state.queues), 3)
         self.assertEqual(len(self.getAllItems('tenant-one', 'check')), 3)
         for item in self.getAllItems('tenant-one', 'check'):
             self.assertTrue(item.live)
@@ -765,7 +769,8 @@ class TestGerritCRDAltBaseUrl(ZuulTestCase):
 
         self.assertEqual(self.history[0].changes, '2,1 1,1')
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEqual(len(tenant.layout.pipelines['check'].queues), 0)
+        self.assertEqual(
+            len(tenant.layout.pipeline_managers['check'].state.queues), 0)
 
 
 class TestGerritCRDWeb(TestGerritCRD):

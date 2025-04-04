@@ -56,8 +56,8 @@ class LauncherClient:
             request = NodesetRequest.new(
                 ctx,
                 state=self._getInitialRequestState(job),
-                tenant_name=item.pipeline.tenant.name,
-                pipeline_name=item.pipeline.name,
+                tenant_name=item.manager.tenant.name,
+                pipeline_name=item.manager.pipeline.name,
                 buildset_uuid=buildset.uuid,
                 job_uuid=job.uuid,
                 job_name=job.name,

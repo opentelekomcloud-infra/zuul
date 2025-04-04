@@ -65,7 +65,7 @@ class SharedQueuePipelineManager(PipelineManager, metaclass=ABCMeta):
     def buildChangeQueues(self, layout):
         self.log.debug("Building shared change queues")
         change_queues_managers = {}
-        tenant = self.pipeline.tenant
+        tenant = self.tenant
         layout_project_configs = layout.project_configs
 
         for project_name, project_configs in layout_project_configs.items():
@@ -139,8 +139,8 @@ class SharedQueuePipelineManager(PipelineManager, metaclass=ABCMeta):
             # There is no existing queue for this change. Create a
             # dynamic one for this one change's use
             change_queue = model.ChangeQueue.new(
-                self.pipeline.manager.current_context,
-                pipeline=self.pipeline,
+                self.current_context,
+                manager=self,
                 dynamic=True)
             change_queue.addProject(change.project, None)
             self.state.addQueue(change_queue)
