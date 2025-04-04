@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b872068e_b2de85e6",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1311,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-04T15:00:37Z",
+      "side": 1,
+      "message": "I think we might be able to do something like set a longer replication timeout and reduce the settling timeout. Then run wait until settled and check that it raises. After raising check that the event queue is non empty and no jobs have run. Finally add the replication events and check everything runs as expected.",
+      "parentUuid": "2b5c7d85_106aeeaf",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0d09af50_f7096335",
         "filename": "zuul/driver/gerrit/gerritconnection.py",
         "patchSetId": 1
