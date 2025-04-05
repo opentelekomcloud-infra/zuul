@@ -1160,8 +1160,7 @@ class TestScheduler(ZuulTestCase):
         found_job = None
         manager = self.scheds.first.sched.abide.tenants[
             'tenant-one'].layout.pipeline_managers['gate']
-        pipeline_status = manager.pipeline.formatStatusJSON(
-            manager,
+        pipeline_status = manager.formatStatusJSON(
             self.scheds.first.sched.globals.websocket_url)
         for queue in pipeline_status['change_queues']:
             for head in queue['heads']:
@@ -4450,8 +4449,7 @@ class TestScheduler(ZuulTestCase):
         def get_job():
             tenant = self.scheds.first.sched.abide.tenants['tenant-one']
             for manager in tenant.layout.pipeline_managers.values():
-                pipeline_status = manager.pipeline.formatStatusJSON(
-                    manager,
+                pipeline_status = manager.formatStatusJSON(
                     self.scheds.first.sched.globals.websocket_url)
                 for queue in pipeline_status['change_queues']:
                     for head in queue['heads']:
@@ -4683,8 +4681,7 @@ class TestScheduler(ZuulTestCase):
         # web ui.
         tenant = self.scheds.first.sched.abide.tenants['tenant-one']
         manager = tenant.layout.pipeline_managers['periodic']
-        pipeline_status = manager.pipeline.formatStatusJSON(
-            manager,
+        pipeline_status = manager.formatStatusJSON(
             self.scheds.first.sched.globals.websocket_url)
 
         first = pipeline_status['change_queues'][0]['heads'][0][0]
@@ -8202,9 +8199,7 @@ class TestSemaphore(ZuulTestCase):
         self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
 
-        status = tenant.layout.pipeline_managers[
-            "check"].pipeline.formatStatusJSON(
-            tenant.layout.pipeline_managers["check"])
+        status = tenant.layout.pipeline_managers["check"].formatStatusJSON()
         jobs = status["change_queues"][0]["heads"][0][0]["jobs"]
         self.assertEqual(jobs[0]["waiting_status"],
                          'node request: 200-0000000000')
