@@ -2512,8 +2512,8 @@ class Scheduler(threading.Thread):
                 log.debug("Reconfiguring tenant after branch updated "
                           "without file list, assuming config update")
         elif (event.branch_deleted and
-              self.abide.hasUnparsedBranchCache(project.canonical_name,
-                                                event.branch)):
+              self.abide.hasConfigObjectCache(project.canonical_name,
+                                              event.branch)):
             reconfigure_tenant = True
 
         # The branch_created attribute is also true when a tag is
@@ -2526,7 +2526,7 @@ class Scheduler(threading.Thread):
         # was just configured as protected without a push in between.
         elif (event.branch in project.source.getProjectBranches(
                 project, tenant, min_ltime=event.branch_cache_ltime)
-              and not self.abide.hasUnparsedBranchCache(
+              and not self.abide.hasConfigObjectCache(
                 project.canonical_name, event.branch)):
             reconfigure_tenant = True
 

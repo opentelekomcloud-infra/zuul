@@ -2306,6 +2306,7 @@ class TestInRepoConfig(ZuulTestCase):
             """
             - pipeline:
                 name: test
+                manager: independent
             """)
 
         file_dict = {'.zuul.yaml': in_repo_conf}
