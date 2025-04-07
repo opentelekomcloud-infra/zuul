@@ -40,7 +40,7 @@ class Job extends React.Component {
          for one branch we don't get the branches.  This might be a
          bug.  In this case, use the source context branch (i.e. where
          it's defined */
-      if (variant.branches.length === 0) {
+      if (variant.branches === null || variant.branches.length === 0) {
         title = variant.source_context.branch
       } else {
         variant.branches.forEach((item) => {
