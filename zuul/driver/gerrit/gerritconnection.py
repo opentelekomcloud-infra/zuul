@@ -75,17 +75,6 @@ TIMEOUT = 30
 # SSH connection timeout
 SSH_TIMEOUT = TIMEOUT
 
-# commentSizeLimit default set by Gerrit.  Gerrit is a bit
-# vague about what this means, it says
-#
-#  Comments which exceed this size will be rejected ... Size
-#  computation is approximate and may be off by roughly 1% ...
-#  Default is 16k
-#
-# This magic number is int((16 << 10) * 0.98).  Robot comments
-# are accounted for separately.
-GERRIT_HUMAN_MESSAGE_LIMIT = 16056
-
 
 class HTTPConflictException(Exception):
     message = "Received response 409"
@@ -1440,12 +1429,6 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
             cmd += ' --notify %s' % shlex.quote(notify)
         if phase1:
             if message:
-                b_len = len(message.encode('utf-8'))
-                if b_len >= GERRIT_HUMAN_MESSAGE_LIMIT:
-                    log.info("Message truncated %d > %d" %
-                             (b_len, GERRIT_HUMAN_MESSAGE_LIMIT))
-                    message = ("%s... (truncated)" %
-                               message[:GERRIT_HUMAN_MESSAGE_LIMIT - 20])
                 cmd += ' --message %s' % shlex.quote(message)
             for key, val in labels.items():
                 if val is True:
@@ -1515,12 +1498,6 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
             urllib.parse.quote(str(change.branch), safe=''),
             change.id)
         log = get_annotated_logger(self.log, zuul_event_id)
-        b_len = len(message.encode('utf-8'))
-        if b_len >= GERRIT_HUMAN_MESSAGE_LIMIT:
-            log.info("Message truncated %d > %d" %
-                     (b_len, GERRIT_HUMAN_MESSAGE_LIMIT))
-            message = ("%s... (truncated)" %
-                       message[:GERRIT_HUMAN_MESSAGE_LIMIT - 20])
         data = dict(strict_labels=False)
         if notify:
             data['notify'] = notify
