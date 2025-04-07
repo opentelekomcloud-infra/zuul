@@ -855,6 +855,20 @@ class JobParser(object):
         self.log = logging.getLogger("zuul.JobParser")
         self.pcontext = pcontext
 
+    @staticmethod
+    def _makeVariantDescription(conf):
+        parts = []
+        for b in as_list(conf.get('branches')):
+            if isinstance(b, dict):
+                if b.get('negate'):
+                    part = b['regex'] + ' (negated)'
+                else:
+                    part = b['regex']
+            else:
+                part = b
+            parts.append(part)
+        return ' '.join(parts)
+
     def fromYaml(self, conf,
                  project_pipeline=False, name=None, validate=True):
         if validate:
@@ -873,10 +887,7 @@ class JobParser(object):
         job.source_context = conf['_source_context']
         job.start_mark = conf['_start_mark']
         job.project_pipeline = project_pipeline
-        job.variant_description = conf.get(
-            'variant-description', " ".join([
-                str(x) for x in as_list(conf.get('branches'))
-            ]))
+        job.variant_description = JobParser._makeVariantDescription(conf)
 
         if 'parent' in conf:
             if conf['parent'] is not None:
