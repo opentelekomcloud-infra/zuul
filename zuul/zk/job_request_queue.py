@@ -521,7 +521,7 @@ class JobRequestQueue:
                 self.refresh(req)
                 if req.state not in states:
                     continue
-            except NoNodeError:
+            except (NoNodeError, JobRequestNotFound):
                 # Request was removed in the meantime
                 continue
             yield req
