@@ -51,7 +51,7 @@ class GerritChange(Change):
                                 connection)
         for k, v in extra.items():
             setattr(self, k, v)
-        key = ChangeKey(connection.connection_name, None,
+        key = ChangeKey(connection.connection_name, event.project_name,
                         'GerritChange', str(self.number), str(self.patchset))
         return key
 

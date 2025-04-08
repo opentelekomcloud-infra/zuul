@@ -68,7 +68,7 @@ class GerritSource(BaseSource):
     def getChangeKey(self, event):
         connection_name = self.connection.connection_name
         if event.change_number:
-            return ChangeKey(connection_name, None,
+            return ChangeKey(connection_name, event.project_name,
                              'GerritChange',
                              str(event.change_number),
                              noneOrStr(event.patch_number))
@@ -115,7 +115,7 @@ class GerritSource(BaseSource):
         results = self.connection.simpleQuery(query, event=event)
         if not results:
             return None
-        change_key = ChangeKey(self.connection.connection_name, None,
+        change_key = ChangeKey(self.connection.connection_name, event.project_name,
                                'GerritChange',
                                str(results[0].number),
                                str(results[0].current_patchset))
@@ -146,7 +146,7 @@ class GerritSource(BaseSource):
                 if key in seen:
                     continue
                 seen.add(key)
-                change_key = ChangeKey(self.connection.connection_name, None,
+                change_key = ChangeKey(self.connection.connection_name, event.project_name,
                                        'GerritChange',
                                        str(result.number),
                                        str(result.current_patchset))
@@ -171,7 +171,7 @@ class GerritSource(BaseSource):
         query = 'status:open topic:"%s"' % topic
         results = self.connection.simpleQuery(query)
         for result in results:
-            change_key = ChangeKey(self.connection.connection_name, None,
+            change_key = ChangeKey(self.connection.connection_name, event.project_name,
                                    'GerritChange',
                                    str(result.number),
                                    str(result.current_patchset))

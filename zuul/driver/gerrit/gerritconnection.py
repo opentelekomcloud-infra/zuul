@@ -1091,7 +1091,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
             dep_num, dep_ps = data.depends_on
             log.debug("Updating %s: Getting git-dependent change %s,%s",
                       change, dep_num, dep_ps)
-            dep_key = ChangeKey(self.connection_name, None,
+            dep_key = ChangeKey(self.connection_name, event.project_name,
                                 'GerritChange', str(dep_num), str(dep_ps))
             dep = self._getChange(dep_key, history=history,
                                   network_future=network_future,
@@ -1109,7 +1109,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                 data.message, change, event):
             log.debug("Updating %s: Getting commit-dependent "
                       "change %s,%s", change, dep_num, dep_ps)
-            dep_key = ChangeKey(self.connection_name, None,
+            dep_key = ChangeKey(self.connection_name, event.project_name,
                                 'GerritChange', str(dep_num), str(dep_ps))
             dep = self._getChange(dep_key, history=history,
                                   network_future=network_future,
@@ -1124,7 +1124,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
             try:
                 log.debug("Updating %s: Getting git-needed change %s,%s",
                           change, dep_num, dep_ps)
-                dep_key = ChangeKey(self.connection_name, None,
+                dep_key = ChangeKey(self.connection_name, event.project_name,
                                     'GerritChange', str(dep_num), str(dep_ps))
                 dep = self._getChange(dep_key, history=history,
                                       network_future=network_future,
@@ -1154,7 +1154,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                 # reference the latest patchset of its Depends-On (this
                 # change). In case the dep is already in history we already
                 # refreshed this change so refresh is not needed in this case.
-                dep_key = ChangeKey(self.connection_name, None,
+                dep_key = ChangeKey(self.connection_name, event.project_name,
                                     'GerritChange', str(dep_num), str(dep_ps))
                 refresh = not history.getByKey(history.Query.CHANGE, dep_key)
                 dep = self._getChange(
@@ -1199,7 +1199,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         # a way of determining the current patchset for dependencies,
         # so in that case, it is useful for any changes still pointing
         # at this old version to think it is merged.
-        key = ChangeKey(self.connection_name, None,
+        key = ChangeKey(self.connection_name, event.project_name,
                         'GerritChange', str(change.number),
                         str(change.patchset))
 
@@ -1305,7 +1305,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         changes = []  # type: List[GerritChange]
         for record in data:
             try:
-                change_key = ChangeKey(self.connection_name, None,
+                change_key = ChangeKey(self.connection_name, event.project_name,
                                        'GerritChange',
                                        str(record.number),
                                        str(record.current_patchset))
