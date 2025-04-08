@@ -400,7 +400,6 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self.aws = boto3.Session(
             aws_access_key_id=self.connection.access_key_id,
             aws_secret_access_key=self.connection.secret_access_key,
-            profile_name=self.connection.profile,
             region_name=region,
         )
         self.ec2_client = self.aws.client("ec2")
