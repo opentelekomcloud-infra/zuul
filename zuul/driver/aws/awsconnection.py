@@ -26,22 +26,18 @@ class AwsConnection(BaseConnection):
     def __init__(self, driver, connection_name, connection_config):
         super().__init__(driver, connection_name, connection_config)
 
-        # Users can provide credentials directly in zuul.conf, or via
-        # standard AWS_ environment variables, or in the AWS shared
-        # credentials file.  We will check those places in that order.
+        # Users can provide credentials directly in zuul.conf, or in the
+        # AWS shared credentials file.  We will check those places in
+        # that order.
         self.shared_credentials_file = self.connection_config.get(
-            'shared_credentials_file',
-            os.getenv('AWS_SHARED_CREDENTIALS_FILE', None))
+            'shared_credentials_file')
 
         self.access_key_id = self.connection_config.get(
-            'access_key_id',
-            os.getenv('AWS_ACCESS_KEY_ID', None))
+            'access_key_id')
         self.secret_access_key = self.connection_config.get(
-            'secret_access_key',
-            os.getenv('AWS_SECRET_ACCESS_KEY', None))
+            'secret_access_key')
         self.profile = self.connection_config.get(
-            'profile',
-            os.getenv('AWS_PROFILE', None))
+            'profile')
         # Rate limit: requests/second
         self.rate = self.connection_config.get('rate', 2)
 
@@ -53,6 +49,3 @@ class AwsConnection(BaseConnection):
             section = config[self.profile]
             self.access_key_id = section['access_key_id']
             self.secret_access_key = section['secret_access_key']
-
-        if not self.access_key_id and not self.secret_access_key:
-            raise Exception("AWS credentials not found")
