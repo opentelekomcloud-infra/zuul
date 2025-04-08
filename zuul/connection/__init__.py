@@ -633,13 +633,14 @@ class BaseThreadPoolEventConnector:
     def _dispatchEventsMain(self):
         while True:
             delay = None
-            # We can start processing events as long as we're running;
-            # if we are stopping, then we need to continue this loop
-            # until previously processed events are completed but not
-            # start processing any new events.
-            if self._dispatcher_wake_event.is_set() and not self._stopped:
+            if self._dispatcher_wake_event.is_set():
                 self._dispatcher_wake_event.clear()
-                delay = self._dispatchEvents()
+                # We can start processing events as long as we're
+                # running; if we are stopping, then we need to continue
+                # this loop until previously processed events are
+                # completed but not start processing any new events.
+                if not self._stopped:
+                    delay = self._dispatchEvents()
 
             # Now process the futures from this or any previous
             # iterations of the loop.
