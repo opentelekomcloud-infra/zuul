@@ -24,6 +24,7 @@ import paramiko
 
 from zuul.lib import encryption, strings
 from zuul.zk import ZooKeeperBase
+from zuul.zk.zkobject import ZKContext, ZKObject
 
 RSA_KEY_SIZE = 2048
 
@@ -41,6 +42,7 @@ class KeyStorage(ZooKeeperBase):
         super().__init__(zookeeper_client)
         self.password = password
         self.password_bytes = password.encode("utf-8")
+        self.zk_context = ZKContext(self.client, None, None, self.log)
 
     def _walk(self, root):
         ret = []
