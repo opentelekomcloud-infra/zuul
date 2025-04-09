@@ -1887,7 +1887,7 @@ class ZuulWebAPI(object):
     @cherrypy.tools.check_tenant_auth()
     def job(self, tenant_name, tenant, auth, job_name):
         job_name = urllib.parse.unquote_plus(job_name)
-        job_variants = tenant.layout.jobs.get(job_name)
+        job_variants = tenant.layout.jobs.get(job_name, [])
         result = []
         for job in job_variants:
             result.append(job.toDict(tenant))
