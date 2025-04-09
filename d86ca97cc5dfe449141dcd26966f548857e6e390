@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a7b6d80d_62dba576",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-09T08:23:12Z",
+      "side": 1,
+      "message": "Which is the other stack that has conflict, and is it already merged? I do not see \"conflict\" yet in this change.",
+      "parentUuid": "30fe6d74_1daa3360",
+      "revId": "d86ca97cc5dfe449141dcd26966f548857e6e390",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3f731398_eb900281",
         "filename": "zuul/executor/server.py",
         "patchSetId": 10
@@ -48,6 +66,24 @@
       "writtenOn": "2025-04-08T20:34:44Z",
       "side": 1,
       "message": "Your code is correct, but it accomplishes the result in a way that is different than the rest of the code which makes the result seem a little confused.  I\u0027d prefer it if you would remove this new code and add one line after 2628:\n\n```\nother_vars.update(secrets_oidc.keys())\n```\n  \nThat maintains the structure of this method, which is roughly: collect all the keys, then discard them.",
+      "revId": "d86ca97cc5dfe449141dcd26966f548857e6e390",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2863e354_23454ae5",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 2638,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-09T08:23:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3f731398_eb900281",
       "revId": "d86ca97cc5dfe449141dcd26966f548857e6e390",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
