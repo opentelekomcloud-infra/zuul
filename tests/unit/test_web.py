@@ -1111,6 +1111,10 @@ class TestWeb(BaseTestWeb):
         self.assertIsNotNone(post_job)
         self.assertEqual(['post'], post_job.get('tags'))
 
+    def test_web_nonexistent_job(self):
+        resp = self.get_url("api/tenant/tenant-one/job/nopenopenope")
+        self.assertEqual(404, resp.status_code)
+
     def test_web_job_noop(self):
         job = self.get_url("api/tenant/tenant-one/job/noop").json()
         self.assertEqual("noop", job[0]["name"])
