@@ -1121,7 +1121,6 @@ class ZuulWebAPI(object):
     def __init__(self, zuulweb):
         self.zuulweb = zuulweb
         self.zk_client = zuulweb.zk_client
-        self.system = ZuulSystem(self.zk_client)
         self.zk_nodepool = ZooKeeperNodepool(self.zk_client,
                                              enable_node_cache=True)
         self.status_caches = {}
@@ -2170,7 +2169,7 @@ class ZuulWebAPI(object):
             if not (node.user_data and
                     isinstance(node.user_data, dict) and
                     node.user_data.get('zuul_system') ==
-                    self.system.system_id and
+                    self.zuulweb.system.system_id and
                     node.tenant_name == tenant_name):
                 continue
             node_data = {}
@@ -2960,6 +2959,7 @@ class ZuulWeb(object):
         self.monitoring_server.start()
 
         self.component_registry = COMPONENT_REGISTRY.create(self.zk_client)
+        self.system = ZuulSystem(self.zk_client)
 
         self.system_config_thread = None
         self.system_config_cache_wake_event = threading.Event()
@@ -2986,7 +2986,7 @@ class ZuulWeb(object):
 
         self.tenant_providers = {}
         self.layout_providers_store = LayoutProvidersStore(
-            self.zk_client, self.connections)
+            self.zk_client, self.connections, self.system.system_id)
         self.image_build_registry = ImageBuildRegistry(self.zk_client)
         self.image_upload_registry = ImageUploadRegistry(self.zk_client)
         self.nodes_cache = LockableZKObjectCache(

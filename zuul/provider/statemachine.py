@@ -145,3 +145,6 @@ class Resource:
         self.type = type
         self.plural_metric_name = type + 's'
         self.metadata = metadata
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} {self.type} {self.metadata}>'

@@ -118,10 +118,11 @@ class BaseProviderEndpoint(metaclass=abc.ABCMeta):
     the unit of visibility of instances, VPCs, images, etc.
     """
 
-    def __init__(self, driver, connection, name):
+    def __init__(self, driver, connection, name, system_id):
         self.driver = driver
         self.connection = connection
         self.name = name
+        self.system_id = system_id
         self.start_lock = threading.Lock()
         self.started = False
         self.stopped = False
@@ -210,7 +211,8 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
     def __init__(self, *args):
         super().__init__()
         if args:
-            (driver, connection, tenant_name, canonical_name, config) = args
+            (driver, connection, tenant_name, canonical_name, config,
+             system_id) = args
             config = config.copy()
             config.pop('_source_context')
             config.pop('_start_mark')
@@ -223,6 +225,7 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
                 tenant_name=tenant_name,
                 canonical_name=canonical_name,
                 config=config,
+                system_id=system_id,
                 **parsed_config,
             )
 
@@ -231,7 +234,7 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
                 f"canonical_name={self.canonical_name}>")
 
     @classmethod
-    def fromZK(cls, context, path, connections):
+    def fromZK(cls, context, path, connections, system_id):
         """Deserialize a Provider (subclass) from ZK.
 
         To deserialize a Provider from ZK, pass the connection
@@ -246,8 +249,11 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         extra = {'connections': connections}
         obj = cls._fromRaw(raw_data, zstat, extra)
         connection = connections.connections[obj.connection_name]
-        obj._set(connection=connection,
-                 driver=connection.driver)
+        obj._set(
+            connection=connection,
+            driver=connection.driver,
+            system_id=system_id,
+        )
         return obj
 
     def getProviderSchema(self):
@@ -581,6 +587,10 @@ class EndpointCacheMixin:
             endpoint = self._endpoint_class(*create_args)
             self.endpoints[endpoint_id] = endpoint
         return endpoint
+
+    def getEndpoints(self):
+        with self.endpoints_lock:
+            return list(self.endpoints.values())
 
     def stopEndpoints(self):
         with self.endpoints_lock:

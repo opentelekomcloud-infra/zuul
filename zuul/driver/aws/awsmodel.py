@@ -76,6 +76,7 @@ class AwsResource(statemachine.Resource):
     TYPE_VOLUME = 'volume'
     TYPE_OBJECT = 'object'
 
-    def __init__(self, metadata, type, id):
+    def __init__(self, metadata, type, id, bucket_name=None):
         super().__init__(metadata, type)
         self.id = id
+        self.bucket_name = bucket_name

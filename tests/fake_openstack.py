@@ -76,6 +76,10 @@ class FakeOpenstackFloatingIp(FakeOpenstackObject):
         }
 
 
+class FakeOpenstackPort(FakeOpenstackObject):
+    pass
+
+
 class FakeOpenstackCloud:
     log = logging.getLogger("zuul.FakeOpenstackCloud")
 
@@ -103,6 +107,7 @@ class FakeOpenstackCloud:
                 name='fake-network',
             )
         ]
+        self.ports = []
 
     def _getConnection(self):
         return FakeOpenstackConnection(self)
@@ -156,11 +161,28 @@ class FakeOpenstackConnection:
     def _has_floating_ips(self):
         return False
 
+    def delete_unattached_floating_ips(self):
+        for x in self.cloud.floating_ips:
+            if not getattr(x, 'port', None):
+                self.cloud.floating_ips.remove(x)
+
     def list_flavors(self, get_extra=False):
         return self.cloud.flavors
 
     def list_volumes(self):
         return self.cloud.volumes
+
+    def list_ports(self, filters=None):
+        if filters and filters.get('status'):
+            return [p for p in self.cloud.ports
+                    if p.status == filters['status']]
+        return self.cloud.ports
+
+    def delete_port(self, port_id):
+        for x in self.cloud.ports:
+            if x.id == port_id:
+                self.cloud.ports.remove(x)
+                return
 
     def get_network(self, name_or_id, filters=None):
         for x in self.cloud.networks:
@@ -198,6 +220,7 @@ class FakeOpenstackConnection:
             addresses=addresses,
             interface_ip=interface_ip,
             flavor=flavor,
+            metadata=meta,
         )
         server = FakeOpenstackServer(**args)
         self.cloud.servers.append(server)

@@ -167,6 +167,8 @@ class OpenstackProviderSchema(BaseProviderSchema):
         openstack_provider_schema = vs.Schema({
             Optional('region'): Nullable(str),
             Optional('resource-limits', default=dict()): resource_limits,
+            Optional('floating-ip-cleanup', default=False): bool,
+            Optional('port-cleanup-interval', default=600): int,
         })
 
         return assemble(
@@ -182,19 +184,6 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
     log = logging.getLogger("zuul.OpenstackProvider")
     schema = OpenstackProviderSchema().getProviderSchema()
 
-    def __init__(self, *args, **kw):
-        super().__init__(*args, **kw)
-        # In listResources, we reconcile AMIs which appear to be
-        # imports but have no nodepool tags, however it's possible
-        # that these aren't nodepool images.  If we determine that's
-        # the case, we'll add their ids here so we don't waste our
-        # time on that again.  We do not need to serialize these;
-        # these are ephemeral caches.
-        self._set(
-            not_our_images=set(),
-            not_our_snapshots=set(),
-        )
-
     @property
     def endpoint(self):
         ep = getattr(self, '_endpoint', None)
@@ -207,7 +196,7 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
         # We are not fully constructed yet at this point, so we need
         # to peek to get the region and endpoint.
         region = provider_config.get('region')
-        endpoint = connection.driver._getEndpoint(connection, region)
+        endpoint = connection.driver._getEndpoint(connection, region, None)
         return OpenstackProviderImage(
             image_config, provider_config,
             image_format=endpoint.getImageFormat())
@@ -244,14 +233,6 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
 
     def listInstances(self):
         return self.endpoint.listInstances()
-
-    def listResources(self):
-        # TODO: implement
-        return []
-
-    def deleteResource(self, resource):
-        # TODO: implement
-        pass
 
     def getQuotaLimits(self):
         cloud = self.endpoint.getQuotaLimits()
