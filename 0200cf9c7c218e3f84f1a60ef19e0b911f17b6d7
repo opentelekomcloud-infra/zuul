@@ -33,6 +33,24 @@
       "message": "I should add a test case to this class that covers the ref-updated + change-merged scenario with replication events.",
       "revId": "0200cf9c7c218e3f84f1a60ef19e0b911f17b6d7",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eb7f9f1c_aff5f57b",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1729,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-09T00:30:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8828b079_6ec293a0",
+      "revId": "0200cf9c7c218e3f84f1a60ef19e0b911f17b6d7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
