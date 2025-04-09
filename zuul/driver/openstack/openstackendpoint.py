@@ -357,9 +357,9 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
 
     IMAGE_UPLOAD_SLEEP = 30
 
-    def __init__(self, driver, connection, region):
+    def __init__(self, driver, connection, region, system_id):
         name = f'{connection.connection_name}-{region}'
-        super().__init__(driver, connection, name)
+        super().__init__(driver, connection, name, system_id)
         self.log = logging.getLogger(f"zuul.openstack.{self.name}")
         self.region = region
 
@@ -411,7 +411,7 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
         self.api_executor.shutdown()
         self._running = False
 
-    def listResources(self):
+    def listResources(self, providers):
         for server in self._listServers():
             if server['status'].lower() == 'deleted':
                 continue
@@ -422,9 +422,12 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
         # automatic resource cleanup in cleanupLeakedResources because
         # openstack doesn't store metadata on those objects, so we
         # call internal cleanup methods here.
-        if self.provider.port_cleanup_interval:
-            self._cleanupLeakedPorts()
-        if self.provider.clean_floating_ips:
+        intervals = [p.port_cleanup_interval for p in providers
+                     if p.port_cleanup_interval]
+        interval = min(intervals or [0])
+        if interval:
+            self._cleanupLeakedPorts(interval)
+        if any([p.floating_ip_cleanup for p in providers]):
             self._cleanupFloatingIps()
 
     def deleteResource(self, resource):
@@ -920,7 +923,7 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
                 ret.append(p)
         return ret
 
-    def _cleanupLeakedPorts(self):
+    def _cleanupLeakedPorts(self, interval):
         if not self._last_port_cleanup:
             self._last_port_cleanup = time.monotonic()
             ports = self._listPorts(status='DOWN')
@@ -930,7 +933,7 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
 
         # Return if not enough time has passed between cleanup
         last_check_in_secs = int(time.monotonic() - self._last_port_cleanup)
-        if last_check_in_secs <= self.provider.port_cleanup_interval:
+        if last_check_in_secs <= interval:
             return
 
         ports = self._listPorts(status='DOWN')
@@ -944,15 +947,15 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
                 self._deletePort(port_id)
             except Exception:
                 self.log.exception("Exception deleting port %s in %s:",
-                                   port_id, self.provider.name)
+                                   port_id, self.name)
             else:
                 removed_count += 1
                 self.log.debug("Removed DOWN port %s in %s",
-                               port_id, self.provider.name)
+                               port_id, self.name)
 
-        if self._statsd and removed_count:
-            key = 'nodepool.provider.%s.leaked.ports' % (self.provider.name)
-            self._statsd.incr(key, removed_count)
+        # if self._statsd and removed_count:
+        #     key = 'nodepool.provider.%s.leaked.ports' % (self.name)
+        #     self._statsd.incr(key, removed_count)
 
         self._last_port_cleanup = time.monotonic()
 
@@ -973,10 +976,10 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
             # indicate something happened.
             if type(did_clean) is bool:
                 did_clean = 1
-            if self._statsd:
-                key = ('nodepool.provider.%s.leaked.floatingips'
-                       % self.provider.name)
-                self._statsd.incr(key, did_clean)
+            # if self._statsd:
+            #     key = ('nodepool.provider.%s.leaked.floatingips'
+            #            % self.name)
+            #     self._statsd.incr(key, did_clean)
 
     def getConsoleLog(self, label, external_id):
         if not label.console_log:

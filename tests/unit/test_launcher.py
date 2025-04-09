@@ -168,10 +168,10 @@ class LauncherBaseTestCase(ZuulTestCase):
         self.mock_aws.start()
         # Must start responses after mock_aws
         self.useFixture(ImageMocksFixture())
-        self.s3 = boto3.resource('s3', region_name='us-west-2')
+        self.s3 = boto3.resource('s3', region_name='us-east-1')
         self.s3.create_bucket(
             Bucket='zuul',
-            CreateBucketConfiguration={'LocationConstraint': 'us-west-2'})
+            CreateBucketConfiguration={'LocationConstraint': 'us-east-1'})
         self.addCleanup(self.mock_aws.stop)
         self.patch(zuul.driver.aws.awsendpoint, 'CACHE_TTL', 1)
 

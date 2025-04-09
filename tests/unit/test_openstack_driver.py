@@ -13,6 +13,7 @@
 # under the License.
 
 import os
+import time
 
 import fixtures
 
@@ -21,14 +22,17 @@ import zuul.driver.openstack.openstackendpoint
 
 from tests.fake_openstack import (
     FakeOpenstackCloud,
+    FakeOpenstackFloatingIp,
+    FakeOpenstackPort,
     FakeOpenstackProviderEndpoint,
 )
 from tests.base import (
     FIXTURE_DIR,
     ZuulTestCase,
-    simple_layout,
-    return_data,
     driver_config,
+    iterate_timeout,
+    return_data,
+    simple_layout,
 )
 from tests.unit.test_launcher import ImageMocksFixture
 from tests.unit.test_cloud_driver import BaseCloudDriverTest
@@ -88,9 +92,6 @@ class BaseOpenstackDriverTest(ZuulTestCase):
                    'CACHE_TTL', 1)
         super().setUp()
 
-    def tearDown(self):
-        super().tearDown()
-
 
 class TestOpenstackDriver(BaseOpenstackDriverTest, BaseCloudDriverTest):
     def _assertProviderNodeAttributes(self, pnode):
@@ -133,8 +134,59 @@ class TestOpenstackDriver(BaseOpenstackDriverTest, BaseCloudDriverTest):
     def test_openstack_diskimage(self):
         self._test_diskimage()
 
+    # Openstack-driver specific tests
 
-# Openstack-driver specific tests
+    @simple_layout('layouts/openstack/nodepool.yaml', enable_nodepool=True)
+    def test_openstack_resource_cleanup(self):
+        self.waitUntilSettled()
+        self.launcher.cleanup_worker.stop()
+        self.launcher.cleanup_worker.join()
+        self.launcher.cleanup_worker.INTERVAL = 1
+        conn = self.fake_cloud._getConnection()
+        system_id = self.launcher.system.system_id
+        tags = {
+            'zuul_system_id': system_id,
+            'zuul_node_uuid': '0000000042',
+        }
+        conn.create_server(
+            name="test",
+            meta=tags,
+        )
+        self.assertEqual(1, len(conn.list_servers()))
+
+        fip = FakeOpenstackFloatingIp(
+            id='42',
+            floating_ip_address='fake',
+            status='ACTIVE',
+        )
+        conn.cloud.floating_ips.append(fip)
+        self.assertEqual(1, len(conn.list_floating_ips()))
+
+        port = FakeOpenstackPort(
+            id='43',
+            status='DOWN',
+            device_owner='compute:foo',
+        )
+        conn.cloud.ports.append(port)
+        self.assertEqual(1, len(conn.list_ports()))
+
+        self.log.debug("Restart cleanup worker")
+        self.launcher.cleanup_worker.start()
+
+        for _ in iterate_timeout(30, 'instance deletion'):
+            if not conn.list_servers():
+                break
+            time.sleep(1)
+        for _ in iterate_timeout(30, 'fip deletion'):
+            if not conn.list_floating_ips():
+                break
+            time.sleep(1)
+        for _ in iterate_timeout(30, 'port deletion'):
+            if not conn.list_ports():
+                break
+            time.sleep(1)
+
+
 class TestOpenstackDriverFloatingIp(BaseOpenstackDriverTest,
                                     BaseCloudDriverTest):
     # This test is for nova-net clouds with floating ips that require

@@ -17,10 +17,12 @@ import concurrent.futures
 import contextlib
 import time
 from unittest import mock
+import urllib.parse
 
 import fixtures
 from moto import mock_aws
 import boto3
+import botocore.exceptions
 
 from zuul.driver.aws import AwsDriver
 from zuul.driver.aws.awsmodel import AwsProviderNode
@@ -145,9 +147,9 @@ class TestAwsDriver(BaseCloudDriverTest):
 
         super().setUp()
 
-    def tearDown(self):
+    def shutdown(self):
+        super().shutdown()
         self.mock_aws.stop()
-        super().tearDown()
 
     def _assertProviderNodeAttributes(self, pnode):
         super()._assertProviderNodeAttributes(pnode)
@@ -288,6 +290,252 @@ class TestAwsDriver(BaseCloudDriverTest):
     )
     def test_aws_diskimage_ebs_direct(self):
         self._test_diskimage()
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_aws_resource_cleanup(self):
+        self.waitUntilSettled()
+        self.launcher.cleanup_worker.stop()
+        self.launcher.cleanup_worker.join()
+        self.launcher.cleanup_worker.INTERVAL = 1
+        # This tests everything except the image imports
+        # Start by setting up leaked resources
+        system_id = self.launcher.system.system_id
+        instance_tags = [
+            {'Key': 'zuul_system_id', 'Value': system_id},
+            {'Key': 'zuul_node_uuid', 'Value': '0000000042'},
+        ]
+
+        s3_tags = {
+            'zuul_system_id': system_id,
+            'zuul_upload_uuid': '0000000042',
+        }
+
+        reservation = self.ec2_client.run_instances(
+            ImageId="ami-12c6146b", MinCount=1, MaxCount=1,
+            BlockDeviceMappings=[{
+                'DeviceName': '/dev/sda1',
+                'Ebs': {
+                    'VolumeSize': 80,
+                    'DeleteOnTermination': False
+                }
+            }],
+            TagSpecifications=[{
+                'ResourceType': 'instance',
+                'Tags': instance_tags
+            }, {
+                'ResourceType': 'volume',
+                'Tags': instance_tags
+            }]
+        )
+        instance_id = reservation['Instances'][0]['InstanceId']
+
+        bucket = self.s3.Bucket('zuul')
+        bucket.put_object(Body=b'hi',
+                          Key='testimage',
+                          Tagging=urllib.parse.urlencode(s3_tags))
+        obj = self.s3.Object('zuul', 'testimage')
+        # This effectively asserts the object exists
+        self.s3_client.get_object_tagging(
+            Bucket=obj.bucket_name, Key=obj.key)
+
+        instance = self.ec2.Instance(instance_id)
+        self.assertEqual(instance.state['Name'], 'running')
+
+        volume_id = list(instance.volumes.all())[0].id
+        volume = self.ec2.Volume(volume_id)
+        self.assertEqual(volume.state, 'in-use')
+
+        self.log.debug("Restart cleanup worker")
+        self.launcher.cleanup_worker.start()
+
+        for _ in iterate_timeout(30, 'instance deletion'):
+            instance = self.ec2.Instance(instance_id)
+            if instance.state['Name'] == 'terminated':
+                break
+            time.sleep(1)
+
+        for _ in iterate_timeout(30, 'volume deletion'):
+            volume = self.ec2.Volume(volume_id)
+            try:
+                if volume.state == 'deleted':
+                    break
+            except botocore.exceptions.ClientError:
+                # Probably not found
+                break
+            time.sleep(1)
+
+        for _ in iterate_timeout(30, 'object deletion'):
+            obj = self.s3.Object('zuul', 'testimage')
+            try:
+                self.s3_client.get_object_tagging(
+                    Bucket=obj.bucket_name, Key=obj.key)
+            except self.s3_client.exceptions.NoSuchKey:
+                break
+            time.sleep(1)
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_aws_resource_cleanup_import_snapshot(self):
+        # This tests the import_snapshot path
+        self.waitUntilSettled()
+        self.launcher.cleanup_worker.stop()
+        self.launcher.cleanup_worker.join()
+        self.launcher.cleanup_worker.INTERVAL = 1
+        system_id = self.launcher.system.system_id
+
+        # Start by setting up leaked resources
+        image_tags = [
+            {'Key': 'zuul_system_id', 'Value': system_id},
+            {'Key': 'zuul_upload_uuid', 'Value': '0000000042'},
+        ]
+
+        task = self.fake_aws.import_snapshot(
+            DiskContainer={
+                'Format': 'ova',
+                'UserBucket': {
+                    'S3Bucket': 'zuul',
+                    'S3Key': 'testfile',
+                }
+            },
+            TagSpecifications=[{
+                'ResourceType': 'import-snapshot-task',
+                'Tags': image_tags,
+            }])
+        snapshot_id = self.fake_aws.finish_import_snapshot(task)
+
+        register_response = self.ec2_client.register_image(
+            Architecture='amd64',
+            BlockDeviceMappings=[
+                {
+                    'DeviceName': '/dev/sda1',
+                    'Ebs': {
+                        'DeleteOnTermination': True,
+                        'SnapshotId': snapshot_id,
+                        'VolumeSize': 20,
+                        'VolumeType': 'gp2',
+                    },
+                },
+            ],
+            RootDeviceName='/dev/sda1',
+            VirtualizationType='hvm',
+            Name='testimage',
+        )
+        image_id = register_response['ImageId']
+
+        ami = self.ec2.Image(image_id)
+        new_snapshot_id = ami.block_device_mappings[0]['Ebs']['SnapshotId']
+        self.fake_aws.change_snapshot_id(task, new_snapshot_id)
+
+        # Note that the resulting image and snapshot do not have tags
+        # applied, so we test the automatic retagging methods in the
+        # adapter.
+
+        image = self.ec2.Image(image_id)
+        self.assertEqual(image.state, 'available')
+
+        snap = self.ec2.Snapshot(snapshot_id)
+        self.assertEqual(snap.state, 'completed')
+
+        # Now that the leaked resources exist, start the worker and
+        # wait for it to clean them.
+        self.log.debug("Restart cleanup worker")
+        self.launcher.cleanup_worker.start()
+
+        for _ in iterate_timeout(30, 'ami deletion'):
+            image = self.ec2.Image(image_id)
+            try:
+                # If this has a value the image was not deleted
+                if image.state == 'available':
+                    # Definitely not deleted yet
+                    pass
+            except AttributeError:
+                # Per AWS API, a recently deleted image is empty and
+                # looking at the state raises an AttributeFailure; see
+                # https://github.com/boto/boto3/issues/2531.  The image
+                # was deleted, so we continue on here
+                break
+            time.sleep(1)
+
+        for _ in iterate_timeout(30, 'snapshot deletion'):
+            snap = self.ec2.Snapshot(new_snapshot_id)
+            try:
+                if snap.state == 'deleted':
+                    break
+            except botocore.exceptions.ClientError:
+                # Probably not found
+                break
+            time.sleep(1)
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_aws_resource_cleanup_import_image(self):
+        # This tests the import_image path
+        self.waitUntilSettled()
+        self.launcher.cleanup_worker.stop()
+        self.launcher.cleanup_worker.join()
+        self.launcher.cleanup_worker.INTERVAL = 1
+        system_id = self.launcher.system.system_id
+
+        # Start by setting up leaked resources
+        image_tags = [
+            {'Key': 'zuul_system_id', 'Value': system_id},
+            {'Key': 'zuul_upload_uuid', 'Value': '0000000042'},
+        ]
+
+        # The image import path:
+        task = self.fake_aws.import_image(
+            DiskContainers=[{
+                'Format': 'ova',
+                'UserBucket': {
+                    'S3Bucket': 'zuul',
+                    'S3Key': 'testfile',
+                }
+            }],
+            TagSpecifications=[{
+                'ResourceType': 'import-image-task',
+                'Tags': image_tags,
+            }])
+        image_id, snapshot_id = self.fake_aws.finish_import_image(task)
+
+        # Note that the resulting image and snapshot do not have tags
+        # applied, so we test the automatic retagging methods in the
+        # adapter.
+
+        image = self.ec2.Image(image_id)
+        self.assertEqual(image.state, 'available')
+
+        snap = self.ec2.Snapshot(snapshot_id)
+        self.assertEqual(snap.state, 'completed')
+
+        # Now that the leaked resources exist, start the provider and
+        # wait for it to clean them.
+        # Now that the leaked resources exist, start the worker and
+        # wait for it to clean them.
+        self.log.debug("Restart cleanup worker")
+        self.launcher.cleanup_worker.start()
+
+        for _ in iterate_timeout(30, 'ami deletion'):
+            image = self.ec2.Image(image_id)
+            try:
+                # If this has a value the image was not deleted
+                if image.state == 'available':
+                    # Definitely not deleted yet
+                    pass
+            except AttributeError:
+                # Per AWS API, a recently deleted image is empty and
+                # looking at the state raises an AttributeFailure; see
+                # https://github.com/boto/boto3/issues/2531.  The image
+                # was deleted, so we continue on here
+                break
+            time.sleep(1)
+
+        for _ in iterate_timeout(30, 'snapshot deletion'):
+            snap = self.ec2.Snapshot(snapshot_id)
+            try:
+                if snap.state == 'deleted':
+                    break
+            except botocore.exceptions.ClientError:
+                # Probably not found
+                break
+            time.sleep(1)
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_state_machines_instance(self):

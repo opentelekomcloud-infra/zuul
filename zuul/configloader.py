@@ -2914,7 +2914,8 @@ class TenantParser(object):
                     provider = connection.driver.getProvider(
                         connection, tenant.name,
                         provider_config.canonical_name,
-                        flat_config)
+                        flat_config,
+                        parse_context.scheduler.system.system_id)
                     shadow_layout.addProvider(provider)
 
         for e in parsed_config.queue_errors:
