@@ -456,13 +456,11 @@ class NodescanRequest:
             except Exception:
                 self.log.exception(
                     f"SSH error connecting to {self.ip} on port {self.port}")
-                # Try again
+                # Try again; go to start to avoid busy-waiting.
                 self._close()
                 self.key_negotiation_failures += 1
                 self.state = self.START
                 self._checkTimeout()
-                self._connect()
-                self.state = self.CONNECTING_INIT
                 return
             # This is our first successful connection.  Now that
             # we've done it, start again specifying the first key
@@ -625,6 +623,11 @@ class NodescanWorker:
             pass
 
     def run(self):
+        # To avoid busy waiting, we will process any request with a
+        # ready socket, but only process the remaining requests
+        # periodically.  This value is the last time we processed
+        # those unready requests.
+        last_unready_check = 0
         while self._running:
             # Set the poll timeout to 1 second so that we check all
             # requests for timeouts every second.  This could be
@@ -638,6 +641,7 @@ class NodescanWorker:
                 request = self._pending_requests.pop(0)
                 self._active_requests.append(request)
                 timeout = 0
+                last_unready_check = 0
             ready = self.poll.poll(timeout=timeout)
             ready = [x[0] for x in ready]
             if self.wake_read in ready:
@@ -647,15 +651,20 @@ class NodescanWorker:
                         os.read(self.wake_read, 1024)
                     except BlockingIOError:
                         break
+            process_unready = time.monotonic() - last_unready_check > 1.0
             for request in self._active_requests:
                 try:
                     socket_ready = (request.sock and
                                     request.sock.fileno() in ready)
-                    request.advance(socket_ready)
+                    event_ready = request.event and request.event.is_set()
+                    if process_unready or socket_ready or event_ready:
+                        request.advance(socket_ready)
                 except Exception as e:
                     request.fail(e)
                 if request.complete:
                     self.removeRequest(request)
+            if process_unready:
+                last_unready_check = time.monotonic()
 
 
 class Launcher:
