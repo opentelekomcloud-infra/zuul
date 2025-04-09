@@ -81,6 +81,10 @@ def scores_for_label(label_cname, candidate_names):
     }
 
 
+def endpoint_score(endpoint):
+    return mmh3.hash(f"{endpoint.canonical_name}", signed=False)
+
+
 class NodesetRequestError(Exception):
     """Errors that should lead to the request being declined."""
     pass
@@ -238,8 +242,10 @@ class EndpointUploadJob:
             raise Exception(
                 f"Unable to find image {self.upload.canonical_name}")
 
-        # TODO: add upload id, etc
-        metadata = {}
+        metadata = {
+            'zuul_system_id': self.launcher.system.system_id,
+            'zuul_upload_uuid': self.upload.uuid,
+        }
         image_name = f'{provider_image.name}-{self.artifact.uuid}'
         external_id = provider.uploadImage(
             provider_image, image_name, self.path, self.artifact.format,
@@ -667,6 +673,118 @@ class NodescanWorker:
                 last_unready_check = time.monotonic()
 
 
+class CleanupWorker:
+    # Delay 60 seconds between iterations
+    INTERVAL=60
+    log = logging.getLogger("zuul.Launcher")
+
+    def __init__(self, launcher):
+        self.launcher = launcher
+        self.possibly_leaked_nodes = {}
+        self.possibly_leaked_uploads = {}
+        self._running = True
+        self.thread = threading.Thread(target=self.run,
+                                       name="CleanupWorker")
+
+    def start(self):
+        self.log.debug("Starting cleanup worker thread")
+        self.thread.start()
+
+    def stop(self):
+        self.log.debug("Stopping cleanup worker")
+        self._running = False
+        self.wake_event.set()
+
+    def join(self):
+        self.log.debug("Joining cleanup thread")
+        self.thread.join()
+
+    def run(self):
+        while self._running:
+            # Wait before performing the first cleanup
+            self.wake_event.wait(self.INTERVAL)
+            self.wake_event.clear()
+            try:
+                self._run()
+            except Exception:
+                self.log.exception("Error in cleanup worker:")
+
+    def getMatchingEndpoints(self):
+        all_launchers = {
+            c.hostname: c for c in COMPONENT_REGISTRY.registry.all("launcher")}
+
+        for endpoint in self.launcher.endpoints.values():
+            candidate_launchers = {
+                n: c for n, c in all_launchers.items()
+                if not c.connection_filter
+                or endpoint.connection.connection_name in c.connection_filter}
+            candidate_names = set(candidate_launchers)
+            launcher_scores={endpoint_score(endpoint): n
+                             for n in candidate_names}
+            for score, launcher_name in launcher_scores:
+                launcher = candidate_launchers.get(launcher_name)
+                if not launcher:
+                    # Launcher is no longer online
+                    continue
+                if launcher.state != launcher.RUNNING:
+                    continue
+                if launcher.hostname == self.component_info.hostname:
+                    yield endpoint
+                break
+
+    def _run(self):
+        for endpoint in self.getMatchingEndpoints():
+            try:
+                self.cleanupLeakedResources(endpoint)
+            except Exception:
+                self.log.exception("Error in cleanup worker:")
+
+    def cleanupLeakedResources(self, endpoint):
+        newly_leaked_nodes = {}
+        newly_leaked_uploads = {}
+        for resource in self.adapter.listResources():
+            if (resource.metadata.get('zuul_system_id') !=
+                self.launcher.system.system_id):
+                continue
+            node_id = resource.metadata.get('zuul_node_uuid')
+            upload_id = resource.metadata.get('zuul_upload_uuid')
+            if node_id and self.launcher.api.getProviderNode(node_id) is None:
+                newly_leaked_nodes[node_id] = resource
+                if node_id in self.possibly_leaked_nodes:
+                    # We've seen this twice now, so it's not a race
+                    # condition.
+                    try:
+                        self.adapter.deleteResource(resource)
+                        # if self._statsd:
+                        #     key = ('nodepool.provider.%s.leaked.%s'
+                        #            % (self.provider.name,
+                        #               resource.plural_metric_name))
+                        #     self._statsd.incr(key, 1)
+                    except Exception:
+                        self.log.exception("Unable to delete leaked "
+                                           f"resource for node {node_id}")
+            if (upload_id and
+                self.launcher.image_upload_registry.getItem(
+                    upload_id) is None):
+                newly_leaked_uploads[upload_id] = resource
+                if upload_id in self.possibly_leaked_uploads:
+                    # We've seen this twice now, so it's not a race
+                    # condition.
+                    try:
+                        self.adapter.deleteResource(resource)
+                        # if self._statsd:
+                        #     key = ('nodepool.provider.%s.leaked.%s'
+                        #            % (self.provider.name,
+                        #               resource.plural_metric_name))
+                        #     self._statsd.incr(key, 1)
+                    except Exception:
+                        self.log.exception(
+                            "Unable to delete leaked "
+                            f"resource for upload {upload_id}")
+        self.possibly_leaked_nodes = newly_leaked_nodes
+        self.possibly_leaked_uploads = newly_leaked_uploads
+
+
 class Launcher:
     log = logging.getLogger("zuul.Launcher")
     # Max. time to wait for a cache to sync
@@ -768,6 +886,7 @@ class Launcher:
             max_workers=10,
             thread_name_prefix="UploadWorker",
         )
+        self.cleanup_worker = CleanupWorker(self)
 
     def _layoutUpdatedCallback(self):
         self.layout_updated_event.set()
@@ -1506,6 +1625,9 @@ class Launcher:
         self.log.debug("Starting launcher thread")
         self.launcher_thread.start()
 
+        self.log.debug("Starting cleanup thread")
+        self.cleanup_worker.start()
+
     def stop(self):
         self.log.debug("Stopping launcher")
         self._running = False
@@ -1518,6 +1640,7 @@ class Launcher:
         self.upload_executor.shutdown()
         self.endpoint_upload_executor.shutdown()
         self.nodescan_worker.stop()
+        self.cleanup_worker.stop()
         # Endpoints are stopped by drivers
         self.log.debug("Stopped launcher")
 
@@ -1531,6 +1654,7 @@ class Launcher:
         self.zk_client.disconnect()
         self.tracing.stop()
         self.nodescan_worker.join()
+        self.cleanup_worker.join()
         self.log.debug("Joined launcher")
 
     def runCommand(self):
