@@ -72,6 +72,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b7225909_72c79efe",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1311,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-09T21:48:17Z",
+      "side": 1,
+      "message": "LGTM (especially with the reduced timeout so the tests don\u0027t take forever).",
+      "parentUuid": "b872068e_b2de85e6",
+      "revId": "53a85f7065ad9a217268c9c0dfb27ee268d58e83",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0d09af50_f7096335",

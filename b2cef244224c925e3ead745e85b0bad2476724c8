@@ -16,6 +16,40 @@
       "message": "recheck container image builds have been fixed",
       "revId": "b2cef244224c925e3ead745e85b0bad2476724c8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d6b8bf50_e57917ad",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 1919,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-09T21:48:17Z",
+      "side": 1,
+      "message": "This is in 2.13+.  We actually do still have everything to handle \u003c2.13, so it\u0027s worth considering whether this breaks compatibility.  I checked the call site for where we reference refName, and it degrades gracefully, so I think we\u0027re okay.",
+      "revId": "b2cef244224c925e3ead745e85b0bad2476724c8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0669a1c9_91628db1",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-09T21:48:17Z",
+      "side": 1,
+      "message": "House style for this would be _getProjectAndRef.\n\n(We have been inconsistent, but trying to get better.)",
+      "revId": "b2cef244224c925e3ead745e85b0bad2476724c8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
