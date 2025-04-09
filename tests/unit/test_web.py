@@ -939,6 +939,25 @@ class TestWeb(BaseTestWeb):
                 }]
             }, data)
 
+    def test_web_project_get_no_config(self):
+        # can we fetch project details for projects with no project stanza
+        self.commitConfigUpdate(
+            'common-config',
+            'layouts/empty-check.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+        data = self.get_url(
+            'api/tenant/tenant-one/project/org/project1').json()
+        self.assertEqual(
+            {
+                'canonical_name': 'review.example.com/org/project1',
+                'configs': [],
+                'metadata': {},
+                'connection_name': 'gerrit',
+                'name': 'org/project1'
+            },
+            data)
+
     def test_web_keys(self):
         with open(os.path.join(FIXTURE_DIR, 'public.pem'), 'rb') as f:
             public_pem = f.read()
