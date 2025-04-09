@@ -1284,7 +1284,10 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
         with self.non_mutating_rate_limiter:
             res = list(self.ec2_client.describe_images(
-                Filters=image_filters
+                Filters=[
+                    {k.capitalize(): v for k, v in fltr.items()}
+                    for fltr in image_filters
+                ]
             ).get("Images"))
 
         images = sorted(
