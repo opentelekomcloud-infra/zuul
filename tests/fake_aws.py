@@ -141,8 +141,8 @@ class FakeAws:
 
     def __init__(self):
         self.tasks = {}
-        self.ec2 = boto3.resource('ec2', region_name='us-west-2')
-        self.ec2_client = boto3.client('ec2', region_name='us-west-2')
+        self.ec2 = boto3.resource('ec2', region_name='us-east-1')
+        self.ec2_client = boto3.client('ec2', region_name='us-east-1')
         self.fail_import_count = 0
 
     def import_snapshot(self, *args, **kw):
@@ -165,7 +165,7 @@ class FakeAws:
         # Make a Volume to simulate the import finishing
         volume = self.ec2_client.create_volume(
             Size=80,
-            AvailabilityZone='us-west-2')
+            AvailabilityZone='us-east-1')
         snap_id = self.ec2_client.create_snapshot(
             VolumeId=volume['VolumeId'],
         )["SnapshotId"]
@@ -207,7 +207,7 @@ class FakeAws:
 
         volume = self.ec2_client.create_volume(
             Size=80,
-            AvailabilityZone='us-west-2')
+            AvailabilityZone='us-east-1')
         snap_id = self.ec2_client.create_snapshot(
             VolumeId=volume['VolumeId'],
             Description=f'imported volume import-ami-{task_id}',

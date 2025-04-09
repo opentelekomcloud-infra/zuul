@@ -2551,6 +2551,7 @@ class ZuulTestCase(BaseTestCase):
         launcher = TestLauncher(
             self.config,
             launcher_connections)
+        launcher._start_cleanup = False
         launcher.start()
         return launcher
 

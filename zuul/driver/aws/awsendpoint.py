@@ -363,9 +363,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
     IMAGE_UPLOAD_SLEEP = 30
     LAUNCH_TEMPLATE_PREFIX = 'zuul-launch-template'
 
-    def __init__(self, driver, connection, region):
+    def __init__(self, driver, connection, region, system_id):
         name = f'{connection.connection_name}-{region}'
-        super().__init__(driver, connection, name)
+        super().__init__(driver, connection, name, system_id)
         self.log = logging.getLogger(f"zuul.aws.{self.name}")
         self.region = region
 
@@ -409,6 +409,13 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self.aws_quotas = self.aws.client("service-quotas")
         self.ebs_client = self.aws.client('ebs')
         self.provider_label_template_names = {}
+        # In listResources, we reconcile AMIs which appear to be
+        # imports but have no nodepool tags, however it's possible
+        # that these aren't nodepool images.  If we determine that's
+        # the case, we'll add their ids here so we don't waste our
+        # time on that again.
+        self.not_our_images = set()
+        self.not_our_snapshots = set()
 
     def startEndpoint(self):
         self._running = True
@@ -496,7 +503,14 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
     def postConfig(self, provider):
         self._createLaunchTemplates(provider)
 
-    def listResources(self, bucket_name):
+    def listResources(self, providers):
+        bucket_names = set()
+        for provider in providers:
+            if bn := provider.object_storage.get('bucket-name'):
+                bucket_names.add(bn)
+        self._tagSnapshots()
+        self._tagAmis()
+
         for host in self._listHosts():
             try:
                 if host['State'].lower() in [
@@ -540,7 +554,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 continue
             yield AwsResource(tag_list_to_dict(snap.get('Tags')),
                               AwsResource.TYPE_SNAPSHOT, snap['SnapshotId'])
-        if bucket_name:
+        for bucket_name in bucket_names:
             for obj in self._listObjects(bucket_name):
                 with self.non_mutating_rate_limiter:
                     try:
@@ -549,10 +563,10 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     except botocore.exceptions.ClientError:
                         continue
                 yield AwsResource(tag_list_to_dict(tags['TagSet']),
-                                  AwsResource.TYPE_OBJECT, obj.key)
+                                  AwsResource.TYPE_OBJECT, obj.key,
+                                  bucket_name=bucket_name)
 
-    def deleteResource(self, resource, bucket_name):
-        self.deleteResource(resource, bucket_name)
+    def deleteResource(self, resource):
         self.log.info(f"Deleting leaked {resource.type}: {resource.id}")
         if resource.type == AwsResource.TYPE_HOST:
             self._releaseHost(resource.id, immediate=True)
@@ -565,7 +579,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         if resource.type == AwsResource.TYPE_SNAPSHOT:
             self._deleteSnapshot(resource.id)
         if resource.type == AwsResource.TYPE_OBJECT:
-            self._deleteObject(bucket_name, resource.id)
+            self._deleteObject(resource.bucket_name, resource.id)
 
     def listInstances(self):
         volumes = {}
@@ -901,14 +915,14 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
     # Local implementation below
 
-    def _tagAmis(self, provider_name, not_our_images):
+    def _tagAmis(self):
         # There is no way to tag imported AMIs, so this routine
         # "eventually" tags them.  We look for any AMIs without tags
         # and we copy the tags from the associated snapshot or image
         # import task.
         to_examine = []
         for ami in self._listAmis():
-            if ami['ImageId'] in not_our_images:
+            if ami['ImageId'] in self.not_our_images:
                 continue
             if ami.get('Tags'):
                 continue
@@ -921,7 +935,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     # This was an import image (not snapshot) so let's
                     # try to find tags from the import task.
                     tags = tag_list_to_dict(task.get('Tags'))
-                    if (tags.get('zuul_provider_name') == provider_name):
+                    if (tags.get('zuul_system_id') == self.system_id):
                         # Copy over tags
                         self.log.debug(
                             "Copying tags from import task %s to AMI",
@@ -936,16 +950,16 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             # any tags from the snapshot import task, otherwise, mark
             # it as an image we can ignore in future runs.
             if len(ami.get('BlockDeviceMappings', [])) < 1:
-                not_our_images.add(ami['ImageId'])
+                self.not_our_images.add(ami['ImageId'])
                 continue
             bdm = ami['BlockDeviceMappings'][0]
             ebs = bdm.get('Ebs')
             if not ebs:
-                not_our_images.add(ami['ImageId'])
+                self.not_our_images.add(ami['ImageId'])
                 continue
             snapshot_id = ebs.get('SnapshotId')
             if not snapshot_id:
-                not_our_images.add(ami['ImageId'])
+                self.not_our_images.add(ami['ImageId'])
                 continue
             to_examine.append((ami, snapshot_id))
         if not to_examine:
@@ -963,12 +977,11 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             task_map[task_snapshot_id] = task['Tags']
 
         for ami, snapshot_id in to_examine:
-            tags = task_map.get(snapshot_id)
+            tags = tag_list_to_dict(task_map.get(snapshot_id))
             if not tags:
-                not_our_images.add(ami['ImageId'])
+                self.not_our_images.add(ami['ImageId'])
                 continue
-            metadata = tag_list_to_dict(tags)
-            if (metadata.get('zuul_provider_name') == provider_name):
+            if (tags.get('zuul_system_id') == self.system_id):
                 # Copy over tags
                 self.log.debug(
                     "Copying tags from import task to image %s",
@@ -976,15 +989,15 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 with self.rate_limiter:
                     self.ec2_client.create_tags(
                         Resources=[ami['ImageId']],
-                        Tags=task['Tags'])
+                        Tags=task_map.get(snapshot_id))
             else:
-                not_our_images.add(ami['ImageId'])
+                self.not_our_images.add(ami['ImageId'])
 
-    def _tagSnapshots(self, provider_name, not_our_snapshots):
+    def _tagSnapshots(self):
         # See comments for _tagAmis
         to_examine = []
         for snap in self._listSnapshots():
-            if snap['SnapshotId'] in not_our_snapshots:
+            if snap['SnapshotId'] in self.not_our_snapshots:
                 continue
             try:
                 if snap.get('Tags'):
@@ -1004,7 +1017,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     # This was an import image (not snapshot) so let's
                     # try to find tags from the import task.
                     tags = tag_list_to_dict(task.get('Tags'))
-                    if (tags.get('zuul_provider_name') == provider_name):
+                    if (tags.get('zuul_system_id') == self.system_id):
                         # Copy over tags
                         self.log.debug(
                             f"Copying tags from import task {task_id}"
@@ -1034,12 +1047,11 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             task_map[task_snapshot_id] = task['Tags']
 
         for snap in to_examine:
-            tags = task_map.get(snap['SnapshotId'])
+            tags = tag_list_to_dict(task_map.get(snap['SnapshotId']))
             if not tags:
-                not_our_snapshots.add(snap['SnapshotId'])
+                self.not_our_snapshots.add(snap['SnapshotId'])
                 continue
-            metadata = tag_list_to_dict(tags)
-            if (metadata.get('zuul_provider_name') == provider_name):
+            if (tags.get('zuul_system_id') == self.system_id):
                 # Copy over tags
                 self.log.debug(
                     "Copying tags from import task to snapshot %s",
@@ -1047,9 +1059,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 with self.rate_limiter:
                     self.ec2_client.create_tags(
                         Resources=[snap['SnapshotId']],
-                        Tags=tags)
+                        Tags=task_map.get(snap['SnapshotId']))
             else:
-                not_our_snapshots.add(snap['SnapshotId'])
+                self.not_our_snapshots.add(snap['SnapshotId'])
 
     def _getImportImageTask(self, task_id):
         paginator = self.ec2_client.get_paginator(
@@ -1419,7 +1431,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
         self.log.info("Creating launch templates")
         tags = {
-            'zuul_managed': 'true',
+            'zuul_system_id': self.system_id,
             'zuul_provider_name': provider.canonical_name,
         }
         existing_templates = dict()  # for clean up and avoid creation attempt
@@ -1512,14 +1524,13 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         for template_name, template in existing_templates.items():
             if template_name not in configured_templates:
                 # check if the template was created by the current provider
-                tags = template.get('Tags', [])
-                for tag in tags:
-                    if (tag['Key'] == 'zuul_provider_name' and
-                        tag['Value'] == provider.canonical_name):
-                        self.ec2_client.delete_launch_template(
-                            LaunchTemplateName=template_name)
-                        self.log.debug("Deleted unused launch template: %s",
-                                       template_name)
+                tags = tag_list_to_dict(template.get('Tags', []))
+                if (tags.get('zuul_system_id') == self.system_id and
+                    tags.get('zuul_provider_name') == provider.canonical_name):
+                    self.ec2_client.delete_launch_template(
+                        LaunchTemplateName=template_name)
+                    self.log.debug("Deleted unused launch template: %s",
+                                   template_name)
 
     def _getLaunchTemplateName(self, args):
         hasher = hashlib.sha256()
@@ -1793,7 +1804,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             ids = []
             for (del_id, log) in records:
                 ids.append(del_id)
-                log.debug(f"Deleting instance {del_id}")
+                log.debug("Deleting instance %s", del_id)
             count = len(ids)
             with self.rate_limiter(log.debug, f"Deleted {count} instances"):
                 self.ec2_client.terminate_instances(InstanceIds=ids)
@@ -1805,7 +1816,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             ids = []
             for (del_id, log) in records:
                 ids.append(del_id)
-                log.debug(f"Releasing host {del_id}")
+                log.debug("Releasing host %s", del_id)
             count = len(ids)
             with self.rate_limiter(log.debug, f"Released {count} hosts"):
                 self.ec2_client.release_hosts(HostIds=ids)
@@ -1817,7 +1828,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             if host['HostId'] == external_id:
                 break
         else:
-            log.warning(f"Host not found when releasing {external_id}")
+            log.warning("Host not found when releasing %s", external_id)
             return None
         if immediate:
             with self.rate_limiter(log.debug, "Released host"):
@@ -1835,7 +1846,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             if instance['InstanceId'] == external_id:
                 break
         else:
-            log.warning(f"Instance not found when deleting {external_id}")
+            log.warning("Instance not found when deleting %s", external_id)
             return None
         if immediate:
             with self.rate_limiter(log.debug, "Deleted instance"):
@@ -1851,11 +1862,17 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             if volume['VolumeId'] == external_id:
                 break
         else:
-            self.log.warning(f"Volume not found when deleting {external_id}")
+            self.log.warning("Volume not found when deleting %s", external_id)
             return None
         with self.rate_limiter(self.log.debug, "Deleted volume"):
             self.log.debug(f"Deleting volume {external_id}")
-            self.ec2_client.delete_volume(VolumeId=volume['VolumeId'])
+            try:
+                self.ec2_client.delete_volume(VolumeId=volume['VolumeId'])
+            except botocore.exceptions.ClientError as error:
+                if error.response['Error']['Code'] == 'NotFound':
+                    self.log.warning(
+                        "Volume not found when deleting %s", external_id)
+                    return None
         return volume
 
     def _deleteAmi(self, external_id):
@@ -1863,11 +1880,17 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             if ami['ImageId'] == external_id:
                 break
         else:
-            self.log.warning(f"AMI not found when deleting {external_id}")
+            self.log.warning("AMI not found when deleting %s", external_id)
             return None
         with self.rate_limiter:
             self.log.debug(f"Deleting AMI {external_id}")
-            self.ec2_client.deregister_image(ImageId=ami['ImageId'])
+            try:
+                self.ec2_client.deregister_image(ImageId=ami['ImageId'])
+            except botocore.exceptions.ClientError as error:
+                if error.response['Error']['Code'] == 'NotFound':
+                    self.log.warning(
+                        "AMI not found when deleting %s", external_id)
+                    return None
         return ami
 
     def _deleteSnapshot(self, external_id):
@@ -1875,14 +1898,21 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             if snap['SnapshotId'] == external_id:
                 break
         else:
-            self.log.warning(f"Snapshot not found when deleting {external_id}")
+            self.log.warning("Snapshot not found when deleting %s",
+                             external_id)
             return None
         with self.rate_limiter:
             self.log.debug(f"Deleting Snapshot {external_id}")
-            self.ec2_client.delete_snapshot(SnapshotId=snap['SnapshotId'])
+            try:
+                self.ec2_client.delete_snapshot(SnapshotId=snap['SnapshotId'])
+            except botocore.exceptions.ClientError as error:
+                if error.response['Error']['Code'] == 'NotFound':
+                    self.log.warning(
+                        "Snapshot not found when deleting %s", external_id)
+                    return None
         return snap
 
     def _deleteObject(self, bucket_name, external_id):
         with self.rate_limiter:
-            self.log.debug(f"Deleting object {external_id}")
+            self.log.debug("Deleting object %s", external_id)
             self.s3.Object(bucket_name, external_id).delete()

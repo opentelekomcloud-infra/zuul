@@ -225,9 +225,10 @@ class LayoutProvidersStore(ZooKeeperSimpleBase):
 
     tenant_root = "/zuul/tenant"
 
-    def __init__(self, client, connections):
+    def __init__(self, client, connections, system_id):
         super().__init__(client)
         self.connections = connections
+        self.system_id = system_id
 
     def get(self, context, tenant_name):
         path = f"{self.tenant_root}/{tenant_name}/provider"
@@ -244,7 +245,7 @@ class LayoutProvidersStore(ZooKeeperSimpleBase):
             for provider_name in provider_names:
                 provider_path = (f"{path}/{provider_name}/config")
                 yield BaseProvider.fromZK(
-                    context, provider_path, self.connections
+                    context, provider_path, self.connections, self.system_id
                 )
 
     def set(self, context, tenant_name, providers):

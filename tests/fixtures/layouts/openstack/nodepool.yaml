@@ -105,6 +105,8 @@
     launch-timeout: 600
     launch-attempts: 2
     key-name: zuul
+    floating-ip-cleanup: true
+    port-cleanup-interval: 1
     flavors:
       - name: normal
         flavor-name: Fake Flavor
