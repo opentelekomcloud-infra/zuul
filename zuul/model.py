@@ -2446,15 +2446,17 @@ class NodesetRequest(zkobject.LockableZKObject):
     def addProviderNode(self, provider_node):
         self.provider_node_data.append(dict(
             uuid=provider_node.uuid,
+            executor_zone=provider_node.executor_zone,
             failed_providers=[],
         ))
 
-    def updateProviderNode(self, index,
-                           uuid=None,
+    def updateProviderNode(self, index, provider_node,
                            add_failed_provider=None):
         data = self.provider_node_data[index]
-        if uuid is not None:
-            data['uuid'] = uuid
+        data.update(dict(
+            uuid=provider_node.uuid,
+            executor_zone=provider_node.executor_zone,
+        ))
         if add_failed_provider is not None:
             data['failed_providers'].append(add_failed_provider)
 
@@ -2470,6 +2472,10 @@ class NodesetRequest(zkobject.LockableZKObject):
     @property
     def nodes(self):
         return [n['uuid'] for n in self.provider_node_data]
+
+    @property
+    def executor_zones(self):
+        return [n.get('executor_zone') for n in self.provider_node_data]
 
     @property
     def created_time(self):
@@ -2612,8 +2618,9 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             create_state={},
             delete_state={},
             host_key_checking=None,
-            boot_timeout=None,
             # Node data
+            boot_timeout=None,
+            executor_zone=None,
             host_id=None,
             interface_ip=None,
             public_ipv4=None,
@@ -2714,6 +2721,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             attributes=self.attributes,
             az=self.az,
             boot_timeout=self.boot_timeout,
+            executor_zone=self.executor_zone,
             cloud=self.cloud,
             connection_port=self.connection_port,
             connection_type=self.connection_type,

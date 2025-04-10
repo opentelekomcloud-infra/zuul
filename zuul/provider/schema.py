@@ -27,6 +27,7 @@ from zuul.lib.voluputil import Required, Optional, Nullable
 # label.
 common_label = vs.Schema({
     Optional('boot-timeout', default=300): int,
+    Optional('executor-zone'): Nullable(str),
 })
 
 # The label attributes that can appear in a section/provider label or
