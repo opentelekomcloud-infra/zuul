@@ -16,6 +16,24 @@
       "message": "From the code in https://opendev.org/zuul/zuul/src/commit/b52fbb33d39933fbac0cde4a7b30ebb2f356e5be/zuul/manager/__init__.py#L1380-L1401 it looks like we never pass the event ID, so I think we can also remove that parameter and always use `item.event`.",
       "revId": "a1d0797109d137f8bae3dab77d620dbdfc899c2f",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "100d76d5_cc1e036f",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 3376,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-04-10T09:55:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b6660168_c644ae58",
+      "revId": "a1d0797109d137f8bae3dab77d620dbdfc899c2f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
