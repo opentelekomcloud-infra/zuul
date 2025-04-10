@@ -758,7 +758,7 @@ class Scheduler(threading.Thread):
             cached_projects = set(
                 self.unparsed_config_cache.listCachedProjects())
             active_projects = set(
-                self.abide.unparsed_project_branch_cache.keys())
+                self.abide.config_object_cache.keys())
             unused_projects = cached_projects - active_projects
             for project_cname in unused_projects:
                 self.unparsed_config_cache.clearCache(project_cname)
