@@ -35,6 +35,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "88aada6d_3a173869",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 1919,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-10T00:11:12Z",
+      "side": 1,
+      "message": "I agree it should degrade gracefully, but I put a note in the documentation about not setting replication_timeout if your gerrit is too old. That should avoid waiting for the timeout on events without sufficient info.",
+      "parentUuid": "d6b8bf50_e57917ad",
+      "revId": "b2cef244224c925e3ead745e85b0bad2476724c8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0669a1c9_91628db1",
@@ -48,6 +66,24 @@
       "writtenOn": "2025-04-09T21:48:17Z",
       "side": 1,
       "message": "House style for this would be _getProjectAndRef.\n\n(We have been inconsistent, but trying to get better.)",
+      "revId": "b2cef244224c925e3ead745e85b0bad2476724c8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ffc8f497_f489cd49",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-10T00:11:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0669a1c9_91628db1",
       "revId": "b2cef244224c925e3ead745e85b0bad2476724c8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
