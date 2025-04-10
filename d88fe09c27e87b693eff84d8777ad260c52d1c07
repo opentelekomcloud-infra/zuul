@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb4df699_7d093163",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-04-10T09:52:11Z",
+      "side": 1,
+      "message": "you were right, digging through the logs when the error appeared showed that the issue was calling the endpoint with a job that doesn\u0027t exist. I\u0027ve set the 404 response for that case and added a test.",
+      "revId": "d88fe09c27e87b693eff84d8777ad260c52d1c07",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
