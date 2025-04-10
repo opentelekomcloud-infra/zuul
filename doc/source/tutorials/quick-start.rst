@@ -228,6 +228,7 @@ to use the gating process on this repository too, so we need to attach
 the ``zuul-config`` repository to the ``check`` and ``gate`` pipelines
 we are about to create.  There are no jobs defined yet, so we must use
 the internally defined ``noop`` job, which always returns success.
+
 Later on we will be configuring some other projects, and while we will
 be able to dynamically add jobs to their pipelines, those projects
 must first be attached to the pipelines in order for that to work.  In
