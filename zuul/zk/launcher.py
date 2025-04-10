@@ -88,7 +88,10 @@ class LockableZKObjectCache(ZuulTreeCache):
         if not request:
             return
 
-        request._set(is_locked=exists)
+        if request.is_locked != exists:
+            request._set(is_locked=exists)
+            if self.updated_event:
+                self.updated_event()
 
     def postCacheHook(self, event, data, stat, key, obj):
         if self.updated_event:
