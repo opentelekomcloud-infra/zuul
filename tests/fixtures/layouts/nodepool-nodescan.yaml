@@ -125,7 +125,7 @@
     abstract: true
     connection: aws
     host-key-checking: true
-    boot-timeout: 1
+    boot-timeout: 3
     launch-timeout: 600
     launch-attempts: 2
     object-storage:
