@@ -1556,6 +1556,29 @@ class TestScheduler(ZuulTestCase):
             connection.maintainCache([], max_age=0)
         self.assertEqual(len(_getCachedChanges()), 0)
 
+    def test_general_cleanup(self):
+        # Exercise the general cleanup method
+        self.scheds.first.sched._runGeneralCleanup()
+
+    def test_config_cache_cleanup(self):
+        old_cached_projects = set(
+            self.scheds.first.sched.unparsed_config_cache.listCachedProjects())
+        # TODO: The only way the config_object_cache can get smaller
+        # is if the cleanup is run by a newly (re-)started scheduler.
+        # The unparsed_config_cache cleanup is based on that,
+        # therefore that is the only way for it to get smaller as
+        # well.  This could potentially be improved.  If this is
+        # changed, remove the explicit clear call below (it simulates
+        # a restarted scheduler).
+        self.scheds.first.sched.abide.config_object_cache.clear()
+        self.newTenantConfig('config/single-tenant/main-one-project.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+        self.scheds.first.sched._runGeneralCleanup()
+        new_cached_projects = set(
+            self.scheds.first.sched.unparsed_config_cache.listCachedProjects())
+        self.assertTrue(new_cached_projects < old_cached_projects)
+
     def test_can_merge(self):
         "Test whether a change is ready to merge"
         # TODO: move to test_gerrit (this is a unit test!)
