@@ -265,13 +265,9 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
 
     def uploadImage(self, provider_image, image_name,
                     filename, image_format, metadata, md5, sha256):
-        # TODO make this configurable
-        # timeout = self.image_import_timeout
-        timeout = 300
         return self.endpoint.uploadImage(
             provider_image, image_name,
-            filename, image_format, metadata, md5, sha256,
-            timeout)
+            filename, image_format, metadata, md5, sha256)
 
     def deleteImage(self, external_id):
         self.endpoint.deleteImage(external_id)

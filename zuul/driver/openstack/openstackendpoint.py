@@ -507,7 +507,7 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
         return True
 
     def uploadImage(self, provider_image, image_name, filename,
-                    image_format, metadata, md5, sha256, timeout):
+                    image_format, metadata, md5, sha256):
         # configure glance and upload image.  Note the meta flags
         # are provided as custom glance properties
         # NOTE: we have wait=True set here. This is not how we normally
@@ -518,6 +518,7 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
         #              block for our v1 clouds anyway, so we might as well
         #              have the interface be the same and treat faking-out
         #              a openstacksdk-level fake-async interface later
+        timeout = provider_image.import_timeout
         if not metadata:
             metadata = {}
         if image_format:

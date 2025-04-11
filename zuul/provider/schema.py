@@ -60,6 +60,7 @@ common_image = vs.Schema({
     Optional('connection-port'): Nullable(int),
     Optional('python-path'): Nullable(str),
     Optional('shell-type'): Nullable(str),
+    Optional('import-timeout', default=300): int,
 })
 
 # Same as above, but only for cloud providers.
