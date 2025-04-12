@@ -170,7 +170,9 @@ class KeyStorage(ZooKeeperBase):
         super().__init__(zookeeper_client)
         self.password = password
         self.password_bytes = password.encode("utf-8")
-        self.zk_context = ZKContext(self.client, None, None, self.log)
+
+    def createZKContext(self):
+        return ZKContext(self.client, None, None, self.log)
 
     def _walk(self, root):
         ret = []
@@ -398,19 +400,21 @@ class KeyStorage(ZooKeeperBase):
         signing keys. It creates a new key and/or remove the older
         keys when necessary.
         """
-        OIDCSigningKeys.rotateKeys(
-            self.zk_context, algorithm, self.password_bytes,
-            rotation_interval, max_ttl)
+        with self.createZKContext() as context:
+            OIDCSigningKeys.rotateKeys(
+                context, algorithm, self.password_bytes,
+                rotation_interval, max_ttl)
 
     def getOidcSigningKeyData(self, algorithm):
         """Return the key data of an algorithm of OIDC singing keys"""
-        oidc_signing_keys = OIDCSigningKeys.loadKeys(
-            self.zk_context, algorithm)
-        if not oidc_signing_keys:
-            OIDCSigningKeys.createAndStoreKeys(
-                self.zk_context, algorithm, self.password_bytes)
+        with self.createZKContext() as context:
             oidc_signing_keys = OIDCSigningKeys.loadKeys(
-                self.zk_context, algorithm)
+                context, algorithm)
+            if not oidc_signing_keys:
+                OIDCSigningKeys.createAndStoreKeys(
+                    context, algorithm, self.password_bytes)
+                oidc_signing_keys = OIDCSigningKeys.loadKeys(
+                    context, algorithm)
 
         return oidc_signing_keys
 
@@ -428,4 +432,5 @@ class KeyStorage(ZooKeeperBase):
 
     def deleteOidcSigningKeys(self, algorithm):
         """Delete the complete internal data structure"""
-        OIDCSigningKeys.deleteKeysByAlgorithm(self.zk_context, algorithm)
+        with self.createZKContext() as context:
+            OIDCSigningKeys.deleteKeysByAlgorithm(context, algorithm)
