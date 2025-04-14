@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "0f105f3950d5954654e4dd4d5187a8966d348a2b",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e0771d23_a64e0e15",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-04-14T11:43:24Z",
+      "side": 1,
+      "message": "This is missing the `password_bytes` argument",
+      "revId": "0f105f3950d5954654e4dd4d5187a8966d348a2b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
