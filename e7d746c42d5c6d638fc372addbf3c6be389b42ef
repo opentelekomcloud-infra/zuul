@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7a11104b_ad71a709",
+        "filename": "zuul/driver/aws/awsendpoint.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 416,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-04-14T09:17:42Z",
+      "side": 1,
+      "message": "nit: s/nodepool/zuul/",
+      "range": {
+        "startLine": 412,
+        "startChar": 0,
+        "endLine": 416,
+        "endChar": 28
+      },
+      "revId": "e7d746c42d5c6d638fc372addbf3c6be389b42ef",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
