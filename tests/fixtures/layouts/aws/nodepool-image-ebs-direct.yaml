@@ -69,13 +69,13 @@
       - name: debian-local
 
 - section:
-    name: aws-us-west-2
+    name: aws-us-east-1
     parent: aws-base
-    region: us-west-2
+    region: us-east-1
 
 - provider:
-    name: aws-us-west-2-main
-    section: aws-us-west-2
+    name: aws-us-east-1-main
+    section: aws-us-east-1
     labels:
       - name: debian-local-normal
         key-name: zuul

@@ -236,19 +236,6 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
     log = logging.getLogger("zuul.AwsProvider")
     schema = AwsProviderSchema().getProviderSchema()
 
-    def __init__(self, *args, **kw):
-        super().__init__(*args, **kw)
-        # In listResources, we reconcile AMIs which appear to be
-        # imports but have no nodepool tags, however it's possible
-        # that these aren't nodepool images.  If we determine that's
-        # the case, we'll add their ids here so we don't waste our
-        # time on that again.  We do not need to serialize these;
-        # these are ephemeral caches.
-        self._set(
-            not_our_images=set(),
-            not_our_snapshots=set(),
-        )
-
     @property
     def endpoint(self):
         ep = getattr(self, '_endpoint', None)
@@ -304,19 +291,6 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
 
     def listInstances(self):
         return self.endpoint.listInstances()
-
-    def listResources(self):
-        bucket_name = self.object_storage.get('bucket-name')
-
-        self.endpoint._tagSnapshots(
-            self.tenant_scoped_name, self.not_our_snapshots)
-        self.endpoint._tagAmis(
-            self.tenant_scoped_name, self.not_our_images)
-        return self.endpoint.listResources(bucket_name)
-
-    def deleteResource(self, resource):
-        bucket_name = self.object_storage.get('bucket-name')
-        self.endpoint.deleteResource(resource, bucket_name)
 
     def getQuotaLimits(self):
         # Get the instance and volume types that this provider handles

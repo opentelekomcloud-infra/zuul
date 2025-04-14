@@ -345,7 +345,7 @@ class Scheduler(threading.Thread):
             self.zk_client,
             self.layout_update_event.set)
         self.layout_providers_store = LayoutProvidersStore(
-            self.zk_client, self.connections)
+            self.zk_client, self.connections, self.system.system_id)
         self.local_layout_state = {}
 
         command_socket = get_default(
