@@ -2461,12 +2461,8 @@ class Scheduler(threading.Thread):
                     # criteria.
                     try:
                         manager.change_list.refresh(ctx, allow_init=False)
-                    except json.JSONDecodeError:
-                        self.log.warning(
-                            "Unable to refresh pipeline change list for %s",
-                            manager.pipeline.name)
                     except Exception:
-                        self.log.exception(
+                        self.log.warning(
                             "Unable to refresh pipeline change list for %s",
                             manager.pipeline.name)
 
