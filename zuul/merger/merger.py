@@ -15,6 +15,7 @@
 # under the License.
 
 from contextlib import contextmanager
+from contextlib import nullcontext
 from urllib.parse import urlsplit, urlunsplit, urlparse
 import enum
 import hashlib
@@ -61,11 +62,6 @@ def timeout_handler(path):
             if os.path.exists(path):
                 shutil.rmtree(path)
         raise
-
-
-@contextmanager
-def nullcontext():
-    yield
 
 
 class SparsePaths(enum.Enum):
