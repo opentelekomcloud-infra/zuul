@@ -214,14 +214,33 @@ See also the Ansible `Python 3 support page
 
 .. _nodepool_console_streaming:
 
-Log streaming
+Log Streaming
 ~~~~~~~~~~~~~
 
 The log streaming service enables Zuul to show the live status of
-long-running ``shell`` or ``command`` tasks.  The server side is setup
-by the ``zuul_console:`` task built-in to Zuul's Ansible installation.
-The executor requires the ability to communicate with this server on
-the job nodes via port ``19885`` for this to work.
+long-running ``shell``, ``command``, ``win_shell``, or ``win_command``
+tasks.
+
+Log streaming is available on both Posix and Windows based hosts.  The
+two systems operate in the same way with some minor differences.  They
+are compatible, and in the case where a Windows host runs Windows
+Subsystem for Linux (WSL), they may operate at the same time.
+
+For Kubernetes-based job nodes the connection from the executor to the
+log streaming daemon is established by using ``kubectl port-forward``
+to forward a local port to the appropriate port on the pod containing
+the job node.  If the Kubernetes user is not bound to a role that has
+authorization for port-forwarding, this will prevent connection to
+the daemon.
+
+Posix Log Streaming
++++++++++++++++++++
+
+The Posix log streaming service handles output from ``shell`` and
+``command`` tasks.  The server side is setup by the ``zuul_console:``
+task built-in to Zuul's Ansible installation.  The executor requires
+the ability to communicate with this server on the job nodes via port
+``19885`` for this to work.
 
 The log streaming service spools command output via files on the job
 node in the format ``/tmp/console-<uuid>-<task_id>-<host>.log``.  By
@@ -241,19 +260,43 @@ some other reason, the command to clean these spool files will not be
 processed and they may be left behind; on an ephemeral node this is
 not usually a problem, but on a static node these files will persist.
 
-In this situation, Zuul can be instructed to not to create any spool
-files for ``shell`` and ``command`` tasks via setting
-``zuul_console_disabled: True`` (usually via a global host variable in
-inventory).  Live streaming of ``shell`` and ``command`` calls will of
+In this situation, Zuul can be instructed not to create any spool
+files for ``shell``, ``command``, ``win_shell``, or ``win_command``
+tasks by setting ``zuul_console_disabled: True`` (usually via a global
+host variable in inventory).  Live streaming of these tasks will of
 course be unavailable in this case, but no spool files will be
 created.
 
-For Kubernetes-based job nodes the connection from the executor to the
-``zuul_console`` daemon is established by using ``kubectl port-forward``
-to forward a local port to the appropriate port on the pod containing
-the job node.  If the Kubernetes user is not bound to a role that has
-authorization for port-forwarding, this will prevent connection to
-the ``zuul_console`` daemon.
+Windows Log Streaming
++++++++++++++++++++++
+
+The Windows log streaming service handles output from ``win_shell``
+and ``win_command`` tasks.  The server side is setup by the
+``win_zuul_console:`` task built-in to Zuul's Ansible installation.
+The executor requires the ability to communicate with this server on
+the job nodes via port ``19886`` for this to work.
+
+The log streaming service spools command output via files on the job
+node in the format ``C:/Users/All
+Users/Zuul/console-console-<uuid>-<task_id>-<host>.log``.  By default,
+it will clean these files up automatically.
+
+Occasionally, a streaming file may be left if a job is interrupted.
+These may be safely removed after a short period of inactivity.
+
+If the executor is unable to reach port ``19886`` (for example due to
+firewall rules), or the ``win_zuul_console`` daemon can not be run for
+some other reason, the command to clean these spool files will not be
+processed and they may be left behind; on an ephemeral node this is
+not usually a problem, but on a static node these files will persist.
+
+In this situation, Zuul can be instructed not to create any spool
+files for ``shell``, ``command``, ``win_shell``, or ``win_command``
+tasks by setting ``zuul_console_disabled: True`` (usually via a global
+host variable in inventory).  Live streaming of these tasks will of
+course be unavailable in this case, but no spool files will be
+created.
+
 
 Web Server
 ----------

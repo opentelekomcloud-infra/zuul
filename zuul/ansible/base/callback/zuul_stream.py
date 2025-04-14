@@ -1,5 +1,5 @@
 # Copyright 2017 Red Hat, Inc.
-# Copyright 2024 Acme Gating, LLC
+# Copyright 2024-2025 Acme Gating, LLC
 #
 # Zuul is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,10 +54,37 @@ from zuul.ansible import logconfig
 
 LOG_STREAM_VERSION = 0
 
-# This is intended to be only used for testing where we change the
-# port so we can run another instance that doesn't conflict with one
-# setup by the test environment
-LOG_STREAM_PORT = int(os.environ.get("ZUUL_CONSOLE_PORT", 19885))
+DEFAULT_POSIX_PORT = 19885
+DEFAULT_WINDOWS_PORT = 19886
+
+POSIX_ACTIONS = (
+    'command',
+    'shell',
+    'ansible.builtin.command',
+    'ansible.builtin.shell',
+)
+
+WINDOWS_ACTIONS = (
+    'win_command',
+    'win_shell',
+    'ansible.windows.win_command',
+    'ansible.windows.win_shell',
+)
+
+ACTION_LOG_STREAM_PORT = {
+    **{a: DEFAULT_POSIX_PORT for a in POSIX_ACTIONS},
+    **{a: DEFAULT_WINDOWS_PORT for a in WINDOWS_ACTIONS},
+}
+
+# Actions that support live log streaming
+STREAMING_ACTIONS = POSIX_ACTIONS + WINDOWS_ACTIONS
+
+# Actions that produce stdout/err that should go in the log from JSON
+OUTPUT_ACTIONS = ('raw',)
+
+# Actions that produce stdout/err that should go in the log (whether
+# from streaming or JSON).
+ALL_ACTIONS = STREAMING_ACTIONS + OUTPUT_ACTIONS
 
 
 def zuul_filter_result(result):
@@ -437,13 +464,20 @@ class CallbackModule(default.CallbackModule):
         if task.async_val:
             # Don't try to stream from async tasks
             return
-        if task.action in ('command', 'shell',
-                           'ansible.builtin.command', 'ansible.builtin.shell'):
+        if task.action in STREAMING_ACTIONS:
             play_vars = self._play._variable_manager._hostvars
 
             hosts = self._get_task_hosts(task)
             for host, inventory_hostname in hosts:
-                port = LOG_STREAM_PORT
+                default_port = ACTION_LOG_STREAM_PORT.get(task.action)
+                # This is intended to be only used for testing where
+                # we change the port so we can run another instance
+                # that doesn't conflict with one setup by the test
+                # environment
+                port = int(os.environ.get("ZUUL_CONSOLE_PORT", default_port))
+                if port is None:
+                    continue
+
                 if (host in ('localhost', '127.0.0.1')):
                     # Don't try to stream from localhost
                     continue
@@ -462,8 +496,12 @@ class CallbackModule(default.CallbackModule):
                     continue
                 if play_vars[host].get('ansible_connection') in ('kubectl', ):
                     # Stream from the forwarded port on kubectl conns
+                    if task.action in WINDOWS_ACTIONS:
+                        port_id = 'stream_port2'
+                    else:
+                        port_id = 'stream_port1'
                     port = play_vars[host]['zuul']['resources'][
-                        inventory_hostname].get('stream_port')
+                        inventory_hostname].get(port_id)
                     if port is None:
                         self._log("[Zuul] Kubectl and socat must be installed "
                                   "on the Zuul executor for streaming output "
@@ -554,19 +592,11 @@ class CallbackModule(default.CallbackModule):
 
         if not is_localhost and is_task:
             self._stop_streamers()
-        if result._task.action in ('raw', 'command', 'shell',
-                                   'win_command', 'win_shell',
-                                   'ansible.builtin.raw',
-                                   'ansible.windows.win_command',
-                                   'ansible.windows.win_shell'):
+        if result._task.action in ALL_ACTIONS:
             stdout_lines = zuul_filter_result(result_dict)
-            # We don't have streaming for localhost and windows modules so get
-            # standard out after the fact.
-            if is_localhost or result._task.action in (
-                    'raw', 'win_command', 'win_shell',
-                    'ansible.builtin.raw',
-                    'ansible.windows.win_command',
-                    'ansible.windows.win_shell'):
+            # We don't have streaming for localhost so get standard
+            # out after the fact.
+            if is_localhost or result._task.action in OUTPUT_ACTIONS:
                 for line in stdout_lines:
                     hostname = self._get_hostname(result)
                     self._log("%s | %s " % (hostname, line))
@@ -645,6 +675,17 @@ class CallbackModule(default.CallbackModule):
             if 'not run command since' in result_dict.get('msg', ''):
                 self._stop_skipped_task_streamer(result._task)
 
+        if result._task.action in ('win_command', 'win_shell'):
+            # The win_command module has a small set of msgs it returns;
+            # we can use that to detect if decided not to execute the
+            # command:
+            # "skipped, since $creates exists" and "skipped, since
+            # $removes does not exist" are the messages we're looking
+            # for.
+            m = result_dict.get('msg', '')
+            if 'skipped, since' in m and 'exist' in m:
+                self._stop_skipped_task_streamer(result._task)
+
         if (self._play.strategy == 'free'
                 and self._last_task_banner != result._task._uuid):
             self._print_task_banner(result._task)
@@ -705,7 +746,7 @@ class CallbackModule(default.CallbackModule):
                 self._log_message(
                     msg=json.dumps(result_dict, indent=2, sort_keys=True),
                     status=status, result=result)
-        elif result._task.action not in ('command', 'shell'):
+        elif result._task.action not in STREAMING_ACTIONS:
             if 'msg' in result_dict:
                 self._log_message(msg=result_dict['msg'],
                                   result=result, status=status)
@@ -750,11 +791,7 @@ class CallbackModule(default.CallbackModule):
 
         if to_text(result_dict.get('msg', '')).startswith('MODULE FAILURE'):
             self._log_module_failure(result, result_dict)
-        elif result._task.action not in ('raw', 'command', 'shell',
-                                         'win_command', 'win_shell',
-                                         'ansible.builtin.raw',
-                                         'ansible.windows.win_command',
-                                         'ansible.windows.win_shell'):
+        elif result._task.action not in ALL_ACTIONS:
             if 'msg' in result_dict:
                 self._log_message(
                     result=result, msg=result_dict['msg'], status=status)
@@ -796,11 +833,7 @@ class CallbackModule(default.CallbackModule):
 
         if to_text(result_dict.get('msg', '')).startswith('MODULE FAILURE'):
             self._log_module_failure(result, result_dict)
-        elif result._task.action not in ('raw', 'command', 'shell',
-                                         'win_command', 'win_shell',
-                                         'ansible.builtin.raw',
-                                         'ansible.windows.win_command',
-                                         'ansible.windows.win_shell'):
+        elif result._task.action not in ALL_ACTIONS:
             self._log_message(
                 result=result,
                 msg="Item: {loop_var}".format(loop_var=result_dict[loop_var]),
@@ -879,9 +912,10 @@ class CallbackModule(default.CallbackModule):
         is_shell = task_args.pop('_uses_shell', False)
         if is_shell and task_name == 'command':
             task_name = 'shell'
+        # win_shell doesn't use _uses_shell.
         raw_params = task_args.pop('_raw_params', '').split('\n')
         # If there's just a single line, go ahead and print it
-        if len(raw_params) == 1 and task_name in ('shell', 'command'):
+        if len(raw_params) == 1 and task_name in STREAMING_ACTIONS:
             task_name = '{name}: {command}'.format(
                 name=task_name, command=raw_params[0])
 

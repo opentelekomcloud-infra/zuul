@@ -406,7 +406,8 @@ class KubeFwd(object):
 
     def __init__(self, zuul_event_id, build, kubeconfig, context,
                  namespace, pod):
-        self.port = None
+        self.port1 = None
+        self.port2 = None
         self.fwd = None
         self.log = get_annotated_logger(
             logging.getLogger("zuul.ExecutorServer"),
@@ -415,22 +416,27 @@ class KubeFwd(object):
         self.context = context
         self.namespace = namespace
         self.pod = pod
-        self.socket = None
+        self.socket1 = None
+        self.socket2 = None
 
     def _getSocket(self):
-        # Reserve a port so that we can restart the forwarder if it
-        # exits, which it will if there is any connection problem at
-        # all.
-        self.socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.bind(('::', 0))
-        self.port = self.socket.getsockname()[1]
+        # Reserve a port for each of the possible log streaming ports
+        # so that we can restart the forwarder if it exits, which it
+        # will if there is any connection problem at all.
+        self.socket1 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        self.socket1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket1.bind(('::', 0))
+        self.port1 = self.socket1.getsockname()[1]
+        self.socket2 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        self.socket2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket2.bind(('::', 0))
+        self.port2 = self.socket2.getsockname()[1]
 
     def start(self):
         if self.fwd:
             return
 
-        if self.socket is None:
+        if self.socket1 is None or self.socket2 is None:
             self._getSocket()
 
         cmd = [
@@ -442,7 +448,8 @@ class KubeFwd(object):
             shlex.quote(self.namespace),
             'port-forward',
             shlex.quote('pod/%s' % self.pod),
-            '%s:19885' % self.port,
+            '%s:19885' % self.port1,
+            '%s:19886' % self.port2,
             ';', 'do', ':;', 'done',
         ]
         cmd = ' '.join(cmd)
@@ -455,19 +462,21 @@ class KubeFwd(object):
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
                                    stdin=devnull)
+        # This is a quick check to make sure it started correctly, so
+        # we only check the first line and the first port.
         line = fwd.stdout.readline().decode('utf8')
         m = re.match(r'^Forwarding from 127.0.0.1:(\d+) -> 19885', line)
         port = None
         if m:
             port = m.group(1)
-        if port != str(self.port):
+        if port != str(self.port1):
             self.log.error("Could not find the forwarded port: %s", line)
             self.stop()
             raise Exception("Unable to start kubectl port forward")
         self.fwd = fwd
         pgid = os.getpgid(self.fwd.pid)
-        self.log.info('Started Kubectl port forward on port %s with '
-                      'process group %s', self.port, pgid)
+        self.log.info('Started Kubectl port forward on ports %s and %s with '
+                      'process group %s', self.port1, self.port2, pgid)
 
     def stop(self):
         try:
@@ -488,9 +497,15 @@ class KubeFwd(object):
         except Exception:
             self.log.exception('Unable to stop kubectl port-forward:')
         try:
-            if self.socket:
-                self.socket.close()
-                self.socket = None
+            if self.socket1:
+                self.socket1.close()
+                self.socket1 = None
+        except Exception:
+            self.log.exception('Unable to close port-forward socket:')
+        try:
+            if self.socket2:
+                self.socket2.close()
+                self.socket2 = None
         except Exception:
             self.log.exception('Unable to close port-forward socket:')
 
@@ -1112,6 +1127,7 @@ class AnsibleJob(object):
         plugin_dir = self.executor_server.ansible_manager.getAnsiblePluginDir(
             self.ansible_version)
         self.library_dir = os.path.join(plugin_dir, 'library')
+        self.module_utils_dir = os.path.join(self.library_dir, 'module_utils')
         self.action_dir = os.path.join(plugin_dir, 'action')
         self.callback_dir = os.path.join(plugin_dir, 'callback')
         self.lookup_dir = os.path.join(plugin_dir, 'lookup')
@@ -2822,8 +2838,10 @@ class AnsibleJob(object):
                     try:
                         fwd.start()
                         self.port_forwards.append(fwd)
-                        zuul_resources[node.name[0]]['stream_port'] = \
-                            fwd.port
+                        zuul_resources[node.name[0]]['stream_port1'] = \
+                            fwd.port1
+                        zuul_resources[node.name[0]]['stream_port2'] = \
+                            fwd.port2
                     except Exception:
                         self.log.exception("Unable to start port forward:")
                         self.log.error("Kubectl and socat are required for "
@@ -3067,8 +3085,8 @@ class AnsibleJob(object):
             config.write('fact_caching = jsonfile\n')
             config.write('fact_caching_connection = %s\n' %
                          self.jobdir.fact_cache)
-            config.write('library = %s\n'
-                         % self.library_dir)
+            config.write('library = %s\n' % self.library_dir)
+            config.write('module_utils = %s\n' % self.module_utils_dir)
             config.write('command_warnings = False\n')
             # Disable the Zuul callback plugins for the freeze playbooks
             # as that output is verbose and would be confusing for users.
