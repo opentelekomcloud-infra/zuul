@@ -231,8 +231,12 @@ the internally defined ``noop`` job, which always returns success.
 
 Later on we will be configuring some other projects, and while we will
 be able to dynamically add jobs to their pipelines, those projects
-must first be attached to the pipelines in order for that to work.  In
-our system, we want all of the projects in Gerrit to participate in
+must first be attached to the pipelines in order for that to work, and
+that attachment can not be made dynamically; we need to merge a change
+where the projects are at least configured to use the pipelines, even
+if we later dynamically configure the actual jobs they run.
+
+In our system, we want all of the projects in Gerrit to participate in
 the check and gate pipelines, so we can use a regular expression to
 apply this to all projects.  To configure the ``check`` and ``gate``
 pipelines for ``zuul-config`` to run the ``noop`` job, and add all
