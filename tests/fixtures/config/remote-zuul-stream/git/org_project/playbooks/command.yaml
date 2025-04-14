@@ -73,6 +73,9 @@
       set_fact:
         testfile: "/tmp/testfile-{{ zuul.build }}"
 
+    - name: Test raw module
+      raw: /bin/sh -c 'echo Testing raw'
+
   handlers:
     - name: test handler
       command: echo "This is a handler"
