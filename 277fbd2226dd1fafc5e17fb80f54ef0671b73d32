@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff171204_54436544",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-14T22:23:58Z",
+      "side": 1,
+      "message": "recheck there were ssl connection issues installing deps",
+      "revId": "277fbd2226dd1fafc5e17fb80f54ef0671b73d32",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
