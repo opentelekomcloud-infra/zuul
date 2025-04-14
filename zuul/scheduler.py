@@ -753,6 +753,12 @@ class Scheduler(threading.Thread):
         self.log.debug("Finished general cleanup")
 
     def _runConfigCacheCleanup(self):
+        # TODO: The only way the config_object_cache can get smaller
+        # is if the cleanup is run by a newly (re-)started scheduler.
+        # The unparsed_config_cache cleanup is based on that,
+        # therefore that is the only way for it to get smaller as
+        # well.  This could potentially be improved.  If this is
+        # changed, update test_config_cache_cleanup.
         try:
             self.log.debug("Starting config cache cleanup")
             cached_projects = set(
