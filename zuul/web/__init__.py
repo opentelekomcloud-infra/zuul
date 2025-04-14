@@ -1918,7 +1918,12 @@ class ZuulWebAPI(object):
 
         result = project.toDict()
         result['configs'] = []
-        md = tenant.layout.getProjectMetadata(project.canonical_name).toDict()
+        result['metadata'] = {}
+        md = tenant.layout.getProjectMetadata(project.canonical_name)
+        if md is None:
+            # No actual configuration of the project in this tenant
+            return result
+        md = md.toDict()
         md['merge_mode'] = model.get_merge_mode_name(md['merge_mode'])
         result['metadata'] = md
         configs = tenant.layout.getAllProjectConfigs(project.canonical_name)
