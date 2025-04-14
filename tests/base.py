@@ -2265,7 +2265,7 @@ class TestConfig:
             # errors.  It would be nice if they didn't happen, but
             # until we understand them more, we can't fail on them.
             'RolledBackError',
-            'pipeline.change_list.refresh',
+            'manager.change_list.refresh',
             'kazoo.exceptions.ConnectionClosedError',
         ]
         self.simple_layout = getattr(test, '__simple_layout__', None)
