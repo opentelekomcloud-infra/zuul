@@ -19,8 +19,8 @@
 ARG IMAGE_FLAVOR=
 
 # This is a mirror of:
-# FROM docker.io/library/node:16-bookworm as js-builder
-FROM quay.io/opendevmirror/node:16-bookworm as js-builder
+# FROM docker.io/library/node:23-bookworm as js-builder
+FROM quay.io/opendevmirror/node:23-bookworm as js-builder
 
 COPY web /tmp/src
 # Explicitly run the Javascript build
