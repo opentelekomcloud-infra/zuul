@@ -1506,3 +1506,36 @@ class TestNodesetRequestPriority(LauncherBaseTestCase):
         self.hold_nodeset_requests_in_queue = False
         self.releaseNodesetRequests(*reqs)
         self.waitUntilSettled()
+
+
+class TestExecutorZone(LauncherBaseTestCase):
+    tenant_config_file = 'config/single-tenant/main.yaml'
+
+    def setup_config(self, config_file: str):
+        config = super().setup_config(config_file)
+        config.set('executor', 'zone', 'us-east-1')
+        return config
+
+    @simple_layout('layouts/nodepool-executor-zone.yaml', enable_nodepool=True)
+    def test_jobs_executed(self):
+        self.hold_jobs_in_queue = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        queue = list(self.executor_api.queued())
+        self.assertEqual(len(self.builds), 0)
+        self.assertEqual(len(queue), 1)
+        self.assertEqual('us-east-1', queue[0].zone)
+
+        self.hold_jobs_in_queue = False
+        self.executor_api.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(self.getJobFromHistory('check-job').result,
+                         'SUCCESS')
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(A.reported, 2)
+        self.assertEqual(self.getJobFromHistory('check-job').node,
+                         'debian-normal')

@@ -1001,6 +1001,7 @@ class Launcher:
             max_ready_age=label.max_ready_age,
             host_key_checking=label.host_key_checking,
             boot_timeout=label.boot_timeout,
+            executor_zone=label.executor_zone,
             request_id=request.uuid,
             zuul_event_id=request.zuul_event_id,
             connection_name=provider.connection_name,
@@ -1037,8 +1038,7 @@ class Launcher:
                         label, request, provider, log, ctx)
                     with request.activeContext(ctx):
                         request.updateProviderNode(
-                            i,
-                            uuid=node.uuid,
+                            i, node,
                             add_failed_provider=add_failed_provider,
                         )
 
@@ -1315,6 +1315,7 @@ class Launcher:
                     max_ready_age=label.max_ready_age,
                     host_key_checking=label.host_key_checking,
                     boot_timeout=label.boot_timeout,
+                    executor_zone=label.executor_zone,
                     request_id=None,
                     connection_name=provider.connection_name,
                     zuul_event_id=uuid.uuid4().hex,

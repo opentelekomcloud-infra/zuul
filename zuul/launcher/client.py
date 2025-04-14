@@ -97,7 +97,9 @@ class LauncherClient:
 
     def getNodesetInfo(self, request):
         # TODO: populated other nodeset info fields
-        return NodesetInfo(nodes=list(request.nodes))
+        return NodesetInfo(
+            nodes=list(request.nodes),
+            zone=request.executor_zones[0])
 
     def acceptNodeset(self, request, nodeset):
         log = get_annotated_logger(self.log, request)
