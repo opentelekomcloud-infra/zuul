@@ -648,8 +648,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         return quota
 
     def uploadImage(self, provider_image, image_name, filename,
-                    image_format, metadata, md5, sha256, bucket_name,
-                    timeout):
+                    image_format, metadata, md5, sha256, bucket_name):
+        timeout = provider_image.import_timeout
         self.log.debug(f"Uploading image {image_name} "
                        f"via {provider_image.import_method}")
 

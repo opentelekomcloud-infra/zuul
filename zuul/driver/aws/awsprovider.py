@@ -380,13 +380,10 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
         # TODO this needs to move to the section or connection config
         # since it's used by endpoints.
         bucket_name = self.object_storage.get('bucket-name')
-        # TODO make this configurable
-        # timeout = self.image_import_timeout
-        timeout = 300
         return self.endpoint.uploadImage(
             provider_image, image_name,
             filename, image_format, metadata, md5, sha256,
-            bucket_name, timeout)
+            bucket_name)
 
     def deleteImage(self, external_id):
         self.endpoint.deleteImage(external_id)
