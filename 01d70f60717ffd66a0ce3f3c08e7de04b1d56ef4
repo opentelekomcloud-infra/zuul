@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7e3b77c5_df59c457",
+        "filename": "zuul/model.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 9449,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-14T22:14:12Z",
+      "side": 1,
+      "message": "The linter thinks this line is missing a comma, but I think it is really missing an `and`.",
+      "revId": "01d70f60717ffd66a0ce3f3c08e7de04b1d56ef4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
