@@ -16,6 +16,23 @@
       "message": "recheck there were ssl connection issues installing deps",
       "revId": "277fbd2226dd1fafc5e17fb80f54ef0671b73d32",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f20ea923_fae735d1",
+        "filename": "zuul/reporter/__init__.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 386,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-14T22:33:39Z",
+      "side": 1,
+      "message": "Should this statement go at the beginning of the report so that it ends up in the comment even if the list of failed jobs is too long? Basically I think it is possible by putting this at the end that you get a report that omits this detail which may be confusing for some users.\n\nI guess the gerrit driver will put a truncated message at the end which is maybe sufficient? That doesn\u0027t tell the user there may be additional successful jobs but at least points them in the direction of incomplete data.",
+      "revId": "277fbd2226dd1fafc5e17fb80f54ef0671b73d32",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
