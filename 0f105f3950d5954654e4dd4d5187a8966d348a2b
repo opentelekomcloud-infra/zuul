@@ -33,6 +33,24 @@
       "message": "This is missing the `password_bytes` argument",
       "revId": "0f105f3950d5954654e4dd4d5187a8966d348a2b",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8a49e1c3_2206525e",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-14T13:44:36Z",
+      "side": 1,
+      "message": "Done, a new test case will be added in a later change in the stack where this method is used.",
+      "parentUuid": "e0771d23_a64e0e15",
+      "revId": "0f105f3950d5954654e4dd4d5187a8966d348a2b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
