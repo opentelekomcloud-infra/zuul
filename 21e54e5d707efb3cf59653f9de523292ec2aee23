@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "12262036_5089b666",
+        "filename": "tests/fixtures/config/multi-tenant/main-reconfig.yaml",
+        "patchSetId": 32
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-14T23:09:49Z",
+      "side": 1,
+      "message": "We need docs for this.",
+      "revId": "21e54e5d707efb3cf59653f9de523292ec2aee23",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e60fdb54_d265ea3c",
+        "filename": "zuul/model.py",
+        "patchSetId": 32
+      },
+      "lineNbr": 8983,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-14T23:09:49Z",
+      "side": 1,
+      "message": "We need docs for these.",
+      "revId": "21e54e5d707efb3cf59653f9de523292ec2aee23",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
