@@ -33,6 +33,24 @@
       "message": "Should this statement go at the beginning of the report so that it ends up in the comment even if the list of failed jobs is too long? Basically I think it is possible by putting this at the end that you get a report that omits this detail which may be confusing for some users.\n\nI guess the gerrit driver will put a truncated message at the end which is maybe sufficient? That doesn\u0027t tell the user there may be additional successful jobs but at least points them in the direction of incomplete data.",
       "revId": "277fbd2226dd1fafc5e17fb80f54ef0671b73d32",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3b4e532f_faed5106",
+        "filename": "zuul/reporter/__init__.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 386,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-14T22:39:36Z",
+      "side": 1,
+      "message": "I don\u0027t feel strongly about this, but I have a slight preference for leaving it the way it is.  I think if it is truncated, then the truncation message we leave elsewhere is the only message that\u0027s important.  I think leaving this at the beginning, then truncating would be confusing and unecessary (as in, it would be a little unclear exactly what was truncated -- are we trying to say only the successful jobs were truncated?  no -- because there were none before we truncated).\n\nThe thing that would most easily convince me to reverse that would be the possibility that *this* message is truncated because we\u0027re only a few bytes over.  But that\u0027s not very likely.",
+      "parentUuid": "f20ea923_fae735d1",
+      "revId": "277fbd2226dd1fafc5e17fb80f54ef0671b73d32",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
