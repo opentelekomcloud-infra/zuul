@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c8932af8_22e4ee9c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 26
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-15T12:37:11Z",
+      "side": 1,
+      "message": "Doc is added in a separate change here: https://review.opendev.org/c/zuul/zuul/+/941081",
+      "revId": "72b6fbf848a5d07543dd50f5e9eb626edfb2159b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
