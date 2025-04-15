@@ -186,28 +186,14 @@ class BaseReporter(object, metaclass=abc.ABCMeta):
         return ret
 
     def _formatItemReportEnqueue(self, item, change, with_jobs=True):
-        if status_url := self.connection.sched.globals.web_status_url:
-            status_url = item.formatUrlPattern(status_url)
-
-        # change, changes, and status_url are deprecated
         return item.manager.pipeline.enqueue_message.format(
             pipeline=item.manager.pipeline.getSafeAttributes(),
-            change=item.changes[0].getSafeAttributes(),
-            changes=[c.getSafeAttributes() for c in item.changes],
-            item_url=item.formatItemUrl(),
-            status_url=status_url)
+            item_url=item.formatItemUrl())
 
     def _formatItemReportStart(self, item, change, with_jobs=True):
-        if status_url := self.connection.sched.globals.web_status_url:
-            status_url = item.formatUrlPattern(status_url)
-
-        # change, changes, and status_url are deprecated
         return item.manager.pipeline.start_message.format(
             pipeline=item.manager.pipeline.getSafeAttributes(),
-            change=item.changes[0].getSafeAttributes(),
-            changes=[c.getSafeAttributes() for c in item.changes],
-            item_url=item.formatItemUrl(),
-            status_url=status_url)
+            item_url=item.formatItemUrl())
 
     def _formatItemReportSuccess(self, item, change, with_jobs=True):
         msg = item.manager.pipeline.success_message
@@ -296,16 +282,9 @@ class BaseReporter(object, metaclass=abc.ABCMeta):
         return msg
 
     def _formatItemReportNoJobs(self, item, change, with_jobs=True):
-        if status_url := self.connection.sched.globals.web_status_url:
-            status_url = item.formatUrlPattern(status_url)
-
-        # change, changes, and status_url are deprecated
         return item.manager.pipeline.no_jobs_message.format(
             pipeline=item.manager.pipeline.getSafeAttributes(),
-            change=item.changes[0].getSafeAttributes(),
-            changes=[c.getSafeAttributes() for c in item.changes],
-            item_url=item.formatItemUrl(),
-            status_url=status_url)
+            item_url=item.formatItemUrl())
 
     def _formatItemReportDisabled(self, item, change, with_jobs=True):
         if item.current_build_set.result == 'SUCCESS':
