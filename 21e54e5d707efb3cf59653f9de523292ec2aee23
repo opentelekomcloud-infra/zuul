@@ -3,6 +3,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "b38e152a_e9c2d199",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 32
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-15T09:22:46Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "21e54e5d707efb3cf59653f9de523292ec2aee23",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "12262036_5089b666",
         "filename": "tests/fixtures/config/multi-tenant/main-reconfig.yaml",
         "patchSetId": 32
