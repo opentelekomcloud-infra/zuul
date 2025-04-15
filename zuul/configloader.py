@@ -1728,9 +1728,10 @@ class ApiRootParser(object):
 class ParseContext(object):
     """Hold information about a particular run of the parser"""
 
-    def __init__(self, connections, scheduler, ansible_manager):
+    def __init__(self, connections, scheduler, system, ansible_manager):
         self.connections = connections
         self.scheduler = scheduler
+        self.system = system
         self.ansible_manager = ansible_manager
         self.pragma_parser = PragmaParser(self)
         self.pipeline_parser = PipelineParser(self)
@@ -1896,8 +1897,9 @@ class TenantParser(object):
                   }
         return vs.Schema(tenant)
 
-    def fromYaml(self, abide, conf, ansible_manager, executor, min_ltimes=None,
-                 layout_uuid=None, branch_cache_min_ltimes=None,
+    def fromYaml(self, abide, conf, ansible_manager, executor, system,
+                 min_ltimes=None, layout_uuid=None,
+                 branch_cache_min_ltimes=None,
                  ignore_cat_exception=True):
         # Note: This vs schema validation is not necessary in most cases as we
         # verify the schema when loading tenant configs into zookeeper.
@@ -1909,7 +1911,7 @@ class TenantParser(object):
         self.getSchema()(conf)
         tenant = model.Tenant(conf['name'])
         pcontext = ParseContext(self.connections, self.scheduler,
-                                ansible_manager)
+                                system, ansible_manager)
         if conf.get('max-changes-per-pipeline') is not None:
             tenant.max_changes_per_pipeline = conf['max-changes-per-pipeline']
         if conf.get('max-dependencies') is not None:
@@ -2918,7 +2920,7 @@ class TenantParser(object):
                         connection, tenant.name,
                         provider_config.canonical_name,
                         flat_config,
-                        parse_context.scheduler.system.system_id)
+                        parse_context.system.system_id)
                     shadow_layout.addProvider(provider)
 
         for e in parsed_config.queue_errors:
@@ -3067,10 +3069,11 @@ class TenantParser(object):
 class ConfigLoader(object):
     log = logging.getLogger("zuul.ConfigLoader")
 
-    def __init__(self, connections, zk_client, zuul_globals,
+    def __init__(self, connections, system, zk_client, zuul_globals,
                  unparsed_config_cache, statsd=None, scheduler=None,
                  merger=None, keystorage=None):
         self.connections = connections
+        self.system = system
         self.zk_client = zk_client
         self.globals = zuul_globals
         self.scheduler = scheduler
@@ -3255,7 +3258,7 @@ class ConfigLoader(object):
         unparsed_config = unparsed_abide.tenants[tenant_name]
         with ThreadPoolExecutor(max_workers=4) as executor:
             new_tenant = self.tenant_parser.fromYaml(
-                abide, unparsed_config, ansible_manager, executor,
+                abide, unparsed_config, ansible_manager, executor, self.system,
                 min_ltimes, layout_uuid, branch_cache_min_ltimes,
                 ignore_cat_exception)
         # Copy tenants dictionary to not break concurrent iterations.
@@ -3378,7 +3381,7 @@ class ConfigLoader(object):
         tenant = item.manager.tenant
         log = get_annotated_logger(self.log, zuul_event_id)
         pcontext = ParseContext(self.connections, self.scheduler,
-                                ansible_manager)
+                                self.system, ansible_manager)
         config = model.ParsedConfig()
 
         if include_config_projects:

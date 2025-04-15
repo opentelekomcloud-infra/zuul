@@ -1044,7 +1044,7 @@ class Scheduler(threading.Thread):
             self.primeSystemConfig()
 
         loader = configloader.ConfigLoader(
-            self.connections, self.zk_client, self.globals,
+            self.connections, self.system, self.zk_client, self.globals,
             self.unparsed_config_cache, self.statsd,
             self, self.merger, self.keystore)
         new_tenants = (set(self.unparsed_abide.tenants)
@@ -1340,7 +1340,7 @@ class Scheduler(threading.Thread):
     def updateTenantLayout(self, log, tenant_name):
         log.debug("Updating layout of tenant %s", tenant_name)
         loader = configloader.ConfigLoader(
-            self.connections, self.zk_client, self.globals,
+            self.connections, self.system, self.zk_client, self.globals,
             self.unparsed_config_cache, self.statsd, self,
             self.merger, self.keystore)
         # Since we are using the ZK 'locked' context manager (in order
@@ -1431,7 +1431,7 @@ class Scheduler(threading.Thread):
                                                          validate_root)
 
         loader = configloader.ConfigLoader(
-            self.connections, self.zk_client, self.globals,
+            self.connections, self.system, self.zk_client, self.globals,
             self.unparsed_config_cache, self.statsd,
             self, self.merger, self.keystore)
         tenant_config, script = self._checkTenantSourceConf(self.config)
@@ -1485,7 +1485,7 @@ class Scheduler(threading.Thread):
 
         with self.unparsed_abide_lock:
             loader = configloader.ConfigLoader(
-                self.connections, self.zk_client, self.globals,
+                self.connections, self.system, self.zk_client, self.globals,
                 self.unparsed_config_cache, self.statsd,
                 self, self.merger, self.keystore)
             tenant_config, script = self._checkTenantSourceConf(self.config)
@@ -1614,7 +1614,7 @@ class Scheduler(threading.Thread):
             branch_cache_min_ltimes[connection_name] = ltime
 
         loader = configloader.ConfigLoader(
-            self.connections, self.zk_client, self.globals,
+            self.connections, self.system, self.zk_client, self.globals,
             self.unparsed_config_cache, self.statsd,
             self, self.merger, self.keystore)
         loader.loadTPCs(self.abide, self.unparsed_abide,
@@ -2239,7 +2239,7 @@ class Scheduler(threading.Thread):
         # consistency and future-proofing.
         with self.unparsed_abide_lock:
             loader = configloader.ConfigLoader(
-                self.connections, self.zk_client, self.globals,
+                self.connections, self.system, self.zk_client, self.globals,
                 self.unparsed_config_cache, self.statsd,
                 self, self.merger, self.keystore)
             tenant_config, script = self._checkTenantSourceConf(self.config)
@@ -2262,7 +2262,7 @@ class Scheduler(threading.Thread):
             self.ansible_manager = AnsibleManager(
                 default_version=self.globals.default_ansible_version)
             loader = configloader.ConfigLoader(
-                self.connections, self.zk_client, self.globals,
+                self.connections, self.system, self.zk_client, self.globals,
                 self.unparsed_config_cache, self.statsd,
                 self, self.merger, self.keystore)
 

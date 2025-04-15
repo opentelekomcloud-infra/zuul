@@ -3219,7 +3219,7 @@ class ZuulWeb(object):
             default_version=self.globals.default_ansible_version)
 
         loader = ConfigLoader(
-            self.connections, self.zk_client, self.globals,
+            self.connections, self.system, self.zk_client, self.globals,
             self.unparsed_config_cache, keystorage=self.keystore)
 
         tenant_names = set(self.abide.tenants)
@@ -3237,7 +3237,7 @@ class ZuulWeb(object):
     def updateLayout(self):
         self.log.debug("Updating layout state")
         loader = ConfigLoader(
-            self.connections, self.zk_client, self.globals,
+            self.connections, self.system, self.zk_client, self.globals,
             self.unparsed_config_cache, keystorage=self.keystore)
 
         # We need to handle new and deleted tenants, so we need to process all
