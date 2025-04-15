@@ -20,6 +20,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "a4fe1734_30d4df0f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 32
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-15T12:37:45Z",
+      "side": 1,
+      "message": "Doc is added in a separate change here: https://review.opendev.org/c/zuul/zuul/+/941081",
+      "revId": "21e54e5d707efb3cf59653f9de523292ec2aee23",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "12262036_5089b666",
         "filename": "tests/fixtures/config/multi-tenant/main-reconfig.yaml",
         "patchSetId": 32
