@@ -24,11 +24,12 @@ import tests.base
 from tests.base import (
     AnsibleZuulTestCase,
     BaseTestCase,
-    simple_layout,
+    ZuulTestCase,
     gerrit_config,
     iterate_timeout,
+    okay_tracebacks,
+    simple_layout,
     skipIfMultiScheduler,
-    ZuulTestCase,
 )
 from zuul.lib import strings
 from zuul.driver.gerrit import GerritDriver
@@ -434,6 +435,18 @@ class TestGerritWeb(ZuulTestCase):
                 full_logs.output)
 
         self.assertEqual(A.data['status'], 'NEW')
+
+    @okay_tracebacks('_handleEvent')
+    def test_event_failure(self):
+        # Test that a failure to process a Gerrit event is handled
+        # correctly
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        event = A.getPatchsetCreatedEvent(1)
+        self.fake_gerrit._fake_return_api_error = True
+        self.fake_gerrit.addEvent(event)
+        # If the event is not processed, then we will never settle and
+        # the test will time-out.
+        self.waitUntilSettled()
 
 
 class TestFileComments(AnsibleZuulTestCase):

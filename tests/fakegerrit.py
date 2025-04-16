@@ -863,6 +863,10 @@ class GerritWebServer(object):
                 path = self.path
                 self.log.debug("Got GET %s", path)
                 fake_gerrit.api_calls.append(('GET', path))
+                if fake_gerrit._fake_return_api_error:
+                    self.send_response(500)
+                    self.end_headers()
+                    return
 
                 m = self.change_re.match(path)
                 if m:
@@ -1178,6 +1182,7 @@ class FakeGerritConnection(gerritconnection.GerritConnection):
         self.changes = changes_db
         self.queries = []
         self.api_calls = []
+        self._fake_return_api_error = False
         self.upstream_root = upstream_root
         self.fake_checkers = []
         self._poller_event = poller_event

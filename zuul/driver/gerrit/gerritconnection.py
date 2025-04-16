@@ -580,15 +580,17 @@ class GerritEventProcessor:
         if self.connector._stopped:
             return
 
-        attributes = {"rel": "GerritEvent"}
-        link = trace.Link(self.event_span.get_span_context(),
-                          attributes=attributes)
-        with self.tracer.start_as_current_span(
-                "GerritEventProcessing", links=[link]):
-            try:
+        try:
+            attributes = {"rel": "GerritEvent"}
+            link = trace.Link(self.event_span.get_span_context(),
+                              attributes=attributes)
+            with self.tracer.start_as_current_span(
+                    "GerritEventProcessing", links=[link]):
                 self.events = self._handleEvent(self.connection_event)
-            except GerritEventProcessingException as e:
-                self.log.warning("Skipping event due to %s", e)
+        except GerritEventProcessingException as e:
+            self.log.warning("Skipping event due to %s", e)
+        except Exception:
+            self.log.exception("Skipping event due to:")
         return self.events, self.connection_event
 
     def _handleEvent(self, connection_event):
