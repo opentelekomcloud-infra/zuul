@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a7684ad7_1773038d",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1435,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-04-16T17:22:42Z",
+      "side": 1,
+      "message": "Should we try and log the exception type here if not the full traceback? Mostly thinking that info might be helpful in correcting any environment problems or issues with gerrit?\n\nSeems like we do that in queryChange() and uploadPack()",
+      "revId": "c0a7cc936953bd32471b505112d5774c00db31d7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
