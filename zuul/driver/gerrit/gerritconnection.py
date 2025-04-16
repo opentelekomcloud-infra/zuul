@@ -1413,16 +1413,27 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         if not self.session:
             return 'master'
         head = None
-        try:
-            head = self.get(
-                'projects/%s/HEAD' % (
-                    urllib.parse.quote(project.name, safe=''),
-                ))
-            if head.startswith('refs/heads/'):
-                head = head[len('refs/heads/'):]
-        except Exception:
-            self.log.exception("Unable to get HEAD")
-        return head
+        for attempt in range(1, 4):
+            try:
+                head = self.get(
+                    'projects/%s/HEAD' % (
+                        urllib.parse.quote(project.name, safe=''),
+                    ))
+                if head.startswith('refs/heads/'):
+                    head = head[len('refs/heads/'):]
+                return head
+            except HTTPNotFoundException:
+                self.log.exception("Unable to get HEAD for %s",
+                                   project)
+                return head
+            except Exception:
+                if attempt >= 3:
+                    self.log.exception("Unable to get HEAD for %s",
+                                       project)
+                    return head
+                self.log.warning("Unable to get HEAD for %s, will retry",
+                                 project)
+                time.sleep(1)
 
     def isBranchProtected(self, project_name, branch_name,
                           zuul_event_id=None):
@@ -1729,7 +1740,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                 if data and data.zuul_query_ltime > min_ltime:
                     return data
 
-            for attempt in range(3):
+            for attempt in range(1, 4):
                 # Get a query ltime -- any events before this point should be
                 # included in our change data.
                 zuul_query_ltime = self.sched.zk_client.getCurrentLtime()
@@ -1754,10 +1765,13 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                     # processing since we can't load a corresponding change
                     raise GerritEventProcessingException(
                         f"Did not find change for number {number}") from e
-                except Exception:
-                    if attempt >= 2:
+                except Exception as e:
+                    if attempt >= 3:
                         raise
                     # The internet is a flaky place try again.
+                    self.log.warning(
+                        "Error querying change %s, will retry: %s",
+                        number, e)
                     time.sleep(1)
 
     def simpleQuerySSH(self, query, event=None):
@@ -1854,20 +1868,38 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
             return [GerritChangeData(GerritChangeData.SSH, data)
                     for data in alldata]
 
-    def _uploadPack(self, project: Project) -> str:
+    def _uploadPack(self, project):
         if self.session and not self.git_over_ssh:
             url = ('%s/%s/info/refs?service=git-upload-pack' %
                    (self.baseurl, project.name))
-            r = self.session.get(
-                url,
-                verify=self.verify_ssl,
-                auth=self.auth, timeout=TIMEOUT,
-                headers={'User-Agent': self.user_agent})
-            self.iolog.debug('Received: %s %s' % (r.status_code, r.text,))
-            if r.status_code == 409:
-                raise HTTPConflictException()
-            elif r.status_code != 200:
-                raise Exception("Received response %s" % (r.status_code,))
+            for attempt in range(1, 4):
+                try:
+                    r = self.session.get(
+                        url,
+                        verify=self.verify_ssl,
+                        auth=self.auth, timeout=TIMEOUT,
+                        headers={'User-Agent': self.user_agent})
+                    self.iolog.debug('Received: %s %s',
+                                     r.status_code, r.text)
+                    if r.status_code == 409:
+                        raise HTTPConflictException()
+                    if r.status_code == 404:
+                        raise HTTPNotFoundException()
+                    elif r.status_code != 200:
+                        raise Exception("Received response %s" % (
+                            r.status_code,))
+                except HTTPNotFoundException:
+                    raise
+                except Exception as e:
+                    if attempt >= 3:
+                        self.log.exception(
+                            "Error getting refs for %s:",
+                            project)
+                        raise
+                    self.log.warning(
+                        "Error getting refs for %s, will retry: %s",
+                        project, e)
+                    time.sleep(1)
             out = r.text[r.text.find('\n') + 5:]
         else:
             cmd = "git-upload-pack %s" % project.name
