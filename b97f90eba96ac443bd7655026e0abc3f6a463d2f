@@ -16,6 +16,24 @@
       "message": "I don\u0027t think we discussed what this should look like in the spec.  I believe this is the most natural way to configure it, so I think we should use that in examples, but I think we should also support \"oidc: {}\".\n\nI think \"oidc: {}\" probably already works, but \"oidc:\" and \"odic: null\" probably do not.  I think we should add support for both and add tests for them.",
       "revId": "b97f90eba96ac443bd7655026e0abc3f6a463d2f",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "96b2b0c4_c0ae8f64",
+        "filename": "doc/source/config/secret.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-16T10:56:56Z",
+      "side": 1,
+      "message": "Done, updated in the latest patchset of 942886: Prepare oidc token for playbook execution in executor. | https://review.opendev.org/c/zuul/zuul/+/942886",
+      "parentUuid": "9bb8490d_d2c1f84c",
+      "revId": "b97f90eba96ac443bd7655026e0abc3f6a463d2f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
