@@ -3,6 +3,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "8f85715a_116e321f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-17T00:55:39Z",
+      "side": 1,
+      "message": "I don\u0027t think we should set this at build time.  We try to avoid that as much as possible since we try to provide universally usable images.  Instead, we have the zuul-web /info endpoints.  I think you can add an option to Zuul to expose that boolean, and switch behavior based on that.\n\nIt could either be a system-wide option in zuul.conf, or per-tenant in the tenant config yaml.  It might make sense to start with system-wide and then if we decide we want to do per-tenant later, we can.",
+      "revId": "4614dc1d662f5f2fbe64f96f3d08135adbd8e671",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "6b21b742_ae4d43e9",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 2
