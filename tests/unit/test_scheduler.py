@@ -3207,6 +3207,47 @@ class TestScheduler(ZuulTestCase):
         self.executor_server.release()
         self.waitUntilSettled()
 
+    def test_timer_branch_updated(self):
+        # Test that if a branch in updated while a periodic job is
+        # running, we get a second queue item.
+        # This test can not use simple_layout because it must start
+        # with a configuration which does not include a
+        # timer-triggered job so that we have an opportunity to set
+        # the hold flag before the first job.
+        self.executor_server.hold_jobs_in_build = True
+        # Start timer trigger - also org/project
+        self.commitConfigUpdate('common-config',
+                                'layouts/idle-dereference.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        # The pipeline triggers every second, so we should have seen
+        # several by now.
+        time.sleep(5)
+        self.waitUntilSettled()
+
+        M = self.fake_gerrit.addFakeChange('org/project', 'master', 'M')
+        M.setMerged()
+
+        time.sleep(5)
+        self.waitUntilSettled()
+
+        # Stop queuing timer triggered jobs so that the assertions
+        # below don't race against more jobs being queued.
+        # Must be in same repo, so overwrite config with another one
+        self.commitConfigUpdate('common-config', 'layouts/no-timer.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+        # If APScheduler is in mid-event when we remove the job, we
+        # can end up with one more event firing, so give it an extra
+        # second to settle.
+        time.sleep(1)
+        self.waitUntilSettled()
+        # There should be two periodic jobs, one before and one after
+        # the update.
+        self.assertEqual(2, len(self.builds))
+        self.executor_server.release()
+        self.waitUntilSettled()
+        self.assertEqual(2, len(self.history))
+
     def test_new_patchset_dequeues_old_on_head(self):
         "Test that a new patchset causes the old to be dequeued (at head)"
         # D -> C (depends on B) -> B (depends on A) -> A -> M

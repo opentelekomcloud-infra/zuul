@@ -1625,6 +1625,14 @@ class TestGithubDriver(ZuulTestCase):
         self.assertIsNotNone(other_change.cache_stat)
         self.assertIs(change, other_change)
 
+    @simple_layout("layouts/basic-github.yaml", driver="github")
+    def test_get_project_branch_sha(self):
+        # Exercise this method since it's only called from timer
+        # triggers
+        source = self.fake_github.source
+        project = source.getProject('org/project')
+        self.assertIsNotNone(source.getProjectBranchSha(project, 'master'))
+
 
 class TestMultiGithubDriver(ZuulTestCase):
     config_file = 'zuul-multi-github.conf'

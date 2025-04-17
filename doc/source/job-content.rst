@@ -439,9 +439,12 @@ described above) are available:
       This field is present for the following item types:
 
       Branch
-         If the item was enqueued as the result of a change merging
-         or being pushed to the branch, the git sha of the new
-         revision will be included here.
+         If the item was enqueued as the result of a change merging or
+         being pushed to the branch, the git sha of the new revision
+         will be included here.  If the item was enqueued due to a
+         timer and the ``dereference`` flag was set on the timer
+         trigger, it will contain the git sha of the branch at the
+         time it was enqueued.
 
       Tag
          If the item was enqueued as the result of a tag being
