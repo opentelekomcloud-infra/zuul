@@ -96,6 +96,9 @@ class GerritSource(BaseSource):
         return self.connection.getChange(change_key, refresh=refresh,
                                          event=event)
 
+    def getProjectBranchSha(self, project, branch_name):
+        return self.connection.getRefSha(project, f'refs/heads/{branch_name}')
+
     def getChangeByURL(self, url, event):
         try:
             parsed = urllib.parse.urlparse(url)

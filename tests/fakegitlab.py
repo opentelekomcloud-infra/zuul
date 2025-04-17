@@ -214,7 +214,12 @@ class GitlabWebServer(object):
                 owner, name = project.split('/')
                 if branch in fake_repos[(owner, name)]:
                     protected = fake_repos[(owner, name)][branch].protected
-                    self.send_data({'protected': protected})
+                    self.send_data({
+                        'protected': protected,
+                        'commit': {
+                            'id': '7b5c3cc8be40ee161ae89a06bba6229da1032a0c',
+                        },
+                    })
                 else:
                     return self.send_data({}, code=404)
 

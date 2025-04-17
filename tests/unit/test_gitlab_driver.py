@@ -1023,6 +1023,14 @@ class TestGitlabDriver(ZuulTestCase):
         change = conn.getChange(change_key)
         self.assertEqual(change.commit_id, A.sha)
 
+    @simple_layout("layouts/basic-gitlab.yaml", driver="gitlab")
+    def test_get_project_branch_sha(self):
+        # Exercise this method since it's only called from timer
+        # triggers
+        source = self.fake_gitlab.source
+        project = source.getProject('org/project')
+        self.assertIsNotNone(source.getProjectBranchSha(project, 'master'))
+
 
 class TestGitlabUnprotectedBranches(ZuulTestCase):
     config_file = 'zuul-gitlab-driver.conf'

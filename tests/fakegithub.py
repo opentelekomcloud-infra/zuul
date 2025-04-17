@@ -485,6 +485,7 @@ class FakeBranch(object):
     def __init__(self, fake_repo, branch='master', protected=False):
         self.name = branch
         self._fake_repo = fake_repo
+        self.sha = '7fd1a60b01f91b314f59955a4e4d4e80d8edf11d'
 
     @property
     def protected(self):
@@ -493,7 +494,10 @@ class FakeBranch(object):
     def as_dict(self):
         return {
             'name': self.name,
-            'protected': self.protected
+            'protected': self.protected,
+            'commit': {
+                'sha': self.sha,
+            }
         }
 
 

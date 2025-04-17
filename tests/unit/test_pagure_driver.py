@@ -687,6 +687,14 @@ class TestPagureDriver(ZuulTestCase):
         # is reverted and not in changed files to trigger project-test2
         self.assertEqual(1, len(self.history))
 
+    @simple_layout("layouts/basic-pagure.yaml", driver="pagure")
+    def test_get_project_branch_sha(self):
+        # Exercise this method since it's only called from timer
+        # triggers
+        source = self.fake_pagure.source
+        project = source.getProject('org/project')
+        self.assertIsNotNone(source.getProjectBranchSha(project, 'master'))
+
 
 class TestPagureToGerritCRD(ZuulTestCase):
     config_file = 'zuul-crd-pagure.conf'
