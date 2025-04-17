@@ -15,6 +15,7 @@
 import base64
 import concurrent.futures
 import contextlib
+import ipaddress
 import time
 from unittest import mock
 import urllib.parse
@@ -37,6 +38,12 @@ from tests.base import (
 )
 from tests.unit.test_launcher import ImageMocksFixture
 from tests.unit.test_cloud_driver import BaseCloudDriverTest
+
+
+def _make_ipv6_subnets(cidr_block):
+    network = ipaddress.IPv6Network(cidr_block)
+    # AWS only supports /64 prefix length
+    return [str(sn) for sn in network.subnets(new_prefix=64)]
 
 
 class TestAwsDriver(BaseCloudDriverTest):
@@ -95,6 +102,7 @@ class TestAwsDriver(BaseCloudDriverTest):
         self.register_image_calls = []
 
         # TEST-NET-3
+        self.subnet_ids = []
         ipv6 = False
         if ipv6:
             # This is currently unused, but if moto gains IPv6 support
@@ -104,17 +112,32 @@ class TestAwsDriver(BaseCloudDriverTest):
                 AmazonProvidedIpv6CidrBlock=True)
             ipv6_cidr = self.vpc['Vpc'][
                 'Ipv6CidrBlockAssociationSet'][0]['Ipv6CidrBlock']
-            ipv6_cidr = ipv6_cidr.split('/')[0] + '/64'
-            self.subnet = self.ec2_client.create_subnet(
-                CidrBlock='203.0.113.128/25',
-                Ipv6CidrBlock=ipv6_cidr,
+            ipv6_subnets = _make_ipv6_subnets(ipv6_cidr)
+
+            subnet1 = self.ec2_client.create_subnet(
+                AvailabilityZone='us-east-1a',
+                CidrBlock='203.0.113.64/26',
+                Ipv6CidrBlock=ipv6_subnets[0],
                 VpcId=self.vpc['Vpc']['VpcId'])
-            self.subnet_id = self.subnet['Subnet']['SubnetId']
+            self.subnet_ids.append(subnet1['Subnet']['SubnetId'])
+            subnet2 = self.ec2_client.create_subnet(
+                AvailabilityZone='us-east-1b',
+                CidrBlock='203.0.113.128/26',
+                Ipv6CidrBlock=ipv6_subnets[1],
+                VpcId=self.vpc['Vpc']['VpcId'])
+            self.subnet_ids.append(subnet2['Subnet']['SubnetId'])
         else:
             self.vpc = self.ec2_client.create_vpc(CidrBlock='203.0.113.0/24')
-            self.subnet = self.ec2_client.create_subnet(
-                CidrBlock='203.0.113.128/25', VpcId=self.vpc['Vpc']['VpcId'])
-            self.subnet_id = self.subnet['Subnet']['SubnetId']
+            subnet1 = self.ec2_client.create_subnet(
+                AvailabilityZone='us-east-1a',
+                CidrBlock='203.0.113.64/26',
+                VpcId=self.vpc['Vpc']['VpcId'])
+            self.subnet_ids.append(subnet1['Subnet']['SubnetId'])
+            subnet2 = self.ec2_client.create_subnet(
+                AvailabilityZone='us-east-1b',
+                CidrBlock='203.0.113.128/26',
+                VpcId=self.vpc['Vpc']['VpcId'])
+            self.subnet_ids.append(subnet2['Subnet']['SubnetId'])
 
         self.security_group = self.ec2_client.create_security_group(
             GroupName='zuul-nodes', VpcId=self.vpc['Vpc']['VpcId'],
@@ -201,7 +224,7 @@ class TestAwsDriver(BaseCloudDriverTest):
 
     @simple_layout('layouts/aws/spot.yaml', enable_nodepool=True,
                    replace=lambda test: {
-                       'subnet_id': test.subnet_id,
+                       'subnet_ids': test.subnet_ids,
                        'iam_profile_name': test.profile.name,
                    })
     @driver_config('aws', node_checks=check_spot_node_attrs)
@@ -238,7 +261,7 @@ class TestAwsDriver(BaseCloudDriverTest):
         self.commitConfigUpdate(
             'org/common-config', 'layouts/aws/spot.yaml',
             replace=lambda test: {
-                'subnet_id': test.subnet_id,
+                'subnet_ids': test.subnet_ids,
                 'iam_profile_name': test.profile.name,
             })
 

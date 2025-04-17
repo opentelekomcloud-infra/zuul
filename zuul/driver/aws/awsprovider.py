@@ -172,7 +172,7 @@ class AwsProviderLabel(BaseProviderLabel):
         # TODO: aws accepts a list everywhere we use this; should this
         # be as_list?
         Optional('security-group-id'): Nullable(str),
-        Optional('subnet-id'): Nullable(str),
+        Optional('subnet-ids', default=[]): [str],  # TODO: as_list?
         Optional('iam-instance-profile'): Nullable(aws_iam_schema),
     })
 
