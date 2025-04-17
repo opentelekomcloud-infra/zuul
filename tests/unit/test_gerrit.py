@@ -448,6 +448,13 @@ class TestGerritWeb(ZuulTestCase):
         # the test will time-out.
         self.waitUntilSettled()
 
+    def test_get_project_branch_sha(self):
+        # Exercise this method since it's only called from timer
+        # triggers
+        source = self.fake_gerrit.source
+        project = source.getProject('org/project')
+        self.assertIsNotNone(source.getProjectBranchSha(project, 'master'))
+
 
 class TestFileComments(AnsibleZuulTestCase):
     config_file = 'zuul-gerrit-web.conf'
