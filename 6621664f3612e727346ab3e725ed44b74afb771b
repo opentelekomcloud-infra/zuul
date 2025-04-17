@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "00fbc218_3d116ce1",
+        "filename": "zuul/driver/aws/awsprovider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-17T13:41:32Z",
+      "side": 1,
+      "message": "This should be as_list so it isn\u0027t required.\n\nAnd since we are doing this, we should probably do the same for security-group... (see TODO a couple lines above).\n\nSince the translation to attrs is automatic, we might need to use to_list whenever we use the value, or, better yet, make a ToList validator class that does the equivalent of to_list.",
+      "revId": "6621664f3612e727346ab3e725ed44b74afb771b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
