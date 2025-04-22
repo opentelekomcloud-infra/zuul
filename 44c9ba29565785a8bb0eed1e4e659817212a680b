@@ -16,6 +16,24 @@
       "message": "I think we will also have the need to be able to overwrite the issuer ttl.\n\nBackground is that our zuul is only reachable internally (e.g. zuul.example-local.org). When trying oidc against e.g. AWS we need to make at least the .well-known endpoints reachable to the internet. This will happen on a different hostname (e.g. zuul.example.org). We can easily adjust the urls in .well-known/openid-configuration on the loadbalancer side. However we\u0027d still need a way to express the publicl visible hostname of the .well-known endpoints in the secret.\n\nI guess this usually would be its own change, but this would cause another model api change so maybe still makes sense to add e.g. an issuer field here.",
       "revId": "44c9ba29565785a8bb0eed1e4e659817212a680b",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66276b14_40aa07a8",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 651,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-04-22T21:58:05Z",
+      "side": 1,
+      "message": "I assume you mean \"issuer url\" not \"ttl\".\n\nThat\u0027s an interesting use case.  I don\u0027t think the spec described a situation where Zuul would not be accessible to the consumer; I think there are some problems when trying to support that, and I would have pushed back on that a bit in the design phase.  From an infosec pov, your system will no longer only be reachable internally.  You will, in fact, be making your system reachable externally, even if you\u0027re only proxying one URL.  From the descriptions in the spec, I understood that Zuuls like yours, which are only reachable internally, would also only be using internal services.  In the case of AWS, I imagined that would mean AWS services which have endpoints on the same private networks as Zuul.\n\nSo my first question would be: could your system be set up like that?  In which case, the original design would be sufficient.\n\nIf, however, you really do need to route your OIDC validations through an external URL, then I think we must not allow overriding the issuer in the secret.  It is the Zuul system itself which is asserting the identity of the job, and we don\u0027t trust the author of the secret to supply a URL that adequately represents the Zuul system.  If we do need to override the issuer URL, then I think we need to do that in the tenant configuration file, where we allow the site admin to override the URL for the user web interface.",
+      "parentUuid": "faeced9a_75d69d89",
+      "revId": "44c9ba29565785a8bb0eed1e4e659817212a680b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
