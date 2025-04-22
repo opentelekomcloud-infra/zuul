@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e8ff2d97_34629f07",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 1169,
+      "author": {
+        "id": 16068
+      },
+      "writtenOn": "2025-04-22T20:15:56Z",
+      "side": 1,
+      "message": "This endpoint looks uncached which may quickly become an operational problem. This endpoint potentially receives many queries and does the computational part again on each request.",
+      "revId": "1ca15cecfe8131620bca9dd0c8673ffc7e4f1890",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
