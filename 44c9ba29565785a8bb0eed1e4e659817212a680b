@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "faeced9a_75d69d89",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 651,
+      "author": {
+        "id": 16068
+      },
+      "writtenOn": "2025-04-22T20:31:47Z",
+      "side": 1,
+      "message": "I think we will also have the need to be able to overwrite the issuer ttl.\n\nBackground is that our zuul is only reachable internally (e.g. zuul.example-local.org). When trying oidc against e.g. AWS we need to make at least the .well-known endpoints reachable to the internet. This will happen on a different hostname (e.g. zuul.example.org). We can easily adjust the urls in .well-known/openid-configuration on the loadbalancer side. However we\u0027d still need a way to express the publicl visible hostname of the .well-known endpoints in the secret.\n\nI guess this usually would be its own change, but this would cause another model api change so maybe still makes sense to add e.g. an issuer field here.",
+      "revId": "44c9ba29565785a8bb0eed1e4e659817212a680b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
