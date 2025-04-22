@@ -22,6 +22,47 @@
       },
       "revId": "6a3e62453c33c8db5a81706f1c5c91e0fe1a3848",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d73c6fbf_3162bb6d",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 26
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 16068
+      },
+      "writtenOn": "2025-04-22T20:00:10Z",
+      "side": 1,
+      "message": "This way we could also improve the logging by mentioning the versions of the removed keys. This may be an important message from which the lifecycle of a specific key can be exactly determined from the logs.",
+      "parentUuid": "c107a73c_9848b43c",
+      "range": {
+        "startLine": 108,
+        "startChar": 0,
+        "endLine": 113,
+        "endChar": 29
+      },
+      "revId": "6a3e62453c33c8db5a81706f1c5c91e0fe1a3848",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ccd74316_9196a9eb",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 26
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 16068
+      },
+      "writtenOn": "2025-04-22T20:00:10Z",
+      "side": 1,
+      "message": "We should mention the version of the new key in the log message. Further I think creation and deletion of keys warrant info level as they may be important and are not frequent.",
+      "revId": "6a3e62453c33c8db5a81706f1c5c91e0fe1a3848",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
