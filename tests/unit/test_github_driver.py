@@ -2467,6 +2467,59 @@ class TestGithubAppDriver(ZuulGithubAppTestCase):
         self.assertIsNotNone(check_run["completed_at"])
 
     @simple_layout("layouts/reporting-github.yaml", driver="github")
+    def test_reporting_checks_api_promote(self):
+        project = "org/project5"
+        github = self.fake_github.getGithubClient(None)
+
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_github.openFakePullRequest(project, 'master', 'A')
+        B = self.fake_github.openFakePullRequest(project, 'master', 'B')
+
+        self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
+        self.fake_github.emitEvent(B.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # We should have a pending check for the head sha
+        self.assertIn(
+            B.head_sha, github.repo_from_project(project)._commits.keys())
+        check_runs = self.fake_github.getCommitChecks(project, B.head_sha)
+
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+        self.assertEqual("tenant-one/checks-api-gate", check_run["name"])
+        self.assertEqual("in_progress", check_run["status"])
+
+        # We are not testing if the promote event shifts the change
+        # within the queue (there are other tests for this). We are
+        # only interested in the interaction with Github.
+        event = PromoteEvent(
+            'tenant-one', 'checks-api-gate', [f'{B.number},{B.head_sha}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'checks-api-gate'].put(event)
+        self.waitUntilSettled()
+
+        check_runs = self.fake_github.getCommitChecks(project, B.head_sha)
+        self.assertEqual(1, len(check_runs))
+        # Since the promote event causes a silent dequeue, the check run
+        # should not be updated and stays in progress
+        check_run = check_runs[0]
+        self.assertEqual("tenant-one/checks-api-gate", check_run["name"])
+        self.assertEqual("in_progress", check_run["status"])
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        # Once the re-enqueued builds are completed, a new check run will
+        # be reported with the final "success" conclusion.
+        check_runs = self.fake_github.getCommitChecks(project, B.head_sha)
+        self.assertEqual(2, len(check_runs))
+        check_run = check_runs[0]
+        self.assertEqual("tenant-one/checks-api-gate", check_run["name"])
+        self.assertEqual("completed", check_run["status"])
+        self.assertEqual("success", check_run["conclusion"])
+
+    @simple_layout("layouts/reporting-github.yaml", driver="github")
     def test_update_non_existing_check_run(self):
         project = "org/project3"
         github = self.fake_github.getGithubClient(None)

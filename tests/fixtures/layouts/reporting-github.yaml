@@ -101,6 +101,31 @@
         check: cancelled
 
 - pipeline:
+    name: checks-api-gate
+    manager: dependent
+    trigger:
+      github:
+        - event: pull_request
+          action:
+            - opened
+            - changed
+            - reopened
+          branch: ^master$
+    start:
+      github:
+        check: in_progress
+    success:
+      github:
+        check: success
+        merge: true
+    failure:
+      github:
+        check: failure
+    dequeue:
+      github:
+        check: cancelled
+
+- pipeline:
     name: checks-api-reporting-skipped
     description: Reporting via Githubs Checks API
     manager: independent
@@ -179,5 +204,11 @@
       jobs:
         - project-test1
     gate:
+      jobs:
+        - project-test1
+
+- project:
+    name: org/project5
+    checks-api-gate:
       jobs:
         - project-test1

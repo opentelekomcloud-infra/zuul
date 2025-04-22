@@ -2008,7 +2008,7 @@ class Scheduler(threading.Thread):
                     items_to_enqueue.append(item)
                 head_same = False
                 manager.cancelJobs(item)
-                manager.dequeueItem(item)
+                manager.dequeueItem(item, quiet=True)
 
             for item in items_to_enqueue:
                 for item_change in item.changes:
