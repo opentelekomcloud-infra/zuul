@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1f9bca99_08fa8d06",
+        "filename": "doc/source/config/secret.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 16068
+      },
+      "writtenOn": "2025-04-22T20:37:04Z",
+      "side": 1,
+      "message": "typo: hereafter",
+      "revId": "5676886c331ddea31f33bd3d7da1e89bb475e733",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
