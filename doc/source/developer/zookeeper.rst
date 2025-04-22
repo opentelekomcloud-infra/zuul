@@ -306,6 +306,12 @@ This is a reference for object layout in Zookeeper.
    A zone-specific executor build request queue.  The contents are the
    same as above.
 
+.. path:: zuul/launcher/stats-election
+   :type: LauncherStatsElection
+
+   An election to decide which launcher will report system-wide
+   launcher stats (such as total nodes).
+
 .. path:: zuul/layout/<tenant>
 
    The layout state for the tenant.  Contains the cache and time data

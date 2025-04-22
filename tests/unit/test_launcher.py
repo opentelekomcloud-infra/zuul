@@ -501,6 +501,16 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(A.reported, 2)
         self.assertEqual(self.getJobFromHistory('check-job').node,
                          'debian-normal')
+        pname = 'review_example_com%2Forg%2Fcommon-config/aws-us-east-1-main'
+        self.assertReportedStat(
+            f'zuul.provider.{pname}.nodes.state.requested',
+            kind='g')
+        self.assertReportedStat(
+            f'zuul.provider.{pname}.label.debian-normal.nodes.state.requested',
+            kind='g')
+        self.assertReportedStat(
+            'zuul.nodes.state.requested',
+            kind='g')
 
     @simple_layout('layouts/nodepool-empty-nodeset.yaml', enable_nodepool=True)
     def test_empty_nodeset(self):
