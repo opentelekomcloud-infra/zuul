@@ -1887,6 +1887,8 @@ class ZuulWebAPI(object):
     def job(self, tenant_name, tenant, auth, job_name):
         job_name = urllib.parse.unquote_plus(job_name)
         job_variants = tenant.layout.jobs.get(job_name)
+        if job_variants is None:
+            raise cherrypy.HTTPError(404, "Job not found")
         result = []
         for job in job_variants:
             result.append(job.toDict(tenant))
