@@ -16,6 +16,24 @@
       "message": "This endpoint looks uncached which may quickly become an operational problem. This endpoint potentially receives many queries and does the computational part again on each request.",
       "revId": "1ca15cecfe8131620bca9dd0c8673ffc7e4f1890",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "841191d5_c0e9f3e4",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 1169,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-23T12:33:23Z",
+      "side": 1,
+      "message": "The external services usually cache the keyset, e.g. the mod_auth_openidc by default caches it for 1 hour (configurable by OIDCJWKSRefreshInterval).\nSo I think it should also be fine without cache.",
+      "parentUuid": "e8ff2d97_34629f07",
+      "revId": "1ca15cecfe8131620bca9dd0c8673ffc7e4f1890",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
