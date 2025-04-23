@@ -1,5 +1,23 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bef74078_bfb07c96",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 35923
+      },
+      "writtenOn": "2025-04-23T13:38:30Z",
+      "side": 1,
+      "message": "@jim@acmegating.com Do we have similar change in nodepool repo? Or community fully stoped supporting nodepool repo since version 12 and expect new fixes here?",
+      "revId": "dc308007343a0f791e9eaba0ff0a2ea4b2f5ea1c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
