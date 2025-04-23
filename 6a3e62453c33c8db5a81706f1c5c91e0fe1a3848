@@ -50,6 +50,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7471dcb9_8661be06",
+        "filename": "zuul/lib/keystorage.py",
+        "patchSetId": 26
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-23T11:20:02Z",
+      "side": 1,
+      "message": "All the complicated code is to find out which keys are still valid. We have also discussion on this piece of code in previous code review comments. Here is the reasoning about that:\n\nThe validity of a key can not be decided by its \"created\" only, because we only know a key can be deleted if there is a newer key with certain condition exists.\n\nThe condition for a key_x to be deleted is: if there exists any newer key_y that key_y[\"created\"] \u003c (current - max_ttl). This makes sure the last token signed by key_x (could be right before key_y is created) is expired.\n\nonce we find that key_y, we know all keys older than key_y can be deleted.",
+      "parentUuid": "d73c6fbf_3162bb6d",
+      "range": {
+        "startLine": 108,
+        "startChar": 0,
+        "endLine": 113,
+        "endChar": 29
+      },
+      "revId": "6a3e62453c33c8db5a81706f1c5c91e0fe1a3848",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ccd74316_9196a9eb",
         "filename": "zuul/lib/keystorage.py",
         "patchSetId": 26
