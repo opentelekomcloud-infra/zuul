@@ -525,6 +525,16 @@ These metrics are emitted by the Zuul :ref:`scheduler`:
      The used RAM (excluding buffers and cache) on this executor allowed by
      the cgroup, as percentage multiplied by 100.
 
+  .. stat:: max_process
+     :type: gauge
+
+     The maximum amount of processes that can be running on this executor.
+
+  .. stat:: cur_process
+     :type: gauge
+
+     The current amount of running processes on this executor.
+
 .. stat:: zuul.nodepool.requests
 
    Holds metrics related to Zuul requests and responses from Nodepool.
