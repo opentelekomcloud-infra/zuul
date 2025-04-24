@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fd18aab6_685319c8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-04-24T08:43:12Z",
+      "side": 1,
+      "message": "I think that makes sense. I\u0027m also wondering why we used a failure-like color for CANCELED in the first place as this is not much of a failure state/result.\n\nI\u0027ll go ahead with your suggestion. Regarding SKIPPED and CANCELED I think it might be helpful to differentiate those as well. So should we use blue for SKIPPED and grey for CANCELED? Otherwise I\u0027d also be fine to use blue for both.",
+      "revId": "d83c9107d4477ce65389f04f4c48de33f887a548",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
