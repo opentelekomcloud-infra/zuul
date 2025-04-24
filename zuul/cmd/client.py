@@ -391,7 +391,7 @@ class Client(zuul.cmd.ZuulApp):
         cmd_create_auth_token.add_argument(
             '--tenant',
             help='tenant name',
-            required=True)
+            required=False)
         cmd_create_auth_token.add_argument(
             '--user',
             help=("The user's name. Used for traceability in logs."),
@@ -416,6 +416,10 @@ class Client(zuul.cmd.ZuulApp):
             '--print-meta-info',
             action='store_true',
             help="When specified, the meta info of the token will be printed")
+        cmd_create_auth_token.add_argument(
+            '--no-zuul-admin',
+            action='store_true',
+            help="When specified, the zuul.admin claim will not be added")
         cmd_create_auth_token.set_defaults(func=self.create_auth_token)
 
         # Key storage
@@ -587,6 +591,10 @@ class Client(zuul.cmd.ZuulApp):
             if self.args.change is not None and self.args.ref is not None:
                 parser.error(
                     "The 'change' and 'ref' arguments are mutually exclusive.")
+        if self.args.func == self.create_auth_token:
+            # --tenant is required when --no-zuul-admin is not set
+            if not self.args.no_zuul_admin and self.args.tenant is None:
+                parser.error("'--tenant' is required.")
 
     def setup_logging(self):
         """Client logging does not rely on conf file"""
@@ -760,8 +768,9 @@ class Client(zuul.cmd.ZuulApp):
                  'iss': get_default(self.config, auth_section, 'issuer_id'),
                  'aud': get_default(self.config, auth_section, 'client_id'),
                  'sub': self.args.user,
-                 'zuul': {'admin': [self.args.tenant, ]},
                 }
+        if not self.args.no_zuul_admin:
+            token['zuul'] = {'admin': [self.args.tenant, ]}
 
         # Add custom claims, allow to overwrite default claims
         # when it is required.

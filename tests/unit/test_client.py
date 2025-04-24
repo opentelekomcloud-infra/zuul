@@ -188,6 +188,57 @@ class TestWebTokenClient(BaseClientTestCase):
         meta_info_header = out.split(b'\n')[1]
         self.assertIn("Meta Info", meta_info_header.decode('utf-8'))
 
+    def test_token_generation_no_zuul_admin(self):
+        """Test token generation without zuul.admin claim"""
+        with open(os.path.join(self.test_root, 'good.conf'), 'w') as f:
+            self.config.write(f)
+        p = subprocess.Popen(
+            [os.path.join(sys.prefix, 'bin/zuul-admin'),
+             '-c', os.path.join(self.test_root, 'good.conf'),
+             'create-auth-token',
+             '--auth-conf', 'zuul_operator',
+             '--user', 'marshmallow_man',
+             '--no-zuul-admin', ],
+            stdout=subprocess.PIPE,)
+        now = time.time()
+        out, _ = p.communicate()
+        self.assertEqual(p.returncode, 0, 'The command must exit 0')
+        self.assertTrue(out.startswith(b"Bearer "), out)
+        # Get the token from the first line of the output
+        token = jwt.decode(out.split(b'\n')[0][len("Bearer "):],
+                           key=self.config.get(
+                               'auth zuul_operator',
+                               'secret'),
+                           algorithms=[self.config.get(
+                               'auth zuul_operator',
+                               'driver')],
+                           audience=self.config.get(
+                               'auth zuul_operator',
+                               'client_id'),)
+        self.assertEqual('marshmallow_man', token.get('sub'))
+        self.assertEqual('zuul_operator', token.get('iss'))
+        self.assertEqual('zuul.example.com', token.get('aud'))
+        self.assertNotIn('zuul', token)
+        # allow one minute for the process to run
+        self.assertTrue(580 <= int(token['exp']) - now < 660,
+                        (token['exp'], now))
+
+    def test_token_generation_argument_validation(self):
+        """Test token generation argument validation"""
+        with open(os.path.join(self.test_root, 'good.conf'), 'w') as f:
+            self.config.write(f)
+        p = subprocess.Popen(
+            [os.path.join(sys.prefix, 'bin/zuul-admin'),
+             '-c', os.path.join(self.test_root, 'good.conf'),
+             'create-auth-token',
+             '--auth-conf', 'zuul_operator',
+             '--user', 'marshmallow_man', ],
+            stderr=subprocess.PIPE)
+        _, err = p.communicate()
+        # when --no-zuul-admin is not set, the --tenant argument is required
+        self.assertNotEqual(p.returncode, 0, 'The command must fail')
+        self.assertIn("error: '--tenant' is required", err.decode('utf-8'))
+
 
 class TestKeyOperations(ZuulTestCase):
     tenant_config_file = 'config/single-tenant/main.yaml'
