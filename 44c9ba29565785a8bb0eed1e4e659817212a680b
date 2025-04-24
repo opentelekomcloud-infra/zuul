@@ -34,6 +34,24 @@
       "parentUuid": "faeced9a_75d69d89",
       "revId": "44c9ba29565785a8bb0eed1e4e659817212a680b",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4752ebb7_d165e640",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 651,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-24T20:23:11Z",
+      "side": 1,
+      "message": "Done. \"allowed-oidc-issuers\" can be configured in tenant config. When a not allowed issuer defined in secret, it would not overwrite the default one.",
+      "parentUuid": "66276b14_40aa07a8",
+      "revId": "44c9ba29565785a8bb0eed1e4e659817212a680b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
