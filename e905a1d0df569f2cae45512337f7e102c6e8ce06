@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6e6e6bb5_94a3391c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-25T08:24:27Z",
+      "side": 1,
+      "message": "Updated doc regarding custom `iss` in oidc secret.",
+      "revId": "e905a1d0df569f2cae45512337f7e102c6e8ce06",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
