@@ -1,0 +1,26 @@
+- job:
+    name: project3-parent
+    include-vars: zuul.include/parent.yaml
+
+- job:
+    name: project3-child
+    include-vars: zuul.include/child.yaml
+
+- job:
+    name: project3-child
+    parent: project3-parent
+
+- job:
+    name: project3-child-precedence
+    include-vars: zuul.include/child-a.yaml
+
+- job:
+    name: project3-child-precedence
+    parent: project3-parent
+    include-vars: zuul.include/child-b.yaml
+
+- project:
+    check:
+      jobs:
+        - project3-child
+        - project3-child-precedence

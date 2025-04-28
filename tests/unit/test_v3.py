@@ -11002,6 +11002,35 @@ class TestIncludeVars(ZuulTestCase):
             dict(name='other-project', result='SUCCESS', ref='refs/tags/foo'),
         ], ordered=False)
 
+    def test_include_vars_multiple_inheritance(self):
+        # Test variable precedence with multiple inheritance
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project3', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        inventory = self.getBuildInventory('project3-child')
+        ivars = inventory['all']['vars']
+        self.assertTrue(ivars['parent'])
+        self.assertTrue(ivars['child'])
+        self.assertEqual(ivars['precedence'], 'child')
+
+        inventory = self.getBuildInventory('project3-child-precedence')
+        ivars = inventory['all']['vars']
+        # FIXME (swestphahl): Not sure if this is the correct behavior
+        # as most users would expect this to be 'child-b', but this
+        # is similar to pre/post playbook inheritance.
+        self.assertEqual(ivars['precedence'], 'child-a')
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='project3-child', result='SUCCESS', changes='1,1'),
+            dict(name='project3-child-precedence', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+
 
 class TestAttributeControl(ZuulTestCase):
     @simple_layout('layouts/final-control.yaml')

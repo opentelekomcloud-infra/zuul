@@ -4415,10 +4415,12 @@ class Job(ConfigObject):
         if other.override_control['include_vars']:
             include_vars = other._resolveIncludeVars(layout)
         else:
-            include_vars = list(self.include_vars)
+            include_vars = []
             for iv in other._resolveIncludeVars(layout):
-                if iv not in include_vars:
+                if iv not in self.include_vars:
                     include_vars.append(iv)
+            # Include vars of current variant should take precedence
+            include_vars.extend(self.include_vars)
         self.include_vars = include_vars
 
     def updateRequiredProjects(self, other, layout):
