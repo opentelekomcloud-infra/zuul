@@ -390,8 +390,9 @@ class Client(zuul.cmd.ZuulApp):
             required=True)
         cmd_create_auth_token.add_argument(
             '--tenant',
-            help='tenant name',
-            required=True)
+            help=('When specified, zuul.admin claim with the value '
+                  'of the tenant will be added to the token.'),
+            required=False)
         cmd_create_auth_token.add_argument(
             '--user',
             help=("The user's name. Used for traceability in logs."),
@@ -760,8 +761,10 @@ class Client(zuul.cmd.ZuulApp):
                  'iss': get_default(self.config, auth_section, 'issuer_id'),
                  'aud': get_default(self.config, auth_section, 'client_id'),
                  'sub': self.args.user,
-                 'zuul': {'admin': [self.args.tenant, ]},
                 }
+        # Add zuul.admin claim only when tenant is specified
+        if self.args.tenant:
+            token['zuul'] = {'admin': [self.args.tenant, ]}
 
         # Add custom claims, allow to overwrite default claims
         # when it is required.
@@ -791,7 +794,8 @@ class Client(zuul.cmd.ZuulApp):
             print("Bearer %s" % auth_token)
             if self.args.print_meta_info:
                 print("---------------- Meta Info ----------------")
-                print("Tenant:\t\t%s" % self.args.tenant)
+                if self.args.tenant:
+                    print("Tenant:\t\t%s" % self.args.tenant)
                 print("User:\t\t%s" % self.args.user)
                 print("Generated At:\t%s" % time.strftime(
                     "%Y-%m-%d %H:%M:%S UTC", time.gmtime(now)))
@@ -799,6 +803,8 @@ class Client(zuul.cmd.ZuulApp):
                     "%Y-%m-%d %H:%M:%S UTC", time.gmtime(exp)))
                 print("SHA1 Checksum:\t%s" % hashlib.sha1(
                     auth_token.encode("utf-8")).hexdigest())
+                if self.args.claim:
+                    print("Custom Claims:\t%s" % self.args.claim)
                 print("-------------------------------------------")
             err_code = 0
         except Exception as e:
