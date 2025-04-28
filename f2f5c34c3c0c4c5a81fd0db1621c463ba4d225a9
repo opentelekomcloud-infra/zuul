@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9fdfc23d_88419326",
+        "filename": "doc/source/config/secret.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 5263
+      },
+      "writtenOn": "2025-04-28T22:38:31Z",
+      "side": 1,
+      "message": "If a playbook runs longer than the TTL before attempting to use the token, it\u0027ll fail to authenticate yes? If so, it would make sense to add a sentence explaining why someone might want to set this to a value larger than the default.",
+      "revId": "f2f5c34c3c0c4c5a81fd0db1621c463ba4d225a9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
