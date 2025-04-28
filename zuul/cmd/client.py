@@ -390,8 +390,9 @@ class Client(zuul.cmd.ZuulApp):
             required=True)
         cmd_create_auth_token.add_argument(
             '--tenant',
-            help='tenant name',
-            required=True)
+            help=('When specified, zuul.admin claim with the value '
+                  'of the tenant will be added to the token.'),
+            required=False)
         cmd_create_auth_token.add_argument(
             '--user',
             help=("The user's name. Used for traceability in logs."),
@@ -760,8 +761,10 @@ class Client(zuul.cmd.ZuulApp):
                  'iss': get_default(self.config, auth_section, 'issuer_id'),
                  'aud': get_default(self.config, auth_section, 'client_id'),
                  'sub': self.args.user,
-                 'zuul': {'admin': [self.args.tenant, ]},
                 }
+        # Add zuul.admin claim only when tenant is specified
+        if self.args.tenant:
+            token['zuul'] = {'admin': [self.args.tenant, ]}
 
         # Add custom claims, allow to overwrite default claims
         # when it is required.
