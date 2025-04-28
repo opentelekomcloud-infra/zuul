@@ -48,8 +48,10 @@ Example::
     zuul-admin create-auth-token --auth-config zuul-operator --user alice --tenant tenantA --expires-in 1800 --print-meta-info
 
 The return value is the value of the ``Authorization`` header the user must set
-when querying a protected endpoint on Zuul's REST API. The meta information of
-the token will be printed when "--print-meta-info" is specified.
+when querying a protected endpoint on Zuul's REST API. When the ``--tenant`` is
+specified, ``zuul.admin`` claim with the value of the tenant will be added
+to the token. The meta information of the token will be printed when
+"--print-meta-info" is specified.
 
 Example::
 
