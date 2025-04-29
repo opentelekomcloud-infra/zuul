@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ffbab4bc_0c6396f2",
+        "filename": "doc/source/config/secret.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 5263
+      },
+      "writtenOn": "2025-04-29T13:11:18Z",
+      "side": 1,
+      "message": "Nit: \"It should *be* longer...\"",
+      "revId": "4f01f9892f500597774c496365ed9dfa9cb8aa0a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
