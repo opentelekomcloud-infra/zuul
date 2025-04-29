@@ -16,6 +16,24 @@
       "message": "Nit: \"It should *be* longer...\"",
       "revId": "4f01f9892f500597774c496365ed9dfa9cb8aa0a",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "24bdea3d_25daa5f5",
+        "filename": "doc/source/config/secret.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-29T13:15:20Z",
+      "side": 1,
+      "message": "thanks, updated.",
+      "parentUuid": "ffbab4bc_0c6396f2",
+      "revId": "4f01f9892f500597774c496365ed9dfa9cb8aa0a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
