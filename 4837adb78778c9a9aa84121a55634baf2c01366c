@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf645c69_f7380ca6",
+        "filename": "doc/source/configuration.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 1012,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-04-30T07:20:52Z",
+      "side": 1,
+      "message": "typo",
+      "revId": "4837adb78778c9a9aa84121a55634baf2c01366c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
