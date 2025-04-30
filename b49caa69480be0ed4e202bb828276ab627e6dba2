@@ -16,6 +16,23 @@
       "message": "Updated zuul client documentation about the `--tenant` argument.",
       "revId": "b49caa69480be0ed4e202bb828276ab627e6dba2",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "601e018c_a13d4054",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-04-30T07:01:47Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "b49caa69480be0ed4e202bb828276ab627e6dba2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
