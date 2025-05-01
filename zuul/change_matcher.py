@@ -85,6 +85,19 @@ class BranchMatcher(AbstractChangeMatcher):
                 if self.regex.match(change.branch):
                     return True
             return False
+        if (not self.exactmatch and hasattr(change, 'ref') and
+            self._regex.startswith('refs/')):
+            # If we are not an implied matcher then users have requested that
+            # we check against this regex. If the "change" is a ref and the
+            # regex indicates it is matching against refs specifically then
+            # we check that regex and if we fail we can short circuit. This
+            # allows us to avoid overmatching in the containing_branches block
+            # below. Now users can set up jobs to match (or not) specific
+            # refs like tags.
+            if self.regex.match(change.ref):
+                return True
+            else:
+                return False
         if self.regex.match(change.ref):
             return True
         if hasattr(change, 'containing_branches'):
