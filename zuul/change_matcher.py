@@ -85,6 +85,16 @@ class BranchMatcher(AbstractChangeMatcher):
                 if self.regex.match(change.branch):
                     return True
             return False
+        if (not self.exactmatch and hasattr(change, 'ref') and
+            self._regex.startswith('refs/tags/')):
+            # TODO(clarkb) Can we do this for all refs and not just refs/tags?
+            # If we are not an implied matcher and we are explicitly matching
+            # against refs/tags/ then we can short circuit if we don't match.
+            # Users have requested explicit refs/tags/ handling which may be
+            # useful for a single tag on multiple branches which is otherwise
+            # handled by the containing_branches block below.
+            if not self.regex.match(change.ref):
+                return False
         if self.regex.match(change.ref):
             return True
         if hasattr(change, 'containing_branches'):
