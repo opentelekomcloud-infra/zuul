@@ -75,6 +75,32 @@ class ProjectMatcher(AbstractChangeMatcher):
 class BranchMatcher(AbstractChangeMatcher):
     exactmatch = False
 
+    def __init__(self, regex, match_containing_branches=True):
+        super().__init__(regex)
+        self.match_containing_branches = match_containing_branches
+
+    def copy(self):
+        return self.__class__(self.regex, self.match_containing_branches)
+
+    def __eq__(self, other):
+        return (self.__class__ == other.__class__ and
+                self.regex == other.regex and
+                self.match_containing_branches ==
+                other.match_containing_branches)
+
+    def __hash__(self):
+        d = self.regex.toDict()
+        d['match_containing_branches'] = self.match_containing_branches
+        return hash(json.dumps(d, sort_keys=True))
+
+    def __str__(self):
+        return '{%s:%s:%s}' % (self.__class__.__name__, self._regex,
+                               self.match_containing_branches)
+
+    def __repr__(self):
+        return '<%s %s %s>' % (self.__class__.__name__, self._regex,
+                               self.match_containing_branches)
+
     def matches(self, change):
         if hasattr(change, 'branch'):
             # an implied branch matcher must do a fullmatch to work correctly
@@ -87,7 +113,8 @@ class BranchMatcher(AbstractChangeMatcher):
             return False
         if self.regex.match(change.ref):
             return True
-        if hasattr(change, 'containing_branches'):
+        if (self.match_containing_branches and
+            hasattr(change, 'containing_branches')):
             for branch in change.containing_branches:
                 if self.exactmatch:
                     if self._regex == branch:
