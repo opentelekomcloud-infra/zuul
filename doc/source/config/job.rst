@@ -1224,6 +1224,16 @@ Here is an example of two job definitions:
       the commit referenced by the tag to be considered, and then the
       expression must also match the tag.
 
+      In some situations it is not desireable to have containing branches
+      of a tag have their jobs match. For example if a tag item is
+      contained by two or more branches and those branches each define a
+      different variant of a job run against the tag then every variant
+      will be applied. This can result in unexpected behavior. To mitigate
+      this problem the branches regex in jobs can set the
+      `match-containing-branches` boolean flag to `False` to skip containing
+      branch matching. This allows you to configure jobs to match specific
+      tags (or not match them using negation) as necessary.
+
       This example illustrates a job called *run-tests* which uses a
       nodeset based on the current release of an operating system to
       perform its tests, except when testing changes to the stable/2.0

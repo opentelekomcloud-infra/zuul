@@ -536,6 +536,79 @@ class TestBranchTag(ZuulTestCase):
             dict(name='test-job', result='SUCCESS', ref='refs/tags/foo')],
             ordered=False)
 
+    def test_ref_tags_match_multi_branch(self):
+        # Test that tag jobs run with expected job definitions when branch
+        # matchers are applied to match specific tags in a multi branch
+        # project.
+        self.create_branch('org/project', 'stable/pike')
+        self.fake_gerrit.addEvent(
+            self.fake_gerrit.getFakeBranchCreatedEvent(
+                'org/project', 'stable/pike'))
+        self.waitUntilSettled()
+
+        self.executor_server.hold_jobs_in_build = True
+        event = self.fake_gerrit.addFakeTag('org/project', 'master', '1.0.0')
+        self.fake_gerrit.addEvent(event)
+        self.waitUntilSettled()
+
+        build = self.builds[1]
+        # The resulting test-job should include the base variant which matches
+        # all containing_branches as it doesn't have an explicit branch matcher
+        self.assertEqual(build.job.variables['test_job'], 'base')
+        # The resulting test-job should include the var belonging to the
+        # variant with an explicit branch matcher that does match the tag ref.
+        self.assertEqual(build.job.variables['test_job_match_tag'], 'variant')
+        # The resulting test-job should not include the var belonging to
+        # the variant with an explicit branch matcher that does not match the
+        # tag ref.
+        self.assertNotIn('test_job_nomatch_tag', build.job.variables)
+
+        # Now also check the inheritance path is as we expect. Thit is a bit
+        # awkward as inheritance_path is a list of strings but we make do.
+        # Note that both stable/pike and master define each of the jobs due
+        # to how we branch above.
+        self.assertEqual("<Job base explicit: None "
+                         "implied: "
+                         "{MatchAny:{ImpliedBranchMatcher:master:True}} "
+                         "source: project-config/zuul.yaml@master#9>",
+                         build.job.inheritance_path[0])
+        self.assertEqual("<Job test-job explicit: None "
+                         "implied: "
+                         "{MatchAny:{ImpliedBranchMatcher:master:True}} "
+                         "source: org/project/.zuul.yaml@master#1>",
+                         build.job.inheritance_path[1])
+        self.assertEqual("<Job test-job explicit: "
+                         "{MatchAny:{BranchMatcher:refs/tags/1.0.0:False}} "
+                         "implied: None "
+                         "source: org/project/.zuul.yaml@master#7>",
+                         build.job.inheritance_path[2])
+        self.assertEqual("<Job test-job explicit: None implied: "
+                         "{MatchAny:{ImpliedBranchMatcher:stable/pike:True}} "
+                         "source: org/project/.zuul.yaml@stable/pike#1>",
+                         build.job.inheritance_path[3])
+        self.assertEqual("<Job test-job explicit: "
+                         "{MatchAny:{BranchMatcher:refs/tags/1.0.0:False}} "
+                         "implied: None "
+                         "source: org/project/.zuul.yaml@stable/pike#7>",
+                         build.job.inheritance_path[4])
+        self.assertEqual("<Job test-job explicit: None implied: None "
+                         "source: org/project/.zuul.yaml@master#28>",
+                         build.job.inheritance_path[5])
+        self.assertEqual("<Job test-job explicit: None implied: None "
+                         "source: org/project/.zuul.yaml@stable/pike#28>",
+                         build.job.inheritance_path[6])
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+        # test-job does run in this case because it is defined in a
+        # branched repo with implied branch matchers, and the tagged
+        # commit is in both branches.
+        self.assertHistory([
+            dict(name='central-job', result='SUCCESS', ref='refs/tags/1.0.0'),
+            dict(name='test-job', result='SUCCESS', ref='refs/tags/1.0.0')],
+            ordered=False)
+
     def test_no_branch_match_divergent_multi_branch(self):
         # Test that tag jobs from divergent branches run different job
         # variants.

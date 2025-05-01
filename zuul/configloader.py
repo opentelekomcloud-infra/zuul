@@ -65,6 +65,8 @@ ZUUL_REGEX = {
     vs.Required('regex'): str,
     'negate': bool,
 }
+BRANCH_ZUUL_REGEX = ZUUL_REGEX.copy()
+BRANCH_ZUUL_REGEX['match-containing-branches'] = bool
 
 
 # Several forms accept either a single item or a list, this makes
@@ -373,6 +375,8 @@ class PragmaParser(object):
                 # regular expressions.  Only truly implicit branch names
                 # (automatically generated from source file branches) are
                 # ImpliedBranchMatchers.
+                # TODO(clarkb) do we need to handle match-containing-branches
+                # with pragma BranchMatchers?
                 source_context.implied_branches = [
                     change_matcher.BranchMatcher(make_regex(x, self.pcontext))
                     for x in as_list(branches)]
@@ -764,7 +768,7 @@ class JobParser(object):
                       'semaphore': vs.Any(semaphore, str),
                       'semaphores': to_list(vs.Any(semaphore, str)),
                       'tags': override_list(str),
-                      'branches': to_list(vs.Any(ZUUL_REGEX, str)),
+                      'branches': to_list(vs.Any(BRANCH_ZUUL_REGEX, str)),
                       'files': override_list(vs.Any(ZUUL_REGEX, str)),
                       'secrets': to_list(vs.Any(secret, str)),
                       'irrelevant-files': override_list(
@@ -1167,12 +1171,18 @@ class JobParser(object):
         if allowed_projects and not job.allowed_projects:
             job.allowed_projects = set(as_list(allowed_projects))
 
+        def pop_containing_branches(regex):
+            if isinstance(regex, dict):
+                return regex.pop('match-containing-branches', True)
+            else:
+                return True
         branches = None
         if 'branches' in conf:
             with self.pcontext.confAttr(conf, 'branches') as conf_branches:
                 branches = [
                     change_matcher.BranchMatcher(
-                        make_regex(x, self.pcontext))
+                        make_regex(x, self.pcontext),
+                        pop_containing_branches(x))
                     for x in as_list(conf_branches)
                 ]
                 job.setExplicitBranchMatchers(branches)
