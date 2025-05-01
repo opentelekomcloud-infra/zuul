@@ -1337,11 +1337,11 @@ class TestWeb(BaseTestWeb):
             'zuul': {
                 '_inheritance_path': [
                     '<Job base explicit: None implied: '
-                    '{MatchAny:{ImpliedBranchMatcher:master}} '
+                    '{MatchAny:{ImpliedBranchMatcher:master:True}} '
                     'source: common-config/zuul.yaml@master#61>',
                     '<Job project-test1 explicit: None '
                     'implied: '
-                    '{MatchAny:{ImpliedBranchMatcher:master}} '
+                    '{MatchAny:{ImpliedBranchMatcher:master:True}} '
                     'source: common-config/zuul.yaml@master#74>',
                     '<Job project-test1 explicit: None '
                     'implied: None source: '

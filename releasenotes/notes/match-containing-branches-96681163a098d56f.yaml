@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    It is now possible to specify whether a job branch matcher should
+    check if containing branches match as well. Specifying that containing
+    branches should not be checked is useful for jobs that run against
+    tags as tags may be contained by multiple branches. In these
+    situations matching all job varianst may produce unexpected
+    behaviors. Creating job matchers that explicitly match certain
+    tags and don't match containing branches should allow you to specify
+    the behavior you want from these jobs against specific tags.
