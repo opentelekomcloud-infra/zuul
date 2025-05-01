@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    It is now possible to supply explicit job branch matchers that
+    control matching against refs like tags. These regexes will short
+    circuit the processing of ref matching without considering
+    containing branches state. To make use of this functionality you
+    must use new style regexes and apply the `pattern_type: ref`
+    attribute to the regex dictionary. This is useful for controlling
+    which jobs run against tags that are contained by multiple branches.
+    For example you can use negated regexes to prevent jobs from running
+    against `refs/tags/foo`.

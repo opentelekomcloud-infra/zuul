@@ -64,6 +64,9 @@ ZUUL_CONF_ROOT = ('zuul.yaml', 'zuul.d', '.zuul.yaml', '.zuul.d')
 ZUUL_REGEX = {
     vs.Required('regex'): str,
     'negate': bool,
+    # Currently we only have ref types but set to Any for easy
+    # future expansion.
+    'pattern_type': vs.Any('ref'),
 }
 
 
@@ -123,7 +126,8 @@ def check_config_path(path):
 def make_regex(data, parse_context=None):
     if isinstance(data, dict):
         regex = ZuulRegex(data['regex'],
-                          negate=data.get('negate', False))
+                          negate=data.get('negate', False),
+                          pattern_type=data.get('pattern_type'))
     else:
         regex = ZuulRegex(data)
     if parse_context and regex.re2_failure:

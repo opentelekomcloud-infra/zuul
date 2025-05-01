@@ -111,6 +111,13 @@ For example, the following are all valid values for the
 
       Whether to negate the match.
 
+   .. attr:: pattern_type
+      :type: str
+
+      A string value setting the pattern match type. Currently only
+      'ref' is an acceptable value. This can be used to specify the
+      regex is intended to match against git refs specifically.
+
 .. _encryption:
 
 Encryption

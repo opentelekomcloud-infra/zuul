@@ -51,9 +51,10 @@ def filter_allowed_disallowed(
 
 
 class ZuulRegex:
-    def __init__(self, pattern, negate=False):
+    def __init__(self, pattern, negate=False, pattern_type=None):
         self.pattern = pattern
         self.negate = negate
+        self.pattern_type = pattern_type
         self.re2_failure = False
         self.re2_failure_message = None
         try:
@@ -75,7 +76,8 @@ class ZuulRegex:
     def __eq__(self, other):
         return (isinstance(other, ZuulRegex) and
                 self.pattern == other.pattern and
-                self.negate == other.negate)
+                self.negate == other.negate and
+                self.pattern_type == other.pattern_type)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -104,15 +106,19 @@ class ZuulRegex:
         return {
             "regex": self.pattern,
             "negate": self.negate,
+            "pattern_type": self.pattern_type,
         }
 
     def serialize(self):
         return {
             "pattern": self.pattern,
             "negate": self.negate,
+            "pattern_type": self.pattern_type,
         }
 
     @classmethod
     def deserialize(cls, data):
-        o = cls(data['pattern'], data['negate'])
+        # MODEL_API 35
+        pattern_type = data.get('pattern_type')
+        o = cls(data['pattern'], data['negate'], pattern_type)
         return o

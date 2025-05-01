@@ -1,6 +1,29 @@
 - job:
     name: test-job
     run: playbooks/test-job.yaml
+    vars:
+      test_job: base
+
+- job:
+    name: test-job
+    branches:
+      - regex: refs/tags/1.0.0
+        negate: false
+        pattern_type: ref
+    vars:
+      test_job_match_tag: variant
+
+- job:
+    name: test-job
+    branches:
+      - regex: refs/tags/1.0.0
+        negate: true
+        pattern_type: ref
+      - regex: refs/tags/2.0.0
+        negate: false
+        pattern_type: ref
+    vars:
+      test_job_nomatch_tag: variant
 
 - project:
     name: org/project
