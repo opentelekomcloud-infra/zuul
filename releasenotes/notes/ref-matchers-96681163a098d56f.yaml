@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    It is now possible to supply explicit job branch matchers that
+    control matching against refs like tags. These matchers must begin
+    with `refs/` and a failure to match will result in short circuit
+    of processing without considering containing branches state. This
+    is useful for controlling which jobs run against tags that are
+    contained by mutliple branches. For example you can use negated
+    regexes to prevent jobs from running against `refs/tags/foo`.
