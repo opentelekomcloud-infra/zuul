@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "dd8ef49ff5239b49792267616b58905fc9682530",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d7f16ba_623f5ba3",
+        "filename": "zuul/manager/__init__.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 1381,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-05-06T09:52:58Z",
+      "side": 1,
+      "message": "I\u0027m not sure changing the log messages here is a good idea (too verbose and people might have come to recognize them when looking at the logs) and seems to be unrelated to the rest of the change.\n\nOtherwise I\u0027m happy to +2 this.",
+      "revId": "dd8ef49ff5239b49792267616b58905fc9682530",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
