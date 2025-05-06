@@ -63,27 +63,34 @@ class BaseOpenstackDriverTest(ZuulTestCase):
     openstack_needs_floating_ip = False
     openstack_auto_attach_floating_ip = True
 
+    def _makeFakeCloud(self, region):
+        fake_cloud = FakeOpenstackCloud(
+            region,
+            needs_floating_ip=self.openstack_needs_floating_ip,
+            auto_attach_floating_ip=self.openstack_auto_attach_floating_ip,
+        )
+        fake_cloud.max_instances =\
+            self.test_config.driver.openstack.get('max_instances', 100)
+        fake_cloud.max_cores =\
+            self.test_config.driver.openstack.get('max_cores', 100)
+        fake_cloud.max_ram =\
+            self.test_config.driver.openstack.get('max_ram', 1000000)
+        fake_cloud.max_volumes =\
+            self.test_config.driver.openstack.get('max_volumes', 100)
+        fake_cloud.max_volume_gb =\
+            self.test_config.driver.openstack.get('max_volume_gb', 100)
+        self.fake_cloud[region] = fake_cloud
+
     def setUp(self):
         self.initTestConfig()
         self.useFixture(ImageMocksFixture())
         clouds_yaml = os.path.join(FIXTURE_DIR, 'clouds.yaml')
         self.useFixture(
             fixtures.EnvironmentVariable('OS_CLIENT_CONFIG_FILE', clouds_yaml))
-        self.fake_cloud = FakeOpenstackCloud(
-            needs_floating_ip=self.openstack_needs_floating_ip,
-            auto_attach_floating_ip=self.openstack_auto_attach_floating_ip,
-        )
-        self.fake_cloud.max_instances =\
-            self.test_config.driver.openstack.get('max_instances', 100)
-        self.fake_cloud.max_cores =\
-            self.test_config.driver.openstack.get('max_cores', 100)
-        self.fake_cloud.max_ram =\
-            self.test_config.driver.openstack.get('max_ram', 1000000)
-        self.fake_cloud.max_volumes =\
-            self.test_config.driver.openstack.get('max_volumes', 100)
-        self.fake_cloud.max_volume_gb =\
-            self.test_config.driver.openstack.get('max_volume_gb', 100)
 
+        self.fake_cloud = {}
+        self._makeFakeCloud(None)
+        self._makeFakeCloud('region2')
         self.patch(OpenstackDriver, '_endpoint_class',
                    FakeOpenstackProviderEndpoint)
         self.patch(FakeOpenstackProviderEndpoint,
@@ -136,11 +143,12 @@ class TestOpenstackDriver(BaseOpenstackDriverTest, BaseCloudDriverTest):
 
     # Openstack-driver specific tests
 
-    @simple_layout('layouts/openstack/nodepool.yaml', enable_nodepool=True)
+    @simple_layout('layouts/openstack/nodepool-multi.yaml',
+                   enable_nodepool=True)
     def test_openstack_resource_cleanup(self):
         self.waitUntilSettled()
         self.launcher.cleanup_worker.INTERVAL = 1
-        conn = self.fake_cloud._getConnection()
+        conn = self.fake_cloud[None]._getConnection()
         system_id = self.launcher.system.system_id
         tags = {
             'zuul_system_id': system_id,

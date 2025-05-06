@@ -291,7 +291,8 @@ class TestAwsDriver(BaseCloudDriverTest):
     def test_aws_diskimage_ebs_direct(self):
         self._test_diskimage()
 
-    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    @simple_layout('layouts/nodepool-multi-provider.yaml',
+                   enable_nodepool=True)
     def test_aws_resource_cleanup(self):
         self.waitUntilSettled()
         self.launcher.cleanup_worker.INTERVAL = 1
