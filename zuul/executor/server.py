@@ -2242,10 +2242,33 @@ class AnsibleJob(object):
                         slot=node.slot,
                         interface_ip=node.interface_ip,
                         public_ipv4=node.public_ipv4,
-                        private_ipv4=node.private_ipv4,
+                        # This is backwards-compatible behavior for Nodepool;
+                        # we should make a new set of variables for Zuul and
+                        # avoid this.
+                        private_ipv4=node.private_ipv4 or node.public_ipv4,
                         public_ipv6=node.public_ipv6,
                         private_ipv6=node.private_ipv6,
-                        node_properties=node.node_properties)))
+                        node_properties=node.node_properties,
+                    ),
+                    zuul=dict(
+                        node=dict(
+                            label=node.label,
+                            az=node.az,
+                            cloud=node.cloud,
+                            provider=node.provider,
+                            region=node.region,
+                            host_id=node.host_id,
+                            external_id=getattr(node, 'external_id', None),
+                            slot=node.slot,
+                            interface_ip=node.interface_ip,
+                            public_ipv4=node.public_ipv4,
+                            private_ipv4=node.private_ipv4,
+                            public_ipv6=node.public_ipv6,
+                            private_ipv6=node.private_ipv6,
+                            node_properties=node.node_properties,
+                        ),
+                    ),
+                ))
 
                 # Ansible >=2.8 introduced "auto" as an
                 # ansible_python_interpreter argument that looks up
