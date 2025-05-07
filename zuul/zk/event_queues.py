@@ -31,7 +31,7 @@ from zuul import model
 from zuul.lib.collections import DefaultKeyDict
 from zuul.lib.logutil import get_annotated_logger
 from zuul.zk import ZooKeeperSimpleBase, sharding
-from zuul.zk.election import SessionAwareElection
+from zuul.zk.election import SessionAwareElection, RendezvousElection
 
 RESULT_EVENT_TYPE_MAP = {
     "BuildCompletedEvent": model.BuildCompletedEvent,
@@ -910,15 +910,17 @@ class ConnectionEventQueue(ZooKeeperEventQueue):
 
     log = logging.getLogger("zuul.ConnectionEventQueue")
 
-    def __init__(self, client, connection_name):
+    def __init__(self, client, connection_name, component_info):
         queue_root = "/".join((CONNECTION_ROOT, connection_name, "events"))
         super().__init__(client, queue_root)
         self.election_root = "/".join(
             (CONNECTION_ROOT, connection_name, "election")
         )
         self.kazoo_client.ensure_path(self.election_root)
-        self.election = SessionAwareElection(
-            self.kazoo_client, self.election_root)
+        if component_info:
+            self.election = RendezvousElection(
+                self.kazoo_client, self.election_root,
+                "scheduler", component_info)
 
     def _eventWatch(self, callback, event_list):
         if event_list:

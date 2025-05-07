@@ -60,16 +60,18 @@ class RendezvousElection:
         self.client = client
         self.path = path
         self.lock = SessionAwareLock(self.client, self.path)
-        # Whether we are running at all
-        self.running = True
         # Whether we are the current winner of the rendezvous hash
-        self.is_winner = False
+        self.is_winner = None
         self.component_change_event = threading.Event()
-        self._checkWinner()
         COMPONENT_REGISTRY.registry.registerCallback(self._onComponentChange)
 
     # Similar to the Election API
     def run(self, func, *args, **kw):
+        # Allow the cancel method to stop this loop
+        # Handle a restart
+        self.running = True
+        if self.is_winner is None:
+            self._checkWinner()
         while self.running:
             if not self.is_winner:
                 self.log.debug("Did not win election for %s", self.path)
@@ -89,7 +91,7 @@ class RendezvousElection:
     # Similar to the Election API
     def cancel(self):
         self.running = False
-        self.is_winner = False
+        self.is_winner = None
         self.lock.cancel()
         self.component_change_event.set()
 

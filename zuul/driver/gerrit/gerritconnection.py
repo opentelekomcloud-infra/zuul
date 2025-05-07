@@ -540,7 +540,7 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
         delay = None
         for event in self.event_queue.iter(event_id_offset):
-            if self._stopped:
+            if self._shouldStop():
                 break
 
             self._peek_queue.append(event)
@@ -2084,8 +2084,12 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                                          component_registry)
 
         self.log.info("Creating Zookeeper event queue")
+        if self.sched:
+            component_info = self.sched.component_info
+        else:
+            component_info = None
         self.event_queue = ConnectionEventQueue(
-            zk_client, self.connection_name)
+            zk_client, self.connection_name, component_info)
 
         # If the connection was not loaded by a scheduler, but by e.g.
         # zuul-web, we want to stop here.

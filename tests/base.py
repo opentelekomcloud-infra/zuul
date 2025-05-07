@@ -2481,7 +2481,7 @@ class ZuulTestCase(BaseTestCase):
             self.zk_client.client, f"/test/{uuid.uuid4().hex}")
 
         self.connection_event_queues = DefaultKeyDict(
-            lambda cn: ConnectionEventQueue(self.zk_client, cn)
+            lambda cn: ConnectionEventQueue(self.zk_client, cn, None)
         )
         # requires zk client
         self.setupAllProjectKeys(self.config)

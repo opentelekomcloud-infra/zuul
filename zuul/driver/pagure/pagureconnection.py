@@ -514,9 +514,12 @@ class PagureConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         self._branch_cache = BranchCache(zk_client, self, component_registry)
 
         self.log.info('Creating Zookeeper event queue')
+        if self.sched:
+            component_info = self.sched.component_info
+        else:
+            component_info = None
         self.event_queue = ConnectionEventQueue(
-            zk_client, self.connection_name
-        )
+            zk_client, self.connection_name, component_info)
 
         # If the connection was not loaded by a scheduler, but by e.g.
         # zuul-web, we want to stop here.
@@ -849,7 +852,8 @@ class PagureWebController(BaseWebController):
         self.zuul_web = zuul_web
         self.event_queue = ConnectionEventQueue(
             self.zuul_web.zk_client,
-            self.connection.connection_name
+            self.connection.connection_name,
+            None
         )
 
     def _source_whitelisted(self, remote_ip, forwarded_ip):
