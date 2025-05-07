@@ -68,7 +68,7 @@
     region: us-east-1
     az: us-east-1b
     security-group-id: testgroup
-    subnet-id: {subnet_id}
+    subnet-ids: {subnet_ids}
     public-ipv6: True
     userdata: testuserdata
     iam-instance-profile:

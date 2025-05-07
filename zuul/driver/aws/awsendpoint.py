@@ -23,6 +23,7 @@ import json
 import logging
 import math
 import queue
+import random
 import re
 import threading
 import time
@@ -1569,13 +1570,20 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     },
                 ],
             }
-            if label.subnet_id:
-                override_dict['SubnetId'] = label.subnet_id
             if flavor.fleet['allocation-strategy'] in [
                 'prioritized', 'capacity-optimized-prioritized']:
                 override_dict['Priority'] = priority
                 priority += 1
-            overrides.append(override_dict)
+
+            # Duplicate overrides for each subnet
+            if label.subnet_ids:
+                for subnet_id in label.subnet_ids:
+                    overrides.append(dict(
+                        **override_dict,
+                        SubnetId=subnet_id,
+                    ))
+            else:
+                overrides.append(override_dict)
 
         if flavor.market_type == 'spot':
             capacity_type_option = {
@@ -1678,8 +1686,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 label.security_group_id
             ]
 
-        if label.subnet_id:
-            args['NetworkInterfaces'][0]['SubnetId'] = label.subnet_id
+        if label.subnet_ids:
+            args['NetworkInterfaces'][0]['SubnetId'] = random.choice(
+                label.subnet_ids)
 
         if flavor.public_ipv6:
             args['NetworkInterfaces'][0]['Ipv6AddressCount'] = 1
