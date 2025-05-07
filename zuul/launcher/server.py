@@ -692,6 +692,7 @@ class CleanupWorker:
     def __init__(self, launcher):
         self.launcher = launcher
         self.wake_event = threading.Event()
+        # These are indexed by endpoint cname
         self.possibly_leaked_nodes = {}
         self.possibly_leaked_uploads = {}
         self._running = False
@@ -759,6 +760,10 @@ class CleanupWorker:
     def cleanupLeakedResources(self, endpoint):
         newly_leaked_nodes = {}
         newly_leaked_uploads = {}
+        possibly_leaked_nodes = self.possibly_leaked_nodes.get(
+            endpoint.canonical_name, {})
+        possibly_leaked_uploads = self.possibly_leaked_uploads.get(
+            endpoint.canonical_name, {})
 
         # Get a list of all providers that share this endpoint.  This
         # is because some providers may store resources like image
@@ -776,7 +781,7 @@ class CleanupWorker:
             upload_id = resource.metadata.get('zuul_upload_uuid')
             if node_id and self.launcher.api.getProviderNode(node_id) is None:
                 newly_leaked_nodes[node_id] = resource
-                if node_id in self.possibly_leaked_nodes:
+                if node_id in possibly_leaked_nodes:
                     # We've seen this twice now, so it's not a race
                     # condition.
                     try:
@@ -793,7 +798,7 @@ class CleanupWorker:
                 self.launcher.image_upload_registry.getItem(
                     upload_id) is None):
                 newly_leaked_uploads[upload_id] = resource
-                if upload_id in self.possibly_leaked_uploads:
+                if upload_id in possibly_leaked_uploads:
                     # We've seen this twice now, so it's not a race
                     # condition.
                     try:
@@ -807,8 +812,10 @@ class CleanupWorker:
                         self.log.exception(
                             "Unable to delete leaked "
                             f"resource for upload {upload_id}")
-        self.possibly_leaked_nodes = newly_leaked_nodes
-        self.possibly_leaked_uploads = newly_leaked_uploads
+        self.possibly_leaked_nodes[endpoint.canonical_name] =\
+            newly_leaked_nodes
+        self.possibly_leaked_uploads[endpoint.canonical_name] =\
+            newly_leaked_uploads
 
 
 class Launcher:

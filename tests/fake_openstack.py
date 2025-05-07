@@ -84,9 +84,11 @@ class FakeOpenstackCloud:
     log = logging.getLogger("zuul.FakeOpenstackCloud")
 
     def __init__(self,
+                 region,
                  needs_floating_ip=False,
                  auto_attach_floating_ip=True,
                  ):
+        self._fake_region = region
         self._fake_needs_floating_ip = needs_floating_ip
         self._fake_auto_attach_floating_ip = auto_attach_floating_ip
         self.servers = []
@@ -153,7 +155,7 @@ class FakeOpenstackConnection:
         self.config = FakeOpenstackConfig()
         self.config.config = {}
         self.config.config['image_format'] = 'qcow2'
-        self.config.config['region_name'] = 'region1'
+        self.config.config['region_name'] = cloud._fake_region or 'region1'
 
     def _needs_floating_ip(self, server, nat_destination):
         return self.cloud._fake_needs_floating_ip
@@ -302,7 +304,7 @@ class FakeOpenstackConnection:
 
 class FakeOpenstackProviderEndpoint(OpenstackProviderEndpoint):
     def _getClient(self):
-        return self._fake_cloud._getConnection()
+        return self._fake_cloud[self.region]._getConnection()
 
     def _expandServer(self, server):
         return server
