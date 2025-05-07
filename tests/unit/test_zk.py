@@ -46,7 +46,7 @@ from zuul.zk.change_cache import (
     ConcurrentUpdateError,
 )
 from zuul.zk.config_cache import SystemConfigCache, UnparsedConfigCache
-from zuul.zk.election import RendezvousElection
+from zuul.zk.election import SessionAwareElection, RendezvousElection
 from zuul.zk.exceptions import LockException
 from zuul.zk.executor import ExecutorApi
 from zuul.zk.job_request_queue import JobRequestEvent
@@ -3145,6 +3145,84 @@ class TestRendezvousElection(ZooKeeperBaseTestCase):
         self.log.debug("Stop c1")
         # Let the second election win
         c1.state = c1.STOPPED
+        event2.wait()
+
+        self.log.debug("Stop c2")
+        # Stop the second election by stopping the second component
+        e2.running = False
+        c2.state = c2.STOPPED
+        t2.join()
+
+    def test_rendezvous_election_upgrade(self):
+        # Test that we can upgrade from a "regular" election to a
+        # rendezvous election.
+
+        # The numbers (e1, e2) mirror the test above, but "1" is the
+        # regular election and "2" is the rendezvous.
+        c2 = SchedulerComponent(self.zk_client, "bar")
+        c2.register()
+
+        e1 = SessionAwareElection(
+            self.zk_client.client,
+            '/test/election/lock',
+        )
+        e2 = RendezvousElection(
+            self.zk_client.client,
+            '/test/election/lock',
+            'scheduler',
+            c2,
+        )
+
+        self.assertEqual(0, len(e2._getScores()))
+        self.assertEqual(None, e2._getWinner())
+        self.assertFalse(e2.is_still_valid())
+
+        # c2 will be the winner since it's the only one running
+        c2.state = c2.RUNNING
+        time.sleep(1)
+        self.assertEqual(1, len(e2._getScores()))
+        self.assertEqual(c2.hostname, e2._getWinner().hostname)
+        self.assertTrue(e2.is_still_valid())
+
+        event1 = threading.Event()
+        event2 = threading.Event()
+        e1._test_stop = False
+
+        def run1():
+            event1.set()
+            while not e1._test_stop:
+                time.sleep(0.1)
+
+        def run2():
+            event2.set()
+            while e2.is_still_valid():
+                time.sleep(0.1)
+
+        t1 = threading.Thread(
+            target=e1.run,
+            args=(run1,),
+        )
+        t1.start()
+        # Wait for the thread to start
+        event1.wait()
+
+        t2 = threading.Thread(
+            target=e2.run,
+            args=(run2,),
+        )
+        t2.start()
+
+        time.sleep(1)
+        # Second component should still be waiting
+        self.assertFalse(event2.is_set())
+
+        # Stop the thread
+        self.log.debug("Stop c1")
+        e1._test_stop = True
+        # Wait for the thread to stop
+        t1.join()
+
+        # Wait for the second election to win
         event2.wait()
 
         self.log.debug("Stop c2")
