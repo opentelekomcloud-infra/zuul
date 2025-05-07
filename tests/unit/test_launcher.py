@@ -512,6 +512,26 @@ class TestLauncher(LauncherBaseTestCase):
             'zuul.nodes.state.requested',
             kind='g')
 
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_canceled_request(self):
+        # Test that a canceled request is cleaned up
+        self.hold_jobs_in_queue = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        queue = list(self.executor_api.queued())
+        self.assertEqual(len(self.builds), 0)
+        self.assertEqual(len(queue), 1)
+
+        self.fake_gerrit.addEvent(A.getChangeAbandonedEvent())
+
+        self.waitUntilSettled()
+        self.assertHistory([])
+        reqs = self.launcher.api.getNodesetRequests()
+        self.assertEqual(0, len(reqs))
+
     @simple_layout('layouts/nodepool-empty-nodeset.yaml', enable_nodepool=True)
     def test_empty_nodeset(self):
         self.executor_server.hold_jobs_in_build = True

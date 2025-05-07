@@ -3186,10 +3186,12 @@ class Scheduler(threading.Thread):
             # Cancel node request if needed
             req_id = buildset.getJobNodeRequestID(job)
             if req_id:
-                if not isinstance(req_id, dict):
-                    req = self.nodepool.zk_nodepool.getNodeRequest(req_id)
-                    if req:
+                if self.nodepool.isNodeRequestID(req_id):
+                    if req := self.nodepool.zk_nodepool.getNodeRequest(req_id):
                         self.nodepool.cancelRequest(req)
+                else:
+                    if req := self.launcher.getRequest(req_id):
+                        self.launcher.deleteRequest(req)
 
             # Make sure we always remove the node request from the buildset
             # (empty request don't have an ID).
