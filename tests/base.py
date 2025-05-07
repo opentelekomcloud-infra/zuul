@@ -2554,6 +2554,7 @@ class ZuulTestCase(BaseTestCase):
             self.config,
             launcher_connections)
         launcher._start_cleanup = False
+        launcher._stats_interval = 1
         launcher.start()
         return launcher
 
