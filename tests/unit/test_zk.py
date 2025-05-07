@@ -46,6 +46,7 @@ from zuul.zk.change_cache import (
     ConcurrentUpdateError,
 )
 from zuul.zk.config_cache import SystemConfigCache, UnparsedConfigCache
+from zuul.zk.election import RendezvousElection
 from zuul.zk.exceptions import LockException
 from zuul.zk.executor import ExecutorApi
 from zuul.zk.job_request_queue import JobRequestEvent
@@ -65,6 +66,7 @@ from zuul.zk.components import (
     ComponentRegistry,
     ExecutorComponent,
     LauncherComponent,
+    SchedulerComponent,
     COMPONENT_REGISTRY
 )
 from tests.base import (
@@ -3047,3 +3049,106 @@ class TestLockableZKObjectCache(ZooKeeperBaseTestCase):
         for _ in iterate_timeout(10, "cache to sync"):
             if not any(d.is_locked for d in cache.getItems()):
                 break
+
+
+class TestRendezvousElection(ZooKeeperBaseTestCase):
+    def test_rendezvous_election(self):
+        # The strings foo and bar are not entirely arbitrary; they
+        # rendezvous hash with the path to produce a list of
+        # components in the order expected by the test.
+        c1 = SchedulerComponent(self.zk_client, "foo")
+        c1.register()
+        c2 = SchedulerComponent(self.zk_client, "bar")
+        c2.register()
+
+        e1 = RendezvousElection(
+            self.zk_client.client,
+            '/test/election/lock',
+            'scheduler',
+            c1,
+        )
+        e2 = RendezvousElection(
+            self.zk_client.client,
+            '/test/election/lock',
+            'scheduler',
+            c2,
+        )
+
+        self.assertEqual(0, len(e1._getScores()))
+        self.assertEqual(None, e1._getWinner())
+        self.assertFalse(e1.is_still_valid())
+
+        self.assertEqual(0, len(e2._getScores()))
+        self.assertEqual(None, e2._getWinner())
+        self.assertFalse(e2.is_still_valid())
+
+        # c2 will be the winner since it's the only one running
+        c2.state = c2.RUNNING
+        time.sleep(1)
+        self.assertEqual(1, len(e1._getScores()))
+        self.assertEqual(c2.hostname, e1._getWinner().hostname)
+        self.assertFalse(e1.is_still_valid())
+
+        self.assertEqual(1, len(e2._getScores()))
+        self.assertEqual(c2.hostname, e2._getWinner().hostname)
+        self.assertTrue(e2.is_still_valid())
+
+        # Once both are enabled, c1 is the winner
+        c1.state = c1.RUNNING
+        time.sleep(1)
+        self.assertEqual(2, len(e1._getScores()))
+        self.assertEqual(c1.hostname, e1._getWinner().hostname)
+        self.assertTrue(e1.is_still_valid())
+
+        self.assertEqual(2, len(e2._getScores()))
+        self.assertEqual(c1.hostname, e2._getWinner().hostname)
+        self.assertFalse(e2.is_still_valid())
+
+        event1 = threading.Event()
+        event2 = threading.Event()
+
+        def run1():
+            event1.set()
+            while e1.is_still_valid():
+                time.sleep(0.1)
+
+        def run2():
+            event2.set()
+            while e2.is_still_valid():
+                time.sleep(0.1)
+
+        t1 = threading.Thread(
+            target=e1.run,
+            args=(run1,),
+        )
+        t1.start()
+        t2 = threading.Thread(
+            target=e2.run,
+            args=(run2,),
+        )
+        t2.start()
+
+        # Wait for the thread to start
+        event1.wait()
+        # Second component should still be waiting
+        self.assertFalse(event2.is_set())
+
+        # Stop the thread
+        e1.cancel()
+        # Wait for the thread to stop
+        t1.join()
+
+        # The second election still should not have started yet since
+        # the first component is still running.
+        self.assertFalse(event2.is_set())
+
+        self.log.debug("Stop c1")
+        # Let the second election win
+        c1.state = c1.STOPPED
+        event2.wait()
+
+        self.log.debug("Stop c2")
+        # Stop the second election by stopping the second component
+        e2.running = False
+        c2.state = c2.STOPPED
+        t2.join()
