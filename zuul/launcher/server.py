@@ -1990,11 +1990,24 @@ class Launcher:
         ext = image_build_artifact.url.split('.')[-1]
         path = os.path.join(self.temp_dir, image_build_artifact.uuid)
         path = f'{path}.{ext}'
-        self.log.info("Downloading artifact %s into %s",
-                      image_build_artifact, path)
+        self.log.info("Downloading artifact %s from %s into %s",
+                      image_build_artifact, image_build_artifact.url, path)
         futures = []
         with requests.head(image_build_artifact.url) as resp:
-            size = int(resp.headers['content-length'])
+            if resp.status_code == 403:
+                self.log.debug(
+                    "Received 403 for %s, retrying with range header",
+                    image_build_artifact.url)
+                # This may be a pre-signed url that can't handle a
+                # HEAD request, retry with GET:
+                with requests.get(image_build_artifact.url,
+                                  headers={"Range": "bytes=0-0"}) as resp:
+                    resp.raise_for_status()
+                    size = int(resp.headers['content-range'].split('/')[-1])
+            else:
+                resp.raise_for_status()
+                size = int(resp.headers['content-length'])
+        self.log.debug("Creating %s with size %s", path, size)
         with open(path, 'wb') as f:
             f.truncate(size)
         try:

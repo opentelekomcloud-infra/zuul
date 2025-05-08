@@ -81,6 +81,26 @@ class ImageMocksFixture(ResponsesFixture):
             responses.HEAD,
             'http://example.com/image.qcow2',
             headers={'content-length': str(len(qcow2_body))})
+        # The next three are for the signed_url test
+        # Partial response
+        self.requests_mock.add(
+            responses.GET,
+            'http://example.com/getonly.raw',
+            match=[responses.matchers.header_matcher({"Range": "bytes=0-0"})],
+            status=206,
+            headers={'content-length': '1',
+                     'content-range': f'bytes 0-0/{len(raw_body)}'},
+        )
+        # The full response
+        self.requests_mock.add(
+            responses.GET,
+            'http://example.com/getonly.raw',
+            headers={'content-length': str(len(raw_body))})
+        # Head doesn't work
+        self.requests_mock.add(
+            responses.HEAD,
+            'http://example.com/getonly.raw',
+            status=403)
 
 
 class LauncherBaseTestCase(ZuulTestCase):
@@ -478,6 +498,54 @@ class TestLauncher(LauncherBaseTestCase):
             u for u in self.launcher.image_upload_registry.getItems()
             if u.state == u.State.PENDING]
         self.assertEqual(0, len(pending_uploads))
+
+    getonly_return_data = {
+        'zuul': {
+            'artifacts': [
+                {
+                    'name': 'raw image',
+                    'url': 'http://example.com/getonly.raw',
+                    'metadata': {
+                        'type': 'zuul_image',
+                        'image_name': 'debian-local',
+                        'format': 'raw',
+                        'sha256': ('d043e8080c82dbfeca3199a24d5f0193'
+                                   'e66755b5ba62d6b60107a248996a6795'),
+                        'md5sum': '78d2d3ff2463bc75c7cc1d38b8df6a6b',
+                    }
+                },
+            ]
+        }
+    }
+
+    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        getonly_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+                return_value="test_external_id")
+    def test_launcher_image_signed_url(self, mock_uploadImage):
+        # If the image is uploaded using a signed url, it will not
+        # permit a HEAD request; this tests the GET range fallback.
+
+        self.waitUntilSettled()
+        self.log.debug("JEB wake")
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+        ], ordered=False)
+        name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
+        artifacts = self._waitForArtifacts(name, 1)
+        self.assertEqual('raw', artifacts[0].format)
+        self.assertTrue(artifacts[0].validated)
+        uploads = self.launcher.image_upload_registry.getUploadsForImage(
+            name)
+        self.assertEqual(1, len(uploads))
+        self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
+        self.assertEqual("test_external_id", uploads[0].external_id)
+        self.assertTrue(uploads[0].validated)
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_jobs_executed(self):
