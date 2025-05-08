@@ -68,6 +68,7 @@ class MQTTReporter(BaseReporter):
             'commit_id': getattr(item.changes[0], 'commit_id', ''),
             'owner': getattr(item.changes[0], 'owner', ''),
             'ref': getattr(item.changes[0], 'ref', ''),
+            'topic': getattr(item.changes[0], 'topic', ''),
             'message': self._formatItemReport(
                 item, with_jobs=False),
             'trigger_time': item.event.timestamp,
@@ -101,6 +102,7 @@ class MQTTReporter(BaseReporter):
                     'commit_id': getattr(change, 'commit_id', ''),
                     'owner': getattr(change, 'owner', ''),
                     'ref': getattr(change, 'ref', ''),
+                    'topic': getattr(change, 'topic', ''),
                 }
                 # Build a list of job dependencies as `job.dependencies`
                 # only gives us `JobDependency` instances that don't
