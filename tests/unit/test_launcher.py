@@ -504,7 +504,7 @@ class TestLauncher(LauncherBaseTestCase):
             'artifacts': [
                 {
                     'name': 'raw image',
-                    'url': 'http://example.com/getonly.raw',
+                    'url': 'http://example.com/getonly.raw?Dummy-Token=foo',
                     'metadata': {
                         'type': 'zuul_image',
                         'image_name': 'debian-local',

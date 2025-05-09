@@ -28,6 +28,7 @@ import subprocess
 import threading
 import time
 import uuid
+from urllib.parse import urlparse
 
 import cachetools
 import mmh3
@@ -1987,7 +1988,8 @@ class Launcher:
                     f.write(chunk)
 
     def downloadArtifact(self, image_build_artifact):
-        ext = image_build_artifact.url.split('.')[-1]
+        url_components = urlparse(image_build_artifact.url)
+        ext = url_components.path.split('.')[-1]
         path = os.path.join(self.temp_dir, image_build_artifact.uuid)
         path = f'{path}.{ext}'
         self.log.info("Downloading artifact %s from %s into %s",
