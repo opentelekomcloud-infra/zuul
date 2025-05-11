@@ -1,0 +1,129 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cbf84af1_0628e506",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-11T16:35:08Z",
+      "side": 1,
+      "message": "Mostly observations inline. I think the main thing to look at is the behavior of newrev being set to `\u0027\u0027` vs `None` and whether we should make that more consistent in all cases.",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5e92706d_1f1c9317",
+        "filename": "doc/source/drivers/timer.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-11T16:35:08Z",
+      "side": 1,
+      "message": "At first I wondered if we could avoid extra configuration and instead always use the new dereference behavior. However, I think a good example for why the existing behavior is worth preserving by default is OpenDev\u0027s `opendev-prod-hourly` pipeline. This is an independent pipeline triggered hourly using the timer trigger that potentially needs extra consideration if we can enqueue multiple entries that span an hour. This is unlikely in the current OpenDev setup due to our semaphores and the jobs running in less than 10 minutes at this point, but in the past before our parallel refactoring it may have been a bigger problem.\n\nAll that to say I think I\u0027ve convinced myself making this configurable is a good thing and I\u0027m writing that down for other reviewers to consider as well.",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3fdefa05_c4cd201d",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1843,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-11T16:35:08Z",
+      "side": 1,
+      "message": "Nit, why do we use `getProjectBranchSha` here when git and gerrit both use `getRefSha`. Might be helpful to use consistent naming across the drivers for utility methods that perform similar functions?",
+      "range": {
+        "startLine": 1843,
+        "startChar": 8,
+        "endLine": 1843,
+        "endChar": 27
+      },
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3978431a_86da1abe",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1854,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-11T16:35:08Z",
+      "side": 1,
+      "message": "Similar to the above comment we return `\u0027\u0027` not `None` in the Gerrit and Git drivers. Should we return `\u0027\u0027` here as well for consistency?",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eb951bd2_7d2f5ec7",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1857,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-11T16:35:08Z",
+      "side": 1,
+      "message": "Can we get a 404 here if the branch doesn\u0027t exist as well? This error message might be a little confusing in that case. Maybe we should provider both project and branch info here?",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c31882ae_8dc13323",
+        "filename": "zuul/driver/pagure/pagureconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-11T16:35:08Z",
+      "side": 1,
+      "message": "Nit we don\u0027t seem to positively log retrieval of the branch commits from other drivers. Should we add that logging to github and gitlab too?",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "265b83d1_4e0e65a3",
+        "filename": "zuul/driver/timer/__init__.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-11T16:35:08Z",
+      "side": 1,
+      "message": "See comments in driver connection code. I think for some drivers we may set event.newrev to `\u0027\u0027` and for others its possible to set it to `None` here. It might be a good idea to make that nil value consistent to simplify job code checks for newrev values.",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
