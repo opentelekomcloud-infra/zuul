@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "05fd4b68_5188e4c1",
+        "filename": "zuul/driver/mqtt/mqttreporter.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-05-12T08:53:55Z",
+      "side": 1,
+      "message": "I think this should rather be part of the change info itself (starting with line 42 above). The change-related info in the message here is just kept for backward compat, but we are essentially only considering a single change.",
+      "revId": "f5735bd29a07b32a4f58bf2eae3b5b0ac8333d59",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
