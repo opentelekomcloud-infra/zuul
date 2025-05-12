@@ -60,6 +60,47 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "622bd105_ba415db8",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1843,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-05-12T08:55:23Z",
+      "side": 1,
+      "message": "I think the name `getRefSha` implies that this API works for all types of refs, which is not the case here.",
+      "parentUuid": "3fdefa05_c4cd201d",
+      "range": {
+        "startLine": 1843,
+        "startChar": 8,
+        "endLine": 1843,
+        "endChar": 27
+      },
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1da049ed_73b1e89c",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1845,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-05-12T08:55:23Z",
+      "side": 1,
+      "message": "Just wondering why we are not using the github3py API for getting a branch?\nhttps://github3.readthedocs.io/en/latest/api-reference/repos.html#github3.repos.repo.Repository.branch\n\nI think in the past we only used the lower-level API when there was no support in gh3py yet or the client was making unnecessary requests.\n\nI\u0027m mainly asking as I think the error handling here is spotty in that we only handle 403 and 404 and in all other error cases line we\u0027ll probably get a JSON decode error or a key error (depending on the response format).",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3978431a_86da1abe",
         "filename": "zuul/driver/github/githubconnection.py",
         "patchSetId": 4
