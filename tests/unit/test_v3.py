@@ -10399,6 +10399,34 @@ class TestDynamicBranchesProject(IncludeBranchesTestCase):
         ], ordered=False)
 
 
+class TestDynamicBranchesMultiProject(ZuulTestCase):
+    tenant_config_file = 'config/dynamic-only-project/dynamic2.yaml'
+
+    def test_dynamic_branches_multi_project(self):
+        # Test that configuration errors on a branch which is static
+        # in one tenant do not cause issue in another tenant where the
+        # branch is dynamic.
+
+        # Create branches which are dynamic in tenant-one, and static
+        # in tenant-two.
+        self.create_branch('org/project', 'feature/foo')
+        self.create_branch('org/project2', 'feature/bar')
+
+        # The reconfiguration should cause config errors in project2
+        # to be stored with the objects since they are loaded in
+        # tenant-two.
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+
+        A = self.fake_gerrit.addFakeChange('org/project', 'feature/foo', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-test', result='SUCCESS', changes='1,1'),
+            dict(name='central-test', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+
+
 class TestMaxDeps(ZuulTestCase):
     tenant_config_file = 'config/single-tenant/main-max-deps.yaml'
 
