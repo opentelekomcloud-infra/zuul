@@ -1964,11 +1964,15 @@ class Launcher:
                 # it has probably crashed.  Reset it.
                 if not upload.is_locked:
                     with self.createZKContext(None, self.log) as ctx:
-                        with (upload.locked(ctx, blocking=False),
-                              upload.activeContext(ctx)):
-                            # Double check the state after lock.
-                            if upload.state == upload.State.UPLOADING:
-                                upload.state = upload.State.PENDING
+                        try:
+                            with (upload.locked(ctx, blocking=False),
+                                  upload.activeContext(ctx)):
+                                # Double check the state after lock.
+                                if upload.state == upload.State.UPLOADING:
+                                    upload.state = upload.State.PENDING
+                        except LockException:
+                            # Upload locked again (lock / cache update race)
+                            pass
             if upload.state != upload.State.PENDING:
                 continue
             upload_list = uploads_by_artifact_id[upload.artifact_uuid]
