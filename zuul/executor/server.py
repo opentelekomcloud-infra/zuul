@@ -2857,6 +2857,10 @@ class AnsibleJob(object):
                     inventory_nodes.append(node)
                     # Add the real pod name to the resources_var
                     zuul_resources[node.name[0]]['pod'] = data['pod']
+                    # Add the resources (cpu, mem) of the pod to the inventory
+                    # since Ansible might report values of the host machine in
+                    # its ansible_* host facts (ie. its not cgroup aware)
+                    zuul_resources[node.name[0]]['resources'] = node.resources
 
                     fwd = KubeFwd(zuul_event_id=self.zuul_event_id,
                                   build=self.build_request.uuid,
