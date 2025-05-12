@@ -997,6 +997,15 @@ sections of ``zuul.conf`` are used by the web server:
 
       If this is used the finger gateways should be configured accordingly.
 
+   .. attr:: auth_log_file_requests
+      :default: false
+
+      If set to true, the JavaScript web client will pass an Authorization
+      header with HTTP requests for log files if the origin of a log file is
+      the same as the Zuul API. This is useful when build logs are served
+      through the same authenticated endpoint as the API (e.g. a reverse
+      proxy).
+
 .. attr:: keystore
 
    .. attr:: password
