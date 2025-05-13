@@ -517,6 +517,7 @@ class ShardedZKObject(ZKObject):
 
 class LockableZKObject(ZKObject):
     _lock = None
+    _lock_contenders = set()
 
     def getLockPath(self):
         """Return the path for the lock of this object in ZK
