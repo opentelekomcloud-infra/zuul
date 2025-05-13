@@ -50,7 +50,7 @@ from zuul.zk.exceptions import LockException
 from zuul.zk.executor import ExecutorApi
 from zuul.zk.job_request_queue import JobRequestEvent
 from zuul.zk.merger import MergerApi
-from zuul.zk.launcher import LauncherApi
+from zuul.zk.launcher import LauncherApi, LockableZKObjectCache
 from zuul.zk.layout import LayoutStateStore, LayoutState
 from zuul.zk.locks import locked
 from zuul.zk.nodepool import ZooKeeperNodepool
@@ -76,7 +76,11 @@ from tests.base import (
     ZOOKEEPER_SESSION_TIMEOUT,
 )
 from zuul.zk.zkobject import (
-    ShardedZKObject, PolymorphicZKObjectMixin, ZKObject, ZKContext
+    LockableZKObject,
+    PolymorphicZKObjectMixin,
+    ShardedZKObject,
+    ZKContext,
+    ZKObject,
 )
 from zuul.zk.locks import tenant_write_lock
 
@@ -2967,4 +2971,79 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
         for _ in iterate_timeout(10, "cache to sync"):
             used = self.api.nodes_cache.getQuota(provider)
             if used.quota.get('instances') == 0:
+                break
+
+
+class DummyLockable(LockableZKObject):
+    ROOT = "/test/dummy"
+    DUMMY_PATH = "dummy"
+    LOCKS_PATH = "locks"
+
+    def __init__(self):
+        super().__init__()
+        self._set(
+            uuid=uuid.uuid4().hex,
+            is_locked=False,
+        )
+
+    def serialize(self, context):
+        return json.dumps({
+            "uuid": self.uuid,
+        }).encode("utf8")
+
+    def getPath(self):
+        return f"{self.ROOT}/{self.DUMMY_PATH}/{self.uuid}"
+
+    def getLockPath(self):
+        return f"{self.ROOT}/{self.LOCKS_PATH}/{self.uuid}"
+
+
+class TestLockableZKObjectCache(ZooKeeperBaseTestCase):
+
+    def test_is_locked_contenders(self):
+        cache = LockableZKObjectCache(
+            self.zk_client,
+            None,
+            root=DummyLockable.ROOT,
+            items_path=DummyLockable.DUMMY_PATH,
+            locks_path=DummyLockable.LOCKS_PATH,
+            zkobject_class=DummyLockable)
+
+        ctx = ZKContext(self.zk_client, None, None, self.log)
+        dummy = DummyLockable.new(ctx)
+
+        for _ in iterate_timeout(10, "cache to sync"):
+            if cache.getItems():
+                break
+
+        # Acquire lock for all items
+        for item in cache.getItems():
+            item.acquireLock(ctx)
+
+        for _ in iterate_timeout(10, "cache to sync"):
+            if all(d.is_locked for d in cache.getItems()):
+                break
+
+        # Create a dummy lock contender
+        contender_path = f"{dummy.getLockPath()}/deadbeef__lock__0000000001"
+        self.zk_client.client.create(contender_path)
+
+        # Make sure items are still considered locked
+        for _ in iterate_timeout(10, "cache to sync"):
+            if all(d.is_locked for d in cache.getItems()):
+                break
+
+        # Discard the pending lock and make sure items are still
+        # considered locked
+        self.zk_client.client.delete(contender_path)
+        for _ in iterate_timeout(10, "cache to sync"):
+            if all(d.is_locked for d in cache.getItems()):
+                break
+
+        # Release the lock and confirm items are no longer considered locked
+        for item in cache.getItems():
+            item.releaseLock(ctx)
+
+        for _ in iterate_timeout(10, "cache to sync"):
+            if not any(d.is_locked for d in cache.getItems()):
                 break

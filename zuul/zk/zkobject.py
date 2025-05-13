@@ -518,6 +518,11 @@ class ShardedZKObject(ZKObject):
 class LockableZKObject(ZKObject):
     _lock = None
 
+    def __new__(klass, *args, **kwargs):
+        zko = super().__new__(klass)
+        zko._set(_lock_contenders=set())
+        return zko
+
     def getLockPath(self):
         """Return the path for the lock of this object in ZK
 
