@@ -69,6 +69,24 @@ class TestAwsDriver(BaseCloudDriverTest):
             ]
         }
     }
+    s3_debian_return_data = {
+        'zuul': {
+            'artifacts': [
+                {
+                    'name': 'raw image',
+                    'url': 's3://testbucket/image.raw',
+                    'metadata': {
+                        'type': 'zuul_image',
+                        'image_name': 'debian-local',
+                        'format': 'raw',
+                        'sha256': ('59984dd82f51edb3777b969739a92780'
+                                   'a520bb314b8d64b294d5de976bd8efb9'),
+                        'md5sum': '262278e1632567a907e4604e9edd2e83',
+                    }
+                },
+            ]
+        }
+    }
 
     def setUp(self):
         self.initTestConfig()
@@ -312,6 +330,26 @@ class TestAwsDriver(BaseCloudDriverTest):
         debian_return_data,
     )
     def test_aws_diskimage_ebs_direct(self):
+        self._test_diskimage()
+
+    @simple_layout('layouts/aws/nodepool-image-snapshot.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        s3_debian_return_data,
+    )
+    def test_aws_diskimage_snapshot_import(self):
+        self._test_diskimage()
+
+    @simple_layout('layouts/aws/nodepool-image-image.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        s3_debian_return_data,
+    )
+    def test_aws_diskimage_image_import(self):
         self._test_diskimage()
 
     @simple_layout('layouts/nodepool-multi-provider.yaml',

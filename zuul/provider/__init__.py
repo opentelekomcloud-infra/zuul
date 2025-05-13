@@ -203,8 +203,26 @@ class BaseProviderSchema(metaclass=abc.ABCMeta):
         return schema
 
 
+class BaseImageUploadJob:
+    """Abstract class to encapsulate an image import or upload
+
+    This class should contain all the information needed to perform
+    either an image import or image upload.  The run method will be
+    executed asynchronously in an executor.
+    """
+
+    @abc.abstractmethod
+    def run(self):
+        """Run the import or upload.
+
+        :return: The external id of the image in the cloud
+        """
+        pass
+
+
 class BaseProvider(zkobject.PolymorphicZKObjectMixin,
                    zkobject.ShardedZKObject):
+
     """Base class for provider."""
     schema = BaseProviderSchema().getProviderSchema()
 
@@ -528,10 +546,35 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
     # The following methods must be implemented only if image
     # management is supported:
 
-    def uploadImage(self, provider_image, image_name, filename,
-                    image_format=None, metadata=None, md5=None,
-                    sha256=None):
-        """Upload the image to the cloud
+    def getImageImportJob(self, provider_image, image_name, url,
+                          image_format, metadata, md5, sha256):
+        """Get an image import job if able
+
+        If the provider can support a direct image import from the
+        supplied URL, then return a BaseImageUploadJob that will do so.
+
+        :param provider_image ProviderImageConfig:
+            The provider's config for this image
+        :param image_name str: The name of the image
+        :param url str: The URL of the image
+        :param image_format str: The format of the image (e.g., "qcow")
+        :param metadata dict: A dictionary of metadata that must be
+            stored on the image in the cloud.
+        :param md5 str: The md5 hash of the image file
+        :param sha256 str: The sha256 hash of the image file
+
+        :return: A BaseImageUploadJob that will import the image
+
+        """
+        # Most drivers probably won't implement this.
+        return None
+
+    def getImageUploadJob(self, provider_image, image_name, filename,
+                          image_format, metadata, md5, sha256):
+        """Get an image upload job
+
+        Return a BaseImageUploadJob that will upload the local filename
+        to the provider as an image.
 
         :param provider_image ProviderImageConfig:
             The provider's config for this image
@@ -543,8 +586,10 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         :param md5 str: The md5 hash of the image file
         :param sha256 str: The sha256 hash of the image file
 
-        :return: The external id of the image in the cloud
+        :return: A BaseImageUploadJob that will upload the image
+
         """
+        # Required if the driver handles images at all.
         raise NotImplementedError()
 
     def deleteImage(self, external_id):

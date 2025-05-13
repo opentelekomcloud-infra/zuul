@@ -251,9 +251,9 @@ class TestLauncher(LauncherBaseTestCase):
         'refs/heads/master',
         LauncherBaseTestCase.ubuntu_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
-    def test_launcher_missing_image_build(self, mock_uploadImage):
+    def test_launcher_missing_image_build(self, mock_image_upload_run):
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
@@ -299,9 +299,9 @@ class TestLauncher(LauncherBaseTestCase):
         'refs/heads/master',
         LauncherBaseTestCase.ubuntu_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
-    def test_launcher_image_expire(self, mock_uploadImage):
+    def test_launcher_image_expire(self, mock_image_upload_run):
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
@@ -380,7 +380,7 @@ class TestLauncher(LauncherBaseTestCase):
         'refs/heads/master',
         LauncherBaseTestCase.debian_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_launcher_image_no_validation(self, mock_uploadimage):
         # Test a two-stage image-build where we don't actually run the
@@ -421,9 +421,9 @@ class TestLauncher(LauncherBaseTestCase):
         'refs/heads/master',
         LauncherBaseTestCase.debian_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
-    def test_launcher_image_validation(self, mock_uploadImage):
+    def test_launcher_image_validation(self, mock_image_upload_run):
         # Test a two-stage image-build where we do run the validate
         # stage.
         self.waitUntilSettled()
@@ -458,9 +458,9 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertTrue(uploads[0].validated)
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
-    def test_launcher_crashed_upload(self, mock_uploadImage):
+    def test_launcher_crashed_upload(self, mock_image_upload_run):
         self.waitUntilSettled()
         provider = self.launcher._getProvider(
             'tenant-one', 'aws-us-east-1-main')
@@ -524,9 +524,9 @@ class TestLauncher(LauncherBaseTestCase):
         'refs/heads/master',
         getonly_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
-    def test_launcher_image_signed_url(self, mock_uploadImage):
+    def test_launcher_image_signed_url(self, mock_image_upload_run):
         # If the image is uploaded using a signed url, it will not
         # permit a HEAD request; this tests the GET range fallback.
 
@@ -662,9 +662,9 @@ class TestLauncher(LauncherBaseTestCase):
         'refs/heads/master',
         LauncherBaseTestCase.debian_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
-    def test_launcher_untrusted_project(self, mock_uploadImage):
+    def test_launcher_untrusted_project(self, mock_image_upload_run):
         # Test that we can add all the configuration in an untrusted
         # project (most other tests just do everything in a
         # config-project).
@@ -1087,7 +1087,7 @@ class TestLauncher(LauncherBaseTestCase):
     # Use an existing image id since the upload methods aren't
     # implemented in boto; the actualy upload process will be tested
     # in test_aws_driver.
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="ami-1e749f67")
     def test_image_build_node_lifecycle(self, mock_uploadimage):
         self.waitUntilSettled()

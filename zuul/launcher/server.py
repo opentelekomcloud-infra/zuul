@@ -156,44 +156,126 @@ class UploadJob:
         except Exception:
             self.log.exception("Error in upload job")
 
+    def _acquireUploadLocks(self, ctx, uploads):
+        try:
+            with self.image_build_artifact.locked(ctx, blocking=False):
+                for upload in self.uploads:
+                    if upload.acquireLock(ctx, blocking=False):
+                        if upload.external_id:
+                            upload.releaseLock(ctx)
+                        else:
+                            uploads.append(upload)
+                            self.log.debug(
+                                "Acquired upload lock for %s",
+                                upload)
+                            with upload.activeContext(ctx):
+                                upload.state = upload.State.UPLOADING
+        except LockException:
+            # We may have raced another launcher; set the
+            # event to try again.
+            self.launcher.image_updated_event.set()
+
+    def _getUploadArguments(self, uploads, upload_args):
+        for upload in uploads:
+            # The upload has a list of providers with identical
+            # configurations.  Pick one of them as a representative.
+            provider_cname = upload.providers[0]
+            provider = self.launcher._getProviderByCanonicalName(
+                provider_cname)
+            provider_image = None
+            for image in provider.images.values():
+                if image.canonical_name == upload.canonical_name:
+                    provider_image = image
+            if provider_image is None:
+                raise Exception(
+                    f"Unable to find image {upload.canonical_name}")
+            metadata = {
+                'zuul_system_id': self.launcher.system.system_id,
+                'zuul_upload_uuid': upload.uuid,
+            }
+            artifact = self.image_build_artifact
+            image_name = f'{provider_image.name}-{artifact.uuid}'
+
+            upload_args[upload.uuid] = dict(
+                provider=provider,
+                provider_image=provider_image,
+                image_name=image_name,
+                url=artifact.url,
+                image_format=artifact.format,
+                metadata=metadata,
+                md5=artifact.md5sum,
+                sha256=artifact.sha256,
+            )
+
+    def _handleImports(self, uploads, upload_args, futures):
+        for upload in uploads[:]:
+            args = upload_args[upload.uuid]
+            job = args['provider'].getImageImportJob(
+                args['provider_image'],
+                args['image_name'],
+                args['url'],
+                args['image_format'],
+                args['metadata'],
+                args['md5'],
+                args['sha256'],
+            )
+            if job:
+                uploads.remove(upload)
+                future = self.launcher.endpoint_upload_executor.submit(
+                    EndpointUploadJob(self.launcher, upload, job).run
+                )
+                futures.append((upload, future))
+
+    def _handleUploads(self, uploads, upload_args, futures):
+        path = self.launcher.downloadArtifact(
+            self.image_build_artifact)
+        for upload in uploads[:]:
+            args = upload_args[upload.uuid]
+            job = args['provider'].getImageUploadJob(
+                args['provider_image'],
+                args['image_name'],
+                path,
+                args['image_format'],
+                args['metadata'],
+                args['md5'],
+                args['sha256'],
+            )
+            if job:
+                uploads.remove(upload)
+                future = self.launcher.endpoint_upload_executor.submit(
+                    EndpointUploadJob(self.launcher, upload, job).run
+                )
+                futures.append((upload, future))
+
     def _run(self):
         # TODO: check if endpoint can handle direct import from URL,
         # and skip download
-        acquired = []
         path = None
+        uploads = []
         with self.launcher.createZKContext(None, self.log) as ctx:
             try:
-                try:
-                    with self.image_build_artifact.locked(ctx, blocking=False):
-                        for upload in self.uploads:
-                            if upload.acquireLock(ctx, blocking=False):
-                                if upload.external_id:
-                                    upload.releaseLock(ctx)
-                                else:
-                                    acquired.append(upload)
-                                    self.log.debug(
-                                        "Acquired upload lock for %s",
-                                        upload)
-                                    with upload.activeContext(ctx):
-                                        upload.state = upload.State.UPLOADING
-                except LockException:
-                    # We may have raced another launcher; set the
-                    # event to try again.
-                    self.launcher.image_updated_event.set()
+                # Get a list of uploads we hold locks for
+                self._acquireUploadLocks(ctx, uploads)
+                if not uploads:
                     return
 
-                if not acquired:
-                    return
+                # Prepare the arguments for all the import/upload jobs
+                upload_args = {}
+                self._getUploadArguments(uploads, upload_args)
 
-                path = self.launcher.downloadArtifact(
-                    self.image_build_artifact)
                 futures = []
-                for upload in acquired:
-                    future = self.launcher.endpoint_upload_executor.submit(
-                        EndpointUploadJob(
-                            self.launcher, self.image_build_artifact,
-                            upload, path).run)
-                    futures.append((upload, future))
+                remaining_uploads = uploads[:]
+
+                # Try a direct import if the provider supports it for
+                # this url.
+                self._handleImports(remaining_uploads, upload_args, futures)
+
+                # Any uploads remaining need to be handled by
+                # downloading the artifact and uploading.
+                if remaining_uploads:
+                    self._handleUploads(
+                        remaining_uploads, upload_args, futures)
+
                 for upload, future in futures:
                     try:
                         future.result()
@@ -201,7 +283,7 @@ class UploadJob:
                     except Exception:
                         self.log.exception("Unable to upload image %s", upload)
             finally:
-                for upload in acquired:
+                for upload in uploads:
                     try:
                         upload.releaseLock(ctx)
                         self.log.debug("Released upload lock for %s", upload)
@@ -228,11 +310,10 @@ class UploadJob:
 class EndpointUploadJob:
     log = logging.getLogger("zuul.Launcher")
 
-    def __init__(self, launcher, artifact, upload, path):
+    def __init__(self, launcher, upload, job):
         self.launcher = launcher
-        self.artifact = artifact
         self.upload = upload
-        self.path = path
+        self.job = job
 
     def run(self):
         try:
@@ -244,24 +325,7 @@ class EndpointUploadJob:
         # The upload has a list of providers with identical
         # configurations.  Pick one of them as a representative.
         self.log.info("Starting upload %s", self.upload)
-        provider_cname = self.upload.providers[0]
-        provider = self.launcher._getProviderByCanonicalName(provider_cname)
-        provider_image = None
-        for image in provider.images.values():
-            if image.canonical_name == self.upload.canonical_name:
-                provider_image = image
-        if provider_image is None:
-            raise Exception(
-                f"Unable to find image {self.upload.canonical_name}")
-
-        metadata = {
-            'zuul_system_id': self.launcher.system.system_id,
-            'zuul_upload_uuid': self.upload.uuid,
-        }
-        image_name = f'{provider_image.name}-{self.artifact.uuid}'
-        external_id = provider.uploadImage(
-            provider_image, image_name, self.path, self.artifact.format,
-            metadata, self.artifact.md5sum, self.artifact.sha256)
+        external_id = self.job.run()
         with self.launcher.createZKContext(self.upload._lock, self.log) as ctx:
             self.upload.updateAttributes(
                 ctx,
