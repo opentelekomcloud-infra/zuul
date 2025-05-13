@@ -78,7 +78,7 @@ class LockableZKObjectCache(ZuulTreeCache):
         if len(parts) != 3:
             return
 
-        object_type, request_uuid, *_ = parts
+        object_type, request_uuid, contender, *_ = parts
         if object_type != self.locks_path:
             return
 
@@ -88,10 +88,11 @@ class LockableZKObjectCache(ZuulTreeCache):
         if not request:
             return
 
-        if request.is_locked != exists:
-            request._set(is_locked=exists)
-            if self.updated_event:
-                self.updated_event()
+        if exists:
+            request._lock_contenders.add(contender)
+        else:
+            request._lock_contenders.discard(contender)
+        request._set(is_locked=bool(request._lock_contenders))
 
     def postCacheHook(self, event, data, stat, key, obj):
         if self.updated_event:
