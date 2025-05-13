@@ -1541,9 +1541,9 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         'refs/heads/master',
         LauncherBaseTestCase.ubuntu_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
-    def test_web_images(self, mock_uploadImage):
+    def test_web_images(self, mock_image_upload_run):
         self.waitUntilSettled()
         self.startWebServer()
         self.assertHistory([
@@ -1601,9 +1601,9 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         'refs/heads/master',
         LauncherBaseTestCase.ubuntu_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
-    def test_web_image_delete(self, mock_uploadImage):
+    def test_web_image_delete(self, mock_image_upload_run):
         self.waitUntilSettled()
         self.startWebServer()
         self.assertHistory([
@@ -1656,9 +1656,9 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         'refs/heads/master',
         LauncherBaseTestCase.ubuntu_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
-    def test_web_upload_delete(self, mock_uploadImage):
+    def test_web_upload_delete(self, mock_image_upload_run):
         self.waitUntilSettled()
         self.startWebServer()
         self.assertHistory([
@@ -1711,9 +1711,9 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         'refs/heads/master',
         LauncherBaseTestCase.ubuntu_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsProviderEndpoint.uploadImage',
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
-    def test_web_image_post(self, mock_uploadImage):
+    def test_web_image_post(self, mock_image_upload_run):
         self.waitUntilSettled()
         self.startWebServer()
         self.executor_server.hold_jobs_in_build = False

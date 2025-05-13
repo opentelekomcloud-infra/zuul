@@ -39,6 +39,7 @@ from zuul.driver.util import (
 )
 from zuul.model import QuotaInformation
 from zuul.provider import (
+    BaseImageUploadJob,
     BaseProviderEndpoint,
     statemachine
 )
@@ -350,6 +351,30 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
             return self.endpoint._getInstance(self.server, self.node.quota)
 
 
+class OpenstackImageUploadJob(BaseImageUploadJob):
+    def __init__(self, endpoint,
+                 provider_image, image_name, filename,
+                 image_format, metadata,
+                 md5, sha256):
+        self.endpoint = endpoint
+        self.provider_image = provider_image
+        self.image_name = image_name
+        self.filename = filename
+        self.image_format = image_format
+        self.metadata = metadata
+        self.md5 = md5
+        self.sha256 = sha256
+
+    def run(self):
+        self.endpoint.log.debug(f"Uploading image {self.image_name}")
+
+        image_id = self.endpoint._uploadImage(
+            self.provider_image, self.image_name,
+            self.filename, self.image_format, self.metadata,
+            self.md5, self.sha256)
+        return image_id
+
+
 class OpenstackProviderEndpoint(BaseProviderEndpoint):
     """An OPENSTACK Endpoint corresponds to a single OPENSTACK region,
     and can include multiple availability zones.
@@ -509,8 +534,15 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
             return False
         return True
 
-    def uploadImage(self, provider_image, image_name, filename,
-                    image_format, metadata, md5, sha256):
+    def getImageUploadJob(self, provider_image, image_name, filename,
+                          image_format, metadata, md5, sha256):
+        return OpenstackImageUploadJob(
+            self,
+            provider_image, image_name, filename,
+            image_format, metadata, md5, sha256)
+
+    def _uploadImage(self, provider_image, image_name, filename,
+                     image_format, metadata, md5, sha256):
         # configure glance and upload image.  Note the meta flags
         # are provided as custom glance properties
         # NOTE: we have wait=True set here. This is not how we normally
