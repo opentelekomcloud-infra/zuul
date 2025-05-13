@@ -52,6 +52,24 @@
       "parentUuid": "4bc01fcc_db9941dc",
       "revId": "f5735bd29a07b32a4f58bf2eae3b5b0ac8333d59",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33a01877_57a245c2",
+        "filename": "zuul/driver/mqtt/mqttreporter.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 37071
+      },
+      "writtenOn": "2025-05-13T11:57:55Z",
+      "side": 1,
+      "message": "Thank you for the input and the offline discussion. Attaching the topic to each of the changes (when it makes sense) is better than attaching the first change\u0027s topic to the entirety of the buildset results.",
+      "parentUuid": "da059ebe_312295f4",
+      "revId": "f5735bd29a07b32a4f58bf2eae3b5b0ac8333d59",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
