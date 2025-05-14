@@ -3311,6 +3311,9 @@ class ConfigLoader(object):
             # If there is no files entry at all for this
             # project-branch, then use the cached config.
             if files_entry is None:
+                # Don't use the cached config for a dynamic branch
+                if tpc.isAlwaysDynamicBranch(branch):
+                    continue
                 config_object_cache = abide.getConfigObjectCache(
                     project.canonical_name, branch)
                 branch_config = config_object_cache.get(tpc, ZUUL_CONF_ROOT)
