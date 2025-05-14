@@ -82,6 +82,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2ba186c_8117667b",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1843,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T22:29:48Z",
+      "side": 1,
+      "message": "Yes, and the overall API need here is just to get the sha of the project-branch, so it\u0027s not more specific than necessary.  Within the drivers, some of them find the easiest way to do that is to get the sha of an arbitrary ref, but as Simon points out below, we want to use project-specific internal methods when necessary.\n\n(Resolving since this is a nit.)",
+      "parentUuid": "622bd105_ba415db8",
+      "range": {
+        "startLine": 1843,
+        "startChar": 8,
+        "endLine": 1843,
+        "endChar": 27
+      },
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1da049ed_73b1e89c",
@@ -95,6 +119,24 @@
       "writtenOn": "2025-05-12T08:55:23Z",
       "side": 1,
       "message": "Just wondering why we are not using the github3py API for getting a branch?\nhttps://github3.readthedocs.io/en/latest/api-reference/repos.html#github3.repos.repo.Repository.branch\n\nI think in the past we only used the lower-level API when there was no support in gh3py yet or the client was making unnecessary requests.\n\nI\u0027m mainly asking as I think the error handling here is spotty in that we only handle 403 and 404 and in all other error cases line we\u0027ll probably get a JSON decode error or a key error (depending on the response format).",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a886de5f_de3cde10",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1845,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T22:29:48Z",
+      "side": 1,
+      "message": "We currently do this in 2 places, this adds a third.\n\nHere\u0027s a comment in one of the 2 existing ones that confirms it\u0027s about making unnecessary requests: https://opendev.org/zuul/zuul/src/branch/master/zuul/driver/github/githubconnection.py#L1848-L1852\n\nI feel like since error handling on this request is not more critical than our existing code, we don\u0027t need to put the onus of changing that on this change.  In other words, it should be good enough to do what we already do.\n\nAs for what we should do in general: if we think that any of the code paths still warrant the extra efficiency of avoiding creating a repo object, then we may as well make a really nice method for getting branches and put all the error handling we want in there, and then call it from all 3 locations.\n\nIf we don\u0027t think any code path needs that any more, then I\u0027d say let\u0027s change all 3 to use ghpy.\n\nRegardless, I think we can handle that in a later change.",
+      "parentUuid": "1da049ed_73b1e89c",
       "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -118,6 +160,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8e721d75_31aeae00",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1854,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T22:29:48Z",
+      "side": 1,
+      "message": "I\u0027ll make sure they all return None.",
+      "parentUuid": "3978431a_86da1abe",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "eb951bd2_7d2f5ec7",
         "filename": "zuul/driver/github/githubconnection.py",
         "patchSetId": 4
@@ -129,6 +189,24 @@
       "writtenOn": "2025-05-11T16:35:08Z",
       "side": 1,
       "message": "Can we get a 404 here if the branch doesn\u0027t exist as well? This error message might be a little confusing in that case. Maybe we should provider both project and branch info here?",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "02e624f4_13bfc20c",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1857,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T22:29:48Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eb951bd2_7d2f5ec7",
       "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -152,6 +230,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2fc9fc7b_a824138c",
+        "filename": "zuul/driver/pagure/pagureconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T22:29:48Z",
+      "side": 1,
+      "message": "Each of the drivers has their own style, for better or worse.  I\u0027ve kept them internally consistent, and I don\u0027t think we need to vary that here.\n\nSpecifically, I do not think that other drivers should be as chatty as Pagure (it would not be appropriate for a high volume system), so if we change something, it should go the other way.",
+      "parentUuid": "c31882ae_8dc13323",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "265b83d1_4e0e65a3",
         "filename": "zuul/driver/timer/__init__.py",
         "patchSetId": 4
@@ -163,6 +259,24 @@
       "writtenOn": "2025-05-11T16:35:08Z",
       "side": 1,
       "message": "See comments in driver connection code. I think for some drivers we may set event.newrev to `\u0027\u0027` and for others its possible to set it to `None` here. It might be a good idea to make that nil value consistent to simplify job code checks for newrev values.",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ea894b3c_753da4d8",
+        "filename": "zuul/driver/timer/__init__.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T22:29:48Z",
+      "side": 1,
+      "message": "They should all be None now.",
+      "parentUuid": "265b83d1_4e0e65a3",
       "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
