@@ -6278,6 +6278,11 @@ class EventInfo:
         tinfo.image_build_uuid = d.get("image_build_uuid")
         return tinfo
 
+    def isSuperset(self, other):
+        other_image_names = set(getattr(other, 'image_names', None) or [])
+        image_names = set(self.image_names or [])
+        return image_names >= other_image_names
+
     def toDict(self):
         return {
             "zuul_event_id": self.zuul_event_id,

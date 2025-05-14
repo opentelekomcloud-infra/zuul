@@ -1756,6 +1756,63 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
 
+    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @return_data(
+        'build-ubuntu-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.ubuntu_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="test_external_id")
+    def test_web_image_post_duplicate(self, mock_image_upload_run):
+        # Test that we can enqueue multiple items for the same project
+        # if they are different image builds.
+        self.waitUntilSettled()
+        self.startWebServer()
+        self.executor_server.hold_jobs_in_build = False
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+        ], ordered=False)
+
+        self.executor_server.hold_jobs_in_build = True
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'testuser',
+                 'zuul': {
+                     'admin': ['tenant-one', ]
+                 },
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                           algorithm='HS256')
+        resp = self.post_url(
+            "api/tenant/tenant-one/image/ubuntu-local/build",
+            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(200, resp.status_code, resp.text)
+        resp = self.post_url(
+            "api/tenant/tenant-one/image/ubuntu-local/build",
+            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(200, resp.status_code, resp.text)
+        resp = self.post_url(
+            "api/tenant/tenant-one/image/debian-local/build",
+            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(200, resp.status_code, resp.text)
+        self.waitUntilSettled("queues empty")
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled("image rebuild")
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+            dict(name='build-debian-local-image', result='SUCCESS'),
+        ], ordered=False)
+
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_web_flavors(self):
         self.waitUntilSettled()
