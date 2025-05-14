@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e329748a_a7e5d24f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T22:35:43Z",
+      "side": 1,
+      "message": "I think this change corrects an important oversight due to the independent evolution of change matchers, tags, and negated regexes.",
+      "revId": "2a1f51371175c310c8d0bb99ee67745f68dccf9a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8d63949d_a22ccd28",
+        "filename": "zuul/change_matcher.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T22:35:43Z",
+      "side": 1,
+      "message": "Yes, I think we can do this for all refs.  With the change matchers, we either do the special handling for branches above, or we match the entire ref below.",
+      "revId": "2a1f51371175c310c8d0bb99ee67745f68dccf9a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
