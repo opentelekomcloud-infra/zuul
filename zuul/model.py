@@ -2416,6 +2416,8 @@ class NodesetRequest(zkobject.LockableZKObject):
             request_time=time.time(),
             zuul_event_id="",
             span_info=None,
+            image_names=None,
+            image_upload_uuid=None,
             # Revisable attributes
             _relative_priority=0,
             # A dict of info about the node we have assigned to each label
@@ -2481,6 +2483,10 @@ class NodesetRequest(zkobject.LockableZKObject):
     def created_time(self):
         return self.request_time
 
+    @property
+    def id(self):
+        return self.uuid
+
     def getPath(self):
         return self._getPath(self.uuid)
 
@@ -2505,6 +2511,8 @@ class NodesetRequest(zkobject.LockableZKObject):
             request_time=self.request_time,
             zuul_event_id=self.zuul_event_id,
             span_info=self.span_info,
+            image_names=self.image_names,
+            image_upload_uuid=self.image_upload_uuid,
             provider_node_data=self.provider_node_data,
             _relative_priority=self.relative_priority,
         )
@@ -2640,6 +2648,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             tenant_name=None,
             host_keys=[],
             quota=QuotaInformation(),
+            image_upload_uuid=None,
             # This is provided to the job verbatim
             node_properties={},
             # Attributes that are not serialized
@@ -2693,6 +2702,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             create_state=self.create_state,
             delete_state=self.delete_state,
             quota=self.quota.getResources(),
+            image_upload_uuid=self.image_upload_uuid,
             **self.getNodeData(),
             **self.getDriverData(),
         )
