@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ce24a17c_f6755115",
+        "filename": "zuul/driver/git/gitconnection.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-14T23:47:58Z",
+      "side": 1,
+      "message": "With ps5 the gerrit driver was updated to always return None for getProjectBranchSha, but we\u0027re still returning `\u0027\u0027` here and we don\u0027t seem to convert that to `None` in gitsource.py. Since the aim was consistency can we update gitsource.py:getProjectBranchSha to return None as well?",
+      "revId": "0775d5f80e594c24cb3589b1422a53d216767213",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}

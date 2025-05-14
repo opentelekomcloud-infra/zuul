@@ -35,6 +35,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "850babe7_81d3a5ab",
+        "filename": "doc/source/drivers/timer.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-14T23:47:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5e92706d_1f1c9317",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3fdefa05_c4cd201d",
@@ -242,6 +260,24 @@
       "side": 1,
       "message": "Each of the drivers has their own style, for better or worse.  I\u0027ve kept them internally consistent, and I don\u0027t think we need to vary that here.\n\nSpecifically, I do not think that other drivers should be as chatty as Pagure (it would not be appropriate for a high volume system), so if we change something, it should go the other way.",
       "parentUuid": "c31882ae_8dc13323",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5ec03467_ce0e7632",
+        "filename": "zuul/driver/pagure/pagureconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-14T23:47:58Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "2fc9fc7b_a824138c",
       "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
