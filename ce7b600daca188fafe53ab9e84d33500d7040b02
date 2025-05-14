@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "655ab339_12c5ad41",
+        "filename": "zuul/change_matcher.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-14T23:41:28Z",
+      "side": 1,
+      "message": "I\u0027ve kept this prefix check because if the matcher applies to branches then we may actually want it to apply against containing_branches below. This way you need to explicitly say this is a refs match and be ok with it short circuiting.",
+      "range": {
+        "startLine": 89,
+        "startChar": 35,
+        "endLine": 89,
+        "endChar": 42
+      },
+      "revId": "ce7b600daca188fafe53ab9e84d33500d7040b02",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
