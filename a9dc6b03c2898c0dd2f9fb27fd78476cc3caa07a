@@ -194,6 +194,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9caf7fb_449a8e06",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1854,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T23:50:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8e721d75_31aeae00",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "eb951bd2_7d2f5ec7",
@@ -313,6 +331,24 @@
       "side": 1,
       "message": "They should all be None now.",
       "parentUuid": "265b83d1_4e0e65a3",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a4a26d8_ece549ed",
+        "filename": "zuul/driver/timer/__init__.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T23:50:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ea894b3c_753da4d8",
       "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
