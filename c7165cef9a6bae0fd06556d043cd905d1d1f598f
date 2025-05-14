@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a92e7287_5ff321d9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T19:03:22Z",
+      "side": 1,
+      "message": "AIUI, that is now required because the current code does not use the new image, therefore, it makes a node request with one of the pre-defined images.  But once we change it to make a request with the new image id, \"test_external_id\" isn\u0027t going to be a valid image.\n\nI had wanted to keep this as simple as possible, and avoid exercising aws-specific code.\n\nWe could probably keep the current system by changing the mock to return the ami id (ie, \"ami-....\") of a different image, one that is not included in the nodepool configuration.  Then we can avoid full initialization of the fake aws stuff.",
+      "revId": "c7165cef9a6bae0fd06556d043cd905d1d1f598f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f30d270_b7028f88",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-14T19:03:22Z",
+      "side": 1,
+      "message": "I think the idea there is just to match the image build trigger (where we do trigger for more than one image at a time).  So even if we only ever have a one-item list, let\u0027s keep the attribute the same.\n\nThe critical attribute is the image_upload_uuid, and that is being used to detect the case and for selecting the single actual image.",
+      "revId": "c7165cef9a6bae0fd06556d043cd905d1d1f598f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
