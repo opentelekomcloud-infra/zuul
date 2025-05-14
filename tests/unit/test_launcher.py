@@ -23,9 +23,11 @@ from unittest import mock
 
 from zuul import exceptions
 from zuul import model
+from zuul.driver.aws import AwsDriver
 import zuul.driver.aws.awsendpoint
 from zuul.launcher.client import LauncherClient
 
+import fixtures
 import responses
 import testtools
 import yaml
@@ -43,6 +45,7 @@ from tests.base import (
     return_data,
     simple_layout,
 )
+from tests.fake_aws import FakeAws, FakeAwsProviderEndpoint
 from tests.fake_nodescan import (
     FakeSocket,
     FakePoll,
@@ -167,6 +170,12 @@ class LauncherBaseTestCase(ZuulTestCase):
 
     def setUp(self):
         self.initTestConfig()
+        aws_id = 'AK000000000000000000'
+        aws_key = '0123456789abcdef0123456789abcdef0123456789abcdef'
+        self.useFixture(
+            fixtures.EnvironmentVariable('AWS_ACCESS_KEY_ID', aws_id))
+        self.useFixture(
+            fixtures.EnvironmentVariable('AWS_SECRET_ACCESS_KEY', aws_key))
 
         # Patch moto describe_instances as it isn't terribly threadsafe
         orig_describe_instances = \
@@ -185,13 +194,28 @@ class LauncherBaseTestCase(ZuulTestCase):
                    'describe_instances',
                    describe_instances)
 
+        self.fake_aws = FakeAws()
         self.mock_aws.start()
+
         # Must start responses after mock_aws
         self.useFixture(ImageMocksFixture())
         self.s3 = boto3.resource('s3', region_name='us-east-1')
         self.s3.create_bucket(Bucket='zuul')
         self.addCleanup(self.mock_aws.stop)
         self.patch(zuul.driver.aws.awsendpoint, 'CACHE_TTL', 1)
+
+        # A list of args to method calls for validation
+        self.run_instances_calls = []
+        self.run_instances_exception = None
+        self.create_fleet_calls = []
+        self.create_fleet_results = []
+        self.create_fleet_exception = None
+        self.allocate_hosts_exception = None
+        self.register_image_calls = []
+
+        self.patch(AwsDriver, '_endpoint_class', FakeAwsProviderEndpoint)
+        self.patch(FakeAwsProviderEndpoint,
+                   '_FakeAwsProviderEndpoint__testcase', self)
 
         quotas = {}
         quotas.update(self.test_config.driver.test_launcher.get(
@@ -428,9 +452,7 @@ class TestLauncher(LauncherBaseTestCase):
         'refs/heads/master',
         LauncherBaseTestCase.debian_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
-                return_value="test_external_id")
-    def test_launcher_image_validation(self, mock_image_upload_run):
+    def test_launcher_image_validation(self):
         # Test a two-stage image-build where we do run the validate
         # stage.
         self.waitUntilSettled()
@@ -453,6 +475,7 @@ class TestLauncher(LauncherBaseTestCase):
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='validate-debian-local-image', result='SUCCESS'),
         ])
+
         name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
         artifacts = self._waitForArtifacts(name, 1)
         self.assertEqual('raw', artifacts[0].format)
@@ -461,8 +484,49 @@ class TestLauncher(LauncherBaseTestCase):
             name)
         self.assertEqual(1, len(uploads))
         self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
-        self.assertEqual("test_external_id", uploads[0].external_id)
+        self.assertEqual(self.run_instances_calls[0]['ImageId'], uploads[0].external_id)
         self.assertTrue(uploads[0].validated)
+
+    @simple_layout('layouts/nodepool-image-validate.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    def test_launcher_image_validation_failure(self):
+        # Test a two-stage image-build where we do run the validate
+        # stage.
+        self.executor_server.hold_jobs_in_build = True
+        self.waitUntilSettled()
+
+        self.executor_server.release('build-debian-local-image')
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+        ])
+
+        self.assertEqual(len(self.builds), 1)
+        self.builds[0].should_fail = True
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release('validate-debian-local-image')
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='validate-debian-local-image', result='FAILURE'),
+        ])
+
+        name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
+        artifacts = self._waitForArtifacts(name, 1)
+        self.assertEqual('raw', artifacts[0].format)
+        self.assertFalse(artifacts[0].validated)
+        uploads = self.launcher.image_upload_registry.getUploadsForImage(
+            name)
+        self.assertEqual(1, len(uploads))
+        self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
+        self.assertEqual(self.run_instances_calls[0]['ImageId'], uploads[0].external_id)
+        self.assertFalse(uploads[0].validated)
 
     @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',

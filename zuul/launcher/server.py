@@ -1140,9 +1140,14 @@ class Launcher:
         with (self.createZKContext(request._lock, log) as ctx,
               request.activeContext(ctx)):
             for i, (label, provider) in enumerate(label_providers):
+                ready_for_label = list(ready_nodes.get(label.name, []))
+                if request.image_upload_uuid:
+                    # This is a request for an image validation job.
+                    # Don't use any ready nodes for that.
+                    ready_for_label = []
                 # TODO: sort by age? use old nodes first? random to reduce
                 # chance of thundering herd?
-                for node in list(ready_nodes.get(label.name, [])):
+                for node in ready_for_label:
                     if node.is_locked:
                         continue
                     if node.hasExpired():
@@ -1225,8 +1230,30 @@ class Launcher:
                 if p.hasLabel(label_name)
                 and provider_failures[p.canonical_name] < p.launch_attempts
             ]
-            providers_for_label[i] = candidate_providers
-            providers_for_all_labels &= set(candidate_providers)
+            providers_for_label[i] = []
+            for provider in providers:
+                if not (label := provider.labels.get(label_name)):
+                    continue
+                if (provider_failures[provider.canonical_name]
+                        >= provider.launch_attempts):
+                    continue
+                image = provider.images[label.image]
+                if (request.image_upload_uuid
+                        and image.name in request.image_names):
+                    image_cname = image.canonical_name
+                    uploads = self.image_upload_registry.getUploadsForImage(
+                        image_cname)
+                    # Check that the given provider can actually supply
+                    # the requested image.
+                    valid_uploads = (
+                        u for u in uploads
+                        if provider.canonical_name in u.providers
+                        and u.uuid == request.image_upload_uuid
+                    )
+                    if not any(valid_uploads):
+                        continue
+                providers_for_label[i].append(provider)
+            providers_for_all_labels &= set(providers_for_label[i])
 
         # Turn the reduced set union of providers that work for all
         # labels back into an ordered list.
@@ -1287,6 +1314,7 @@ class Launcher:
             tenant_name=request.tenant_name,
             provider=provider.canonical_name,
             tags=tags,
+            image_upload_uuid=request.image_upload_uuid,
             # Set any node attributes we already know here
             connection_port=image.connection_port,
             connection_type=image.connection_type,
@@ -2147,12 +2175,17 @@ class Launcher:
         uploads = self.image_upload_registry.getUploadsForImage(image_cname)
         # TODO: we could also check config hash here to start using an
         # image that wasn't originally attached to this provider.
-        valid_uploads = [
-            upload for upload in uploads
-            if (provider.canonical_name in upload.providers and
-                upload.validated and
-                upload.external_id)
-        ]
+        if node.image_upload_uuid:
+            valid_uploads = [
+                u for u in uploads if u.uuid == node.image_upload_uuid
+            ]
+        else:
+            valid_uploads = [
+                upload for upload in uploads
+                if (provider.canonical_name in upload.providers and
+                    upload.validated and
+                    upload.external_id)
+            ]
         if not valid_uploads:
             raise Exception("No image found")
         # Uploads are already sorted by timestamp
