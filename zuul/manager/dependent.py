@@ -233,7 +233,7 @@ class DependentPipelineManager(SharedQueuePipelineManager):
                         log.debug("  Needed change is in cycle")
                         continue
                     if self.isChangeAlreadyInQueue(
-                            needed_change, change_queue, item):
+                            needed_change, change_queue, event, item):
                         log.debug("  Needed change is already "
                                   "ahead in the queue")
                         continue

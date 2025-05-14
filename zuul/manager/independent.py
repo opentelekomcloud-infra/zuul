@@ -109,7 +109,8 @@ class IndependentPipelineManager(PipelineManager):
                 if needed_change in changes:
                     log.debug("  Needed change is in cycle")
                     continue
-                if self.isChangeAlreadyInQueue(needed_change, change_queue):
+                if self.isChangeAlreadyInQueue(
+                        needed_change, change_queue, event):
                     log.debug("  Needed change is already ahead in the queue")
                     continue
                 log.debug("  Change %s is needed" % needed_change)
