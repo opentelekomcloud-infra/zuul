@@ -730,6 +730,16 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 iops=label.iops))
         return quota
 
+    def downloadUrl(self, url, path):
+        if not url.startswith('s3://'):
+            return None
+
+        url_parts = urllib.parse.urlparse(url)
+        bucket_name = url_parts.netloc
+        object_filename = url_parts.path.lstrip('/')
+        self.s3_client.download_file(bucket_name, object_filename, path)
+        return path
+
     def getImageImportJob(self, provider_image, image_name, url,
                           image_format, metadata, md5, sha256):
         if not url.startswith('s3://'):

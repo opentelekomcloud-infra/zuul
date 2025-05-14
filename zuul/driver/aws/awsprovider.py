@@ -375,6 +375,9 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
         flavor = self.flavors[label.flavor]
         return self.endpoint.getQuotaForLabel(label, flavor)
 
+    def downloadUrl(self, url, path):
+        return self.endpoint.downloadUrl(url, path)
+
     def getImageImportJob(self, provider_image, image_name, url,
                           image_format, metadata, md5, sha256):
         return self.endpoint.getImageImportJob(
