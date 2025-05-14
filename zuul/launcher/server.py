@@ -245,6 +245,33 @@ class UploadJob:
                 )
                 futures.append((upload, future))
 
+    def _handleDownload(self):
+        url = self.image_build_artifact.url
+        url_components = urlparse(url)
+        ext = url_components.path.split('.')[-1]
+        path = os.path.join(self.launcher.temp_dir,
+                            self.image_build_artifact.uuid)
+        path = f'{path}.{ext}'
+        self.log.info("Downloading artifact %s from %s into %s",
+                      self.image_build_artifact, url, path)
+        try:
+            if self.launcher.downloadArtifact(url, path):
+                return path
+        except Exception as e:
+            self.log.info("Unable to download %s: %s", url, e)
+
+        # We can't download the file using requests, see if any of the
+        # tenant's connections can download it using internal methods.
+        providers = self.launcher.tenant_providers[
+            self.image_build_artifact.build_tenant_name]
+        for provider in providers:
+            try:
+                if provider.downloadUrl(url, path):
+                    return path
+            except Exception as e:
+                self.log.info("Unable to download %s via %s: %s",
+                              url, provider, e)
+
     def _run(self):
         path = None
         uploads = []
@@ -269,8 +296,10 @@ class UploadJob:
                 # Any uploads remaining need to be handled by
                 # downloading the artifact and uploading.
                 if remaining_uploads:
-                    path = self.launcher.downloadArtifact(
-                        self.image_build_artifact)
+                    path = self._handleDownload()
+                    if not path:
+                        raise Exception("Unable to download artifact %s" % (
+                            self.image_build_artifact,))
                     self._handleUploads(
                         remaining_uploads, upload_args, futures, path)
 
@@ -2053,22 +2082,15 @@ class Launcher:
                 for chunk in resp.iter_content(chunk_size=DOWNLOAD_BLOCK_SIZE):
                     f.write(chunk)
 
-    def downloadArtifact(self, image_build_artifact):
-        url_components = urlparse(image_build_artifact.url)
-        ext = url_components.path.split('.')[-1]
-        path = os.path.join(self.temp_dir, image_build_artifact.uuid)
-        path = f'{path}.{ext}'
-        self.log.info("Downloading artifact %s from %s into %s",
-                      image_build_artifact, image_build_artifact.url, path)
+    def downloadArtifact(self, url, path):
         futures = []
-        with requests.head(image_build_artifact.url) as resp:
+        with requests.head(url) as resp:
             if resp.status_code == 403:
                 self.log.debug(
-                    "Received 403 for %s, retrying with range header",
-                    image_build_artifact.url)
+                    "Received 403 for %s, retrying with range header", url)
                 # This may be a pre-signed url that can't handle a
                 # HEAD request, retry with GET:
-                with requests.get(image_build_artifact.url,
+                with requests.get(url,
                                   headers={"Range": "bytes=0-0"}) as resp:
                     resp.raise_for_status()
                     size = int(resp.headers['content-range'].split('/')[-1])
@@ -2083,7 +2105,7 @@ class Launcher:
                 for start in range(0, size, DOWNLOAD_CHUNK_SIZE):
                     end = start + DOWNLOAD_CHUNK_SIZE - 1
                     futures.append(executor.submit(self._downloadArtifactChunk,
-                                                   image_build_artifact.url,
+                                                   url,
                                                    start, end, path))
                 for future in concurrent.futures.as_completed(futures):
                     future.result()
