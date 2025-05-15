@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b906cdab_243259d2",
+        "filename": "zuul/manager/__init__.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-05-15T13:28:12Z",
+      "side": 1,
+      "message": "This and in the next line should be `queue_item`",
+      "range": {
+        "startLine": 344,
+        "startChar": 33,
+        "endLine": 344,
+        "endChar": 37
+      },
+      "revId": "73f84212dee029e9788a548ce86a10322b036415",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
