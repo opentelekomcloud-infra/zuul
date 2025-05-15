@@ -2,7 +2,7 @@
 # Copyright 2013 OpenStack Foundation
 # Copyright 2013 Antoine "hashar" Musso
 # Copyright 2013 Wikimedia Foundation Inc.
-# Copyright 2021-2024 Acme Gating, LLC
+# Copyright 2021-2025 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -2208,6 +2208,8 @@ class Scheduler(threading.Thread):
             if not tenant:
                 continue
 
+            tenant_state = self.event_watcher.tenant_state[tenant_name]
+
             # This will also forward events for the pipelines
             # (e.g. enqueue or dequeue events) to the matching
             # pipeline event queues that are processed afterwards.
@@ -2227,11 +2229,14 @@ class Scheduler(threading.Thread):
                     # Get tenant again, as it might have been updated
                     # by a tenant reconfig or layout change.
                     tenant = self.abide.tenants[tenant_name]
-
-                    if not self._stopped:
+                    if (not self._stopped and
+                        not tenant_state.trigger_queue_paused):
                         # This will forward trigger events to pipeline
                         # event queues that are processed below.
                         self.process_tenant_trigger_queue(tenant)
+                    elif tenant_state.trigger_queue_paused:
+                        self.log.info("Trigger queue paused for tenant %s",
+                                      tenant.name)
 
                     self.process_pipelines(tenant, tlock)
             except PendingReconfiguration:
@@ -2406,13 +2411,25 @@ class Scheduler(threading.Thread):
         if manager.state.old_queues:
             self._reenqueuePipeline(tenant, manager, ctx)
 
+        tenant_state = self.event_watcher.tenant_state[tenant.name]
+
         with self.statsd_timer(f'{stats_key}.event_process'):
             self.process_pipeline_management_queue(
                 tenant, tenant_lock, manager)
             # Give result events priority -- they let us stop builds,
             # whereas trigger events cause us to execute builds.
-            self.process_pipeline_result_queue(tenant, tenant_lock, manager)
-            self.process_pipeline_trigger_queue(tenant, tenant_lock, manager)
+            if not tenant_state.result_queue_paused:
+                self.process_pipeline_result_queue(
+                    tenant, tenant_lock, manager)
+            else:
+                self.log.info("Result queue paused for tenant %s",
+                              tenant.name)
+            if not tenant_state.trigger_queue_paused:
+                self.process_pipeline_trigger_queue(
+                    tenant, tenant_lock, manager)
+            else:
+                self.log.info("Trigger queue paused for tenant %s",
+                              tenant.name)
         self.abortIfPendingReconfig(tenant_lock)
         try:
             with self.statsd_timer(f'{stats_key}.process'):
@@ -2496,18 +2513,23 @@ class Scheduler(threading.Thread):
 
                 # Get the ltime of the last reconfiguration event
                 self.trigger_events[tenant.name].refreshMetadata()
+                tenant_state = self.event_watcher.tenant_state[tenant.name]
                 for event in self.trigger_events[tenant.name]:
                     log = get_annotated_logger(self.log, event.zuul_event_id)
-                    log.debug("Forwarding trigger event %s", event)
                     try:
-                        trigger_span = tracing.restoreSpanContext(
-                            event.span_context)
-                        with self.tracer.start_as_current_span(
-                                "TenantTriggerEventProcessing",
-                                links=[
-                                    trace.Link(trigger_span.get_span_context())
-                                ]):
-                            self._forward_trigger_event(event, tenant)
+                        if not tenant_state.trigger_queue_discarding:
+                            log.debug("Forwarding trigger event %s", event)
+                            trigger_span = tracing.restoreSpanContext(
+                                event.span_context)
+                            with self.tracer.start_as_current_span(
+                                    "TenantTriggerEventProcessing",
+                                    links=[
+                                        trace.Link(
+                                            trigger_span.get_span_context())
+                                    ]):
+                                self._forward_trigger_event(event, tenant)
+                        else:
+                            log.debug("Discarding trigger event %s", event)
                     except Exception:
                         log.exception("Unable to forward event %s "
                                       "to tenant %s", event, tenant.name)

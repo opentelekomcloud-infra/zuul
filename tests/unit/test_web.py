@@ -3649,6 +3649,113 @@ class TestTenantScopedWebApi(BaseTestWeb):
         self.assertTrue(data['zuul']['admin'] is False, data)
         self.assertTrue(data['zuul']['scope'] == ['tenant-one'], data)
 
+    def test_state_post(self):
+        self.executor_server.hold_jobs_in_build = False
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'testuser',
+                 'zuul': {
+                     'admin': ['tenant-one', ],
+                 },
+                 'exp': int(time.time()) + 3600,
+                 'iat': int(time.time())}
+        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                           algorithm='HS256')
+        args = {
+            'trigger_queue_paused': True,
+            'reason': 'test trigger paused',
+        }
+        req = self.post_url(
+            'api/tenant/tenant-one/state',
+            headers={'Authorization': 'Bearer %s' % token},
+            json=args)
+        self.assertEqual(200, req.status_code, req.text)
+        time.sleep(1)
+
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        time.sleep(5)
+
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+        self.assertEqual(0, len(self.builds))
+
+        args = {
+            'trigger_queue_paused': True,
+            'result_queue_paused': True,
+            'reason': "test result paused",
+        }
+        req = self.post_url(
+            'api/tenant/tenant-one/state',
+            headers={'Authorization': 'Bearer %s' % token},
+            json=args)
+        self.assertEqual(200, req.status_code, req.text)
+
+        time.sleep(5)
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+        self.assertEqual(0, len(self.builds))
+
+        args = {
+            'trigger_queue_paused': False,
+            'result_queue_paused': False,
+            'reason': None,
+        }
+        req = self.post_url(
+            'api/tenant/tenant-one/state',
+            headers={'Authorization': 'Bearer %s' % token},
+            json=args)
+        self.assertEqual(200, req.status_code, req.text)
+
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+            dict(name='project-merge', result='SUCCESS', changes='2,1'),
+            dict(name='project-test1', result='SUCCESS', changes='2,1'),
+            dict(name='project-test2', result='SUCCESS', changes='2,1'),
+        ], ordered=False)
+
+        args = {
+            'trigger_queue_discarding': True,
+            'reason': 'test discarding',
+        }
+        req = self.post_url(
+            'api/tenant/tenant-one/state',
+            headers={'Authorization': 'Bearer %s' % token},
+            json=args)
+        self.assertEqual(200, req.status_code, req.text)
+        time.sleep(1)
+
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        self.fake_gerrit.addEvent(C.getPatchsetCreatedEvent(1))
+
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+            dict(name='project-merge', result='SUCCESS', changes='2,1'),
+            dict(name='project-test1', result='SUCCESS', changes='2,1'),
+            dict(name='project-test2', result='SUCCESS', changes='2,1'),
+        ], ordered=False)
+
 
 class TestTenantScopedWebApiWithAccessRules(TestTenantScopedWebApi):
     config_file = 'zuul-admin-web.conf'
