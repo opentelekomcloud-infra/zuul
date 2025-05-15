@@ -91,6 +91,27 @@ intended to process events should not set this option on any
 schedulers.  To use this option on a standby or testing cluster, set
 it on all schedulers.
 
+Pausing Event Processing
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+If an issue with external systems is affecting Zuul, tenant
+administrators may pause event processing until the issue is resolved.
+The `trigger` event queue may be paused to prevent Zuul from
+processing trigger events which would add new items into pipelines.
+The `result` event queue may be paused to prevent Zuul from processing
+and reporting result events for completed jobs (this may include
+merging changes in the case of a :term:`gate` pipeline).
+
+If either (or both) of the event queues are paused for a tenant, a
+banner will be displayed on the status page indicating that queue
+processing is paused, and including a reason (if any was supplied).
+
+There are two ways to pause or unpause event processing for a tenant.
+The first is using the web interface: authenticate as a tenant
+administrator, and a "Pause" button will appear at the top of the
+status page; click that and fill out the form.  The second is using
+the ``zuul-client pause`` and ``zuul-client unpause`` commands.
+
 .. _backup:
 
 Backup and Restoration

@@ -20,6 +20,8 @@ import PropTypes from 'prop-types'
 import * as moment_tz from 'moment-timezone'
 
 import {
+  Banner,
+  Button,
   Gallery,
   GalleryItem,
   Level,
@@ -31,10 +33,19 @@ import {
   ToolbarContent,
   ToolbarItem,
   Tooltip,
+
+  Flex,
+  FlexItem,
+
+
 } from '@patternfly/react-core'
-import { StreamIcon } from '@patternfly/react-icons'
+import {
+  StreamIcon,
+  ExclamationTriangleIcon,
+} from '@patternfly/react-icons'
 
 import PipelineSummary from '../containers/status/PipelineSummary'
+import PauseModal from '../containers/status/PauseModal'
 
 import { fetchStatusIfNeeded } from '../actions/status'
 import { clearQueue } from '../actions/statusExpansion'
@@ -114,6 +125,38 @@ PipelineGallery.propTypes = {
   sortKey: PropTypes.string,
 }
 
+
+function renderBanner(status)
+{
+  if (!status || !status.state) {
+    return <></>
+  }
+  const paused = []
+  if (status.state.trigger_queue_paused) {
+    paused.push('Trigger')
+  }
+  if (status.state.result_queue_paused) {
+    paused.push('Result')
+  }
+  console.log(status.state)
+  console.log(paused)
+  if (!paused.length) {
+    return <></>
+  }
+  const msg = `${paused.join(', ')} event queue${paused.length>1?'s':''} paused: ${status.state.reason}`
+
+  return (
+    <Banner screenReaderText="Warning banner" variant="warning">
+      <Flex spaceItems={{ default: 'spaceItemsSm' }}>
+        <FlexItem>
+          <ExclamationTriangleIcon />
+        </FlexItem>
+        <FlexItem>{msg}</FlexItem>
+      </Flex>
+    </Banner>
+  )
+}
+
 function getPipelines(status, location, filterCategories) {
   let pipelines = []
   let stats = {}
@@ -142,6 +185,7 @@ function getPipelines(status, location, filterCategories) {
 
 function PipelineOverviewPage() {
   const status = useSelector((state) => state.status.status)
+  const user = useSelector((state) => state.user)
 
   const filterCategories = [
     {
@@ -183,6 +227,7 @@ function PipelineOverviewPage() {
   const filters = getFiltersFromUrl(location, filterCategories)
   const filterActive = isFilterActive(filters)
 
+  const [showPauseModal, setShowPauseModal] = useState(false)
   const [showAllPipelines, setShowAllPipelines] = useState(
     filterActive || localStorage.getItem('zuul_show_all_pipelines') === 'true')
   const [expandAll, setExpandAll] = useState(
@@ -284,6 +329,9 @@ function PipelineOverviewPage() {
 
   return (
     <>
+
+      {renderBanner(status)}
+
       <PageSection
         variant={darkMode ? PageSectionVariants.dark : PageSectionVariants.light}
         className="zuul-toolbar-section"
@@ -319,6 +367,15 @@ function PipelineOverviewPage() {
           <LevelItem>
             <Toolbar>
               <ToolbarContent style={{paddingRight: '0'}}>
+
+                {(user.isAdmin && user.scope.indexOf(tenant.name) !== -1) && (
+                  <ToolbarItem>
+                    <Button onClick={() => {setShowPauseModal(true)}}>
+                      Pause
+                    </Button>
+                  </ToolbarItem>
+                )}
+
                 <ToolbarStatsGroup>
                   <ToolbarStatsItem
                     name="events"
@@ -367,6 +424,10 @@ function PipelineOverviewPage() {
           sortKey={currentSortKey.key}
         />
       </PageSection>
+      <PauseModal
+        isOpen={showPauseModal}
+        setOpen={setShowPauseModal}
+      />
     </>
   )
 }

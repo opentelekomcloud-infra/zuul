@@ -1,5 +1,5 @@
 # Copyright (c) 2017 Red Hat
-# Copyright 2021-2024 Acme Gating, LLC
+# Copyright 2021-2025 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,11 +69,13 @@ from zuul.zk import ZooKeeperClient
 from zuul.zk.components import COMPONENT_REGISTRY, WebComponent
 from zuul.zk.config_cache import SystemConfigCache, UnparsedConfigCache
 from zuul.zk.event_queues import (
+    EventWatcher,
     TenantManagementEventQueue,
     TenantTriggerEventQueue,
     PipelineManagementEventQueue,
     PipelineResultEventQueue,
     PipelineTriggerEventQueue,
+    TENANT_EVENT_STATE,
 )
 from zuul.zk.executor import ExecutorApi
 from zuul.zk.image_registry import (
@@ -1354,6 +1356,36 @@ class ZuulWebAPI(object):
         return True
 
     @cherrypy.expose
+    @cherrypy.tools.json_in()
+    @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
+    @cherrypy.tools.handle_options(allowed_methods=['POST', ])
+    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    def state_post(self, tenant_name, tenant, auth):
+        body = cherrypy.request.json
+        current_state = self.zuulweb.event_watcher.tenant_state[tenant.name]
+        with self.zuulweb.createZKContext(None, self.log) as ctx:
+            path = TENANT_EVENT_STATE.format(tenant=tenant_name)
+            tqs = model.TenantEventState(path)
+            self.log.info('User %s setting tenant %s state to %s',
+                          auth.uid, tenant_name, body)
+
+            reason = body.get('reason')
+            if reason:
+                # We limit the reason to 4096 chars to limit the
+                # zk node size.
+                reason = str(reason[:4096])
+            tqs._set(
+                trigger_queue_paused=bool(
+                    body.get('trigger_queue_paused',
+                             current_state.trigger_queue_paused)),
+                result_queue_paused=bool(
+                    body.get('result_queue_paused',
+                             current_state.result_queue_paused)),
+                reason=reason,
+            )
+            tqs.internalCreate(ctx)
+
+    @cherrypy.expose
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
@@ -1796,6 +1828,10 @@ class ZuulWebAPI(object):
         data['trigger_event_queue'] = {}
         data['trigger_event_queue']['length'] = len(
             self.zuulweb.trigger_events[tenant.name])
+
+        data['state'] =\
+            self.zuulweb.event_watcher.tenant_state[tenant.name].toDict()
+
         data['management_event_queue'] = {}
         data['management_event_queue']['length'] = len(
             self.zuulweb.management_events[tenant.name]
@@ -2927,6 +2963,11 @@ class ZuulWeb(object):
                 action='autohold_project_post')
             route_map.connect(
                 'api',
+                '/api/tenant/{tenant_name}/state',
+                controller=api,
+                action='state_post')
+            route_map.connect(
+                'api',
                 '/api/tenant/{tenant_name}/project/{project_name:.*}/enqueue',
                 controller=api, action='enqueue')
             route_map.connect(
@@ -3071,6 +3112,8 @@ class ZuulWeb(object):
         self.component_info = WebComponent(
             self.zk_client, self.hostname, version=get_version_string())
         self.component_info.register()
+
+        self.event_watcher = EventWatcher(self.zk_client, None)
 
         self.monitoring_server = MonitoringServer(self.config, 'web',
                                                   self.component_info)
