@@ -184,6 +184,19 @@ function fetchChangeStatus(apiPrefix, changeId) {
   return makeRequest(apiPrefix + 'status/change/' + changeId)
 }
 
+function setTenantState(apiPrefix, discardTriggerEvents, pauseTriggerQueue, pauseResultQueue, reason) {
+  return makeRequest(
+    apiPrefix + 'state',
+    'post',
+    {
+      trigger_queue_discarding: discardTriggerEvents,
+      trigger_queue_paused: pauseTriggerQueue,
+      result_queue_paused: pauseResultQueue,
+      reason: reason,
+    }
+  )
+}
+
 function fetchFreezeJob(apiPrefix, pipelineName, projectName, branchName, jobName) {
   return makeRequest(apiPrefix +
                    'pipeline/' + pipelineName +
@@ -427,4 +440,5 @@ export {
   getLogFile,
   getStreamUrl,
   promote,
+  setTenantState,
 }
