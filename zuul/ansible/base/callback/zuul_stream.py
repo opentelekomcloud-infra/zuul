@@ -594,9 +594,14 @@ class CallbackModule(default.CallbackModule):
             self._stop_streamers()
         if result._task.action in ALL_ACTIONS:
             stdout_lines = zuul_filter_result(result_dict)
-            # We don't have streaming for localhost so get standard
-            # out after the fact.
-            if is_localhost or result._task.action in OUTPUT_ACTIONS:
+            # We don't have streaming for localhost, raw, or disabled
+            # consoles, so get standard out after the fact.
+            play_vars = self._play._variable_manager._hostvars
+            is_disabled = boolean(play_vars[host].get(
+                'zuul_console_disabled', False))
+            if (is_localhost or
+                is_disabled or
+                result._task.action in OUTPUT_ACTIONS):
                 for line in stdout_lines:
                     hostname = self._get_hostname(result)
                     self._log("%s | %s " % (hostname, line))
