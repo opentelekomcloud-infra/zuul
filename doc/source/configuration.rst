@@ -214,6 +214,33 @@ Database
       if you rely on external databases which are not under your control.
       The default is to have no prefix.
 
+OIDC
+~~~~
+
+.. attr:: oidc
+
+   This optional section of ``zuul.conf``, if present, can be used to
+   customize the configuration of Zuul as an OpenId Connect (OIDC)
+   Identity Provider.
+
+   .. attr:: supported_signing_algorithms
+      :default: RS256
+
+      Algorithms that should be supported for signing the OIDC tokens,
+      a string of algorithm names separated by ``,``. Currently
+      ``RS256`` is supported.
+
+   .. attr:: default_signing_algorithm
+      :default: RS256
+
+      The default algorithm used for signing the OIDC tokens if not
+      specified in secret configuration.
+
+   .. attr:: signing_key_rotation_interval
+      :default: 604800
+
+      The rotation interval of the signing key, in seconds.
+
 .. _scheduler:
 
 Scheduler
