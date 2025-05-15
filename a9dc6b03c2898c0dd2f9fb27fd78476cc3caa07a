@@ -159,6 +159,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "80aec3da_98b7017e",
+        "filename": "zuul/driver/github/githubconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1845,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-05-15T05:28:21Z",
+      "side": 1,
+      "message": "Ok, wfm. However, I DO think we may want to revisit the error handling here and in the other places and call at least `response.raise_for_status()` in order to get a better error message instead of a `JSONDecodeError`.",
+      "parentUuid": "a886de5f_de3cde10",
+      "revId": "a9dc6b03c2898c0dd2f9fb27fd78476cc3caa07a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3978431a_86da1abe",
