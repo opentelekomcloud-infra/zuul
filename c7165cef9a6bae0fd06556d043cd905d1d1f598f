@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "b92e872c_442e9028",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-05-16T11:25:18Z",
+      "side": 1,
+      "message": "I think the main issue is that moto will refuse launching an instance with an image it doesn\u0027t know about.",
+      "parentUuid": "a92e7287_5ff321d9",
+      "revId": "c7165cef9a6bae0fd06556d043cd905d1d1f598f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "9f30d270_b7028f88",
         "filename": "/COMMIT_MSG",
         "patchSetId": 1
