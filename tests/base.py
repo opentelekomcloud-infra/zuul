@@ -34,6 +34,7 @@ from typing import Generator, List
 from unittest.case import skipIf
 import zlib
 
+from apscheduler.triggers.interval import IntervalTrigger
 import prometheus_client
 import requests
 import responses
@@ -1634,7 +1635,7 @@ class ZuulWebFixture(fixtures.Fixture):
     def __init__(self, config, test_config,
                  additional_event_queues, upstream_root,
                  poller_events, git_url_with_auth, add_cleanup,
-                 test_root, info=None):
+                 test_root, info=None, stats_interval=None):
         super(ZuulWebFixture, self).__init__()
         self.config = config
         self.connections = TestConnectionRegistry(
@@ -1652,6 +1653,7 @@ class ZuulWebFixture(fixtures.Fixture):
         else:
             self.info = info
         self.test_root = test_root
+        self.stats_interval = stats_interval
 
     def _setUp(self):
         # Start the web server
@@ -1661,6 +1663,9 @@ class ZuulWebFixture(fixtures.Fixture):
             connections=self.connections,
             authenticators=self.authenticators)
         self.connections.load(self.web.zk_client, self.web.component_registry)
+        if self.stats_interval:
+            self.web._stats_interval = IntervalTrigger(
+                seconds=self.stats_interval)
         self.web.start()
         self.addCleanup(self.stop)
 
