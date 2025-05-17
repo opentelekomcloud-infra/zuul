@@ -74,7 +74,7 @@ class TestAwsDriver(BaseCloudDriverTest):
             'artifacts': [
                 {
                     'name': 'raw image',
-                    'url': 's3://testbucket/image.raw',
+                    'url': 's3://zuul/image.raw',
                     'metadata': {
                         'type': 'zuul_image',
                         'image_name': 'debian-local',
@@ -350,6 +350,21 @@ class TestAwsDriver(BaseCloudDriverTest):
         s3_debian_return_data,
     )
     def test_aws_diskimage_image_import(self):
+        self._test_diskimage()
+
+    @simple_layout('layouts/aws/nodepool-image-ebs-direct.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        s3_debian_return_data,
+    )
+    def test_aws_diskimage_s3_download(self):
+        # The ebs-direct method doesn't support an import from s3,
+        # which means if we supply an s3 url, we will download it.
+        bucket = self.s3.Bucket('zuul')
+        bucket.put_object(Body=b'hi',
+                          Key='image.raw')
         self._test_diskimage()
 
     @simple_layout('layouts/nodepool-multi-provider.yaml',

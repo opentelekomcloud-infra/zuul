@@ -569,6 +569,25 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         # Most drivers probably won't implement this.
         return None
 
+    def downloadUrl(self, url, path):
+        """Attempt to download the given URL to the destination path
+
+        If this provider is able to download URLs of the given form,
+        it should attempt to do so and save the result.  If it can not
+        handle the given URL, return None.
+
+        This is an optional method that may be implemented in order to
+        allow for image storage in cloud-specific storage systems.
+
+        :param url str: The URL of the file to download
+        :param path str: The local destination path
+
+        :return: None if the provider can not handle the URL, or the
+        path if it sucessfully downloaded it.
+
+        """
+        return None
+
     def getImageUploadJob(self, provider_image, image_name, filename,
                           image_format, metadata, md5, sha256):
         """Get an image upload job
