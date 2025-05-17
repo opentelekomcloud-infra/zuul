@@ -302,14 +302,18 @@ class PipelineManager(metaclass=ABCMeta):
             with contextlib.suppress(KeyError):
                 del self._change_cache[key]
 
-    def isChangeAlreadyInPipeline(self, change):
+    def isChangeAlreadyInPipeline(self, change, event):
         # Checks live items in the pipeline
         for item in self.state.getAllItems():
             if not item.live:
                 continue
             for c in item.changes:
                 if change.equals(c):
-                    return True
+                    if event and item.event:
+                        if item.event.isSuperset(event):
+                            return True
+                    else:
+                        return True
         return False
 
     def isChangeRelevantToPipeline(self, change):
@@ -327,7 +331,7 @@ class PipelineManager(metaclass=ABCMeta):
                         return True
         return False
 
-    def isChangeAlreadyInQueue(self, change, change_queue, item=None):
+    def isChangeAlreadyInQueue(self, change, change_queue, event, item=None):
         # Checks any item in the specified change queue
         # If item is supplied, only consider items ahead of the
         # supplied item (ie, is the change already in the queue ahead
@@ -337,7 +341,11 @@ class PipelineManager(metaclass=ABCMeta):
                 break
             for c in queue_item.changes:
                 if change.equals(c):
-                    return True
+                    if event and queue_item.event:
+                        if queue_item.event.isSuperset(event):
+                            return True
+                    else:
+                        return True
         return False
 
     def refreshDeps(self, change, event):
@@ -670,7 +678,7 @@ class PipelineManager(metaclass=ABCMeta):
         # anywhere in the pipeline.  Otherwise, we will perform the
         # duplicate check below on the specific change_queue.
         if (live and
-            self.isChangeAlreadyInPipeline(change) and
+            self.isChangeAlreadyInPipeline(change, event) and
             not skip_presence_check):
             log.debug("Change %s is already in pipeline, ignoring" % change)
             return True
@@ -765,7 +773,7 @@ class PipelineManager(metaclass=ABCMeta):
 
             log.debug("History after enqueuing changes ahead: %s", history)
 
-            if self.isChangeAlreadyInQueue(change, change_queue):
+            if self.isChangeAlreadyInQueue(change, change_queue, event):
                 if not skip_presence_check:
                     log.debug("Change %s is already in queue, ignoring",
                               change)

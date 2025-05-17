@@ -6302,6 +6302,18 @@ class EventInfo:
         tinfo.image_build_uuid = d.get("image_build_uuid")
         return tinfo
 
+    def isSuperset(self, other):
+        other_image_names = getattr(other, 'image_names', None)
+        image_names = self.image_names
+        if image_names is None:
+            # We will build all images
+            return True
+        if other_image_names is None:
+            # They want to build all images, and if we passed the test
+            # above, we are building a subset.
+            return False
+        return set(image_names) >= set(other_image_names)
+
     def toDict(self):
         return {
             "zuul_event_id": self.zuul_event_id,
