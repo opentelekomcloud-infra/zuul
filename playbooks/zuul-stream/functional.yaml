@@ -94,6 +94,12 @@
         egrep 'zuul_log_id": "skip"' job-output-success-19885.json
         egrep 'zuul_log_id": "skip"' job-output-success-19887.json
 
+    - name: Validate streaming connections new console
+      command: python3 src/opendev.org/zuul/zuul/playbooks/zuul-stream/validate.py console-job-output-success-19887.txt job-output-success-19887.txt job-output-success-19887.json
+
+    - name: Validate streaming connections old console
+      command: python3 src/opendev.org/zuul/zuul/playbooks/zuul-stream/validate.py console-job-output-success-19885.txt job-output-success-19885.txt job-output-success-19885.json
+
     # failure case
 
     - name: Run ansible playbook that should fail
