@@ -986,8 +986,9 @@ class Launcher:
         self.stop_event = threading.Event()
         self.join_event = threading.Event()
 
-        self.connection_filter = get_default(
-            self.config, "launcher", "connection_filter")
+        filter_string = get_default(
+            self.config, "launcher", "connection_filter", "")
+        self.connection_filter = [f.strip() for f in filter_string]
         self.api = LauncherApi(
             self.zk_client, COMPONENT_REGISTRY.registry, self.component_info,
             self.wake_event.set, self.connection_filter)
