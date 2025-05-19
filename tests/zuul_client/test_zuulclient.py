@@ -421,6 +421,107 @@ class TestZuulClientAdmin(BaseTestWeb):
         self.assertEqual(C.data['status'], 'MERGED')
         self.assertEqual(C.reported, 2)
 
+    def test_manage_events(self):
+        self.executor_server.hold_jobs_in_build = False
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'testuser',
+                 'groups': ['users'],
+                 'zuul': {
+                     'admin': ['tenant-one', ],
+                 },
+                 'exp': int(time.time()) + 3600,
+                 'iat': int(time.time())}
+        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                           algorithm='HS256')
+        p = subprocess.Popen(
+            ['zuul-client',
+             '--zuul-url', self.base_url, '--auth-token', token, '-v',
+             'manage-events', '--tenant', 'tenant-one',
+             'pause-trigger',
+             '--reason', 'test trigger paused'],
+            stdout=subprocess.PIPE)
+        output = p.communicate()
+        self.assertEqual(p.returncode, 0, output)
+        time.sleep(1)
+
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        time.sleep(5)
+
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+        self.assertEqual(0, len(self.builds))
+
+        p = subprocess.Popen(
+            ['zuul-client',
+             '--zuul-url', self.base_url, '--auth-token', token, '-v',
+             'manage-events', '--tenant', 'tenant-one',
+             'pause-results',
+             '--reason', 'test result paused'],
+            stdout=subprocess.PIPE)
+        output = p.communicate()
+        self.assertEqual(p.returncode, 0, output)
+
+        time.sleep(5)
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+        self.assertEqual(0, len(self.builds))
+
+        p = subprocess.Popen(
+            ['zuul-client',
+             '--zuul-url', self.base_url, '--auth-token', token, '-v',
+             'manage-events', '--all-tenants', 'normal'],
+            stdout=subprocess.PIPE)
+        output = p.communicate()
+        self.assertEqual(p.returncode, 0, output)
+
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+            dict(name='project-merge', result='SUCCESS', changes='2,1'),
+            dict(name='project-test1', result='SUCCESS', changes='2,1'),
+            dict(name='project-test2', result='SUCCESS', changes='2,1'),
+        ], ordered=False)
+
+        p = subprocess.Popen(
+            ['zuul-client',
+             '--zuul-url', self.base_url, '--auth-token', token, '-v',
+             'manage-events', '--all-tenants', 'discard-trigger'],
+            stdout=subprocess.PIPE)
+        output = p.communicate()
+        self.assertEqual(p.returncode, 0, output)
+
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        self.fake_gerrit.addEvent(C.getPatchsetCreatedEvent(1))
+
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-merge', result='SUCCESS', changes='1,1'),
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+            dict(name='project-test2', result='SUCCESS', changes='1,1'),
+            dict(name='project-merge', result='SUCCESS', changes='2,1'),
+            dict(name='project-test1', result='SUCCESS', changes='2,1'),
+            dict(name='project-test2', result='SUCCESS', changes='2,1'),
+        ], ordered=False)
+
 
 class TestZuulClientQueryData(BaseTestWeb):
     """Test that zuul-client can fetch builds"""
