@@ -1025,6 +1025,7 @@ class AnsibleJob(object):
     RESULT_UNREACHABLE = 3
     RESULT_ABORTED = 4
     RESULT_DISK_FULL = 5
+    RESULT_OUT_OF_MEMORY = 6
 
     RESULT_MAP = {
         RESULT_NORMAL: 'RESULT_NORMAL',
@@ -1032,6 +1033,7 @@ class AnsibleJob(object):
         RESULT_UNREACHABLE: 'RESULT_UNREACHABLE',
         RESULT_ABORTED: 'RESULT_ABORTED',
         RESULT_DISK_FULL: 'RESULT_DISK_FULL',
+        RESULT_OUT_OF_MEMORY: 'RESULT_OUT_OF_MEMORY',
     }
 
     semaphore_sleep_time = 30
@@ -2033,6 +2035,9 @@ class AnsibleJob(object):
             elif setup_status == self.RESULT_UNREACHABLE:
                 error_detail = "Host unreachable"
                 unreachable = True
+            elif setup_status == self.RESULT_OUT_OF_MEMORY:
+                error_detail = "Host out of memory"
+                unreachable = True
             return result, unreachable, error_detail
 
         # Freeze the variables so that we have a copy of them without
@@ -2089,6 +2094,9 @@ class AnsibleJob(object):
                 if pre_status == self.RESULT_UNREACHABLE:
                     error_detail = "Host unreachable"
                     unreachable = True
+                if pre_status == self.RESULT_OUT_OF_MEMORY:
+                    error_detail = "Host out of memory"
+                    unreachable = True
                 break
 
         self.log.debug(
@@ -2130,6 +2138,12 @@ class AnsibleJob(object):
                     allow_post_result = False
                     should_retry = True
                     error_detail = "Host unreachable"
+                    unreachable = True
+                    break
+                elif job_status == self.RESULT_OUT_OF_MEMORY:
+                    allow_post_result = False
+                    should_retry = True
+                    error_detail = "Host out of memory"
                     unreachable = True
                     break
                 elif job_status == self.RESULT_NORMAL:
@@ -2202,6 +2216,10 @@ class AnsibleJob(object):
                 # chance to upload logs.
                 should_retry = True
                 error_detail = "Host unreachable"
+                unreachable = True
+            if post_status == self.RESULT_OUT_OF_MEMORY:
+                should_retry = True
+                error_detail = "Host out of memory"
                 unreachable = True
             if post_status != self.RESULT_NORMAL or post_code != 0:
                 # If we encountered a pre-failure, that takes
@@ -3528,6 +3546,17 @@ class AnsibleJob(object):
                 # host as unreachable and retry the job.
                 if b'FATAL ERROR DURING FILE TRANSFER' in line:
                     return self.RESULT_UNREACHABLE, None
+
+                # This case captures modules failures where the ansible
+                # target is a kubernetes pod that got OOM killed. In this
+                # scenario, the ansible kubectl child process reports a 137
+                # error code which we can capture from the output.
+                # This is semantically similar to an UNREACHABLE result,
+                # but we don't want to retry a job in such a case (because
+                # most likely, it will just OOM again). So we report a
+                # special OOM result.
+                if b'command terminated with exit code 137' in line:
+                    return self.RESULT_OUT_OF_MEMORY, None
 
                 # Extract errors for special cases that are treated like
                 # task errors by Ansible (e.g. missing role when using
