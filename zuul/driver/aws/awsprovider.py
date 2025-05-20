@@ -94,8 +94,12 @@ class AwsProviderImage(BaseProviderImage):
         inheritable_aws_image_schema,
         inheritable_aws_zuul_schema,
     )
-    inheritable_schema = assemble(
-        BaseProviderImage.inheritable_schema,
+    inheritable_cloud_schema = assemble(
+        BaseProviderImage.inheritable_cloud_schema,
+        inheritable_aws_image_schema,
+    )
+    inheritable_zuul_schema = assemble(
+        BaseProviderImage.inheritable_zuul_schema,
         inheritable_aws_image_schema,
         inheritable_aws_zuul_schema,
     )
@@ -226,7 +230,8 @@ class AwsProviderSchema(BaseProviderSchema):
         return assemble(
             schema,
             aws_provider_schema,
-            AwsProviderImage.inheritable_schema,
+            AwsProviderImage.inheritable_cloud_schema,
+            AwsProviderImage.inheritable_zuul_schema,
             AwsProviderFlavor.inheritable_schema,
             AwsProviderLabel.inheritable_schema,
         )

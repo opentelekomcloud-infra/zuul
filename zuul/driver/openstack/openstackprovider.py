@@ -81,8 +81,12 @@ class OpenstackProviderImage(BaseProviderImage):
         inheritable_openstack_zuul_schema,
     )
 
-    inheritable_schema = assemble(
-        BaseProviderImage.inheritable_schema,
+    inheritable_cloud_schema = assemble(
+        BaseProviderImage.inheritable_cloud_schema,
+        inheritable_openstack_image_schema,
+    )
+    inheritable_zuul_schema = assemble(
+        BaseProviderImage.inheritable_zuul_schema,
         inheritable_openstack_image_schema,
         inheritable_openstack_zuul_schema,
     )
@@ -174,7 +178,8 @@ class OpenstackProviderSchema(BaseProviderSchema):
         return assemble(
             schema,
             openstack_provider_schema,
-            OpenstackProviderImage.inheritable_schema,
+            OpenstackProviderImage.inheritable_cloud_schema,
+            OpenstackProviderImage.inheritable_zuul_schema,
             OpenstackProviderFlavor.inheritable_schema,
             OpenstackProviderLabel.inheritable_schema,
         )
