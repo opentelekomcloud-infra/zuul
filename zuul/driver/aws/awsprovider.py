@@ -94,7 +94,11 @@ class AwsProviderImage(BaseProviderImage):
         inheritable_aws_image_schema,
         inheritable_aws_zuul_schema,
     )
-    inheritable_schema = assemble(
+    inheritable_cloud_schema = assemble(
+        BaseProviderImage.inheritable_schema,
+        inheritable_aws_zuul_schema,
+    )
+    inheritable_zuul_schema = assemble(
         BaseProviderImage.inheritable_schema,
         inheritable_aws_image_schema,
         inheritable_aws_zuul_schema,
@@ -107,6 +111,10 @@ class AwsProviderImage(BaseProviderImage):
     def __init__(self, image_config, provider_config):
         self.image_id = None
         self.image_filters = None
+        if image_config.get('type') == 'zuul':
+            self.inheritable_schema = self.inheritable_zuul_schema
+        else:
+            self.inheritable_schema = self.inheritable_cloud_schema
         super().__init__(image_config, provider_config)
         self.format = getattr(self, 'image_format', None)
         # Implement provider defaults
