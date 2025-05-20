@@ -675,3 +675,18 @@ class TestAwsDriver(BaseCloudDriverTest):
                 'zuul.driver.aws.awsendpoint.AwsProviderEndpoint.'
                 '_completeCreateInstance', return_value=None)):
             yield
+
+    @simple_layout('layouts/aws/nodepool-multi-image.yaml',
+                   enable_nodepool=True)
+    def test_aws_multi_image(self):
+        # Test that we can inherit aws attributes for both kinds of
+        # images
+        tenant = self.scheds.first.sched.abide.tenants.get("tenant-one")
+        errors = tenant.layout.loading_errors
+        self.assertEqual(len(errors), 0)
+
+        images = tenant.layout.providers['aws-us-east-1-main'].images
+        dl = images['debian-local']
+        dc = images['debian-cloud']
+        self.assertEqual('ebs-direct', dl.import_method)
+        self.assertFalse(hasattr(dc, 'import_method'))

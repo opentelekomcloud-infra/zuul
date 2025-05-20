@@ -38,7 +38,10 @@ class CNameMixin:
 
 
 class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
-    inheritable_schema = assemble(
+    inheritable_cloud_schema = assemble(
+        provider_schema.common_image,
+    )
+    inheritable_zuul_schema = assemble(
         provider_schema.common_image,
     )
     schema = assemble(
@@ -48,7 +51,11 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, image_config, provider_config):
         new_config = image_config.copy()
-        for k in self.inheritable_schema.schema.keys():
+        if image_config['type'] == 'zuul':
+            schema = self.inheritable_zuul_schema
+        else:
+            schema = self.inheritable_cloud_schema
+        for k in schema.schema.keys():
             if k not in new_config and k in provider_config:
                 new_config[k] = provider_config[k]
 
