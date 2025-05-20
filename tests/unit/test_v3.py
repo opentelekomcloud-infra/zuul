@@ -11394,6 +11394,45 @@ class TestIncludeVars(ZuulTestCase):
             dict(name='other-project', result='SUCCESS', changes='1,1'),
         ], ordered=False)
 
+    def test_include_vars_override_checkout(self):
+        # Regression test to verify that we are using the correct
+        # checkout when a job needs a project as a required-project
+        # and for include-vars.
+        self.create_branch('org/project1', 'stable')
+        self.fake_gerrit.addEvent(
+            self.fake_gerrit.getFakeBranchCreatedEvent(
+                'org/project1', 'stable'))
+
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project3', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(len(self.builds), 1)
+        build = self.builds[0]
+        projects = build.parameters['projects']
+        # We expect org/project1 and org/project3
+        self.assertEqual(len(projects), 2)
+
+        workspace_repos = build.getWorkspaceRepos(
+            [p['canonical_name'] for p in projects])
+        for project in projects:
+            expected_branch = 'master'
+            if project['name'] == 'org/project1':
+                expected_branch = 'stable'
+                self.assertEqual(project['override_checkout'], expected_branch)
+            repo = workspace_repos[project['canonical_name']]
+            self.assertEqual(repo.active_branch.name, expected_branch)
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='required-project-override', result='SUCCESS',
+                 changes='1,1'),
+        ], ordered=False)
+
     def test_include_vars_zuul_project(self):
         # Test zuul-project vars (required and not)
         self.executor_server.hold_jobs_in_build = True
