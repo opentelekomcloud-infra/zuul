@@ -126,7 +126,7 @@ The supported options in ``zuul.conf`` connections are:
 
       User name to use when accessing Gerrit.
 
-   .. replication_timeout
+   .. attr:: replication_timeout
       :default: 0
 
       When set to a positive value Zuul will become replication event
