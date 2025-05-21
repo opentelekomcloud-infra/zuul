@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2690704_18c8dec1",
+        "filename": "doc/source/components.dot",
+        "patchSetId": 1
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 2475
+      },
+      "writtenOn": "2025-05-21T16:04:21Z",
+      "side": 0,
+      "message": "As I understand it, a Database is now required.",
+      "range": {
+        "startLine": 4,
+        "startChar": 11,
+        "endLine": 4,
+        "endChar": 27
+      },
+      "revId": "c2edf4fbbd4395659c2c4951d15440e49d4c663f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c6286ad_b4f07c3e",
+        "filename": "doc/source/components.dot",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 2475
+      },
+      "writtenOn": "2025-05-21T16:04:21Z",
+      "side": 0,
+      "message": "I don\u0027t know whether the Web components communicates with Finger to retrieve the logs or whether it still communicates with the Executor :)",
+      "revId": "c2edf4fbbd4395659c2c4951d15440e49d4c663f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}

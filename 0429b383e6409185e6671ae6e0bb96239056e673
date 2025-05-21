@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "876f646b_eb0cd6ba",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2475
+      },
+      "writtenOn": "2025-05-21T16:04:21Z",
+      "side": 1,
+      "message": "I have tried to add some enhancement to the architecture diagram you originally wrote in 2022.  Rendering is https://phabricator.wikimedia.org/F60350621 \n\nI am happy to translate your reviews/remarks to dot file and uploaded an updated version of the rendered png.  Else feel free hijack, in my parent change I have moved the graph to a standalone file to ease the rendering:\n\n    dot -Tpng -ocomponents.png doc/source/components.dot",
+      "revId": "0429b383e6409185e6671ae6e0bb96239056e673",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7535fef4_ac10a06b",
+        "filename": "doc/source/components.dot",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 2475
+      },
+      "writtenOn": "2025-05-21T16:04:21Z",
+      "side": 1,
+      "message": "I don\u0027t know whether the Web component communicates with Finger to retrieve the logs or whether it still communicates with the Executor :)",
+      "revId": "0429b383e6409185e6671ae6e0bb96239056e673",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "db94a132_e9a04ce7",
+        "filename": "doc/source/components.dot",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 2475
+      },
+      "writtenOn": "2025-05-21T16:04:21Z",
+      "side": 1,
+      "message": "Isn\u0027t the *Job Node* also retrieving the code from the Merger?",
+      "revId": "0429b383e6409185e6671ae6e0bb96239056e673",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
