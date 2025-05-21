@@ -73,20 +73,18 @@ def to_list(x):
     return vs.Any([x], x)
 
 
-def override_list(x):
-    def validator(v):
-        if isinstance(v, yaml.OverrideValue):
-            v = v.value
-        vs.Any([x], x)(v)
-    return validator
-
-
 def override_value(x):
+    schema = vs.Schema(x)
+
     def validator(v):
         if isinstance(v, yaml.OverrideValue):
             v = v.value
-        vs.Schema(x)(v)
+        schema(v)
     return validator
+
+
+def override_list(x):
+    return override_value(to_list(x))
 
 
 def as_list(item):
