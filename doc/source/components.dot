@@ -1,33 +1,42 @@
 // dot -Tpng -ocomponents.png components.dot
-graph  {
+digraph {
+  compound=true;
   node [shape=box]
-  Database [fontcolor=grey]
-  Executor [href="#executor"]
+  Database [shape=cylinder]
   Finger [href="#finger-gateway"]
-  Gerrit [fontcolor=grey]
-  Merger [href="#merger"]
-  Statsd [shape=ellipse fontcolor=grey]
+  Statsd [shape=ellipse color=darkgrey label="Statsd\n(optional)"]
   Scheduler [href="#scheduler"]
   Zookeeper [shape=ellipse]
-  Nodepool
-  GitHub [fontcolor=grey]
+  {
+    rank=same;
+    Executor [href="#executor"]
+    Merger [href="#merger"]
+    Nodepool
+  }
+
+  Gerrit -> Scheduler [ltail=CodeHosting dir=both];
   Web [href="#web-server"]
+  Web -> Database
+  Web -> Zookeeper
+  Web -> Executor
+  Finger -> Executor
+  Executor -> Statsd [color=darkgrey]
+  Executor -> "Job Node" [label=ssh]
+  Nodepool -> "Job Node"
 
-  Executor -- Statsd
-  Executor -- "Job Node"
-  Web -- Database
-  Web -- GitHub
-  Web -- Zookeeper
-  Web -- Executor
-  Finger -- Executor
+  Scheduler -> Database;
+  Scheduler -> Zookeeper;
+  Scheduler -> Statsd [color=darkgrey];
+  Zookeeper -> Finger;
+  Zookeeper -> Merger
+  Zookeeper -> Executor;
+  Zookeeper -> Nodepool;
 
-  Scheduler -- Database;
-  Scheduler -- Gerrit;
-  Scheduler -- Zookeeper;
-  Zookeeper -- Executor;
-  Zookeeper -- Finger;
-  Zookeeper -- Merger
-  Zookeeper -- Nodepool;
-  Scheduler -- GitHub;
-  Scheduler -- Statsd;
+  subgraph CodeHosting {
+    cluster=true;
+    label="Code hosting";
+    Gerrit;
+    GitHub;
+    GitLab;
+  }
 }
