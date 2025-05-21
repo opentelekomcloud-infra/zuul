@@ -52,6 +52,9 @@ class LauncherClient:
                 "NodesetRequest", start_time=request_time)
         span_info = tracing.getSpanInfo(request_span)
 
+        image_names = getattr(item.event, "image_names", None)
+        image_upload_uuid = getattr(item.event, "image_upload_uuid", None)
+
         with self.createZKContext(None, self.log) as ctx:
             request = NodesetRequest.new(
                 ctx,
@@ -67,6 +70,8 @@ class LauncherClient:
                 request_time=request_time,
                 zuul_event_id=item.event.zuul_event_id,
                 span_info=span_info,
+                image_names=image_names,
+                image_upload_uuid=image_upload_uuid,
             )
             log.info("Submitted nodeset request %s", request)
         return request
@@ -97,9 +102,10 @@ class LauncherClient:
 
     def getNodesetInfo(self, request):
         # TODO: populated other nodeset info fields
+        zone = request.executor_zones[0] if request.executor_zones else None
         return NodesetInfo(
             nodes=list(request.nodes),
-            zone=request.executor_zones[0])
+            zone=zone)
 
     def acceptNodeset(self, request, nodeset):
         log = get_annotated_logger(self.log, request)

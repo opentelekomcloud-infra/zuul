@@ -429,17 +429,32 @@ class TestLauncher(LauncherBaseTestCase):
         LauncherBaseTestCase.debian_return_data,
     )
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
-                return_value="test_external_id")
+                return_value="ami-785db401")
     def test_launcher_image_validation(self, mock_image_upload_run):
         # Test a two-stage image-build where we do run the validate
         # stage.
+        self.executor_server.hold_jobs_in_build = True
         self.waitUntilSettled()
+
+        self.executor_server.release('build-debian-local-image')
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+        ])
+
+        nodes = self.launcher.api.getProviderNodes()
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0].create_state['image_external_id'],
+                         mock_image_upload_run.return_value)
+        self.executor_server.release('validate-debian-local-image')
+        self.waitUntilSettled()
+
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='validate-debian-local-image', result='SUCCESS'),
         ])
-        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
 
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
         for _ in iterate_timeout(
                 30, "scheduler and launcher to have the same layout"):
             if (self.scheds.first.sched.local_layout_state.get("tenant-one") ==
@@ -453,6 +468,7 @@ class TestLauncher(LauncherBaseTestCase):
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='validate-debian-local-image', result='SUCCESS'),
         ])
+
         name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
         artifacts = self._waitForArtifacts(name, 1)
         self.assertEqual('raw', artifacts[0].format)
@@ -461,8 +477,53 @@ class TestLauncher(LauncherBaseTestCase):
             name)
         self.assertEqual(1, len(uploads))
         self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
-        self.assertEqual("test_external_id", uploads[0].external_id)
         self.assertTrue(uploads[0].validated)
+
+    @simple_layout('layouts/nodepool-image-validate.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="ami-785db401")
+    def test_launcher_image_validation_failure(self, mock_image_upload_run):
+        # Test a two-stage image-build where the validate stage fails.
+        self.executor_server.hold_jobs_in_build = True
+        self.waitUntilSettled()
+
+        self.executor_server.release('build-debian-local-image')
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+        ])
+
+        nodes = self.launcher.api.getProviderNodes()
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0].create_state['image_external_id'],
+                         mock_image_upload_run.return_value)
+
+        self.assertEqual(len(self.builds), 1)
+        self.builds[0].should_fail = True
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release('validate-debian-local-image')
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='validate-debian-local-image', result='FAILURE'),
+        ])
+
+        name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
+        artifacts = self._waitForArtifacts(name, 1)
+        self.assertEqual('raw', artifacts[0].format)
+        self.assertFalse(artifacts[0].validated)
+        uploads = self.launcher.image_upload_registry.getUploadsForImage(
+            name)
+        self.assertEqual(1, len(uploads))
+        self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
+        self.assertFalse(uploads[0].validated)
 
     @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
