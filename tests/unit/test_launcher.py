@@ -437,6 +437,7 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='validate-debian-local-image', result='SUCCESS'),
+            dict(name='validate-debian-local-image', result='SUCCESS'),
         ])
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
 
@@ -452,17 +453,19 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='validate-debian-local-image', result='SUCCESS'),
+            dict(name='validate-debian-local-image', result='SUCCESS'),
         ])
         name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
-        artifacts = self._waitForArtifacts(name, 1)
-        self.assertEqual('raw', artifacts[0].format)
-        self.assertFalse(artifacts[0].validated)
+        artifact = self._waitForArtifacts(name, 1)[0]
+        self.assertEqual('raw', artifact.format)
+        self.assertFalse(artifact.validated)
         uploads = self.launcher.image_upload_registry.getUploadsForImage(
             name)
-        self.assertEqual(1, len(uploads))
-        self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
-        self.assertEqual("test_external_id", uploads[0].external_id)
-        self.assertTrue(uploads[0].validated)
+        self.assertEqual(2, len(uploads))
+        for i, upload in enumerate(uploads):
+            self.assertEqual(artifact.uuid, upload.artifact_uuid)
+            self.assertEqual("test_external_id", upload.external_id)
+            self.assertTrue(upload.validated)
 
     @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
