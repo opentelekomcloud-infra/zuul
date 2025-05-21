@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0743ce69_2695e588",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2475
+      },
+      "writtenOn": "2025-05-21T15:57:36Z",
+      "side": 1,
+      "message": "We previously used Blockdiag (which I have introduced back in 2013 with Ibe3c2674a5dff2114c40a84ffdec8a8886b1b21b).  It eventually was replaced by GraphViz which is well supported in Sphinx.\n\nWhen trying to enhance the graph (child change I2b2738bc9128b8091a0f181b619aa45fd99be5ca ) I found it rather slow to have to run `tox -e docs` and refresh the web page.",
+      "revId": "c2edf4fbbd4395659c2c4951d15440e49d4c663f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
