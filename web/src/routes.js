@@ -37,6 +37,7 @@ import ProjectsPage from './pages/Projects'
 import ProviderImagePage from './pages/ProviderImage'
 import ProviderPage from './pages/Provider'
 import ProvidersPage from './pages/Providers'
+import RuntimePage from './pages/Runtime'
 import SemaphorePage from './pages/Semaphore'
 import SemaphoresPage from './pages/Semaphores'
 import StreamPage from './pages/Stream'
@@ -96,6 +97,10 @@ const routes = (info) => {
     {
       to: '/freeze-job',
       component: FreezeJobPage
+    },
+    {
+      to: '/runtime',
+      component: RuntimePage
     },
     {
       to: '/status/change/:changeId',
