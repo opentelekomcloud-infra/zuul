@@ -8,41 +8,8 @@ Component Overview
 Zuul is a distributed system consisting of several components, each of
 which is described below.
 
-.. graphviz::
+.. graphviz:: components.dot
    :align: center
-
-   graph  {
-      node [shape=box]
-      Database [fontcolor=grey]
-      Executor [href="#executor"]
-      Finger [href="#finger-gateway"]
-      Gerrit [fontcolor=grey]
-      Merger [href="#merger"]
-      Statsd [shape=ellipse fontcolor=grey]
-      Scheduler [href="#scheduler"]
-      Zookeeper [shape=ellipse]
-      Nodepool
-      GitHub [fontcolor=grey]
-      Web [href="#web-server"]
-
-      Executor -- Statsd
-      Executor -- "Job Node"
-      Web -- Database
-      Web -- GitHub
-      Web -- Zookeeper
-      Web -- Executor
-      Finger -- Executor
-
-      Scheduler -- Database;
-      Scheduler -- Gerrit;
-      Scheduler -- Zookeeper;
-      Zookeeper -- Executor;
-      Zookeeper -- Finger;
-      Zookeeper -- Merger
-      Zookeeper -- Nodepool;
-      Scheduler -- GitHub;
-      Scheduler -- Statsd;
-   }
 
 .. contents::
    :depth: 1
