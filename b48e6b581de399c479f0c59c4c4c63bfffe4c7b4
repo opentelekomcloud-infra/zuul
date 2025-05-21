@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12e63fc8_84112b20",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2384,
+      "author": {
+        "id": 9311
+      },
+      "writtenOn": "2025-05-21T13:28:10Z",
+      "side": 1,
+      "message": "This looks like what the annotated logger is implementing, could the tenant be added to the lib.logutil extras?",
+      "revId": "b48e6b581de399c479f0c59c4c4c63bfffe4c7b4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
