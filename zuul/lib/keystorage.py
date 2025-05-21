@@ -34,9 +34,9 @@ RSA_KEY_SIZE = 2048
 class OIDCSigningKeysCache(ZuulTreeCache):
 
     def __init__(self, client):
+        self.cache_updated_listeners = []
         super().__init__(
             client, OIDCSigningKeys.OIDC_ROOT_PATH, async_worker=False)
-        self.cache_updated_listeners = []
 
     def addCacheUpdatedListener(self, listener):
         self.cache_updated_listeners.append(listener)
