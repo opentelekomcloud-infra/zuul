@@ -16,6 +16,23 @@
       "message": "recheck test_gerrit_cherry_pick_web_with_update_queue",
       "revId": "463eb049a03be113d43751937c61693a928180f0",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c09a4a13_6c277a3a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-05-21T15:22:58Z",
+      "side": 1,
+      "message": "recheck zookeeper connection loss in a single test shouldn\u0027t be related to this logging update",
+      "revId": "463eb049a03be113d43751937c61693a928180f0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
