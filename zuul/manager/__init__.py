@@ -1393,8 +1393,7 @@ class PipelineManager(metaclass=ABCMeta):
                     files,
                     additional_project_branches,
                     self.sched.ansible_manager,
-                    include_config_projects=True,
-                    zuul_event_id=None)
+                    include_config_projects=True)
                 trusted_errors = len(filter_severity(
                     trusted_layout.loading_errors.errors,
                     errors=True, warnings=False)) > 0
@@ -1408,8 +1407,7 @@ class PipelineManager(metaclass=ABCMeta):
                     files,
                     additional_project_branches,
                     self.sched.ansible_manager,
-                    include_config_projects=False,
-                    zuul_event_id=None)
+                    include_config_projects=False)
                 untrusted_errors = len(filter_severity(
                     untrusted_layout.loading_errors.errors,
                     errors=True, warnings=False)) > 0
