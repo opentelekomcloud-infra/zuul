@@ -2380,16 +2380,22 @@ class TenantParser(object):
                     self.merger.cancel(job)
                     raise
             except Exception:
-                self.log.exception("Error processing cat job")
+                self.log.exception(
+                    "[tenant: %s] Error processing cat job", tenant.name)
                 if not ignore_cat_exception:
                     # Cancel remaining jobs
                     for cancel_job in jobs[i:]:
-                        self.log.debug("Canceling cat job %s", cancel_job)
+                        self.log.debug(
+                            "[tenant: %s] Canceling cat job %s",
+                            tenant.name,
+                            cancel_job)
                         try:
                             self.merger.cancel(cancel_job)
                         except Exception:
                             self.log.exception(
-                                "Unable to cancel job %s", cancel_job)
+                                "[tenant: %s] Unable to cancel job %s",
+                                tenant.name,
+                                cancel_job)
                     raise
 
     def _cacheTenantYAMLBranch(
@@ -2421,7 +2427,11 @@ class TenantParser(object):
                     return
             except KeyError:
                 self.log.exception(
-                    "Min. ltime missing for project/branch")
+                    "[tenant: %s] Min. ltime missing "
+                    "for project/branch %s @%s",
+                    tenant.name,
+                    project.canonical_name,
+                    branch)
                 pb_ltime = -1
 
             files_cache = self.unparsed_config_cache.getFilesCache(
@@ -2430,8 +2440,9 @@ class TenantParser(object):
                     project.canonical_name):
                 if files_cache.isValidFor(tpc, pb_ltime):
                     self.log.debug(
-                        "Using files from cache for project "
+                        "[tenant: %s] Using files from cache for project "
                         "%s @%s: %s",
+                        tenant.name,
                         project.canonical_name, branch,
                         list(files_cache.keys()))
                     self._updateConfigObjectCache(
@@ -2444,8 +2455,9 @@ class TenantParser(object):
         extra_config_dirs = abide.getExtraConfigDirs(project.name)
         if not self.merger:
             err = Exception(
-                "Configuration files missing from cache. "
-                "Check Zuul scheduler logs for more information.")
+                "[tenant: %s] Configuration files missing from cache. "
+                "Check Zuul scheduler logs for more "
+                "information." % tenant.name)
             parse_context.accumulator.addError(err)
             return
         ltime = self.zk_client.getCurrentLtime()
@@ -2455,7 +2467,8 @@ class TenantParser(object):
             files=(['zuul.yaml', '.zuul.yaml'] +
                    list(extra_config_files)),
             dirs=['zuul.d', '.zuul.d'] + list(extra_config_dirs))
-        self.log.debug("Submitting cat job %s for %s %s %s" % (
+        self.log.debug("[tenant: %s] Submitting cat job %s for %s %s %s" % (
+            tenant.name,
             job, project.source.connection.connection_name,
             project.name, branch))
         job.extra_config_files = extra_config_files
@@ -2467,16 +2480,19 @@ class TenantParser(object):
     def _processCatJob(self, abide, tenant, parse_context, job, min_ltimes):
         # Called at the end of _cacheTenantYAML after all cat jobs
         # have been submitted
-        self.log.debug("Waiting for cat job %s" % (job,))
+        self.log.debug(
+            "[tenant: %s] Waiting for cat job %s" % (tenant.name, job,))
         res = job.wait(self.merger.git_timeout)
         if not res:
             # We timed out
-            raise TimeoutError(f"Cat job {job} timed out; consider setting "
-                               "merger.git_timeout in zuul.conf")
+            raise TimeoutError(
+                f"[tenant: {tenant.name}] Cat job {job} timed out; "
+                "consider setting merger.git_timeout in zuul.conf")
         if not job.updated:
-            raise Exception("Cat job %s failed" % (job,))
-        self.log.debug("Cat job %s got files %s" %
-                       (job, job.files.keys()))
+            raise Exception(
+                "[tenant: %s] Cat job %s failed" % (tenant.name, job,))
+        self.log.debug("[tenant: %s] Cat job %s got files %s" %
+                       (tenant.name, job, job.files.keys()))
 
         with parse_context.errorContext(source_context=job.source_context):
             self._updateConfigObjectCache(
@@ -2493,8 +2509,9 @@ class TenantParser(object):
             # Prevent files cache ltime from going backward
             if files_cache.ltime >= job.ltime:
                 self.log.info(
-                    "Discarding job %s result since the files cache was "
-                    "updated in the meantime", job)
+                    "[tenant: %s] Discarding job %s result "
+                    "since the files cache was "
+                    "updated in the meantime", tenant.name, job)
                 return
             # Since the cat job returns all required config files
             # for ALL tenants the project is a part of, we can
@@ -2543,8 +2560,8 @@ class TenantParser(object):
                 source_context = source_context.copy()
                 source_context.path = fn
                 self.log.info(
-                    "Loading configuration from %s" %
-                    (source_context,))
+                    "[tenant: %s] Loading configuration from %s" %
+                    (tenant.name, source_context,))
                 # Make a new error accumulator; we may be in a threadpool
                 # so we can't use the stack.
                 with parse_context.errorContext(source_context=source_context):
@@ -2864,8 +2881,10 @@ class TenantParser(object):
                     added = layout.addJob(job)
                     if not added:
                         self.log.debug(
-                            "Skipped adding job %s which shadows "
-                            "an existing job", job)
+                            "[tenant: %s] Skipped adding job %s "
+                            "which shadows an existing job",
+                            tenant.name,
+                            job)
 
         # Now that all the jobs are loaded, verify references to other
         # config objects.
@@ -3207,6 +3226,8 @@ class ConfigLoader(object):
         with ThreadPoolExecutor(max_workers=4) as executor:
             for tenant_name, unparsed_config in tenants_to_load.items():
                 tpc_registry = model.TenantTPCRegistry()
+                self.log.debug(
+                    "Loading project configs for tenant %s" % tenant_name)
                 config_tpcs, untrusted_tpcs = (
                     self.tenant_parser.loadTenantProjects(unparsed_config,
                                                           executor)
@@ -3396,8 +3417,10 @@ class ConfigLoader(object):
                         if (conf_root in ZUUL_CONF_ROOT):
                             if loaded and loaded != conf_root:
                                 self.log.warning(
-                                    "Configuration in %s ignored because "
+                                    "[tenant: %s] Configuration in %s "
+                                    "ignored because "
                                     "project-branch is already configured",
+                                    tenant.name,
                                     source_context)
                                 item.warning(
                                     "Configuration in %s ignored because "
@@ -3407,8 +3430,9 @@ class ConfigLoader(object):
                             loaded = conf_root
 
                         self.log.info(
-                            "Loading configuration dynamically from %s" %
-                            (source_context,))
+                            "Loading configuration dynamically from %s "
+                            "for layout id %s" %
+                            (source_context, item.layout_uuid))
                         branch_config = self.tenant_parser.loadProjectYAML(
                             data, source_context, pcontext)
 
