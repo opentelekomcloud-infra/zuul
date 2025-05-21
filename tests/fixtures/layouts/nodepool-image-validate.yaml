@@ -86,3 +86,14 @@
     section: aws-us-east-1
     labels:
       - debian-local-normal
+
+- section:
+    name: aws-eu-central-1
+    parent: aws-base
+    region: eu-central-1
+
+- provider:
+    name: aws-eu-central-1-main
+    section: aws-eu-central-1
+    labels:
+      - debian-local-normal
