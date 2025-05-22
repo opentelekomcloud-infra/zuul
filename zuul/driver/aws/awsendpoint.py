@@ -730,6 +730,11 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 iops=label.iops))
         return quota
 
+    def _getBucketRegion(self, bucket_name):
+        data = self.s3_client.get_bucket_location(Bucket=bucket_name)
+        # None means us-east-1 for s3 buckets
+        return data['LocationConstraint'] or 'us-east-1'
+
     def downloadUrl(self, url, path):
         if not url.startswith('s3://'):
             return None
@@ -737,6 +742,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         url_parts = urllib.parse.urlparse(url)
         bucket_name = url_parts.netloc
         object_filename = url_parts.path.lstrip('/')
+
+        self.log.debug("Downloading %s to %s", url, path)
         self.s3_client.download_file(bucket_name, object_filename, path)
         return path
 
@@ -760,6 +767,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         url_parts = urllib.parse.urlparse(url)
         bucket_name = url_parts.netloc
         object_filename = url_parts.path.lstrip('/')
+
+        if self._getBucketRegion(bucket_name) != self.region:
+            return None
 
         return AwsImageImportJob(
             self,
