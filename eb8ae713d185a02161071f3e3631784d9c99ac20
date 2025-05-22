@@ -22,6 +22,24 @@
       },
       "revId": "eb8ae713d185a02161071f3e3631784d9c99ac20",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5e8eb55_d76525de",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1368,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-22T13:09:42Z",
+      "side": 1,
+      "message": "You\u0027re right; this was an artifact of an earlier implementation scheme and isn\u0027t necessary now.",
+      "parentUuid": "54852831_9f5ca945",
+      "revId": "eb8ae713d185a02161071f3e3631784d9c99ac20",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
