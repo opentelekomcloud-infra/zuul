@@ -1969,8 +1969,32 @@ class Launcher:
                       tenant_name, iba.name)
         self.trigger_events[tenant_name].put(event.trigger_name, event)
 
+    def _waitForStableImageRegistry(self):
+        # Wait for any non-ready IBAs to become ready.  This resolves
+        # a race condition where the scheduler might have created the
+        # first of more than one IBA in a buildset, and we were
+        # immediately triggered.  Wait until the scheduler is finished
+        # so that if a buildset creates more than one IBA we have all
+        # the info.
+        now = time.time()
+        while True:
+            done = True
+            for iba in self.image_build_registry.getAllArtifacts():
+                if iba.state is not None:
+                    continue
+                if now - iba.timestamp > 30:
+                    # We'll only wait 30 seconds for this so we don't
+                    # get stuck.
+                    continue
+                done = False
+                break
+            if done:
+                return
+            time.sleep(1)
+
     def checkMissingImages(self):
         self.log.debug("Checking for missing images")
+        self._waitForStableImageRegistry()
         for tenant_name, providers in self.tenant_providers.items():
             images_by_project_branch = {}
             for provider in providers:
