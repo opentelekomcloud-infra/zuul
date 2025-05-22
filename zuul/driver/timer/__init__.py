@@ -233,10 +233,12 @@ class TimerDriver(Driver, TriggerInterface):
 
     def _dispatchEvent(self, tenant_name, pipeline_name, project_name,
                        branch, timespec):
-        self.log.debug('Got trigger for tenant %s and pipeline %s '
-                       'project %s branch %s with timespec %s',
-                       tenant_name, pipeline_name, project_name,
-                       branch, timespec)
+        logT = get_annotated_logger(
+            self.log, None, tenant=tenant_name)
+        logT.debug('Got trigger for pipeline %s '
+                   'project %s branch %s with timespec %s',
+                   pipeline_name, project_name,
+                   branch, timespec)
         try:
             tenant = self.sched.abide.tenants[tenant_name]
             (trusted, project) = tenant.getProject(project_name)
@@ -257,15 +259,16 @@ class TimerDriver(Driver, TriggerInterface):
             with self.project_update_locks[project.canonical_name]:
                 project.source.getChange(change_key, refresh=True,
                                          event=event)
-            log = get_annotated_logger(self.log, event)
-            log.debug("Adding event")
+            logEvent = get_annotated_logger(
+                self.log, event, tenant=tenant_name)
+            logEvent.debug("Adding event")
             self.sched.pipeline_trigger_events[tenant.name][
                 pipeline_name
             ].put(self.name, event)
         except Exception:
-            self.log.exception("Error dispatching timer event for "
-                               "tenant %s project %s branch %s",
-                               tenant_name, project_name, branch)
+            logT.exception("Error dispatching timer event for "
+                           "project %s branch %s",
+                           project_name, branch)
 
     def stop(self):
         self.log.debug("Stopping timer driver")
