@@ -3387,7 +3387,10 @@ class ZuulWeb(object):
         if (self.local_layout_state.get(tenant_name)
                 == self.tenant_layout_state.get(tenant_name)):
             return
-        self.log.debug("Reloading tenant %s", tenant_name)
+        log = get_annotated_logger(
+            self.log, None, tenant=tenant_name
+        )
+        log.debug("Reloading tenant")
         with tenant_read_lock(self.zk_client, tenant_name, self.log) as tlock:
             layout_state = self.tenant_layout_state.get(tenant_name)
             layout_uuid = layout_state and layout_state.uuid

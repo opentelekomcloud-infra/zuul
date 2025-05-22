@@ -816,13 +816,15 @@ class Scheduler(threading.Thread):
 
     def _runLeakedPipelineCleanup(self):
         for tenant in self.abide.tenants.values():
+            log = get_annotated_logger(self.log,
+                                       event=None,
+                                       tenant=tenant.name)
             try:
                 with tenant_read_lock(self.zk_client, tenant.name,
                                       self.log, blocking=False):
                     if not self.isTenantLayoutUpToDate(tenant.name):
-                        self.log.debug(
-                            "Skipping leaked pipeline cleanup for tenant %s",
-                            tenant.name)
+                        log.debug(
+                            "Skipping leaked pipeline cleanup")
                         continue
                     valid_managers = tenant.layout.pipeline_managers.values()
                     valid_state_paths = set(
@@ -849,15 +851,15 @@ class Scheduler(threading.Thread):
 
                     for leaked_path in (
                             leaked_state_paths | leaked_event_root_paths):
-                        self.log.info("Removing leaked pipeline path %s",
-                                      leaked_path)
+                        log.info("Removing leaked pipeline path %s",
+                                 leaked_path)
                         try:
                             self.zk_client.client.delete(leaked_path,
                                                          recursive=True)
                         except Exception:
-                            self.log.exception(
-                                "Error removing leaked pipeline path %s in "
-                                "tenant %s", leaked_path, tenant.name)
+                            log.exception(
+                                "Error removing leaked pipeline path %s",
+                                leaked_path)
             except LockException:
                 # We'll cleanup this tenant on the next iteration
                 pass
@@ -1304,7 +1306,6 @@ class Scheduler(threading.Thread):
             raise RuntimeError("No key store password configured!")
 
     def runTenantLayoutUpdates(self):
-        log = logging.getLogger("zuul.Scheduler.LayoutUpdate")
         # Only run this after config priming is complete
         self.primed_event.wait()
         while not self._stopped:
@@ -1321,6 +1322,10 @@ class Scheduler(threading.Thread):
                 for tenant_name in tenant_names:
                     if self._stopped:
                         break
+                    log = get_annotated_logger(
+                        logging.getLogger("zuul.Scheduler.LayoutUpdate"),
+                        event=None,
+                        tenant=tenant_name)
                     try:
                         if (self.unparsed_abide.ltime
                                 < self.system_config_cache.ltime):
@@ -1343,26 +1348,23 @@ class Scheduler(threading.Thread):
                                     remote_state is None or
                                     remote_state > local_state):
                                 log.debug(
-                                    "Local layout of tenant %s not up to date",
-                                    tenant_name)
+                                    "Local layout not up to date")
                                 self.updateTenantLayout(log, tenant_name)
                                 # Wake up the main thread to process any
                                 # events for this tenant.
                                 self.wake_event.set()
                     except LockException:
                         log.debug(
-                            "Skipping layout update of locked tenant %s",
-                            tenant_name)
+                            "Skipping layout update since tenant is locked")
                         self.layout_update_event.set()
                     except Exception:
-                        log.exception("Error updating layout of tenant %s",
-                                      tenant_name)
+                        log.exception("Error updating layout")
                         self.layout_update_event.set()
                 # In case something is locked, don't busy-loop.
                 time.sleep(0.1)
 
     def updateTenantLayout(self, log, tenant_name):
-        log.debug("Updating layout of tenant %s", tenant_name)
+        log.debug("Updating layout")
         loader = configloader.ConfigLoader(
             self.connections, self.system, self.zk_client, self.globals,
             self.unparsed_config_cache, self.statsd, self,
@@ -1373,7 +1375,7 @@ class Scheduler(threading.Thread):
         # for ZK locks is None.
         with locked(self.layout_lock[tenant_name], blocking=False, timeout=-1):
             start = time.monotonic()
-            log.debug("Updating local layout of tenant %s ", tenant_name)
+            log.debug("Updating local layout")
             layout_state = self.tenant_layout_state.get(tenant_name)
             layout_uuid = layout_state and layout_state.uuid
             if layout_state:
@@ -1404,10 +1406,14 @@ class Scheduler(threading.Thread):
                     del self.local_layout_state[tenant_name]
 
         duration = round(time.monotonic() - start, 3)
-        self.log.info("Local layout update complete for %s (duration: %s "
-                      "seconds)", tenant_name, duration)
+        log.info("Local layout update complete (duration: %s "
+                 "seconds)", duration)
 
     def isTenantLayoutUpToDate(self, tenant_name):
+        log = get_annotated_logger(
+            self.log,
+            event=None,
+            tenant=tenant_name)
         remote_state = self.tenant_layout_state.get(tenant_name)
         if remote_state is None:
             # The tenant may still be in the
@@ -1416,8 +1422,7 @@ class Scheduler(threading.Thread):
             return False
         local_state = self.local_layout_state.get(tenant_name)
         if local_state is None or remote_state > local_state:
-            self.log.debug("Local layout of tenant %s not up to date",
-                           tenant_name)
+            log.debug("Local layout not up to date")
             self.layout_update_event.set()
             return False
         return True
@@ -1610,14 +1615,17 @@ class Scheduler(threading.Thread):
             self.log.info("Reconfigured tenants: %s", reconfigured_tenants)
 
     def _doTenantReconfigureEvent(self, event):
-        log = get_annotated_logger(self.log, event.zuul_event_id)
+        log = get_annotated_logger(
+            self.log,
+            event.zuul_event_id,
+            tenant=event.tenant_name)
         # This is called in the scheduler loop after another thread submits
         # a request
         if self.unparsed_abide.ltime < self.system_config_cache.ltime:
             self.updateSystemConfig()
 
-        log.info("Tenant reconfiguration beginning for %s due to "
-                 "projects %s", event.tenant_name, event.project_branches)
+        log.info("Tenant reconfiguration beginning due to "
+                 "projects %s", event.project_branches)
         start = time.monotonic()
         # Consider all caches valid (min. ltime -1) except for the
         # changed project-branches.
@@ -1651,7 +1659,7 @@ class Scheduler(threading.Thread):
                     self.zk_client, event.tenant_name, self.log,
                     identifier=RECONFIG_LOCK_ID) as lock,
                   self.statsd_timer(f'{stats_key}.reconfiguration_time')):
-                log.debug("Loading tenant %s", event.tenant_name)
+                log.debug("Loading configuration")
                 loader.loadTenant(
                     self.abide, event.tenant_name, self.ansible_manager,
                     self.unparsed_abide, min_ltimes=min_ltimes,
@@ -1662,8 +1670,8 @@ class Scheduler(threading.Thread):
                                             event.trigger_event_ltime,
                                             tenant, old_tenant)
         duration = round(time.monotonic() - start, 3)
-        log.info("Tenant reconfiguration complete for %s (duration: %s "
-                 "seconds)", event.tenant_name, duration)
+        log.info("Tenant reconfiguration complete (duration: %s "
+                 "seconds)", duration)
 
     def _reenqueueGetProject(self, tenant, item, change):
         project = change.project
@@ -1693,9 +1701,13 @@ class Scheduler(threading.Thread):
         return source.getProject(project.name)
 
     def _reenqueuePipeline(self, tenant, manager, context):
+        log = get_annotated_logger(
+            self.log,
+            event=None,
+            tenant=tenant.name)
         pipeline = manager.pipeline
-        self.log.debug("Re-enqueueing changes for pipeline %s",
-                       pipeline.name)
+        log.debug("Re-enqueueing changes for pipeline %s",
+                  pipeline.name)
         # TODO(jeblair): This supports an undocument and
         # unanticipated hack to create a static window.  If we
         # really want to support this, maybe we should have a
@@ -1742,8 +1754,8 @@ class Scheduler(threading.Thread):
                                 item, last_head, old_item_ahead,
                                 item_ahead_valid=item_ahead_valid)
                         except Exception:
-                            log = get_annotated_logger(self.log, item.event)
-                            log.exception(
+                            logItem = get_annotated_logger(log, item.event)
+                            logItem.exception(
                                 "Exception while re-enqueing item %s", item)
                 if not reenqueued:
                     items_to_remove.append(item)
@@ -1797,12 +1809,16 @@ class Scheduler(threading.Thread):
             for name, old_manager in \
                     old_tenant.layout.pipeline_managers.items():
                 new_manager = tenant.layout.pipeline_managers.get(name)
+                log = get_annotated_logger(
+                    self.log,
+                    event=None,
+                    tenant=event.tenant_name)
                 if not new_manager:
                     with old_manager.currentContext(context):
                         try:
-                            self._reconfigureDeletePipeline(old_manager)
+                            self._reconfigureDeletePipeline(old_manager, log)
                         except Exception:
-                            self.log.exception(
+                            log.exception(
                                 "Failed to cleanup deleted pipeline %s:",
                                 old_manager.pipeline)
 
@@ -1875,14 +1891,17 @@ class Scheduler(threading.Thread):
 
     def _reconfigureDeleteTenant(self, context, tenant):
         # Called when a tenant is deleted during reconfiguration
-        self.log.info("Removing tenant %s during reconfiguration" %
-                      (tenant,))
+        log = get_annotated_logger(
+            self.log,
+            event=None,
+            tenant=tenant.name)
+        log.info("Removing tenant during reconfiguration")
         for manager in tenant.layout.pipeline_managers.values():
             with manager.currentContext(context):
                 try:
-                    self._reconfigureDeletePipeline(manager)
+                    self._reconfigureDeletePipeline(manager, log)
                 except Exception:
-                    self.log.exception(
+                    log.exception(
                         "Failed to cleanup deleted pipeline %s:",
                         manager.pipeline)
 
@@ -1897,8 +1916,10 @@ class Scheduler(threading.Thread):
             # periodic cleanup job.
             pass
 
-    def _reconfigureDeletePipeline(self, manager):
-        self.log.info("Removing pipeline %s during reconfiguration",
+    def _reconfigureDeletePipeline(self, manager, logFunc=None):
+        if logFunc is None:
+            logFunc = self.log
+        logFunc.info("Removing pipeline %s during reconfiguration",
                       manager.pipeline)
 
         ctx = manager.current_context
@@ -1910,7 +1931,7 @@ class Scheduler(threading.Thread):
             with item.activeContext(manager.current_context):
                 item.item_ahead = None
                 item.items_behind = []
-            self.log.info(
+            logFunc.info(
                 "Removing item %s during reconfiguration" % (item,))
             for build in item.current_build_set.getBuilds():
                 builds_to_cancel.append(build)
@@ -1928,25 +1949,25 @@ class Scheduler(threading.Thread):
                     item.current_build_set, 'dequeue',
                     final=False, result='DEQUEUED')
             except Exception:
-                self.log.exception(
+                logFunc.exception(
                     "Error reporting buildset completion to DB:")
 
         for build in builds_to_cancel:
-            self.log.info(
+            logFunc.info(
                 "Canceling build %s during reconfiguration", build)
             try:
                 self.cancelJob(build.build_set, build.job,
                                build=build, force=True)
             except Exception:
-                self.log.exception(
+                logFunc.exception(
                     "Error canceling build %s during reconfiguration", build)
         for build_set, request, request_job in requests_to_cancel:
-            self.log.info(
+            logFunc.info(
                 "Canceling node request %s during reconfiguration", request)
             try:
                 self.cancelJob(build_set, request_job, force=True)
             except Exception:
-                self.log.exception(
+                logFunc.exception(
                     "Error canceling node request %s during reconfiguration",
                     request)
 
@@ -1961,9 +1982,9 @@ class Scheduler(threading.Thread):
         except Exception:
             # In case a pipeline event has been submitted during
             # reconfiguration this cleanup will fail.
-            self.log.exception(
-                "Error removing event queues for deleted pipeline %s in "
-                "tenant %s", manager.pipeline.name, manager.tenant.name)
+            logFunc.exception(
+                "Error removing event queues for deleted pipeline %s",
+                manager.pipeline.name)
 
         # Delete the pipeline root path in ZooKeeper to remove all pipeline
         # state.
@@ -1971,9 +1992,9 @@ class Scheduler(threading.Thread):
             self.zk_client.client.delete(manager.state.getPath(),
                                          recursive=True)
         except Exception:
-            self.log.exception(
-                "Error removing state for deleted pipeline %s in tenant %s",
-                manager.pipeline.name, manager.tenant.name)
+            logFunc.exception(
+                "Error removing state for deleted pipeline %s",
+                manager.pipeline.name)
 
     def _doPromoteEvent(self, event):
         tenant = self.abide.tenants.get(event.tenant_name)
@@ -2201,6 +2222,10 @@ class Scheduler(threading.Thread):
             self.updateSystemConfig()
 
         for tenant_name in self.unparsed_abide.tenants:
+            log = get_annotated_logger(
+                self.log,
+                event=None,
+                tenant=tenant_name)
             if self._stopped:
                 break
 
@@ -2235,12 +2260,11 @@ class Scheduler(threading.Thread):
 
                     self.process_pipelines(tenant, tlock)
             except PendingReconfiguration:
-                self.log.debug("Stopping tenant %s pipeline processing due to "
-                               "pending reconfig", tenant_name)
+                log.debug("Stopping pipeline processing due to "
+                          "pending reconfig")
                 self.wake_event.set()
             except LockException:
-                self.log.debug("Skipping locked tenant %s",
-                               tenant.name)
+                log.debug("Skipping since tenant is locked")
                 remote_state = self.tenant_layout_state.get(
                     tenant_name)
                 local_state = self.local_layout_state.get(
@@ -2252,8 +2276,7 @@ class Scheduler(threading.Thread):
                     # latest tenant layout.
                     self.wake_event.set()
             except Exception:
-                self.log.exception("Exception processing tenant %s:",
-                                   tenant_name)
+                log.exception("Exception processing tenant:")
                 # There may still be more events to process
                 self.wake_event.set()
 
@@ -2303,6 +2326,10 @@ class Scheduler(threading.Thread):
             loader.loadTPCs(self.abide, self.unparsed_abide)
 
     def process_pipelines(self, tenant, tenant_lock):
+        log = get_annotated_logger(
+            self.log,
+            event=None,
+            tenant=tenant.name)
         for manager in tenant.layout.pipeline_managers.values():
             pipeline = manager.pipeline
             if self._stopped:
@@ -2314,8 +2341,8 @@ class Scheduler(threading.Thread):
                         self.zk_client, tenant.name, pipeline.name,
                         blocking=False) as lock,
                       self.createZKContext(lock, self.log) as ctx):
-                    self.log.debug("Processing pipeline %s in tenant %s",
-                                   pipeline.name, tenant.name)
+                    log.debug("Processing pipeline %s",
+                              pipeline.name)
                     with manager.currentContext(ctx):
                         if ((tenant.name, pipeline.name) in
                             self._profile_pipelines):
@@ -2333,8 +2360,8 @@ class Scheduler(threading.Thread):
                 # handle it.
                 raise
             except LockException:
-                self.log.debug("Skipping locked pipeline %s in tenant %s",
-                               pipeline.name, tenant.name)
+                log.debug("Skipping locked pipeline %s",
+                          pipeline.name)
                 try:
                     # In case this pipeline is locked for some reason
                     # other than processing events, we need to return
@@ -2342,14 +2369,13 @@ class Scheduler(threading.Thread):
                     if self._pipelineHasEvents(tenant, manager):
                         self.wake_event.set()
                 except Exception:
-                    self.log.exception(
-                        "Exception checking events for pipeline "
-                        "%s in tenant %s",
-                        pipeline.name, tenant.name)
+                    log.exception(
+                        "Exception checking events for pipeline %s",
+                        pipeline.name)
             except Exception:
-                self.log.exception(
-                    "Exception processing pipeline %s in tenant %s",
-                    pipeline.name, tenant.name)
+                log.exception(
+                    "Exception processing pipeline %s",
+                    pipeline.name)
 
     def _contextStats(self, ctx, stats_key):
         self.statsd.timing(f'{stats_key}.read_time',
@@ -2387,12 +2413,16 @@ class Scheduler(threading.Thread):
     def _process_pipeline(self, tenant, tenant_lock, manager):
         # Return whether or not we refreshed the pipeline.
 
+        log = get_annotated_logger(
+            self.log,
+            event=None,
+            tenant=tenant.name)
         pipeline = manager.pipeline
         # We only need to process the pipeline if there are
         # outstanding events.
         if not self._pipelineHasEvents(tenant, manager):
-            self.log.debug("No events to process for pipeline %s in tenant %s",
-                           pipeline.name, tenant.name)
+            log.debug("No events to process for pipeline %s",
+                      tenant.name)
             return False
 
         stats_key = f'zuul.tenant.{tenant.name}.pipeline.{pipeline.name}'
@@ -2425,7 +2455,7 @@ class Scheduler(threading.Thread):
             # handle it.
             raise
         except Exception:
-            self.log.exception("Exception in pipeline processing:")
+            log.exception("Exception in pipeline processing:")
             manager.state.updateAttributes(
                 ctx, state=pipeline.STATE_ERROR)
             # Continue processing other pipelines+tenants
@@ -2466,12 +2496,15 @@ class Scheduler(threading.Thread):
         self.log.debug("Finished connection cache maintenance")
 
     def process_tenant_trigger_queue(self, tenant):
+        log = get_annotated_logger(
+            self.log,
+            event=None,
+            tenant=tenant.name)
         try:
             with trigger_queue_lock(
                 self.zk_client, tenant.name, blocking=False
             ):
-                self.log.debug("Processing tenant trigger events in %s",
-                               tenant.name)
+                log.debug("Processing tenant trigger events")
                 # Update the pipeline changes
                 ctx = self.createZKContext(None, self.log)
                 for manager in tenant.layout.pipeline_managers.values():
@@ -2486,19 +2519,22 @@ class Scheduler(threading.Thread):
                     try:
                         manager.change_list.refresh(ctx, allow_init=False)
                     except json.JSONDecodeError:
-                        self.log.warning(
+                        log.warning(
                             "Unable to refresh pipeline change list for %s",
                             manager.pipeline.name)
                     except Exception:
-                        self.log.exception(
+                        log.exception(
                             "Unable to refresh pipeline change list for %s",
                             manager.pipeline.name)
 
                 # Get the ltime of the last reconfiguration event
                 self.trigger_events[tenant.name].refreshMetadata()
                 for event in self.trigger_events[tenant.name]:
-                    log = get_annotated_logger(self.log, event.zuul_event_id)
-                    log.debug("Forwarding trigger event %s", event)
+                    logEvent = get_annotated_logger(
+                        self.log,
+                        event.zuul_event_id,
+                        tenant=tenant.name)
+                    logEvent.debug("Forwarding trigger event %s", event)
                     try:
                         trigger_span = tracing.restoreSpanContext(
                             event.span_context)
@@ -2509,17 +2545,19 @@ class Scheduler(threading.Thread):
                                 ]):
                             self._forward_trigger_event(event, tenant)
                     except Exception:
-                        log.exception("Unable to forward event %s "
-                                      "to tenant %s", event, tenant.name)
+                        logEvent.exception("Unable to forward event %s "
+                                      "to tenant", event)
                     finally:
                         self.trigger_events[tenant.name].ack(event)
                 self.trigger_events[tenant.name].cleanup()
         except LockException:
-            self.log.debug("Skipping locked trigger event queue in tenant %s",
-                           tenant.name)
+            log.debug("Skipping locked trigger event queue")
 
     def _forward_trigger_event(self, event, tenant):
-        log = get_annotated_logger(self.log, event.zuul_event_id)
+        log = get_annotated_logger(
+            self.log,
+            event.zuul_event_id,
+            tenant=tenant.name)
         trusted, project = tenant.getProject(event.canonical_project_name)
 
         if project is None:
@@ -2635,7 +2673,10 @@ class Scheduler(threading.Thread):
     def process_pipeline_trigger_queue(self, tenant, tenant_lock, manager):
         for event in self.pipeline_trigger_events[tenant.name][
                 manager.pipeline.name]:
-            log = get_annotated_logger(self.log, event.zuul_event_id)
+            log = get_annotated_logger(
+                self.log,
+                event.zuul_event_id,
+                tenant=tenant.name)
             if not isinstance(event, SupercedeEvent):
                 local_state = self.local_layout_state[tenant.name]
                 last_ltime = local_state.last_reconfigure_event_ltime
@@ -2670,7 +2711,7 @@ class Scheduler(threading.Thread):
 
     def _process_trigger_event(self, tenant, manager, event):
         log = get_annotated_logger(
-            self.log, event.zuul_event_id
+            self.log, event.zuul_event_id, tenant=tenant.name
         )
         trusted, project = tenant.getProject(event.canonical_project_name)
         if project is None:
@@ -2697,32 +2738,34 @@ class Scheduler(threading.Thread):
             manager.addChange(change, event)
 
     def process_tenant_management_queue(self, tenant):
+        log = get_annotated_logger(
+            self.log, event=None, tenant=tenant.name
+        )
         try:
             with management_queue_lock(
                 self.zk_client, tenant.name, blocking=False
             ):
                 if not self.isTenantLayoutUpToDate(tenant.name):
-                    self.log.debug(
-                        "Skipping management event queue for tenant %s",
-                        tenant.name)
+                    log.debug(
+                        "Skipping management event queue")
                     return
-                self.log.debug("Processing tenant management events in %s",
-                               tenant.name)
+                log.debug("Processing tenant management events")
                 self._process_tenant_management_queue(tenant)
         except LockException:
-            self.log.debug("Skipping locked management event queue"
-                           " in tenant %s", tenant.name)
+            log.debug("Skipping locked management event queue")
 
     def _process_tenant_management_queue(self, tenant):
         # Set of tenant names that were notified of
         # a semaphore release.
+        log = get_annotated_logger(
+            self.log, event=None, tenant=tenant.name
+        )
         semaphore_notified = set()
         for event in self.management_events[tenant.name]:
             event_forwarded = False
             try:
                 if isinstance(event, TenantReconfigureEvent):
-                    self.log.debug("Processing tenant reconfiguration "
-                                   "event for tenant %s", tenant.name)
+                    log.debug("Processing tenant reconfiguration event")
                     self._doTenantReconfigureEvent(event)
                 elif isinstance(event, (PromoteEvent, ChangeManagementEvent)):
                     event_forwarded = self._forward_management_event(event)
@@ -2730,8 +2773,7 @@ class Scheduler(threading.Thread):
                     self._doSemaphoreReleaseEvent(
                         event, tenant, semaphore_notified)
                 else:
-                    self.log.error("Unable to handle event %s for tenant %s",
-                                   event, tenant.name)
+                    log.error("Unable to handle event %s", event)
             finally:
                 if event_forwarded:
                     self.management_events[tenant.name].ackWithoutResult(
@@ -2779,7 +2821,8 @@ class Scheduler(threading.Thread):
         for event in self.pipeline_management_events[tenant.name][
             manager.pipeline.name
         ]:
-            log = get_annotated_logger(self.log, event.zuul_event_id)
+            log = get_annotated_logger(
+                self.log, event.zuul_event_id, tenant=tenant.name)
             log.debug("Processing management event %s", event)
             try:
                 if not self.disable_pipelines:
@@ -2795,6 +2838,7 @@ class Scheduler(threading.Thread):
             manager.pipeline.name].cleanup()
 
     def _process_management_event(self, event):
+        log = get_annotated_logger(self.log, event)
         try:
             if isinstance(event, PromoteEvent):
                 self._doPromoteEvent(event)
@@ -2810,9 +2854,9 @@ class Scheduler(threading.Thread):
                 # Same as above.
                 pass
             else:
-                self.log.error("Unable to handle event %s" % event)
+                log.error("Unable to handle event %s" % event)
         except Exception:
-            self.log.exception("Exception in management event:")
+            log.exception("Exception in management event:")
             event.exception(
                 "".join(traceback.format_exception(*sys.exc_info()))
             )
@@ -2820,12 +2864,13 @@ class Scheduler(threading.Thread):
     def process_pipeline_result_queue(self, tenant, tenant_lock, manager):
         for event in self.pipeline_result_events[tenant.name][
                 manager.pipeline.name]:
-            log = get_annotated_logger(
+            logEvent = get_annotated_logger(
                 self.log,
                 event=getattr(event, "zuul_event_id", None),
                 build=getattr(event, "build_uuid", None),
+                tenant=tenant.name
             )
-            log.debug("Processing result event %s", event)
+            logEvent.debug("Processing result event %s", event)
             try:
                 if not self.disable_pipelines:
                     self._process_result_event(event, manager)
@@ -2860,13 +2905,15 @@ class Scheduler(threading.Thread):
             # are now processed in the management event queue.
             self._doSemaphoreReleaseEvent(event, manager.tenant, set())
         else:
-            self.log.error("Unable to handle event %s", event)
+            log = get_annotated_logger(self.log, event)
+            log.error("Unable to handle event %s", event)
 
     def _getBuildSetFromPipeline(self, event, manager):
         log = get_annotated_logger(
             self.log,
             event=getattr(event, "zuul_event_id", None),
             build=getattr(event, "build_uuid", None),
+            tenant=getattr(event, "tenant_name", None)
         )
         if not manager:
             log.warning(
@@ -2885,7 +2932,7 @@ class Scheduler(threading.Thread):
 
     def _getBuildFromPipeline(self, event, manager):
         log = get_annotated_logger(
-            self.log, event.zuul_event_id, build=event.build_uuid)
+            self.log, event, build=event.build_uuid)
         build_set = self._getBuildSetFromPipeline(event, manager)
         if not build_set:
             return
@@ -2921,7 +2968,8 @@ class Scheduler(threading.Thread):
             build.start_time = event.data["start_time"]
 
             log = get_annotated_logger(
-                self.log, build.zuul_event_id, build=build.uuid)
+                self.log, build.zuul_event_id, build=build.uuid,
+                tenant=getattr(event, "tenant_name"))
             try:
                 item = build.build_set.item
                 job = build.job
@@ -2972,7 +3020,8 @@ class Scheduler(threading.Thread):
 
     def _doBuildCompletedEvent(self, event, manager):
         log = get_annotated_logger(
-            self.log, event.zuul_event_id, build=event.build_uuid)
+            self.log, event.zuul_event_id, build=event.build_uuid,
+            tenant=getattr(event, "tenant_name"))
         build = self._getBuildFromPipeline(event, manager)
         if not build:
             self.log.error(
