@@ -16,7 +16,9 @@
 import logging
 
 
-def get_annotated_logger(logger, event, build=None, request=None):
+def get_annotated_logger(logger, event,
+                         build=None, request=None,
+                         tenant=None):
     # Note(tobiash): When running with python 3.5 log adapters cannot be
     # stacked. We need to detect this case and modify the original one.
     if isinstance(logger, EventIdLogAdapter):
@@ -36,6 +38,9 @@ def get_annotated_logger(logger, event, build=None, request=None):
     if request is not None:
         extra['request'] = request
 
+    if tenant is not None:
+        extra['tenant'] = tenant
+
     if isinstance(logger, EventIdLogAdapter):
         return logger
 
@@ -49,6 +54,7 @@ class EventIdLogAdapter(logging.LoggerAdapter):
         event_id = extra.get('event_id')
         build = extra.get('build')
         request = extra.get('request')
+        tenant = extra.get('tenant')
         new_msg = []
         if event_id is not None:
             new_msg.append('[e: %s]' % event_id)
@@ -56,6 +62,8 @@ class EventIdLogAdapter(logging.LoggerAdapter):
             new_msg.append('[build: %s]' % build)
         if request is not None:
             new_msg.append('[req: %s]' % request)
+        if tenant is not None:
+            new_msg.append('[tenant: %s]' % tenant)
         new_msg.append(msg)
         msg = ' '.join(new_msg)
         return msg, kwargs
