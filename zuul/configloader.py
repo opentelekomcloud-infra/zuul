@@ -2378,21 +2378,27 @@ class TenantParser(object):
                     self.merger.cancel(job)
                     raise
             except Exception:
-                self.log.exception("Error processing cat job")
+                log = get_annotated_logger(self.log,
+                                           event=None,
+                                           tenant=tenant.name)
+                log.exception("Error processing cat job")
                 if not ignore_cat_exception:
                     # Cancel remaining jobs
                     for cancel_job in jobs[i:]:
-                        self.log.debug("Canceling cat job %s", cancel_job)
+                        log.debug("Canceling cat job %s", cancel_job)
                         try:
                             self.merger.cancel(cancel_job)
                         except Exception:
-                            self.log.exception(
+                            log.exception(
                                 "Unable to cancel job %s", cancel_job)
                     raise
 
     def _cacheTenantYAMLBranch(
             self, abide, tenant, parse_context, error_accumulator,
             min_ltimes, tpc, project, branch, jobs):
+        log = get_annotated_logger(self.log,
+                                    event=None,
+                                    tenant=tenant.name)
         # We're inside of a threadpool, which means we have no
         # existing accumulator stack.  Start a new one.
         source_context = model.SourceContext(
@@ -2418,8 +2424,10 @@ class TenantParser(object):
                     min_ltimes[project.canonical_name][branch] = coc_ltime
                     return
             except KeyError:
-                self.log.exception(
-                    "Min. ltime missing for project/branch")
+                log.exception(
+                    "Min. ltime missing for project/branch %s @%s",
+                    project.canonical_name,
+                    branch)
                 pb_ltime = -1
 
             files_cache = self.unparsed_config_cache.getFilesCache(
@@ -2427,7 +2435,7 @@ class TenantParser(object):
             with self.unparsed_config_cache.readLock(
                     project.canonical_name):
                 if files_cache.isValidFor(tpc, pb_ltime):
-                    self.log.debug(
+                    log.debug(
                         "Using files from cache for project "
                         "%s @%s: %s",
                         project.canonical_name, branch,
@@ -2453,7 +2461,7 @@ class TenantParser(object):
             files=(['zuul.yaml', '.zuul.yaml'] +
                    list(extra_config_files)),
             dirs=['zuul.d', '.zuul.d'] + list(extra_config_dirs))
-        self.log.debug("Submitting cat job %s for %s %s %s" % (
+        log.debug("Submitting cat job %s for %s %s %s" % (
             job, project.source.connection.connection_name,
             project.name, branch))
         job.extra_config_files = extra_config_files
@@ -2465,15 +2473,20 @@ class TenantParser(object):
     def _processCatJob(self, abide, tenant, parse_context, job, min_ltimes):
         # Called at the end of _cacheTenantYAML after all cat jobs
         # have been submitted
-        self.log.debug("Waiting for cat job %s" % (job,))
+        log = get_annotated_logger(self.log,
+                                    event=None,
+                                    tenant=tenant.name)
+        log.debug("Waiting for cat job %s" % (job,))
         res = job.wait(self.merger.git_timeout)
         if not res:
             # We timed out
-            raise TimeoutError(f"Cat job {job} timed out; consider setting "
-                               "merger.git_timeout in zuul.conf")
+            raise TimeoutError(
+                f"[tenant: {tenant.name}] Cat job {job} timed out; "
+                "consider setting merger.git_timeout in zuul.conf")
         if not job.updated:
-            raise Exception("Cat job %s failed" % (job,))
-        self.log.debug("Cat job %s got files %s" %
+            raise Exception(
+                "[tenant: %s] Cat job %s failed" % (tenant.name, job,))
+        log.debug("Cat job %s got files %s" %
                        (job, job.files.keys()))
 
         with parse_context.errorContext(source_context=job.source_context):
@@ -2490,7 +2503,7 @@ class TenantParser(object):
                 job.source_context.project_canonical_name):
             # Prevent files cache ltime from going backward
             if files_cache.ltime >= job.ltime:
-                self.log.info(
+                log.info(
                     "Discarding job %s result since the files cache was "
                     "updated in the meantime", job)
                 return
@@ -2509,6 +2522,9 @@ class TenantParser(object):
 
     def _updateConfigObjectCache(self, abide, tenant, source_context, files,
                                  parse_context, ltime, min_ltimes):
+        log = get_annotated_logger(self.log,
+                                    event=None,
+                                    tenant=tenant.name)
         # Read YAML from the file cache, parse it into objects, then
         # update the ConfigObjectCache.
         loaded = False
@@ -2540,7 +2556,7 @@ class TenantParser(object):
                 # Create a new source_context so we have unique filenames.
                 source_context = source_context.copy()
                 source_context.path = fn
-                self.log.info(
+                log.info(
                     "Loading configuration from %s" %
                     (source_context,))
                 # Make a new error accumulator; we may be in a threadpool
@@ -2820,6 +2836,9 @@ class TenantParser(object):
 
     def _addLayoutItems(self, layout, tenant, parsed_config,
                         parse_context, dynamic_layout=False):
+        log = get_annotated_logger(self.log,
+                                    event=None,
+                                    tenant=tenant.name)
         # TODO(jeblair): make sure everything needing
         # reference_exceptions has it; add tests if needed.
 
@@ -2861,7 +2880,7 @@ class TenantParser(object):
                 with parse_context.accumulator.catchErrors():
                     added = layout.addJob(job)
                     if not added:
-                        self.log.debug(
+                        log.debug(
                             "Skipped adding job %s which shadows "
                             "an existing job", job)
 
@@ -3079,8 +3098,11 @@ class TenantParser(object):
     def _parseLayout(self, tenant, data, parse_context, layout_uuid=None):
         # Don't call this method from dynamic reconfiguration because
         # it interacts with drivers and connections.
+        log = get_annotated_logger(self.log,
+                                    event=None,
+                                    tenant=tenant.name)
         layout = model.Layout(tenant, layout_uuid)
-        self.log.debug("Created layout id %s", layout.uuid)
+        log.debug("Created layout id %s", layout.uuid)
         for e in parse_context.error_list:
             layout.loading_errors.addError(e)
         parse_context.error_list.clear()
@@ -3204,7 +3226,11 @@ class ConfigLoader(object):
         # project's config files (incl. tenant specific extra config) at once.
         with ThreadPoolExecutor(max_workers=4) as executor:
             for tenant_name, unparsed_config in tenants_to_load.items():
+                log = get_annotated_logger(self.log,
+                                           event=None,
+                                           tenant=tenant_name)
                 tpc_registry = model.TenantTPCRegistry()
+                log.debug("Loading tenant project configurations")
                 config_tpcs, untrusted_tpcs = (
                     self.tenant_parser.loadTenantProjects(unparsed_config,
                                                           executor)
@@ -3306,19 +3332,22 @@ class ConfigLoader(object):
             tenants[tenant_name] = new_tenant
             abide.tenants = tenants
         if len(new_tenant.layout.loading_errors):
-            self.log.warning(
-                "%s errors detected during %s tenant configuration loading",
-                len(new_tenant.layout.loading_errors), tenant_name)
+            log = get_annotated_logger(self.log,
+                                       event=None,
+                                       tenant=tenant_name)
+            log.warning(
+                "%s errors detected during configuration loading",
+                len(new_tenant.layout.loading_errors))
             # Log accumulated errors
             for err in new_tenant.layout.loading_errors.errors[:10]:
-                self.log.warning(err.error)
+                log.warning(err.error)
         return new_tenant
 
     def _loadDynamicProjectData(self, abide, parsed_config, project,
                                 files, additional_project_branches,
                                 trusted, item, pcontext):
-        log = get_annotated_logger(self.log, item.event)
         tenant = item.manager.tenant
+        log = get_annotated_logger(self.log, item.event, tenant=tenant.name)
         tpc = tenant.project_configs[project.canonical_name]
         if trusted:
             branches = [tpc.load_branch if tpc.load_branch else 'master']
@@ -3404,10 +3433,13 @@ class ConfigLoader(object):
                                     source_context)
                                 continue
                             loaded = conf_root
-
+                        # At this point the layout is still being created,
+                        # but the uuid is known already at this point.
+                        # This will help correlating logs through that uuid.
                         log.info(
-                            "Loading configuration dynamically from %s" %
-                            (source_context,))
+                            "Loading configuration dynamically from %s "
+                             "for layout id %s" %
+                            (source_context, item.layout_uuid))
                         branch_config = self.tenant_parser.loadProjectYAML(
                             data, source_context, pcontext)
 
@@ -3422,7 +3454,7 @@ class ConfigLoader(object):
         abide = self.scheduler.abide
         tenant = item.manager.tenant
         event_id = item.event
-        log = get_annotated_logger(self.log, event_id)
+        log = get_annotated_logger(self.log, event_id, tenant=tenant.name)
         pcontext = ParseContext(self.connections, self.scheduler,
                                 self.system, ansible_manager)
         config = model.ParsedConfig()
