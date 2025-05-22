@@ -31,6 +31,8 @@ def get_annotated_logger(logger, event,
             extra['event_id'] = event.zuul_event_id
         else:
             extra['event_id'] = event
+        if hasattr(event, 'tenant_name'):
+            extra['tenant'] = event.tenant_name
 
     if build is not None:
         extra['build'] = build
