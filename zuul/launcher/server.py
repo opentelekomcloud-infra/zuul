@@ -1911,21 +1911,23 @@ class Launcher:
 
     def _updateTenantProviders(self, tenant_name):
         # Reload the tenant if the layout changed.
+        log = get_annotated_logger(
+            self.log, event=None, tenant=tenant_name)
         updated = False
         if (self.local_layout_state.get(tenant_name)
                 == self.tenant_layout_state.get(tenant_name)):
             return updated
-        self.log.debug("Updating tenant %s", tenant_name)
-        with tenant_read_lock(self.zk_client, tenant_name, self.log) as tlock:
+        log.debug("Updating tenant")
+        with tenant_read_lock(self.zk_client, tenant_name, log) as tlock:
             layout_state = self.tenant_layout_state.get(tenant_name)
 
             if layout_state:
-                with self.createZKContext(tlock, self.log) as context:
+                with self.createZKContext(tlock, log) as context:
                     providers = list(self.layout_providers_store.get(
                         context, tenant_name))
                     self.tenant_providers[tenant_name] = providers
                     for provider in providers:
-                        self.log.debug("Loaded provider %s", provider.name)
+                        log.debug("Loaded provider %s", provider.name)
                 self.local_layout_state[tenant_name] = layout_state
                 updated = True
             else:
@@ -1935,13 +1937,15 @@ class Launcher:
 
     def addImageBuildEvent(self, tenant_name, project_canonical_name,
                            branch, image_names):
+        log = get_annotated_logger(
+            self.log, event=None, tenant=tenant_name)
         project_hostname, project_name = \
             project_canonical_name.split('/', 1)
         driver = self.connections.drivers['zuul']
         event = driver.getImageBuildEvent(
             list(image_names), project_hostname, project_name, branch)
-        self.log.info("Submitting image build event for %s %s",
-                      tenant_name, image_names)
+        log.info("Submitting image build event for %s",
+                 image_names)
         self.trigger_events[tenant_name].put(event.trigger_name, event)
 
     def addImageValidateEvent(self, image_upload):
@@ -1953,8 +1957,10 @@ class Launcher:
         event = driver.getImageValidateEvent(
             [iba.name], project_hostname, project_name, iba.project_branch,
             image_upload.uuid)
-        self.log.info("Submitting image validate event for %s %s",
-                      tenant_name, iba.name)
+        log = get_annotated_logger(
+            self.log, event=None, tenant=tenant_name)
+        log.info("Submitting image validate event for %s",
+                 iba.name)
         self.trigger_events[tenant_name].put(event.trigger_name, event)
 
     def addImageDeleteEvent(self, iba):
@@ -1965,8 +1971,10 @@ class Launcher:
         event = driver.getImageDeleteEvent(
             [iba.name], project_hostname, project_name, iba.project_branch,
             iba.uuid)
-        self.log.info("Submitting image delete event for %s %s",
-                      tenant_name, iba.name)
+        log = get_annotated_logger(
+            self.log, event=None, tenant=tenant_name)
+        log.info("Submitting image delete event for %s",
+                 iba.name)
         self.trigger_events[tenant_name].put(event.trigger_name, event)
 
     def checkMissingImages(self):
