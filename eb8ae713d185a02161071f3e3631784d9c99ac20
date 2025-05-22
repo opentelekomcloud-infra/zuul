@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "54852831_9f5ca945",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1368,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-05-22T08:30:31Z",
+      "side": 1,
+      "message": "nit: I think we could pass the tenant to the `TenantEventState` and encapsulate the path creation as we do for other ZKObjects.",
+      "range": {
+        "startLine": 1367,
+        "startChar": 12,
+        "endLine": 1368,
+        "endChar": 46
+      },
+      "revId": "eb8ae713d185a02161071f3e3631784d9c99ac20",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
