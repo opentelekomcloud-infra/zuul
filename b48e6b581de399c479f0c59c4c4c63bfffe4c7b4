@@ -16,6 +16,24 @@
       "message": "This looks like what the annotated logger is implementing, could the tenant be added to the lib.logutil extras?",
       "revId": "b48e6b581de399c479f0c59c4c4c63bfffe4c7b4",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3419bae6_2885895a",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2384,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-05-22T13:50:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "12e63fc8_84112b20",
+      "revId": "b48e6b581de399c479f0c59c4c4c63bfffe4c7b4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
