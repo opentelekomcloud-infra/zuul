@@ -6322,6 +6322,18 @@ class EventInfo:
             # They want to build all images, and if we passed the test
             # above, we are building a subset.
             return False
+
+        if self.image_upload_uuid:
+            # This is an image-validate event so we need to compare
+            # the image upload UUID.
+            return self.image_upload_uuid == other.image_upload_uuid
+        elif self.image_build_uuid:
+            # This is an image-delete event so we need to compare
+            # the image build UUID.
+            return self.image_build_uuid == other.image_build_uuid
+
+        # This is an image-build event so check if we include all
+        # requested images.
         return set(image_names) >= set(other_image_names)
 
     def toDict(self):

@@ -443,14 +443,18 @@ class TestLauncher(LauncherBaseTestCase):
         ])
 
         nodes = self.launcher.api.getProviderNodes()
-        self.assertEqual(len(nodes), 1)
-        self.assertEqual(nodes[0].create_state['image_external_id'],
-                         mock_image_upload_run.return_value)
-        self.executor_server.release('validate-debian-local-image')
+        self.assertEqual(len(nodes), 2)
+        for node in nodes:
+            self.assertEqual(node.create_state['image_external_id'],
+                             mock_image_upload_run.return_value)
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
         self.waitUntilSettled()
 
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='validate-debian-local-image', result='SUCCESS'),
             dict(name='validate-debian-local-image', result='SUCCESS'),
         ])
 
@@ -467,17 +471,21 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='validate-debian-local-image', result='SUCCESS'),
+            dict(name='validate-debian-local-image', result='SUCCESS'),
         ])
 
         name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
-        artifacts = self._waitForArtifacts(name, 1)
-        self.assertEqual('raw', artifacts[0].format)
-        self.assertFalse(artifacts[0].validated)
+        artifact = self._waitForArtifacts(name, 1)[0]
+        self.assertEqual('raw', artifact.format)
+        self.assertFalse(artifact.validated)
         uploads = self.launcher.image_upload_registry.getUploadsForImage(
             name)
-        self.assertEqual(1, len(uploads))
-        self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
-        self.assertTrue(uploads[0].validated)
+        self.assertEqual(2, len(uploads))
+        for upload in uploads:
+            self.assertEqual(artifact.uuid, upload.artifact_uuid)
+            self.assertEqual(mock_image_upload_run.return_value,
+                             upload.external_id)
+            self.assertTrue(upload.validated)
 
     @simple_layout('layouts/nodepool-image-validate.yaml',
                    enable_nodepool=True)
@@ -500,30 +508,35 @@ class TestLauncher(LauncherBaseTestCase):
         ])
 
         nodes = self.launcher.api.getProviderNodes()
-        self.assertEqual(len(nodes), 1)
-        self.assertEqual(nodes[0].create_state['image_external_id'],
-                         mock_image_upload_run.return_value)
+        self.assertEqual(len(nodes), 2)
+        for node in nodes:
+            self.assertEqual(node.create_state['image_external_id'],
+                             mock_image_upload_run.return_value)
 
-        self.assertEqual(len(self.builds), 1)
-        self.builds[0].should_fail = True
+        self.assertEqual(len(self.builds), 2)
+        for build in self.builds:
+            build.should_fail = True
+
         self.executor_server.hold_jobs_in_build = False
-        self.executor_server.release('validate-debian-local-image')
+        self.executor_server.release()
         self.waitUntilSettled()
 
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='validate-debian-local-image', result='FAILURE'),
+            dict(name='validate-debian-local-image', result='FAILURE'),
         ])
 
         name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
-        artifacts = self._waitForArtifacts(name, 1)
-        self.assertEqual('raw', artifacts[0].format)
-        self.assertFalse(artifacts[0].validated)
+        artifact = self._waitForArtifacts(name, 1)[0]
+        self.assertEqual('raw', artifact.format)
+        self.assertFalse(artifact.validated)
         uploads = self.launcher.image_upload_registry.getUploadsForImage(
             name)
-        self.assertEqual(1, len(uploads))
-        self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
-        self.assertFalse(uploads[0].validated)
+        self.assertEqual(2, len(uploads))
+        for upload in uploads:
+            self.assertEqual(artifact.uuid, upload.artifact_uuid)
+            self.assertFalse(upload.validated)
 
     @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
