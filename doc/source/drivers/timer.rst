@@ -43,7 +43,7 @@ Zuul implements the timer using `apscheduler`_, Please check the
       trigger to the next).
 
    .. warning::
-       Be aware the day-of-week value differs from from cron.
+       Be aware the day-of-week value differs from cron.
        The first weekday is Monday (0), and the last is Sunday (6).
 
 

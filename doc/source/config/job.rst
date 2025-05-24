@@ -305,7 +305,7 @@ Here is an example of two job definitions:
       default value for :attr:`job.semaphores.resources-first`.
 
       Also the name of a semaphore can be any string (without being
-      previosly defined via `semaphore` directive). In this case
+      previously defined via `semaphore` directive). In this case
       an implicit semaphore is created with capacity max=1.
 
       If multiple semaphores are requested, the job will not start
@@ -423,7 +423,7 @@ Here is an example of two job definitions:
       appear here must be defined in the same project as this job
       definition.
 
-      Each item in the list may may be supplied either as a string,
+      Each item in the list may be supplied either as a string,
       in which case it references the name of a :ref:`secret` definition,
       or as a dict. If an element in this list is given as a dict, it
       may have the following fields:
@@ -1323,7 +1323,7 @@ Here is an example of two job definitions:
       and other items which run the same job will use the results of
       that build.
 
-      This setting determins whether Zuul will consider deduplication.
+      This setting determines whether Zuul will consider deduplication.
       If it is set to ``false``, Zuul will never attempt to
       deduplicate the job.  If it is set to ``auto`` (the default),
       then Zuul will compare the job with other jobs of other queue
