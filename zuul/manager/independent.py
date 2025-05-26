@@ -42,7 +42,7 @@ class IndependentPipelineManager(PipelineManager):
 
     def enqueueChangesAhead(self, changes, event, quiet, ignore_requirements,
                             change_queue, history=None, dependency_graph=None,
-                            warnings=None):
+                            warnings=None, debug=False):
         log = get_annotated_logger(self.log, event)
 
         history = history if history is not None else []
@@ -55,7 +55,8 @@ class IndependentPipelineManager(PipelineManager):
 
         abort, needed_changes = self.getMissingNeededChanges(
             changes, change_queue, event,
-            dependency_graph=dependency_graph)
+            dependency_graph=dependency_graph,
+            warnings=warnings, debug=debug)
         if abort:
             return False
 
@@ -82,7 +83,8 @@ class IndependentPipelineManager(PipelineManager):
         return True
 
     def getMissingNeededChanges(self, changes, change_queue, event,
-                                dependency_graph=None, item=None):
+                                dependency_graph=None, item=None,
+                                warnings=None, debug=False):
         log = get_annotated_logger(self.log, event)
 
         if self.pipeline.ignore_dependencies:

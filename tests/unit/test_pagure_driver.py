@@ -695,6 +695,31 @@ class TestPagureDriver(ZuulTestCase):
         project = source.getProject('org/project')
         self.assertIsNotNone(source.getProjectBranchSha(project, 'master'))
 
+    @simple_layout('layouts/pagure-pipeline-trigger-debug.yaml',
+                   driver='pagure')
+    def test_pagure_pipeline_trigger_debug(self):
+        # Test that we get debug info for a pipeline debug trigger
+        A = self.fake_pagure.openFakePullRequest("org/project", "master", "A")
+        self.fake_pagure.emitEvent(A.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        self.assertFalse(A.is_merged)
+        self.assertEqual(1, len(A.comments))
+        self.assertIn('Debug information:',
+                      A.comments[0]['comment'])
+
+        # Test the canMerge code path
+        B = self.fake_pagure.openFakePullRequest("org/project", "master", "B")
+        B.draft = True
+        self.fake_pagure.emitEvent(
+            B.getPullRequestTagAddedEvent(["gateit"]))
+        self.waitUntilSettled()
+
+        self.assertFalse(B.is_merged)
+        self.assertEqual(2, len(B.comments))
+        self.assertIn("can not be merged",
+                      B.comments[1]['comment'])
+
 
 class TestPagureToGerritCRD(ZuulTestCase):
     config_file = 'zuul-crd-pagure.conf'

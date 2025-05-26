@@ -35,7 +35,9 @@ class TimerTrigger(BaseTrigger):
                 types=types,
                 timespecs=to_list(trigger['time']),
                 dereference=trigger.get('dereference', False),
+                debug=trigger.get('debug'),
             )
+
             efilters.append(f)
 
         return efilters
@@ -45,5 +47,6 @@ def getSchema():
     timer_trigger = {
         v.Required('time'): str,
         'dereference': bool,
+        'debug': bool,
     }
     return timer_trigger

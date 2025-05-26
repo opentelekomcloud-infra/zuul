@@ -73,6 +73,25 @@ Zuul implements the timer using `apscheduler`_, Please check the
        Be aware the day-of-week value differs from cron.
        The first weekday is Monday (0), and the last is Sunday (6).
 
+   .. attr:: debug
+      :default: false
+
+      When set to `true`, this will cause debug messages to be
+      included when the queue item is reported.  These debug messages
+      may be used to help diagnose why certain jobs did or did not
+      run, and in many cases, why the item was not ultimately enqueued
+      into the pipeline.
+
+      Setting this value also effectively sets
+      :attr:`project.<pipeline>.debug` for affected queue items.
+
+      This only applies to items that arrive at a pipeline via this
+      particular trigger.  Since the output is very verbose and
+      typically not needed or desired, this allows for a configuration
+      where typical pipeline triggers omit the debug output, but
+      triggers that match certain specific criteria may be used to
+      request debug information.
+
 
 .. _apscheduler: https://apscheduler.readthedocs.io/
 .. _apscheduler documentation: https://apscheduler.readthedocs.io/en/3.x/modules/triggers/cron.html#module-apscheduler.triggers.cron
