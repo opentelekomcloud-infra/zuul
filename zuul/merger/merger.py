@@ -1000,7 +1000,24 @@ class Repo(object):
         # return the line number in that commit.
         cur_commit = None
         with self.createRepoObject(zuul_event_id) as repo:
-            out = repo.git.log(L='%s,%s:%s' % (lineno, lineno, filename))
+            # return the log starting with the commit before the
+            # specified commit, so that we can find the line number
+            # in the specified commit.
+            #
+            # By specifying the commit as the end of the range, we reduce the
+            # number of commits we have to search through making the log call
+            # faster and ensuring that the commit itself is included in the
+            # output. This significantly speeds up the call in repositories
+            # with a large number of commits.
+            #
+            # In case the entire log has 1 single commit, it will raise
+            # a git.GitCommandError, so we catch that and just
+            # search the entire log (original behavior).
+            try:
+                out = repo.git.log(f"{commit}~1..{commit}",
+                                   L='%s,%s:%s' % (lineno, lineno, filename))
+            except git.GitCommandError:
+                out = repo.git.log(L='%s,%s:%s' % (lineno, lineno, filename))
         for l in out.split('\n'):
             if cur_commit is None:
                 m = self.commit_re.match(l)
