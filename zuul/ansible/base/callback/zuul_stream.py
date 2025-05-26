@@ -487,6 +487,7 @@ class CallbackModule(default.CallbackModule):
                 if (ip in ('localhost', '127.0.0.1')):
                     # Don't try to stream from localhost
                     continue
+                # Note: this checks hostvars, but not task vars.
                 if boolean(play_vars[host].get(
                         'zuul_console_disabled', False)):
                     # The user has told us not to even try
@@ -597,6 +598,7 @@ class CallbackModule(default.CallbackModule):
             # We don't have streaming for localhost, raw, or disabled
             # consoles, so get standard out after the fact.
             play_vars = self._play._variable_manager._hostvars
+            # Note: this checks hostvars, but not task vars.
             is_disabled = boolean(play_vars[result._host.get_name()].get(
                 'zuul_console_disabled', False))
             if (is_localhost or
