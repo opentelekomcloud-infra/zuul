@@ -29,10 +29,13 @@ class TimerTrigger(BaseTrigger):
         efilters = []
         for trigger in to_list(trigger_conf):
             types = [make_regex('timer')]
-            f = TimerEventFilter(connection_name=connection_name,
-                                 trigger=self,
-                                 types=types,
-                                 timespecs=to_list(trigger['time']))
+            f = TimerEventFilter(
+                connection_name=connection_name,
+                trigger=self,
+                types=types,
+                timespecs=to_list(trigger['time']),
+                debug=trigger.get('debug'),
+            )
 
             efilters.append(f)
 
@@ -40,5 +43,8 @@ class TimerTrigger(BaseTrigger):
 
 
 def getSchema():
-    timer_trigger = {v.Required('time'): str}
+    timer_trigger = {
+        v.Required('time'): str,
+        'debug': bool,
+    }
     return timer_trigger

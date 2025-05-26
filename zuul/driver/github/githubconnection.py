@@ -52,7 +52,7 @@ from zuul.lib import tracing
 from zuul.web.handler import BaseWebController
 from zuul.lib.logutil import get_annotated_logger
 from zuul import model
-from zuul.model import Ref, Branch, Tag, Project
+from zuul.model import Ref, Branch, Tag, Project, FalseWithReason
 from zuul.exceptions import MergeFailure
 from zuul.driver.github.githubmodel import PullRequest, GithubTriggerEvent
 from zuul.model import DequeueEvent
@@ -1942,31 +1942,32 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         # If the PR is a draft it cannot be merged.
         if change.draft:
             log.debug('Change %s can not merge because it is a draft', change)
-            return False
+            return FalseWithReason('draft state')
 
         if not change.mergeable:
             log.debug('Change %s can not merge because Github detected a '
                       'merge conflict', change)
-            return False
+            return FalseWithReason('Github detected a merge conflict')
 
         missing_status_checks = self._getMissingStatusChecks(
             change, allow_needs)
         if missing_status_checks:
             log.debug('Change %s can not merge because required status checks '
                       'are missing: %s', change, missing_status_checks)
-            return False
+            return FalseWithReason(
+                f'required status checks are missing {missing_status_checks}')
 
         if change.review_decision and change.review_decision != 'APPROVED':
             # If we got a review decision it must be approved
             log.debug('Change %s can not merge because it is not approved',
                       change)
-            return False
+            return FalseWithReason('approval state')
 
         if change.unresolved_conversations:
             log.debug('Change %s can not merge because '
                       'it has unresolved conversations',
                       change)
-            return False
+            return FalseWithReason('unresolved conversations')
 
         return True
 

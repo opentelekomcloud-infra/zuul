@@ -61,7 +61,7 @@ from zuul.driver.gerrit.gerriteventgcloudpubsub import (
 from zuul.driver.git.gitwatcher import GitWatcher
 from zuul.lib import tracing
 from zuul.lib.logutil import get_annotated_logger
-from zuul.model import Ref, Tag, Branch, Project
+from zuul.model import Ref, Tag, Branch, Project, FalseWithReason
 from zuul.zk.branch_cache import BranchCache, BranchFlag, BranchInfo
 from zuul.zk.change_cache import (
     AbstractChangeCache,
@@ -1332,12 +1332,13 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
             # means it's merged.
             return True
         if change.wip:
-            return False
+            self.log.debug("Unable to merge due to WIP")
+            return FalseWithReason("work in progress flag")
         missing_labels = change.missing_labels - set(allow_needs)
         if missing_labels:
             self.log.debug("Unable to merge due to "
                            "missing labels: %s", missing_labels)
-            return False
+            return FalseWithReason(f"missing labels: {missing_labels}")
         for sr in change.submit_requirements:
             if sr.get('status') == 'UNSATISFIED':
                 # Otherwise, we don't care and should skip.
@@ -1360,7 +1361,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                 if not expr_contains_allow:
                     self.log.debug("Unable to merge due to "
                                    "submit requirement: %s", sr)
-                    return False
+                    return FalseWithReason(f"submit requirement: {sr}")
         return True
 
     def getProjectOpenChanges(self, project: Project) -> List[GerritChange]:

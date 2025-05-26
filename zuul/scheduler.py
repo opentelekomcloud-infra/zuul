@@ -2693,8 +2693,8 @@ class Scheduler(threading.Thread):
         if event.isPatchsetCreated() or event.isMessageChanged():
             manager.refreshDeps(change, event)
 
-        if manager.eventMatches(event, change):
-            manager.addChange(change, event)
+        if match_info := manager.eventMatches(event, change):
+            manager.addChange(change, event, debug=match_info.debug)
 
     def process_tenant_management_queue(self, tenant):
         try:

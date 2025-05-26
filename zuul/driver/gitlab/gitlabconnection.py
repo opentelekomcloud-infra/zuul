@@ -39,7 +39,7 @@ from zuul.lib.http import ZuulHTTPAdapter
 from zuul.lib.logutil import get_annotated_logger
 from zuul.lib.config import any_to_bool
 from zuul.exceptions import MergeFailure
-from zuul.model import Branch, Ref, Tag
+from zuul.model import Branch, Ref, Tag, FalseWithReason
 from zuul.driver.gitlab.gitlabmodel import GitlabTriggerEvent, MergeRequest
 from zuul.zk.branch_cache import BranchCache, BranchFlag, BranchInfo
 from zuul.zk.change_cache import (
@@ -808,12 +808,11 @@ class GitlabConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
 
     def canMerge(self, change, allow_needs, event=None):
         log = get_annotated_logger(self.log, event)
-        can_merge = False
-        if (
-            change.merge_status == "can_be_merged" and
-            change.blocking_discussions_resolved
-        ):
-            can_merge = True
+        can_merge = True
+        if not change.blocking_discussions_resolved:
+            can_merge = FalseWithReason('blocking discussions not resolved')
+        elif change.merge_status != "can_be_merged":
+            can_merge = FalseWithReason('GitLab mergeability')
 
         log.info('Check MR %s#%s mergeability can_merge: %s'
                  ' (merge status: %s, blocking discussions resolved: %s)',
