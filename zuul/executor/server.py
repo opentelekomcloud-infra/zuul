@@ -35,7 +35,7 @@ import traceback
 from concurrent.futures.process import ProcessPoolExecutor, BrokenProcessPool
 from functools import partial
 
-from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NoNodeError, ConnectionLoss
 
 import git
 from urllib.parse import urlsplit
@@ -4048,10 +4048,24 @@ class ExecutorServer(BaseMergeServer):
         # This pauses the executor end shuts it down when there is no running
         # build left anymore
         self.log.info('Stopping graceful')
-        self.pause()
-        while self.job_workers:
-            self.log.debug('Waiting for %s jobs to end', len(self.job_workers))
-            time.sleep(30)
+        paused = False
+        for retry in range(120):
+            try:
+                self.pause()
+                paused = True
+                break
+            except ConnectionLoss:
+                self.log.warning(
+                    "ZooKeeper connection lost, waiting to update the status")
+                time.sleep(1)
+        if paused:
+            while self.job_workers:
+                self.log.debug(
+                    'Waiting for %s jobs to end', len(self.job_workers))
+                time.sleep(30)
+        else:
+            self.log.error(
+                "Couldn't pause because the ZooKeeper connection is LOST.")
         try:
             self.stop()
         except Exception:

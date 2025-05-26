@@ -46,7 +46,11 @@ class Executor(zuul.cmd.ZuulDaemonApp):
         else:
             graceful = 'graceful'
         if graceful.lower() == 'graceful':
-            self.executor.graceful()
+            try:
+                self.executor.graceful()
+            except Exception as e:
+                self.log.exception('Exception with graceful stop: %s', e)
+                self.executor.stop()
         elif graceful.lower() == 'stop':
             self.executor.stop()
         else:
