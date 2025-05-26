@@ -395,9 +395,9 @@ class GerritEventFilter(EventFilter):
                  comments=[], emails=[], usernames=[], required_approvals=[],
                  reject_approvals=[], added=[], removed=[], uuid=None,
                  scheme=None, ignore_deletes=True, require=None, reject=None,
-                 parse_context=None):
+                 debug=None, parse_context=None):
 
-        EventFilter.__init__(self, connection_name, trigger)
+        EventFilter.__init__(self, connection_name, trigger, debug)
 
         # TODO: Backwards compat, remove after 9.x:
         if required_approvals and require is None:

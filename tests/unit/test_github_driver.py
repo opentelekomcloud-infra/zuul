@@ -1625,6 +1625,30 @@ class TestGithubDriver(ZuulTestCase):
         self.assertIsNotNone(other_change.cache_stat)
         self.assertIs(change, other_change)
 
+    @simple_layout('layouts/github-pipeline-trigger-debug.yaml',
+                   driver='github')
+    def test_github_pipeline_trigger_debug(self):
+        # Test that we get debug info for a pipeline debug trigger
+        A = self.fake_github.openFakePullRequest("org/project", "master", "A")
+        self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        self.assertFalse(A.is_merged)
+        self.assertEqual(1, len(A.comments))
+        self.assertIn('Debug information:',
+                      A.comments[0])
+
+        # Test that we get a reason from canMerge.
+        B = self.fake_github.openFakePullRequest("org/project", "master", "B")
+        B.draft = True
+        self.fake_github.emitEvent(B.getCommentAddedEvent('merge me'))
+        self.waitUntilSettled()
+
+        self.assertFalse(B.is_merged)
+        self.assertEqual(1, len(B.comments))
+        self.assertIn("can not be merged due to: draft state",
+                      B.comments[0])
+
 
 class TestMultiGithubDriver(ZuulTestCase):
     config_file = 'zuul-multi-github.conf'

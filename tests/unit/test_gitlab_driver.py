@@ -1023,6 +1023,31 @@ class TestGitlabDriver(ZuulTestCase):
         change = conn.getChange(change_key)
         self.assertEqual(change.commit_id, A.sha)
 
+    @simple_layout('layouts/gitlab-pipeline-trigger-debug.yaml',
+                   driver='gitlab')
+    def test_gitlab_pipeline_trigger_debug(self):
+        # Test that we get debug info for a pipeline debug trigger
+        A = self.fake_gitlab.openFakeMergeRequest("org/project", "master", "A")
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        self.assertFalse(A.is_merged)
+        self.assertEqual(1, len(A.notes))
+        self.assertIn('Debug information:',
+                      A.notes[0]['body'])
+
+        # Test that we get a reason from canMerge.
+        B = self.fake_gitlab.openFakeMergeRequest("org/project", "master", "B")
+        B.blocking_discussions_resolved = False
+        self.fake_gitlab.emitEvent(B.getMergeRequestLabeledEvent(
+            add_labels=('gateit', )))
+        self.waitUntilSettled()
+
+        self.assertFalse(B.is_merged)
+        self.assertEqual(1, len(B.notes))
+        self.assertIn("can not be merged due to: blocking discussions",
+                      B.notes[0]['body'])
+
 
 class TestGitlabUnprotectedBranches(ZuulTestCase):
     config_file = 'zuul-gitlab-driver.conf'

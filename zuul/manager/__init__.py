@@ -66,6 +66,9 @@ class StaticChangeQueueContextManager(object):
         pass
 
 
+EventMatchInfo = collections.namedtuple('EventMatchInfo', ['debug'])
+
+
 class PipelineManager(metaclass=ABCMeta):
     """Abstract Base Class for enqueing and processing Changes in a Pipeline"""
 
@@ -199,12 +202,16 @@ class PipelineManager(metaclass=ABCMeta):
         return allow_needs
 
     def eventMatches(self, event, change):
+        # Return False if the event does not match, return a
+        # EventMatchInfo (which will eval to True) if it does.  The
+        # EventMatchInfo further indicates whether pipeline debugging
+        # should be enabled.
         log = get_annotated_logger(self.log, event)
         if event.forced_pipeline:
             if event.forced_pipeline == self.pipeline.name:
                 log.debug("Event %s for change %s was directly assigned "
                           "to pipeline %s" % (event, change, self))
-                return True
+                return EventMatchInfo(debug=False)
             else:
                 return False
         for ef in self.pipeline.event_filters:
@@ -212,7 +219,7 @@ class PipelineManager(metaclass=ABCMeta):
             if match_result:
                 log.debug("Event %s for change %s matched %s "
                           "in pipeline %s" % (event, change, ef, self))
-                return True
+                return EventMatchInfo(debug=ef.debug)
             else:
                 log.debug("Event %s for change %s does not match %s "
                           "in pipeline %s because %s" % (
@@ -436,12 +443,13 @@ class PipelineManager(metaclass=ABCMeta):
                     report_errors.append(str(e))
         return report_errors
 
-    def areChangesReadyToBeEnqueued(self, changes, event):
+    def areChangesReadyToBeEnqueued(self, changes, event,
+                                    warnings=None, debug=False):
         return True
 
     def enqueueChangesAhead(self, change, event, quiet, ignore_requirements,
                             change_queue, history=None, dependency_graph=None,
-                            warnings=None):
+                            warnings=None, debug=False):
         return True
 
     def enqueueChangesBehind(self, change, event, quiet, ignore_requirements,
@@ -660,7 +668,8 @@ class PipelineManager(metaclass=ABCMeta):
     def addChange(self, change, event, quiet=False, enqueue_time=None,
                   ignore_requirements=False, live=True,
                   change_queue=None, history=None, dependency_graph=None,
-                  skip_presence_check=False, warnings=None):
+                  skip_presence_check=False, warnings=None,
+                  debug=False):
         log = get_annotated_logger(self.log, event)
         log.debug("Considering adding change %s" % change)
 
@@ -720,14 +729,28 @@ class PipelineManager(metaclass=ABCMeta):
                             continue
                         match_result = f.matches(cycle_change)
                         if not match_result:
-                            log.debug("Change %s does not match pipeline "
-                                      "requirement %s because %s",
-                                      cycle_change, f, str(match_result))
+                            msg = (
+                                f"Change {cycle_change} "
+                                "does not match pipeline "
+                                f"requirement {f} because {match_result}"
+                            )
+                            log.debug(msg)
+                            if debug:
+                                warnings.append(msg)
+                                if not history:
+                                    self._reportNonEnqueuedItem(
+                                        change_queue, change, event, warnings)
                             return False
 
-            if not self.areChangesReadyToBeEnqueued(cycle, event):
+            if not self.areChangesReadyToBeEnqueued(
+                    cycle, event,
+                    warnings=warnings, debug=debug):
                 log.debug("Cycle %s is not ready to be enqueued, ignoring" %
                           cycle)
+                if warnings:
+                    if not history:
+                        self._reportNonEnqueuedItem(change_queue, change,
+                                                    event, warnings)
                 return False
 
             if len(cycle) > 1:
@@ -764,7 +787,7 @@ class PipelineManager(metaclass=ABCMeta):
                     ignore_requirements,
                     change_queue, history=history,
                     dependency_graph=dependency_graph,
-                    warnings=warnings):
+                    warnings=warnings, debug=debug):
                 log.debug("Failed to enqueue changes ahead of %s" % change)
                 if warnings:
                     self._reportNonEnqueuedItem(change_queue, change,
@@ -793,7 +816,8 @@ class PipelineManager(metaclass=ABCMeta):
 
             item = change_queue.enqueueChanges(cycle, event,
                                                span_info=span_info,
-                                               enqueue_time=enqueue_time)
+                                               enqueue_time=enqueue_time,
+                                               debug=debug)
 
             with item.activeContext(self.current_context):
                 if enqueue_time:

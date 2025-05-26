@@ -1225,7 +1225,7 @@ class ChangeQueue(zkobject.ZKObject):
         return (project_cname, branch) in self.project_branches
 
     def enqueueChanges(self, changes, event, span_info=None,
-                       enqueue_time=None):
+                       enqueue_time=None, debug=False):
         if enqueue_time is None:
             enqueue_time = time.time()
 
@@ -1257,7 +1257,8 @@ class ChangeQueue(zkobject.ZKObject):
                              changes=changes,
                              event=event_info,
                              span_info=span_info,
-                             enqueue_time=enqueue_time)
+                             enqueue_time=enqueue_time,
+                             debug=debug)
         self.enqueueItem(item)
         return item
 
@@ -6383,7 +6384,7 @@ class QueueItem(zkobject.ZKObject):
             layout_uuid=None,
             _cached_sql_results={},
             event=None,  # Info about the event that lead to this queue item
-
+            debug=False,
             # Additional container for connection specifig information to be
             # used by reporters throughout the lifecycle
             dynamic_state=defaultdict(dict),
@@ -6464,6 +6465,7 @@ class QueueItem(zkobject.ZKObject):
             },
             "dynamic_state": self.dynamic_state,
             "first_job_start_time": self.first_job_start_time,
+            "debug": self.debug,
         }
         return json.dumps(data, sort_keys=True).encode("utf8")
 
@@ -8675,10 +8677,11 @@ class BaseFilter(ConfigObject):
 
 class EventFilter(BaseFilter):
     """Allows a Pipeline to only respond to certain events."""
-    def __init__(self, connection_name, trigger):
+    def __init__(self, connection_name, trigger, debug=None):
         super(EventFilter, self).__init__()
         self.connection_name = connection_name
         self.trigger = trigger
+        self.debug = bool(debug)
 
     def matches(self, event, ref):
         # TODO(jeblair): consider removing ref argument
@@ -10135,7 +10138,7 @@ class Layout(object):
         """Find or create actual matching jobs for this item's change and
         store the resulting job tree."""
 
-        enable_debug = False
+        enable_debug = item.debug
         fail_fast = item.current_build_set.fail_fast
         debug_messages = []
         if old:
