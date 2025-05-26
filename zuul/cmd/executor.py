@@ -18,6 +18,7 @@ import logging
 import os
 import sys
 import signal
+import time
 
 import zuul.cmd
 import zuul.executor.server
@@ -45,14 +46,19 @@ class Executor(zuul.cmd.ZuulDaemonApp):
             graceful = self.config.get('executor', 'sigterm_method')
         else:
             graceful = 'graceful'
-        if graceful.lower() == 'graceful':
-            self.executor.graceful()
-        elif graceful.lower() == 'stop':
-            self.executor.stop()
-        else:
-            self.log.error("Unknown value for executor.sigterm_method:"
-                           f"'{graceful}'. Expected 'graceful' or 'stop'")
-            self.executor.graceful()
+        try:
+            if graceful.lower() == 'graceful':
+                self.executor.graceful()
+            elif graceful.lower() == 'stop':
+                self.executor.stop()
+            else:
+                self.log.error("Unknown value for executor.sigterm_method:"
+                               f"'{graceful}'. Expected 'graceful' or 'stop'")
+                self.executor.graceful()
+        except Exception as e:
+            self.log.exception('Exception in exec handler, retrying: %s', e)
+            time.sleep(1)
+            self.exit_handler(signum, frame)
 
     def start_log_streamer(self):
         pipe_read, pipe_write = os.pipe()
