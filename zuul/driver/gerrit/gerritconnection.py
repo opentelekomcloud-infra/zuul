@@ -329,10 +329,10 @@ class QueryHistory:
 
 class PeekQueue:
     # If we see events whose timestamp is this long since an event
-    # we're waiting for, give up the wait.  This is a 10 second propogation
+    # we're waiting for, give up the wait.  This is a 20 second propogation
     # delay. Replication timeouts are handled separately and are operator
     # configurable.
-    timeout = 10
+    timeout = 20
 
     def __init__(self, handler, replication_timeout):
         self.queue = collections.deque()
