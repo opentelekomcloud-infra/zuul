@@ -87,6 +87,24 @@ class TestAwsDriver(BaseCloudDriverTest):
             ]
         }
     }
+    s3_region_debian_return_data = {
+        'zuul': {
+            'artifacts': [
+                {
+                    'name': 'raw image',
+                    'url': 's3://zuulwest/image.raw',
+                    'metadata': {
+                        'type': 'zuul_image',
+                        'image_name': 'debian-local',
+                        'format': 'raw',
+                        'sha256': ('59984dd82f51edb3777b969739a92780'
+                                   'a520bb314b8d64b294d5de976bd8efb9'),
+                        'md5sum': '262278e1632567a907e4604e9edd2e83',
+                    }
+                },
+            ]
+        }
+    }
 
     def setUp(self):
         self.initTestConfig()
@@ -109,6 +127,9 @@ class TestAwsDriver(BaseCloudDriverTest):
         self.s3_client = boto3.client('s3', region_name='us-east-1')
         self.iam = boto3.resource('iam', region_name='us-east-1')
         self.s3.create_bucket(Bucket='zuul')
+        location = {'LocationConstraint': 'us-west-1'}
+        self.s3.create_bucket(Bucket="zuulwest",
+                              CreateBucketConfiguration=location)
 
         # A list of args to method calls for validation
         self.run_instances_calls = []
@@ -363,6 +384,21 @@ class TestAwsDriver(BaseCloudDriverTest):
         # The ebs-direct method doesn't support an import from s3,
         # which means if we supply an s3 url, we will download it.
         bucket = self.s3.Bucket('zuul')
+        bucket.put_object(Body=b'hi',
+                          Key='image.raw')
+        self._test_diskimage()
+
+    @simple_layout('layouts/aws/nodepool-image-snapshot-region.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        s3_region_debian_return_data,
+    )
+    def test_aws_diskimage_s3_region_download(self):
+        # The image in a bucket in a different region should be
+        # downloaded without using a direct import.
+        bucket = self.s3.Bucket('zuulwest')
         bucket.put_object(Body=b'hi',
                           Key='image.raw')
         self._test_diskimage()
