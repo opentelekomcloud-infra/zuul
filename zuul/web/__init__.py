@@ -456,6 +456,8 @@ class ImageUploadConverter:
     def toDict(upload):
         timestamp = _datetimeToString(
             datetime.utcfromtimestamp(upload.timestamp))
+        state_time = _datetimeToString(
+            datetime.utcfromtimestamp(upload.state_time))
         ret = {
             'uuid': upload.uuid,
             'canonical_name': upload.canonical_name,
@@ -464,6 +466,8 @@ class ImageUploadConverter:
             'external_id': upload.external_id,
             'timestamp': timestamp,
             'validated': upload.validated,
+            'state': upload.state,
+            'state_time': state_time,
         }
         return ret
 
@@ -477,6 +481,8 @@ class ImageUploadConverter:
             'external_id': str,
             'timestamp': str,
             'validated': str,
+            'state': str,
+            'state_time': str,
         })
 
 
@@ -487,6 +493,8 @@ class ImageBuildArtifactConverter:
     def toDict(tenant, build, uploads):
         timestamp = _datetimeToString(
             datetime.utcfromtimestamp(build.timestamp))
+        state_time = _datetimeToString(
+            datetime.utcfromtimestamp(build.state_time))
         ret = {
             'uuid': build.uuid,
             'canonical_name': build.canonical_name,
@@ -498,6 +506,8 @@ class ImageBuildArtifactConverter:
             'url': build.url,
             'timestamp': timestamp,
             'validated': build.validated,
+            'state': build.state,
+            'state_time': state_time,
         }
         if uploads:
             ret['uploads'] = [ImageUploadConverter.toDict(u)
@@ -517,6 +527,8 @@ class ImageBuildArtifactConverter:
             'url': str,
             'timestamp': str,
             'validated': str,
+            'state': str,
+            'state_time': str,
             'uploads': [ImageUploadConverter.schema()],
         })
 
