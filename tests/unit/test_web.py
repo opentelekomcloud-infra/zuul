@@ -1493,6 +1493,7 @@ class TestWeb(BaseTestWeb):
 
 class TestWebProviders(LauncherBaseTestCase, WebMixin):
     config_file = 'zuul-connections-nodepool.conf'
+    tenant_config_file = 'config/multi-tenant-provider/main.yaml'
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_web_providers(self):
@@ -1590,7 +1591,6 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         ]
         self.assertEqual(expected, data)
 
-    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
@@ -1625,6 +1625,20 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
             f"api/tenant/tenant-one/image-build-artifact/{art['uuid']}"
         )
         self.assertEqual(401, resp.status_code, resp.text)
+        # Test that the wrong tenant fails, even with auth
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'testuser',
+                 'zuul': {
+                     'admin': ['tenant-two', ]
+                 },
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                           algorithm='HS256')
+        resp = self.delete_url(
+            f"api/tenant/tenant-two/image-build-artifact/{art['uuid']}",
+            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(404, resp.status_code, resp.text)
         # Do it again with auth
         authz = {'iss': 'zuul_operator',
                  'aud': 'zuul.example.com',
@@ -1645,7 +1659,6 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
             if 'build_artifacts' not in data[1]:
                 break
 
-    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
@@ -1680,6 +1693,20 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
             f"api/tenant/tenant-one/image-upload/{upload['uuid']}"
         )
         self.assertEqual(401, resp.status_code, resp.text)
+        # Test that the wrong tenant fails, even with auth
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'testuser',
+                 'zuul': {
+                     'admin': ['tenant-two', ]
+                 },
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                           algorithm='HS256')
+        resp = self.delete_url(
+            f"api/tenant/tenant-two/image-upload/{upload['uuid']}",
+            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(404, resp.status_code, resp.text)
         # Do it again with auth
         authz = {'iss': 'zuul_operator',
                  'aud': 'zuul.example.com',
@@ -1700,7 +1727,6 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
             if 'build_artifacts' not in data[1]:
                 break
 
-    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
@@ -1755,8 +1781,27 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
+        # Try again with the wrong tenant
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'testuser',
+                 'zuul': {
+                     'admin': ['tenant-two', ]
+                 },
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                           algorithm='HS256')
+        resp = self.post_url(
+            "api/tenant/tenant-two/image/ubuntu-local/build",
+            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(200, resp.status_code, resp.text)
+        self.waitUntilSettled("image rebuild")
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+        ], ordered=False)
 
-    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
