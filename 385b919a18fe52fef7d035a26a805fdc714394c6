@@ -16,6 +16,29 @@
       "message": "Still figuring out if the algorithm works as intended or not.",
       "revId": "385b919a18fe52fef7d035a26a805fdc714394c6",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "57234b2c_d5bc6d56",
+        "filename": "zuul/merger/merger.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1013,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-05-27T13:11:28Z",
+      "side": 1,
+      "message": "I think this should be `{commit}..HEAD`\nSee also https://git-scm.com/docs/gitrevisions#_specifying_ranges\n\nBut the whole algorithm seems to be broken for non-Gerrit changes in case there are more than one commit (e.g. in a PR) and the target branch evolved in the meantime.\n\nE.g. considering the following repo:\n\n```\n*   X (HEAD) -\u003e speculative state\n|\\\n| * fcc97ef (test) E -\u003e HEAD of PR branch\n| * dcfa68b D\n| * 6f22686 C\n* | B new (master) -\u003e not part of PR branch\n|/\n* A -\u003e common ancestor\n.\n.\n.\n```\n\nImagine all commits change the same file and B adds a new line at the top and commits D-E add lines at the bottom (so there is no merge conflict). The algorithm needs to take that into account and resolve the line numbers as they were present in the speculative state to the line numbers for the change as they are presented in the diff for the PR branch.",
+      "range": {
+        "startLine": 1013,
+        "startChar": 37,
+        "endLine": 1013,
+        "endChar": 53
+      },
+      "revId": "385b919a18fe52fef7d035a26a805fdc714394c6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
