@@ -869,6 +869,10 @@ class TestingMergerApi(HoldableMergerApi):
 
     log = logging.getLogger("zuul.test.TestingMergerApi")
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.job_types_to_fail = []
+
     def _test_getMergeJobsInState(self, *states):
         # As this method is used for assertions in the tests, it should look up
         # the merge requests directly from ZooKeeper and not from a cache
@@ -881,6 +885,29 @@ class TestingMergerApi(HoldableMergerApi):
                 all_merge_requests.append(merge_request)
 
         return sorted(all_merge_requests)
+
+    def failJobs(self, job_type):
+        """
+        Lets all merge jobs of the given type fail.
+
+        The actual implementation is done by overriding reportResult().
+        """
+        # As the params of a merge job are cleared directly after it's
+        # picked up by a merger, we don't have much information to
+        # identify a running merge job. The easiest solution is to
+        # fail all merge jobs of a given type, which should be fine
+        # for test purposes.
+        # We are failing merge jobs by type as the params are directly
+        # cleared when the merge job is picked up by a merger. Thus, we
+        # cannot compare information like project or branch in
+        # reportResult() where we set the merge job's result to failed.
+        self.job_types_to_fail.append(job_type)
+
+    def reportResult(self, request, result):
+        # Set updated to False to mark a merge job as failed
+        if request.job_type in self.job_types_to_fail:
+            result["updated"] = False
+        return super().reportResult(request, result)
 
     def release(self, merge_request=None):
         """
@@ -1019,6 +1046,7 @@ class RecordingExecutorServer(zuul.executor.server.ExecutorServer):
     """
 
     _job_class = RecordingAnsibleJob
+    _merger_api_class = TestingMergerApi
 
     def __init__(self, *args, **kw):
         self._run_ansible = kw.pop('_run_ansible', False)
@@ -3144,6 +3172,7 @@ class ZuulTestCase(BaseTestCase):
         self.merger_api.hold_in_queue = hold_in_queue
         for app in self.scheds:
             app.sched.merger.merger_api.hold_in_queue = hold_in_queue
+        self.executor_server.merger_api.hold_in_queue = hold_in_queue
 
     @property
     def hold_nodeset_requests_in_queue(self):
