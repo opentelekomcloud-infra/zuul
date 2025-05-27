@@ -464,6 +464,8 @@ class ImageUploadConverter:
             'external_id': upload.external_id,
             'timestamp': timestamp,
             'validated': upload.validated,
+            'state': build.state,
+            'state_time': build.state_time,
         }
         return ret
 
@@ -477,6 +479,8 @@ class ImageUploadConverter:
             'external_id': str,
             'timestamp': str,
             'validated': str,
+            'state': str,
+            'state_time': str,
         })
 
 
@@ -498,6 +502,8 @@ class ImageBuildArtifactConverter:
             'url': build.url,
             'timestamp': timestamp,
             'validated': build.validated,
+            'state': build.state,
+            'state_time': build.state_time,
         }
         if uploads:
             ret['uploads'] = [ImageUploadConverter.toDict(u)
@@ -517,6 +523,8 @@ class ImageBuildArtifactConverter:
             'url': str,
             'timestamp': str,
             'validated': str,
+            'state': str,
+            'state_time': str,
             'uploads': [ImageUploadConverter.schema()],
         })
 
