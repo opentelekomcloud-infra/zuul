@@ -24,6 +24,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "08aaa774_318b567e",
+        "filename": "doc/source/components.dot",
+        "patchSetId": 1
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-27T21:36:38Z",
+      "side": 0,
+      "message": "Yes.",
+      "parentUuid": "a2690704_18c8dec1",
+      "range": {
+        "startLine": 4,
+        "startChar": 11,
+        "endLine": 4,
+        "endChar": 27
+      },
+      "revId": "c2edf4fbbd4395659c2c4951d15440e49d4c663f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4c6286ad_b4f07c3e",
@@ -37,6 +61,24 @@
       "writtenOn": "2025-05-21T16:04:21Z",
       "side": 0,
       "message": "I don\u0027t know whether the Web components communicates with Finger to retrieve the logs or whether it still communicates with the Executor :)",
+      "revId": "c2edf4fbbd4395659c2c4951d15440e49d4c663f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "64b6a586_fa056e09",
+        "filename": "doc/source/components.dot",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-27T21:36:38Z",
+      "side": 0,
+      "message": "Both!\n\nIt normally directly communicates with the executor, unless the executor is in a \"zone\" that it can\u0027t reach (ie, the executor is on a different network segment closer to the job nodes and the web server can\u0027t make an outbound connection to it).  In that case, the web server will make a connection to a finger gateway in the same zone, which will then relay the data to the executor in that zone.\n\nSo technically, there is a (simple) internal routing protocol that Zuul will use to decide how to reach the executor which has the logs it needs.  That lets folks run worker nodes on networks with multiple executors but they only need to make one host (the finger gateway) reachable by zuul-web.\n\n(In other words, imagine a network with hundreds of worker nodes, 10 zuul executors, one or two finger gateways, and only one ingress IP.)\n\nThat\u0027s all a bit much for an introductory overview diagram, so I\u0027m thinking maybe we just do a grey line from web to finger and annotate that it\u0027s only for zoned executors.",
+      "parentUuid": "4c6286ad_b4f07c3e",
       "revId": "c2edf4fbbd4395659c2c4951d15440e49d4c663f",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }

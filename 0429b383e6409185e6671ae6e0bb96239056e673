@@ -52,6 +52,23 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "713a5845_6d8c8426",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-27T21:36:38Z",
+      "side": 1,
+      "message": "I\u0027m going to push up a new patchset.  I don\u0027t think I\u0027ve made the diagram better (I think it could probably be laid out better), but I added some more arrows and made them all point in the direction of network connection initiation.  So in other words, every component has an arrow pointing toward zookeeper because they all initiate the connection to zk.",
+      "revId": "0429b383e6409185e6671ae6e0bb96239056e673",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7535fef4_ac10a06b",
@@ -69,6 +86,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "dbcfdf55_dabf931b",
+        "filename": "doc/source/components.dot",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-27T21:36:38Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "7535fef4_ac10a06b",
+      "revId": "0429b383e6409185e6671ae6e0bb96239056e673",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "db94a132_e9a04ce7",
@@ -82,6 +117,24 @@
       "writtenOn": "2025-05-21T16:04:21Z",
       "side": 1,
       "message": "Isn\u0027t the *Job Node* also retrieving the code from the Merger?",
+      "revId": "0429b383e6409185e6671ae6e0bb96239056e673",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "be77ea0a_a5eda262",
+        "filename": "doc/source/components.dot",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-05-27T21:36:38Z",
+      "side": 1,
+      "message": "It\u0027s pushed from the executor (which is also a merger).",
+      "parentUuid": "db94a132_e9a04ce7",
       "revId": "0429b383e6409185e6671ae6e0bb96239056e673",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
