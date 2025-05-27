@@ -51,12 +51,13 @@ from zuul.lib.re2util import filter_allowed_disallowed
 from zuul import model
 from zuul.model import (
     Abide,
-    BuildSet,
     Branch,
+    BuildSet,
     ChangeQueue,
     DequeueEvent,
     EnqueueEvent,
     HoldRequest,
+    NodesetRequest,
     PromoteEvent,
     ProviderNode,
     QueueItem,
@@ -80,7 +81,7 @@ from zuul.zk.image_registry import (
     ImageBuildRegistry,
     ImageUploadRegistry,
 )
-from zuul.zk.launcher import LockableZKObjectCache
+from zuul.zk.launcher import RequestCache, NodeCache
 from zuul.zk.layout import (
     LayoutProvidersStore,
     LayoutStateStore,
@@ -643,6 +644,55 @@ class ProviderNodeConverter:
             'state': str,
             'state_time': str,
             'comment': str,
+        })
+
+
+class NodesetRequestConverter:
+    # A class to encapsulate the conversion of NodesetRequest objects
+    # to API output.
+    @staticmethod
+    def toDict(request):
+        request_time = _datetimeToString(
+            datetime.utcfromtimestamp(request.request_time))
+        ret = {
+            'uuid': request.uuid,
+            'state': request.state,
+            'pipeline_name': request.pipeline_name,
+            'buildset_uuid': request.buildset_uuid,
+            # Omitting job_uuid because it is not externally
+            # meaningful (it is not a build uuid, and it may be
+            # confused as one if we don't otherwise expose the frozen
+            # job uuid).
+            'job_name': request.job_name,
+            'labels': request.labels,
+            'priority': request.priority,
+            'request_time': request_time,
+            'zuul_event_id': request.zuul_event_id,
+            'image_names': request.image_names,
+            'image_upload_uuid': request.image_upload_uuid,
+            'relative_priority': request.relative_priority,
+        }
+        return ret
+
+    @staticmethod
+    def schema():
+        return Prop('The nodeset request', {
+            'uuid': str,
+            'state': str,
+            'pipeline_name': str,
+            'buildset_uuid': str,
+            # Omitting job_uuid because it is not externally
+            # meaningful (it is not a build uuid, and it may be
+            # confused as one if we don't otherwise expose the frozen
+            # job uuid).
+            'job_name': str,
+            'labels': [str],
+            'priority': int,
+            'request_time': str,
+            'zuul_event_id': str,
+            'image_names': [str],
+            'image_upload_uuid': str,
+            'relative_priority': int,
         })
 
 
@@ -1568,6 +1618,7 @@ class ZuulWebAPI(object):
             'semaphores': '/api/tenant/{tenant}/semaphores',
             'labels': '/api/tenant/{tenant}/labels',
             'nodes': '/api/tenant/{tenant}/nodes',
+            'nodeset_requests': '/api/tenant/{tenant}/nodeset-requests',
             'key': '/api/tenant/{tenant}/key/{project:.*}.pub',
             'project_ssh_key': '/api/tenant/{tenant}/project-ssh-key/'
                                '{project:.*}.pub',
@@ -2304,6 +2355,21 @@ class ZuulWebAPI(object):
 
     @cherrypy.expose
     @cherrypy.tools.save_params()
+    @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
+    @cherrypy.tools.handle_options()
+    @cherrypy.tools.check_tenant_auth()
+    def nodeset_requests(self, tenant_name, tenant, auth):
+        ret = []
+        # TODO: remove this providers check once nodepool is gone
+        providers = self.zuulweb.tenant_providers.get(tenant.name)
+        if providers:
+            for request in self.zuulweb.requests_cache.getItems():
+                if request.tenant_name == tenant.name:
+                    ret.append(NodesetRequestConverter.toDict(request))
+        return ret
+
+    @cherrypy.expose
+    @cherrypy.tools.save_params()
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
     @openapi_response(
@@ -3005,6 +3071,8 @@ class ZuulWeb(object):
                           controller=api, action='labels')
         route_map.connect('api', '/api/tenant/{tenant_name}/nodes',
                           controller=api, action='nodes')
+        route_map.connect('api', '/api/tenant/{tenant_name}/nodeset-requests',
+                          controller=api, action='nodeset_requests')
         route_map.connect('api', '/api/tenant/{tenant_name}/key/'
                           '{project_name:.*}.pub',
                           controller=api, action='key')
@@ -3119,7 +3187,14 @@ class ZuulWeb(object):
             self.zk_client, self.connections, self.system.system_id)
         self.image_build_registry = ImageBuildRegistry(self.zk_client)
         self.image_upload_registry = ImageUploadRegistry(self.zk_client)
-        self.nodes_cache = LockableZKObjectCache(
+        self.requests_cache = RequestCache(
+            self.zk_client,
+            None,
+            root=NodesetRequest.ROOT,
+            items_path=NodesetRequest.REQUESTS_PATH,
+            locks_path=NodesetRequest.LOCKS_PATH,
+            zkobject_class=NodesetRequest)
+        self.nodes_cache = NodeCache(
             self.zk_client,
             None,
             root=ProviderNode.ROOT,
@@ -3297,6 +3372,7 @@ class ZuulWeb(object):
         self.command_socket.stop()
         self.monitoring_server.stop()
         self.tracing.stop()
+        self.requests_cache.stop()
         self.nodes_cache.stop()
         self.zk_client.disconnect()
 

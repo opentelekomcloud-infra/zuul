@@ -1927,6 +1927,41 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         self.executor_server.release()
         self.waitUntilSettled()
 
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_web_nodeset_list(self):
+        self.waitUntilSettled()
+        self.hold_nodeset_requests_in_queue = True
+        self.startWebServer()
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        data = self.get_url('api/tenant/tenant-one/nodeset-requests').json()
+        self.assertEqual(len(data), 1)
+        print(data)
+        for k in ['uuid', 'buildset_uuid', 'request_time',
+                  'zuul_event_id']:
+            # This asserts the keys are present, but the data are
+            # random so we don't check below.
+            del data[0][k]
+        expected = {
+            'state': 'test-hold',
+            'pipeline_name': 'gate',
+            'job_name': 'check-job',
+            'labels': ['debian-normal'],
+            'priority': 100,
+            'image_names': None,
+            'image_upload_uuid': None,
+            'relative_priority': 0,
+        }
+        self.assertEqual(expected, data[0])
+        self.hold_nodeset_requests_in_queue = False
+        self.releaseNodesetRequests()
+        self.waitUntilSettled()
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
 
 class TestWebStatusDisplayBranch(BaseTestWeb):
     tenant_config_file = 'config/change-queues/main.yaml'
