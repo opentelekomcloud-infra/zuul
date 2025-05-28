@@ -289,6 +289,10 @@ function fetchLabels(apiPrefix) {
   return makeRequest(apiPrefix + 'labels')
 }
 
+function fetchNodesetRequests(apiPrefix) {
+  return makeRequest(apiPrefix + 'nodeset-requests')
+}
+
 function fetchNodes(apiPrefix) {
   return makeRequest(apiPrefix + 'nodes')
 }
@@ -419,6 +423,7 @@ export {
   fetchJobGraph,
   fetchJobs,
   fetchLabels,
+  fetchNodesetRequests,
   fetchNodes,
   fetchOpenApi,
   fetchPipelines,
