@@ -26,6 +26,7 @@ from zuul import model
 import zuul.driver.aws.awsendpoint
 from zuul.launcher.client import LauncherClient
 
+import fixtures
 import responses
 import testtools
 import yaml
@@ -613,7 +614,6 @@ class TestLauncher(LauncherBaseTestCase):
         # permit a HEAD request; this tests the GET range fallback.
 
         self.waitUntilSettled()
-        self.log.debug("JEB wake")
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
@@ -1283,6 +1283,117 @@ class TestLauncher(LauncherBaseTestCase):
         # Lower priority request should not be fulfilled
         request1_p2.refresh(ctx)
         self.assertEqual(request1_p2.State.ACCEPTED, request1_p2.state)
+
+
+class TestLauncherUpload(LauncherBaseTestCase):
+
+    def setUp(self):
+        self._ubuntu_images = []
+        self.useFixture(fixtures.MonkeyPatch(
+            'zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+            self._upload_run))
+        super().setUp()
+
+    def _waitForArtifacts(self, image_name, count):
+        for _ in iterate_timeout(30, "artifacts to settle"):
+            artifacts = self.launcher.image_build_registry.\
+                getArtifactsForImage(image_name)
+            if len(artifacts) == count:
+                return artifacts
+
+    def _upload_run(test, self, *args, **kw):
+        if 'ubuntu-local' in self.image_name:
+            if self.image_name not in test._ubuntu_images:
+                test._ubuntu_images.append(self.image_name)
+            if test._ubuntu_images[0] == self.image_name:
+                test._addFinishedUpload(self.metadata['zuul_upload_uuid'])
+                raise Exception("Upload test failure")
+        return "test_external_id"
+
+    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @return_data(
+        'build-ubuntu-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.ubuntu_return_data,
+    )
+    @okay_tracebacks('Upload test failure')
+    def test_launcher_image_expire_failed_upload(self):
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+        ], ordered=False)
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+
+        for _ in iterate_timeout(
+                30, "scheduler and launcher to have the same layout"):
+            if (self.scheds.first.sched.local_layout_state.get("tenant-one") ==
+                self.launcher.local_layout_state.get("tenant-one")):
+                break
+
+        # The build should not run again because the image is no
+        # longer missing
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+        ], ordered=False)
+        for name in [
+                'review.example.com%2Forg%2Fcommon-config/debian-local',
+                'review.example.com%2Forg%2Fcommon-config/ubuntu-local',
+        ]:
+            artifacts = self._waitForArtifacts(name, 1)
+            self.assertEqual('raw', artifacts[0].format)
+            self.assertTrue(artifacts[0].validated)
+            uploads = self.launcher.image_upload_registry.getUploadsForImage(
+                name)
+            self.assertEqual(1, len(uploads))
+            self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
+            if 'ubuntu' in name:
+                self.assertIsNone(uploads[0].external_id)
+            else:
+                self.assertEqual("test_external_id", uploads[0].external_id)
+            self.assertTrue(uploads[0].validated)
+
+        image_cname = 'review.example.com%2Forg%2Fcommon-config/ubuntu-local'
+        # Run another build event manually
+        driver = self.launcher.connections.drivers['zuul']
+        event = driver.getImageBuildEvent(
+            ['ubuntu-local'], 'review.example.com',
+            'org/common-config', 'master')
+        self.launcher.trigger_events['tenant-one'].put(
+            event.trigger_name, event)
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+        ], ordered=False)
+        self._waitForArtifacts(image_cname, 2)
+
+        # Run another build event manually
+        driver = self.launcher.connections.drivers['zuul']
+        event = driver.getImageBuildEvent(
+            ['ubuntu-local'], 'review.example.com',
+            'org/common-config', 'master')
+        self.launcher.trigger_events['tenant-one'].put(
+            event.trigger_name, event)
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+        ], ordered=False)
+        # Trigger a run of the deletion check.
+        self.launcher.upload_deleted_event.set()
+        self.launcher.wake_event.set()
+        self._waitForArtifacts(image_cname, 2)
 
 
 class TestMinReadyLauncher(LauncherBaseTestCase):
