@@ -364,10 +364,10 @@ configuration. Some examples of tenant definitions are:
    .. attr:: max-dependencies
 
       This setting can be used to limit the number of dependencies
-      that Zuul will consider when enqueing a change in any pipeline
+      that Zuul will consider when enqueuing a change in any pipeline
       in this tenant.  If used, it should be set to a value that is
       higher than the highest number of dependencies that are expected
-      to be encountered.  If, when enqueing a change, Zuul detects
+      to be encountered.  If, when enqueuing a change, Zuul detects
       that the dependencies will exceed this value, Zuul will not
       enqueue the change and will provide no feedback to the user.
       This is meant only to protect the Zuul server from resource
@@ -389,7 +389,7 @@ configuration. Some examples of tenant definitions are:
 
       * 100 changes in individual queue items
       * 1 queue item of 100 changes in a dependency cycle
-      * 1 queue item with 99 changes in a cyle plus one item depending
+      * 1 queue item with 99 changes in a cycle plus one item depending
         on that cycle
 
       This counts changes across all queues in the pipeline; it is

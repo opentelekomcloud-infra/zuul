@@ -17,7 +17,7 @@ or values may be added to Gerrit.  Zuul is very flexible and can take
 advantage of those.
 
 If ``change.submitWholeTopic`` is configured in Gerrit, Zuul will
-honor this by enqueing changes with the same topic as circular
+honor this by enqueuing changes with the same topic as circular
 dependencies.  However, it is still necessary to enable circular
 dependency support in any pipeline queues where such changes may
 appear.  See :attr:`queue.allow-circular-dependencies` for information
@@ -41,7 +41,7 @@ The appropriate connection methods must be configured to satisfy the
 interactions Zuul will have with Gerrit.  The recommended
 configuration is to configure both SSH and HTTP access.
 
-The section below describes commond configuration settings.  Specific
+The section below describes common configuration settings.  Specific
 settings for different connection methods follow.
 
 .. note::
@@ -146,7 +146,7 @@ The supported options in ``zuul.conf`` connections are:
       One major limitation of this feature is that Gerrit replication
       events can only be mapped using project and ref values. This
       means if you have multiple replication updates to the same project
-      and ref occuring simultaneously Zuul must wait for all of them to
+      and ref occurring simultaneously Zuul must wait for all of them to
       complete before it continues. For this reason you should set this
       timeout to a small multiple (2 or 3) of your typical replication
       time.

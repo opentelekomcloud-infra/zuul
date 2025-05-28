@@ -28,7 +28,7 @@ Each project to be integrated with Zuul needs:
 - "Open metadata access to all" set to off (optional, expected if approval
   based on PR a metadata tag)
 - "Minimum score to merge pull-request" set to the same value than
-  the score requierement (optional, expected if score requierement is
+  the score requirement (optional, expected if score requirement is
   defined in a pipeline)
 
 Furthermore, the user must be added as project collaborator
@@ -91,7 +91,7 @@ The supported options in ``zuul.conf`` connections are:
    .. attr:: source_whitelist
       :default: ''
 
-      A comma separated list of source ip adresses from which webhook
+      A comma separated list of source ip addresses from which webhook
       calls are whitelisted. If the source is not whitelisted, then
       call payload's signature is verified using the project webhook
       token. An admin access to the project is required by Zuul to read

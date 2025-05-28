@@ -43,7 +43,7 @@ following Zuul claims by default:
 **sub**
    This is the most important claim.  Most third-party services are
    likely to match on this claim to determine permissions.  This claim
-   acts as a fully-qualified name to uniquely indentify the Zuul
+   acts as a fully-qualified name to uniquely identify the Zuul
    secret used.  It takes the form:
 
      ``secret:{zuul tenant}/{canonical project name}/{secret name}``
@@ -101,7 +101,7 @@ current job definition, but to all playbooks in all parent jobs as
 well.  This allows for jobs which are designed to work with secrets
 while leaving it up to child jobs to actually supply the secret.  Use
 this option with care, as it may allow the authors of parent jobs to
-accidentially or intentionally expose secrets.  If a secret with
+accidentally or intentionally expose secrets.  If a secret with
 `pass-to-parent` set in a child job has the same name as a secret
 available to a parent job's playbook, the secret in the child job will
 not override the parent, instead it will simply not be available to
