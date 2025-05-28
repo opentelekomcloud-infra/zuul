@@ -22,6 +22,7 @@ import {
   TableBody,
 } from '@patternfly/react-table'
 import * as moment from 'moment'
+import * as moment_tz from 'moment-timezone'
 import {
   PageSection,
   PageSectionVariants,
@@ -123,8 +124,11 @@ class NodesPage extends React.Component {
     ]
     let rows = []
     nodes.forEach((node) => {
-        const extid = typeof(node.external_id) === 'string'?
+        const extid = typeof(node.external_id) === 'string' ?
               node.external_id : JSON.stringify(node.external_id)
+        const state_time = typeof(node.state_time) === 'string' ?
+              moment_tz.utc(node.state_time) :
+              moment.unix(node.state_time)
         let r = [
             {title: node.id, props: {column: 'ID'}},
             {title: node.type.join(','), props: {column: 'Label' }},
@@ -132,7 +136,7 @@ class NodesPage extends React.Component {
             {title: <ClipboardCopy hoverTip="Copy" clickTip="Copied" variant="inline-compact">{extid}</ClipboardCopy>, props: {column: 'Server'}},
             {title: node.provider, props: {column: 'Provider'}},
             {title: node.state, props: {column: 'State'}},
-            {title: moment.unix(node.state_time).fromNow(), props: {column: 'Age'}},
+            {title: state_time.fromNow(), props: {column: 'Age'}},
             {title: node.comment, props: {column: 'Comment'}},
         ]
         rows.push({cells: r})
