@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c052de1b_4e550af0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-05-28T08:10:14Z",
+      "side": 1,
+      "message": "Thanks for the review, I think that makes sense. I should have mentioned that 3 is not carved in stone, but the first number that came to my head 😄\n\nI took a look at a few buildsets and it looks like something between 8 and 10 seems to be a good fit. With that most shorter error messages or config errors (like the one from your example) are shown completely. As soon as config stanzas are included in the error message (e.g. most buildsets with CONFIG_ERROR results) we end up around 12-20 lines (at least), so those would be collapsed.\n\nI\u0027ve changed the value to 8. Let me know if that works for you. The value is easy to change, so we could also do that later on if we want.",
+      "revId": "6afa0e739ebc8a43ec823a890516ea4634157d1b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
