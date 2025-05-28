@@ -86,6 +86,7 @@ class ExecutorClient(object):
 
         if image_formats := self.getImageFormats(job, item):
             params["zuul"]["image_formats"] = list(image_formats)
+            params["zuul"]["image_build_name"] = job.image_build_name
 
         semaphore_handler = manager.tenant.semaphore_handler
         params['semaphore_handle'] = semaphore_handler.getSemaphoreHandle(
