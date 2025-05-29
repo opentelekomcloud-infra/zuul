@@ -2060,8 +2060,7 @@ class Launcher:
                 continue
             if (iba.state == iba.State.DELETING or
                 upload.state == upload.State.DELETING or
-                (upload.state == upload.State.READY and
-                 upload not in keep_uploads)):
+                upload not in keep_uploads):
                 self.upload_executor.submit(DeleteJob(self, iba, upload).run)
         for iba in active_ibas:
             if (iba.timestamp > latest_upload_timestamp or
@@ -2087,6 +2086,7 @@ class Launcher:
         valid_uploads = [
             upload for upload in uploads
             if (provider.canonical_name in upload.providers and
+                upload.state == upload.State.READY and
                 upload.validated and
                 upload.external_id)
         ]
