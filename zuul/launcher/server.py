@@ -132,7 +132,8 @@ class DeleteJob:
                         provider_cname = self.upload.providers[0]
                         provider = self.launcher.\
                             _getProviderByCanonicalName(provider_cname)
-                        provider.deleteImage(self.upload.external_id)
+                        if self.upload.external_id:
+                            provider.deleteImage(self.upload.external_id)
                         self.upload.delete(ctx)
                         self.launcher.upload_deleted_event.set()
                         self.launcher.wake_event.set()
