@@ -20,6 +20,7 @@ import {
   TableVariant,
   TableHeader,
   TableBody,
+  ActionsColumn,
 } from '@patternfly/react-table'
 import * as moment from 'moment'
 import {
@@ -39,6 +40,9 @@ import {
 } from '@patternfly/react-icons'
 import { IconProperty } from '../Misc'
 
+import { setNodeState } from '../api'
+import { addNotification } from '../actions/notifications'
+import { addApiError } from '../actions/adminActions'
 import { fetchNodesIfNeeded } from '../actions/nodes'
 import { Fetchable } from '../containers/Fetching'
 
@@ -46,6 +50,7 @@ import { Fetchable } from '../containers/Fetching'
 class NodesPage extends React.Component {
   static propTypes = {
     tenant: PropTypes.object,
+    user: PropTypes.object,
     remoteData: PropTypes.object,
     dispatch: PropTypes.func
   }
@@ -65,6 +70,23 @@ class NodesPage extends React.Component {
     if (this.props.tenant.name !== prevProps.tenant.name) {
       this.updateData()
     }
+  }
+
+  handleStateChange(nodeId, state) {
+    setNodeState(this.props.tenant.apiPrefix, nodeId, state)
+      .then(() => {
+        this.props.dispatch(addNotification(
+          {
+            text: 'Node state updated.',
+            type: 'success',
+            status: '',
+            url: '',
+          }))
+        this.props.dispatch(fetchNodesIfNeeded(this.props.tenant, true))
+      })
+      .catch(error => {
+        this.props.dispatch(addApiError(error))
+      })
   }
 
   render () {
@@ -119,13 +141,17 @@ class NodesPage extends React.Component {
           <IconProperty icon={<PencilAltIcon />} value="Comment" />
         ),
         dataLabel: 'comment',
-      }
+      },
+      {
+        title: '',
+        dataLabel: 'action',
+      },
     ]
     let rows = []
     nodes.forEach((node) => {
         const extid = typeof(node.external_id) === 'string'?
               node.external_id : JSON.stringify(node.external_id)
-        let r = [
+        const r = [
             {title: node.id, props: {column: 'ID'}},
             {title: node.type.join(','), props: {column: 'Label' }},
             {title: node.connection_type, props: {column: 'Connection'}},
@@ -135,8 +161,23 @@ class NodesPage extends React.Component {
             {title: moment.unix(node.state_time).fromNow(), props: {column: 'Age'}},
             {title: node.comment, props: {column: 'Comment'}},
         ]
-        rows.push({cells: r})
+      if (node.uuid && this.props.user.isAdmin && this.props.user.scope.indexOf(this.props.tenant.name) !== -1) {
+        r.push({title:
+                <ActionsColumn items={[
+                  {
+                    title: 'Set to HOLD',
+                    onClick: () => this.handleStateChange(node.uuid, 'hold')
+                  },
+                  {
+                    title: 'Set to USED',
+                    onClick: () => this.handleStateChange(node.uuid, 'used')
+                  },
+                ]}/>
+               })
+      }
+      rows.push({cells: r})
     })
+
     return (
       <PageSection variant={PageSectionVariants.light}>
         <PageSection style={{paddingRight: '5px'}}>
@@ -164,4 +205,5 @@ class NodesPage extends React.Component {
 export default connect(state => ({
   tenant: state.tenant,
   remoteData: state.nodes,
+  user: state.user,
 }))(NodesPage)

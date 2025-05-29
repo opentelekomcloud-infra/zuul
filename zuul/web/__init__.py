@@ -2355,6 +2355,32 @@ class ZuulWebAPI(object):
 
     @cherrypy.expose
     @cherrypy.tools.save_params()
+    @cherrypy.tools.json_in()
+    @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
+    @cherrypy.tools.handle_options(allowed_methods=['PUT', ])
+    @cherrypy.tools.check_tenant_auth()
+    def nodes_put(self, tenant_name, tenant, auth, node_id):
+        node = self.zuulweb.nodes_cache.getItem(node_id)
+        if not node or node.tenant_name != tenant.name:
+            raise cherrypy.HTTPError(404, "Node not found")
+
+        body = cherrypy.request.json
+        state = body.get('state')
+        if state not in {node.State.HOLD, node.State.USED}:
+            raise cherrypy.HTTPError(400, 'Invalid request body')
+
+        # We just let the LockException propagate up if we can't lock
+        # it.
+        with self.zuulweb.createZKContext(None, self.log) as ctx:
+            with node.locked(ctx, blocking=False):
+                self.log.info(f'User {auth.uid} setting node '
+                              f'{node_id} to {state}')
+                with node.activeContext(ctx):
+                    node.setState(state)
+        cherrypy.response.status = 201
+
+    @cherrypy.expose
+    @cherrypy.tools.save_params()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
@@ -2367,6 +2393,26 @@ class ZuulWebAPI(object):
                 if request.tenant_name == tenant.name:
                     ret.append(NodesetRequestConverter.toDict(request))
         return ret
+
+    @cherrypy.expose
+    @cherrypy.tools.save_params()
+    @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
+    @cherrypy.tools.handle_options(allowed_methods=['DELETE', ])
+    @cherrypy.tools.check_tenant_auth()
+    def nodeset_requests_delete(self, tenant_name, tenant, auth, request_id):
+        request = self.zuulweb.requests_cache.getItem(request_id)
+        if not request or request.tenant_name != tenant.name:
+            raise cherrypy.HTTPError(404, "Request not found")
+
+        # We just let the LockException propagate up if we can't lock
+        # it.
+        with self.zuulweb.createZKContext(None, self.log) as ctx:
+            with request.locked(ctx, blocking=False):
+                self.log.info(f'User {auth.uid} deleting nodeset request '
+                              f'{request_id}')
+                with request.activeContext(ctx):
+                    request.delete(ctx)
+        cherrypy.response.status = 204
 
     @cherrypy.expose
     @cherrypy.tools.save_params()
@@ -3071,8 +3117,20 @@ class ZuulWeb(object):
                           controller=api, action='labels')
         route_map.connect('api', '/api/tenant/{tenant_name}/nodes',
                           controller=api, action='nodes')
+        route_map.connect('api',
+                          '/api/tenant/{tenant_name}/'
+                          'nodes/{node_id}',
+                          controller=api,
+                          conditions=dict(method=['PUT', 'OPTIONS']),
+                          action='nodes_put')
         route_map.connect('api', '/api/tenant/{tenant_name}/nodeset-requests',
                           controller=api, action='nodeset_requests')
+        route_map.connect('api',
+                          '/api/tenant/{tenant_name}/'
+                          'nodeset-requests/{request_id}',
+                          controller=api,
+                          conditions=dict(method=['DELETE', 'OPTIONS']),
+                          action='nodeset_requests_delete')
         route_map.connect('api', '/api/tenant/{tenant_name}/key/'
                           '{project_name:.*}.pub',
                           controller=api, action='key')

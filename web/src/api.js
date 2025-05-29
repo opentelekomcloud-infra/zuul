@@ -293,10 +293,24 @@ function fetchNodesetRequests(apiPrefix) {
   return makeRequest(apiPrefix + 'nodeset-requests')
 }
 
+function deleteNodesetRequest(apiPrefix, requestId) {
+  return makeRequest(
+    apiPrefix + '/nodeset-requests/' + requestId,
+    'delete'
+  )
+}
+
 function fetchNodes(apiPrefix) {
   return makeRequest(apiPrefix + 'nodes')
 }
 
+function setNodeState(apiPrefix, requestId, state) {
+  return makeRequest(
+    apiPrefix + '/nodes/' + requestId,
+    'put',
+    { state }
+  )
+}
 function fetchSemaphores(apiPrefix) {
   return makeRequest(apiPrefix + 'semaphores')
 }
@@ -401,6 +415,7 @@ export {
   buildImage,
   deleteImageBuildArtifact,
   deleteImageUpload,
+  deleteNodesetRequest,
   dequeue,
   dequeue_ref,
   enqueue,
@@ -441,4 +456,5 @@ export {
   getLogFile,
   getStreamUrl,
   promote,
+  setNodeState,
 }
