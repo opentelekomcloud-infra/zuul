@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "342f2d27_dd6f9fce",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37345
+      },
+      "writtenOn": "2025-05-29T08:42:45Z",
+      "side": 1,
+      "message": "@fungi@yuggoth.org could you please rereview this? I had to rebase my change to fix a merge conflict (68b60818 removed a spec file I modified in my commit).\n\nAlso, @jim@acmegating.com, I\u0027d really appreciate it if you could review this change as well.\n\nThanks in advance!",
+      "revId": "8f1b7860ef1df3c5eab025fe20797cd4d85b65b6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
