@@ -25,6 +25,7 @@ import subprocess
 import threading
 from unittest import skip, mock
 
+from kazoo.exceptions import NoNodeError
 import requests
 
 from zuul.lib.statsd import normalize_statsd_name
@@ -89,6 +90,10 @@ class WebMixin:
 
     def post_url(self, url, *args, **kwargs):
         return requests.post(
+            urllib.parse.urljoin(self.base_url, url), *args, **kwargs)
+
+    def put_url(self, url, *args, **kwargs):
+        return requests.put(
             urllib.parse.urljoin(self.base_url, url), *args, **kwargs)
 
     def delete_url(self, url, *args, **kwargs):
@@ -1495,6 +1500,20 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     config_file = 'zuul-connections-nodepool.conf'
     tenant_config_file = 'config/multi-tenant-provider/main.yaml'
 
+    def _getToken(self, admin=None):
+        if admin is None:
+            admin = ['tenant-one']
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'testuser',
+                 'zuul': {
+                     'admin': admin,
+                 },
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                           algorithm='HS256')
+        return token
+
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_web_providers(self):
         self.waitUntilSettled()
@@ -1626,29 +1645,13 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         )
         self.assertEqual(401, resp.status_code, resp.text)
         # Test that the wrong tenant fails, even with auth
-        authz = {'iss': 'zuul_operator',
-                 'aud': 'zuul.example.com',
-                 'sub': 'testuser',
-                 'zuul': {
-                     'admin': ['tenant-two', ]
-                 },
-                 'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
-                           algorithm='HS256')
+        token = self._getToken(['tenant-two'])
         resp = self.delete_url(
             f"api/tenant/tenant-two/image-build-artifact/{art['uuid']}",
             headers={'Authorization': 'Bearer %s' % token})
         self.assertEqual(404, resp.status_code, resp.text)
         # Do it again with auth
-        authz = {'iss': 'zuul_operator',
-                 'aud': 'zuul.example.com',
-                 'sub': 'testuser',
-                 'zuul': {
-                     'admin': ['tenant-one', ]
-                 },
-                 'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
-                           algorithm='HS256')
+        token = self._getToken(['tenant-one'])
         resp = self.delete_url(
             f"api/tenant/tenant-one/image-build-artifact/{art['uuid']}",
             headers={'Authorization': 'Bearer %s' % token})
@@ -1694,29 +1697,13 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         )
         self.assertEqual(401, resp.status_code, resp.text)
         # Test that the wrong tenant fails, even with auth
-        authz = {'iss': 'zuul_operator',
-                 'aud': 'zuul.example.com',
-                 'sub': 'testuser',
-                 'zuul': {
-                     'admin': ['tenant-two', ]
-                 },
-                 'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
-                           algorithm='HS256')
+        token = self._getToken(['tenant-two'])
         resp = self.delete_url(
             f"api/tenant/tenant-two/image-upload/{upload['uuid']}",
             headers={'Authorization': 'Bearer %s' % token})
         self.assertEqual(404, resp.status_code, resp.text)
         # Do it again with auth
-        authz = {'iss': 'zuul_operator',
-                 'aud': 'zuul.example.com',
-                 'sub': 'testuser',
-                 'zuul': {
-                     'admin': ['tenant-one', ]
-                 },
-                 'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
-                           algorithm='HS256')
+        token = self._getToken(['tenant-one'])
         resp = self.delete_url(
             f"api/tenant/tenant-one/image-upload/{upload['uuid']}",
             headers={'Authorization': 'Bearer %s' % token})
@@ -1762,15 +1749,7 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         )
         self.assertEqual(401, resp.status_code, resp.text)
         # Do it again with auth
-        authz = {'iss': 'zuul_operator',
-                 'aud': 'zuul.example.com',
-                 'sub': 'testuser',
-                 'zuul': {
-                     'admin': ['tenant-one', ]
-                 },
-                 'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
-                           algorithm='HS256')
+        token = self._getToken(['tenant-one'])
         resp = self.post_url(
             "api/tenant/tenant-one/image/ubuntu-local/build",
             headers={'Authorization': 'Bearer %s' % token})
@@ -1782,15 +1761,7 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
         # Try again with the wrong tenant
-        authz = {'iss': 'zuul_operator',
-                 'aud': 'zuul.example.com',
-                 'sub': 'testuser',
-                 'zuul': {
-                     'admin': ['tenant-two', ]
-                 },
-                 'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
-                           algorithm='HS256')
+        token = self._getToken(['tenant-two'])
         resp = self.post_url(
             "api/tenant/tenant-two/image/ubuntu-local/build",
             headers={'Authorization': 'Bearer %s' % token})
@@ -1826,15 +1797,7 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         ], ordered=False)
 
         self.executor_server.hold_jobs_in_build = True
-        authz = {'iss': 'zuul_operator',
-                 'aud': 'zuul.example.com',
-                 'sub': 'testuser',
-                 'zuul': {
-                     'admin': ['tenant-one', ]
-                 },
-                 'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
-                           algorithm='HS256')
+        token = self._getToken(['tenant-one'])
         resp = self.post_url(
             "api/tenant/tenant-one/image/ubuntu-local/build",
             headers={'Authorization': 'Bearer %s' % token})
@@ -1926,6 +1889,67 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         self.executor_server.hold_jobs_in_build = False
         self.executor_server.release()
         self.waitUntilSettled()
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_web_nodes_hold_delete(self):
+        # This tests 3 things (since they are lifecycle related):
+        # * Setting the node state to hold
+        # * Setting the node state to delete
+        # * Deleting the request
+        self.waitUntilSettled()
+        self.startWebServer()
+
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.state,
+                         zuul.model.NodesetRequest.State.FULFILLED)
+        self.assertEqual(len(request.nodes), 1)
+
+        nodes = self.get_url('api/tenant/tenant-one/nodes').json()
+        self.assertEqual(len(nodes), 1)
+
+        token = self._getToken(['tenant-one'])
+        resp = self.put_url(
+            f"api/tenant/tenant-one/nodes/{nodes[0]['uuid']}",
+            headers={'Authorization': 'Bearer %s' % token},
+            json={'state': 'hold'},
+        )
+        self.assertEqual(201, resp.status_code)
+        self.waitUntilSettled()
+
+        node = self.launcher.api.nodes_cache.getItem(nodes[0]['uuid'])
+        self.assertEqual(node.State.HOLD, node.state)
+
+        resp = self.put_url(
+            f"api/tenant/tenant-one/nodes/{nodes[0]['uuid']}",
+            headers={'Authorization': 'Bearer %s' % token},
+            json={'state': 'used'},
+        )
+        self.assertEqual(201, resp.status_code)
+        self.waitUntilSettled()
+
+        requests = self.get_url(
+            'api/tenant/tenant-one/nodeset-requests').json()
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(request.uuid, requests[0]['uuid'])
+
+        resp = self.delete_url(
+            f"api/tenant/tenant-one/nodeset-requests/{requests[0]['uuid']}",
+            headers={'Authorization': 'Bearer %s' % token},
+        )
+        self.assertEqual(204, resp.status_code)
+        self.waitUntilSettled()
+
+        ctx = self.createZKContext(None)
+        for _ in iterate_timeout(10, "request to be deleted"):
+            try:
+                request.refresh(ctx)
+            except NoNodeError:
+                break
+        for _ in iterate_timeout(10, "node to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
+                break
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_web_nodeset_list(self):

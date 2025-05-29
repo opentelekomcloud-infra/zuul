@@ -20,6 +20,7 @@ import {
   TableVariant,
   TableHeader,
   TableBody,
+  ActionsColumn,
 } from '@patternfly/react-table'
 import * as moment_tz from 'moment-timezone'
 import {
@@ -38,6 +39,9 @@ import {
 } from '@patternfly/react-icons'
 import { IconProperty } from '../Misc'
 
+import { deleteNodesetRequest } from '../api'
+import { addNotification } from '../actions/notifications'
+import { addApiError } from '../actions/adminActions'
 import { fetchNodesetRequestsIfNeeded } from '../actions/nodesetRequests'
 import { Fetchable } from '../containers/Fetching'
 
@@ -45,6 +49,7 @@ import { Fetchable } from '../containers/Fetching'
 class NodesetRequestsPage extends React.Component {
   static propTypes = {
     tenant: PropTypes.object,
+    user: PropTypes.object,
     remoteData: PropTypes.object,
     dispatch: PropTypes.func
   }
@@ -64,6 +69,23 @@ class NodesetRequestsPage extends React.Component {
     if (this.props.tenant.name !== prevProps.tenant.name) {
       this.updateData()
     }
+  }
+
+  handleDelete(requestId) {
+    deleteNodesetRequest(this.props.tenant.apiPrefix, requestId)
+      .then(() => {
+        this.props.dispatch(addNotification(
+          {
+            text: 'Nodeset request deleted.',
+            type: 'success',
+            status: '',
+            url: '',
+          }))
+        this.props.dispatch(fetchNodesetRequestsIfNeeded(this.props.tenant, true))
+      })
+      .catch(error => {
+        this.props.dispatch(addApiError(error))
+      })
   }
 
   render () {
@@ -113,11 +135,14 @@ class NodesetRequestsPage extends React.Component {
         ),
         dataLabel: 'provider',
       },
+      {
+        title: '',
+        dataLabel: 'action',
+      },
     ]
     let rows = []
     nodesetRequests.forEach((request) => {
-      console.log(request)
-      let r = [
+      const r = [
         {title: request.uuid, props: {column: 'UUID'}},
         {title: request.labels.join(','), props: {column: 'Labels' }},
         {title: request.state, props: {column: 'State'}},
@@ -126,6 +151,17 @@ class NodesetRequestsPage extends React.Component {
         {title: request.pipeline_name, props: {column: 'Pipeline'}},
         {title: request.job_name, props: {column: 'Job'}},
       ]
+
+      if (this.props.user.isAdmin && this.props.user.scope.indexOf(this.props.tenant.name) !== -1) {
+        r.push({title:
+                <ActionsColumn items={[
+                  {
+                    title: 'Delete',
+                    onClick: () => this.handleDelete(request.uuid)
+                  },
+                ]}/>
+               })
+      }
       rows.push({cells: r})
     })
     return (
@@ -155,4 +191,5 @@ class NodesetRequestsPage extends React.Component {
 export default connect(state => ({
   tenant: state.tenant,
   remoteData: state.nodesetRequests,
+  user: state.user,
 }))(NodesetRequestsPage)
