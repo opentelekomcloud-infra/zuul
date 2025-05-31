@@ -255,6 +255,11 @@ This is a reference for object layout in Zookeeper.
 
    The pipeline trigger event queue.
 
+.. path:: zuul/events/tenant/<tenant>/state
+
+   A Znode that, if exists, can be used to pause event
+   processing.
+
 .. path:: zuul/executor/unzoned
    :type: JobRequestQueue
 

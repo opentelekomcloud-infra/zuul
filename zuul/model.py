@@ -1,5 +1,5 @@
 # Copyright 2012 Hewlett-Packard Development Company, L.P.
-# Copyright 2021-2024 Acme Gating, LLC
+# Copyright 2021-2025 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -10997,3 +10997,51 @@ class AuthZRuleTree(object):
 
     def __repr__(self):
         return '<AuthZRuleTree [ %s ]>' % self.ruletree
+
+
+class TenantEventState(zkobject.ZKObject):
+    def __init__(self, path):
+        super().__init__()
+        self._set(_path=path)
+        self.reset()
+
+    def reset(self):
+        self._set(
+            trigger_queue_discarding=False,
+            trigger_queue_paused=False,
+            result_queue_paused=False,
+            reason=None,
+        )
+
+    def getPath(self):
+        return self._path
+
+    def toDict(self):
+        data = {
+            "trigger_queue_discarding": self.trigger_queue_discarding,
+            "trigger_queue_paused": self.trigger_queue_paused,
+            "result_queue_paused": self.result_queue_paused,
+            "reason": self.reason,
+        }
+        return data
+
+    def serialize(self, context):
+        data = self.toDict()
+        r = json.dumps(data, sort_keys=True).encode("utf8")
+        return r
+
+    def deserialize(self, raw, context, extra=None):
+        if not raw:
+            raw = {}
+        r = super().deserialize(raw, context)
+        return r
+
+    def internalCreate(self, context):
+        data = self._trySerialize(context)
+        try:
+            self._save(context, data)
+        except NoNodeError:
+            try:
+                self._save(context, data, create=True)
+            except NodeExistsError:
+                self._save(context, data)
