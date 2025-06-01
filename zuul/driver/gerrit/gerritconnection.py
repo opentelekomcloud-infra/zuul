@@ -298,6 +298,12 @@ class GerritChangeData(object):
                 ps = change['_current_revision_number']
             else:
                 ps = change['_revision_number']
+
+            if (data['project'] == change['project'] and
+                data['change_id'] == change['change_id']):
+                # This is the current change (perhaps another patchset)
+                continue
+
             for parent in current_rev['commit']['parents']:
                 if change['commit']['commit'] == parent['commit']:
                     self.depends_on = (change['_change_number'], ps)
