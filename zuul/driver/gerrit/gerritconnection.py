@@ -309,7 +309,10 @@ class GerritChangeData(object):
                     self.depends_on = (change['_change_number'], ps)
                     break
             else:
-                self.needed_by.append((change['_change_number'], ps))
+                # We don't care if an old revision needs this change
+                if (change['_current_revision_number'] !=
+                    change['_revision_number']):
+                    self.needed_by.append((change['_change_number'], ps))
 
 
 class QueryHistory:
