@@ -22,6 +22,30 @@
       },
       "revId": "815080f6eaa7bd5493df6fca422371cef032bfb0",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b41fc12e_ab42772f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 31083
+      },
+      "writtenOn": "2025-06-02T09:25:15Z",
+      "side": 1,
+      "message": "That\u0027s true, just wanted to align those.",
+      "parentUuid": "624469b1_5e84f37f",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 13,
+        "endChar": 9
+      },
+      "revId": "815080f6eaa7bd5493df6fca422371cef032bfb0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
