@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b388bae2_f5c83ccc",
+        "filename": "releasenotes/notes/ref-matchers-96681163a098d56f.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-02T18:31:25Z",
+      "side": 1,
+      "message": "I think we need to add a note about this to the branch matchers documentation, since there is now explicit intentional behavior if \"refs/\" is used in a matcher.",
+      "revId": "ce7b600daca188fafe53ab9e84d33500d7040b02",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "655ab339_12c5ad41",
         "filename": "zuul/change_matcher.py",
         "patchSetId": 2
@@ -20,6 +37,40 @@
         "endLine": 89,
         "endChar": 42
       },
+      "revId": "ce7b600daca188fafe53ab9e84d33500d7040b02",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "716b6d9b_46f0884f",
+        "filename": "zuul/change_matcher.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-02T18:31:25Z",
+      "side": 1,
+      "message": "I think starting the regex with \"^\" is a common pattern (and is actually required in other places in zuul, like regex-based project-templates).  So I\u0027m not sure this is enough.  I\u0027m not actually sure that (\"refs/\" or \"^refs/\") would be enough either, if someone couldn\u0027t remember if there was an inition / and said \"/?refs/tags/...\".\n\nPerhaps we need to define that the feature requires either of those specific strings.\n\nAnother option would be to somehow explicitly set a flag on the branch matcher (though, technically because of the way the configuration schema is set up, that would be an attribute on the regex, not the matcher, so implementing that would be a little strange).",
+      "revId": "ce7b600daca188fafe53ab9e84d33500d7040b02",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "38501ce5_38366c6b",
+        "filename": "zuul/change_matcher.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-02T18:31:25Z",
+      "side": 1,
+      "message": "With the above added, does this do anything any more?  I don\u0027t think Zuul can end up with a change.ref that doesn\u0027t start with \"refs/\".  If that\u0027s correct, I think we should remove the code for clarity.",
       "revId": "ce7b600daca188fafe53ab9e84d33500d7040b02",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
