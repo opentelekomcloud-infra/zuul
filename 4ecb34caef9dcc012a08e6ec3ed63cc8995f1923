@@ -16,6 +16,24 @@
       "message": "`datetime.utcnow()` is deprecated in favor of `datetime.now(timezone.utc)`\nhttps://docs.python.org/3/library/datetime.html#datetime.datetime.utcnow",
       "revId": "4ecb34caef9dcc012a08e6ec3ed63cc8995f1923",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f07c1792_aef23d84",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 3090,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-06-02T09:31:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "174268c6_a4802777",
+      "revId": "4ecb34caef9dcc012a08e6ec3ed63cc8995f1923",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
