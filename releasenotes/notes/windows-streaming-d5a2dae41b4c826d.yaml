@@ -8,7 +8,7 @@ upgrade:
     Due to the addition of live console log streaming for Windows
     hosts, one of the following is necessary:
 
-      * Add the ``zuul_win_console:`` task to the first pre-run
+      * Add the ``win_zuul_console:`` task to the first pre-run
         playbook in a base job for Windows hosts, and allow
         connections to port 19886 on the hosts.  This will allow for
         automatic live log streaming in the same manner as under Posix
