@@ -3397,11 +3397,18 @@ class ZuulTestCase(BaseTestCase):
                 self.launcher.local_layout_state)
 
     def __areAllImagesUploaded(self):
-        # TODO: this may need to check for failed image uploads
         for upload in self.launcher.image_upload_registry.getItems():
+            if upload.uuid in getattr(
+                    self, '_finished_image_uploads', set()):
+                return True
             if not upload.external_id:
                 return False
         return True
+
+    def _addFinishedUpload(self, upload_uuid):
+        if not hasattr(self, '_finished_image_uploads'):
+            self._finished_image_uploads = set()
+        self._finished_image_uploads.add(upload_uuid)
 
     def waitUntilSettled(self, msg="", matcher=None) -> None:
         self.log.debug("Waiting until settled... (%s)", msg)
