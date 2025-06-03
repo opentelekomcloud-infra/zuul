@@ -28,6 +28,7 @@ import ImagePage from './pages/Image'
 import ImagesPage from './pages/Images'
 import FlavorsPage from './pages/Flavors'
 import LabelsPage from './pages/Labels'
+import NodesetRequestsPage from './pages/NodesetRequests'
 import NodesPage from './pages/Nodes'
 import OpenApiPage from './pages/OpenApi'
 import PipelineDetailsPage from './pages/PipelineDetails'
@@ -218,6 +219,13 @@ const routes = (info) => {
         title: 'Flavors',
         to: '/flavors',
         component: FlavorsPage,
+      }
+    )
+    ret.splice(5, 0,
+      {
+        title: 'Requests',
+        to: '/nodeset-requests',
+        component: NodesetRequestsPage,
       }
     )
   }
