@@ -1098,6 +1098,26 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual('review.example.com%2Forg%2Fcommon-config/'
                          'aws-us-east-1-main', nodes2[1].provider)
 
+    @simple_layout('layouts/nodepool.yaml',
+                   enable_nodepool=True)
+    @driver_config('test_launcher', quotas={
+        'instances': 2,
+    })
+    def test_quota_external_usage(self):
+        # Test that we spread quota use out among multiple providers
+        self.waitUntilSettled()
+
+        # Create 2 unmanaged instances that eat up our quota
+        ec2_client = boto3.client('ec2', region_name='us-east-1')
+        ec2_client.run_instances(
+            ImageId="ami-12c6146b", MinCount=2, MaxCount=2,
+        )
+        self.launcher._provider_quota_cache.clear()
+
+        # We expect a timeout waiting for nodes, and no other exceptions
+        with testtools.ExpectedException(Exception):
+            self.requestNodes(["debian-normal"])
+
     @simple_layout('layouts/nodepool-nodescan.yaml', enable_nodepool=True)
     @okay_tracebacks('_checkNodescanRequest')
     @mock.patch('paramiko.transport.Transport')
