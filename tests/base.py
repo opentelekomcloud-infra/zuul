@@ -3185,6 +3185,8 @@ class ZuulTestCase(BaseTestCase):
 
     def releaseNodesetRequests(self, *requests):
         ctx = self.createZKContext(None)
+        if not requests:
+            requests = self.launcher.api.getNodesetRequests()
         for req in requests:
             req.updateAttributes(ctx, state=req.State.REQUESTED)
 
