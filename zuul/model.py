@@ -1510,7 +1510,6 @@ class ImageUpload(zkobject.LockableZKObject):
             canonical_name=None,
             artifact_uuid=None,  # The UUID of the ImageBuildArtifact
             endpoint_name=None,
-            providers=None,
             config_hash=None,
             external_id=None,
             timestamp=None,
@@ -1554,7 +1553,6 @@ class ImageUpload(zkobject.LockableZKObject):
             canonical_name=self.canonical_name,
             artifact_uuid=self.artifact_uuid,
             endpoint_name=self.endpoint_name,
-            providers=self.providers,
             config_hash=self.config_hash,
             external_id=self.external_id,
             timestamp=self.timestamp,
