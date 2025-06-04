@@ -8013,7 +8013,10 @@ class TestSecrets(ZuulTestCase):
         self.assertEqual(len(secrets), 1)
         for secret_name, secret_content in secrets.items():
             self._validate_oidc_token(
-                secret_name, secret_content.value, self.history[0].uuid)
+                # The var name is with '_' while the secret.name is with '-'
+                # which should be used in the value of the 'sub' claim
+                secret_name.replace('_', '-'),
+                secret_content.value, self.history[0].uuid)
 
     def test_oidc_multi(self):
         # Test that oidc token is generated correctly when there are
@@ -8060,20 +8063,23 @@ class TestSecrets(ZuulTestCase):
             'project2-oidc-secret', 'pre_playbooks'
         )[0]
         for secret_name, secret_content in parent_pre_secrets.items():
+
             self._validate_oidc_token(
-                secret_name, secret_content.value,
+                # var: "login_secretx" -> secret: "project2-oidc-secretx"
+                'project2-oidc-secret' + secret_name[-1],
+                secret_content.value,
                 self.history[1].uuid, "parent.yaml")
         parent_post_secrets = self._getSecrets(
             'project2-oidc-secret', 'post_playbooks'
         )[0]
         for secret_name, secret_content in parent_post_secrets.items():
             self._validate_oidc_token(
-                secret_name, secret_content.value,
+                'project2-oidc-secret' + secret_name[-1], secret_content.value,
                 self.history[1].uuid, "parent.yaml")
 
         for secret_name, secret_content in secrets.items():
             self._validate_oidc_token(
-                secret_name, secret_content.value,
+                'project2-oidc-secret' + secret_name[-1], secret_content.value,
                 self.history[1].uuid)
 
     def test_oidc_mix(self):
@@ -8107,7 +8113,8 @@ class TestSecrets(ZuulTestCase):
         del secrets['project2_secret']
         for secret_name, secret_content in secrets.items():
             self._validate_oidc_token(
-                secret_name, secret_content.value, self.history[0].uuid)
+                secret_name.replace('_', '-'),
+                secret_content.value, self.history[0].uuid)
 
     def test_oidc_iss_override(self):
         # Test that the custom 'iss' is allowed when configured
@@ -8137,7 +8144,8 @@ class TestSecrets(ZuulTestCase):
         }
         for secret_name, secret_content in secrets.items():
             self._validate_oidc_token(
-                secret_name, secret_content.value, self.history[0].uuid,
+                secret_name.replace('_', '-'),
+                secret_content.value, self.history[0].uuid,
                 expected_iss=expected_isses[secret_name])
 
     def _validate_oidc_token(self, oidc_name, oidc_token, build_uuid,
