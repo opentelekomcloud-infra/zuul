@@ -2235,7 +2235,7 @@ class ZuulWebAPI(object):
                 if image.type == 'zuul':
                     uploads.extend([
                         u for u in iur.getUploadsForImage(image.canonical_name)
-                        if provider.canonical_name in u.providers
+                        if u.isPermittedForProvider(image, provider)
                     ])
                     artifact_uuids = set([u.artifact_uuid for u in uploads])
                     build_artifacts.extend([
@@ -2286,18 +2286,24 @@ class ZuulWebAPI(object):
         ret = []
         ibr = self.zuulweb.image_build_registry
         iur = self.zuulweb.image_upload_registry
-        provider_cnames = set([
-            p.canonical_name
-            for p in self.zuulweb.tenant_providers[tenant_name]
-        ])
+        providers = self.zuulweb.tenant_providers[tenant_name]
+
+        permitted_upload_uuids = set()
+        for provider in providers:
+            for image in provider.images.values():
+                if image.type == 'zuul':
+                    for upload in iur.getUploadsForImage(image.canonical_name):
+                        if upload.isPermittedForProvider(image, provider):
+                            permitted_upload_uuids.add(upload.uuid)
+
         for image in tenant.layout.images.values():
             if image.type == 'zuul':
                 # Include uploads used by providers in the tenant
                 uploads = [
                     u for u in iur.getUploadsForImage(image.canonical_name)
-                    if provider_cnames.intersection(set(u.providers))
+                    if u.uuid in permitted_upload_uuids
                 ]
-                artifact_uuids = set([u.artifact_uuid for u in uploads])
+                artifact_uuids = set(u.artifact_uuid for u in uploads)
                 # Include build artifacts used by relevant uploads
                 build_artifacts = [
                     b for b in ibr.getArtifactsForImage(image.canonical_name)
