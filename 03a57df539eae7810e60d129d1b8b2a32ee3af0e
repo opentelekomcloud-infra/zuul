@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f8c75f4_171d8064",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 3653,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-04T21:04:42Z",
+      "side": 1,
+      "message": "Change this to 35 since we\u0027re not bumping it.",
+      "revId": "03a57df539eae7810e60d129d1b8b2a32ee3af0e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "868e37ac_62edf1e1",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 3656,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-04T21:04:42Z",
+      "side": 1,
+      "message": "Note: I like this construction (even though it\u0027s verbose) because it\u0027s easier to clean up when we drop the old model.",
+      "revId": "03a57df539eae7810e60d129d1b8b2a32ee3af0e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "94939542_12c0ee3e",
+        "filename": "zuul/model.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 2832,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-04T21:04:42Z",
+      "side": 1,
+      "message": "Just always add it.  It will be ignored on older versions.",
+      "revId": "03a57df539eae7810e60d129d1b8b2a32ee3af0e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9525843b_a1cf8a08",
+        "filename": "zuul/model_api.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-04T21:04:42Z",
+      "side": 1,
+      "message": "You don\u0027t need to bump the model api (because I\u0027m recommending you drop the check for it).",
+      "revId": "03a57df539eae7810e60d129d1b8b2a32ee3af0e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
