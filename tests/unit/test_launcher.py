@@ -236,6 +236,22 @@ class TestLauncher(LauncherBaseTestCase):
             if len(artifacts) == count:
                 return artifacts
 
+    def _waitForUploads(self, image_cname, count=None):
+        for _ in iterate_timeout(60, "upload to complete"):
+            uploads = self.launcher.image_upload_registry.getUploadsForImage(
+                image_cname)
+            pending = [u for u in uploads if u.external_id is None]
+            if not pending:
+                if count is None or count == len(uploads):
+                    return uploads
+
+    def _waitForLauncherLayoutSync(self, tenant='tenant-one'):
+        for _ in iterate_timeout(
+                30, "scheduler and launcher to have the same layout"):
+            if (self.scheds.first.sched.local_layout_state.get(tenant) ==
+                self.launcher.local_layout_state.get(tenant)):
+                break
+
     @simple_layout('layouts/nodepool-missing-connection.yaml',
                    enable_nodepool=True)
     def test_launcher_missing_connection(self):
@@ -587,6 +603,7 @@ class TestLauncher(LauncherBaseTestCase):
                     endpoint_name=endpoint.canonical_name,
                     providers=[provider.canonical_name],
                     canonical_name=image.canonical_name,
+                    config_hash=image.config_hash,
                     timestamp=time.time(),
                     _state=model.ImageUpload.State.UPLOADING,
                     state_time=time.time(),
@@ -1422,6 +1439,114 @@ class TestLauncher(LauncherBaseTestCase):
                 except NoNodeError:
                     break
 
+    @simple_layout('layouts/launcher-image-lifecycle/phase1.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="ami-1e749f67")
+    def test_image_delete_lifecycle(self, mock_uploadimage):
+        self.waitUntilSettled("phase1")
+        # Initialize some values for later
+
+        class FakeNode:
+            pass
+
+        node = FakeNode
+        node.image_upload_uuid = None
+        node.label = 'debian-local-normal'
+        image_cname = 'review.example.com%2Forg%2Fcommon-config/debian-local'
+        image_id = "ami-1e749f67"
+
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+        ], ordered=False)
+        uploads = self._waitForUploads(image_cname)
+        # At this point the image should be in one provider only
+        self.assertEqual(1, len(uploads))
+        provider_main = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-main')
+        self.assertEqual(
+            image_id, self.launcher.getImageExternalId(node, provider_main))
+
+        # Add the image to the other providers
+        self.commitConfigUpdate(
+            'org/common-config',
+            'layouts/launcher-image-lifecycle/phase2.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self._waitForLauncherLayoutSync()
+
+        self.waitUntilSettled("phase2")
+        uploads = self._waitForUploads(image_cname)
+        self.assertEqual(1, len(uploads))
+        provider_main = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-main')
+        provider_same = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-same')
+        provider_diff = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-different')
+        self.assertEqual(
+            image_id, self.launcher.getImageExternalId(node, provider_main))
+        self.assertEqual(
+            image_id, self.launcher.getImageExternalId(node, provider_same))
+        with testtools.ExpectedException(Exception, "No image found"):
+            self.assertEqual(
+                image_id, self.launcher.getImageExternalId(
+                    node, provider_diff))
+
+        # Update the config for the main provider
+        self.commitConfigUpdate(
+            'org/common-config',
+            'layouts/launcher-image-lifecycle/phase3.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self._waitForLauncherLayoutSync()
+
+        self.waitUntilSettled("phase3")
+        uploads = self._waitForUploads(image_cname)
+        self.assertEqual(1, len(uploads))
+        provider_main = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-main')
+        provider_same = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-same')
+        provider_diff = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-different')
+        self.assertEqual(
+            image_id, self.launcher.getImageExternalId(node, provider_main))
+        self.assertEqual(
+            image_id, self.launcher.getImageExternalId(node, provider_same))
+        with testtools.ExpectedException(Exception, "No image found"):
+            self.assertEqual(
+                image_id, self.launcher.getImageExternalId(
+                    node, provider_diff))
+
+        # Remove the image from the other providers
+        self.commitConfigUpdate(
+            'org/common-config',
+            'layouts/launcher-image-lifecycle/phase4.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self._waitForLauncherLayoutSync()
+
+        self.waitUntilSettled("phase4")
+        uploads = self._waitForUploads(image_cname)
+        self.assertEqual(1, len(uploads))
+        provider_main = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-main')
+        self.assertEqual(
+            image_id, self.launcher.getImageExternalId(node, provider_main))
+
+        # Remove the image from all providers
+        self.commitConfigUpdate(
+            'org/common-config',
+            'layouts/launcher-image-lifecycle/phase5.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self._waitForLauncherLayoutSync()
+
+        self.waitUntilSettled("phase5")
+        uploads = self._waitForUploads(image_cname, count=0)
+
     @simple_layout('layouts/nodepool.yaml',
                    enable_nodepool=True)
     @driver_config('test_launcher', quotas={
@@ -1803,10 +1928,13 @@ class TestLauncherUpload(LauncherBaseTestCase):
     def _upload_run(test, self, *args, **kw):
         # Fail on first upload of this image
         if 'ubuntu-local' in self.image_name:
-            if self.image_name not in test._ubuntu_images:
-                test._ubuntu_images.append(self.image_name)
-            if test._ubuntu_images[0] == self.image_name:
-                test._addFinishedUpload(self.metadata['zuul_upload_uuid'])
+            upload_id = self.metadata['zuul_upload_uuid']
+            upload = test.launcher.image_upload_registry.getItem(upload_id)
+            artifact_id = upload.artifact_uuid
+            if artifact_id not in test._ubuntu_images:
+                test._ubuntu_images.append(artifact_id)
+            if test._ubuntu_images[0] == artifact_id:
+                test._addFinishedUpload(upload_id)
                 raise Exception("Upload test failure")
         return "test_external_id"
 
