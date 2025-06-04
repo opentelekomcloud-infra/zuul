@@ -2826,6 +2826,10 @@ class Secret(ConfigObject):
             # max.
             secret_oidc['ttl'] = secret_oidc.get(
                 'ttl', layout.tenant.default_oidc_ttl)
+            # The original name needs to be passed for generating
+            # the value of the 'sub' claim
+            if COMPONENT_REGISTRY.model_api >= 36:
+                secret_oidc['name'] = self.name
         else:
             secret_oidc = {}
 
