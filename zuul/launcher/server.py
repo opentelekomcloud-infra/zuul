@@ -214,7 +214,7 @@ class UploadJob:
                 'zuul_upload_uuid': upload.uuid,
             }
             artifact = self.image_build_artifact
-            image_name = f'{provider_image.name}-{artifact.uuid}'
+            image_name = f'{provider_image.name}-{upload.uuid}'
 
             upload_args[upload.uuid] = dict(
                 provider=provider,
@@ -1368,8 +1368,7 @@ class Launcher:
                     # the requested image.
                     valid_uploads = (
                         u for u in uploads
-                        if provider.canonical_name in u.providers
-                        and u.uuid == request.image_upload_uuid
+                        if u.uuid == request.image_upload_uuid
                     )
                     if not any(valid_uploads):
                         continue
@@ -2252,7 +2251,7 @@ class Launcher:
         self.log.debug("Checking for old images")
         self.upload_deleted_event.clear()
         keep_uploads = set()
-        known_uploads = set()
+        known_uploads = set(self.image_upload_registry.getItems())
         known_providers = set()
         for tenant_name, providers in self.tenant_providers.items():
             for provider in providers:
@@ -2260,7 +2259,7 @@ class Launcher:
                 for image in provider.images.values():
                     if image.type == 'zuul':
                         self.checkOldImage(tenant_name, provider, image,
-                                           keep_uploads, known_uploads)
+                                           keep_uploads)
 
         # Get the list of ibas for which we could consider uploads
         # first (to make sure that we don't race the creation of
@@ -2271,10 +2270,7 @@ class Launcher:
 
         uploads_by_artifact = collections.defaultdict(list)
         latest_upload_timestamp = 0
-        for upload in self.image_upload_registry.getItems():
-            if upload not in known_uploads:
-                # New since we decided which ones to keep
-                continue
+        for upload in known_uploads:
             if upload.timestamp > latest_upload_timestamp:
                 latest_upload_timestamp = upload.timestamp
             uploads_by_artifact[upload.artifact_uuid].append(upload)
@@ -2317,13 +2313,12 @@ class Launcher:
                         pass
 
     def checkOldImage(self, tenant_name, provider, image,
-                      keep_uploads, known_uploads):
+                      keep_uploads):
         image_cname = image.canonical_name
         uploads = self.image_upload_registry.getUploadsForImage(image_cname)
-        known_uploads.update(set(uploads))
         valid_uploads = [
             upload for upload in uploads
-            if (provider.canonical_name in upload.providers and
+            if (upload.isPermittedForProvider(image, provider) and
                 upload.state == upload.State.READY and
                 upload.validated and
                 upload.external_id)
@@ -2340,7 +2335,7 @@ class Launcher:
             oldest_good_timestamp = 0
         new_uploads = [
             upload for upload in uploads
-            if (provider.canonical_name in upload.providers and
+            if (upload.isPermittedForProvider(image, provider) and
                 upload.timestamp > oldest_good_timestamp)
         ]
         keep_uploads.update(set(new_uploads))
@@ -2440,8 +2435,6 @@ class Launcher:
             return None
         image_cname = image.canonical_name
         uploads = self.image_upload_registry.getUploadsForImage(image_cname)
-        # TODO: we could also check config hash here to start using an
-        # image that wasn't originally attached to this provider.
         if node.image_upload_uuid:
             valid_uploads = [
                 u for u in uploads if u.uuid == node.image_upload_uuid
@@ -2449,7 +2442,7 @@ class Launcher:
         else:
             valid_uploads = [
                 upload for upload in uploads
-                if (provider.canonical_name in upload.providers and
+                if (upload.isPermittedForProvider(image, provider) and
                     upload.validated and
                     upload.external_id)
             ]
