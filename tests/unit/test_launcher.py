@@ -292,9 +292,14 @@ class TestLauncher(LauncherBaseTestCase):
         build = self.getJobFromHistory('build-debian-local-image')
         formats = build.parameters['zuul']['image_formats']
         self.assertEqual(['raw'], formats)
+        self.assertEqual(
+            'debian-local', build.parameters['zuul']['image_build_name'])
+
         build = self.getJobFromHistory('build-ubuntu-local-image')
         formats = build.parameters['zuul']['image_formats']
         self.assertEqual(['raw'], formats)
+        self.assertEqual(
+            'ubuntu-local', build.parameters['zuul']['image_build_name'])
 
     @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @return_data(
