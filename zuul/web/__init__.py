@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import cherrypy
+import itertools
 import socket
 from collections import defaultdict
 
@@ -2235,7 +2236,7 @@ class ZuulWebAPI(object):
                 if image.type == 'zuul':
                     uploads.extend([
                         u for u in iur.getUploadsForImage(image.canonical_name)
-                        if provider.canonical_name in u.providers
+                        if u.config_hash == image.config_hash
                     ])
                     artifact_uuids = set([u.artifact_uuid for u in uploads])
                     build_artifacts.extend([
@@ -2286,18 +2287,19 @@ class ZuulWebAPI(object):
         ret = []
         ibr = self.zuulweb.image_build_registry
         iur = self.zuulweb.image_upload_registry
-        provider_cnames = set([
-            p.canonical_name
+        image_config_hashes = set(itertools.chain(
+            i.config_hash
             for p in self.zuulweb.tenant_providers[tenant_name]
-        ])
+            for i in p.images.values()
+        ))
         for image in tenant.layout.images.values():
             if image.type == 'zuul':
                 # Include uploads used by providers in the tenant
                 uploads = [
                     u for u in iur.getUploadsForImage(image.canonical_name)
-                    if provider_cnames.intersection(set(u.providers))
+                    if u.config_hash in image_config_hashes
                 ]
-                artifact_uuids = set([u.artifact_uuid for u in uploads])
+                artifact_uuids = set(u.artifact_uuid for u in uploads)
                 # Include build artifacts used by relevant uploads
                 build_artifacts = [
                     b for b in ibr.getArtifactsForImage(image.canonical_name)
