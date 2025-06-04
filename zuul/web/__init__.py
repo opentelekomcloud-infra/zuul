@@ -617,6 +617,8 @@ class ProviderNodeConverter:
     # API output.
     @staticmethod
     def toDict(node):
+        state_time = _datetimeToString(
+            datetime.utcfromtimestamp(node.state_time))
         ret = {
             'id': node.uuid,
             'uuid': node.uuid,
@@ -627,7 +629,7 @@ class ProviderNodeConverter:
             'external_id': None,
             'provider': node.provider,
             'state': node.state,
-            'state_time': node.state_time,
+            'state_time': state_time,
             'comment': None,
         }
         return ret
