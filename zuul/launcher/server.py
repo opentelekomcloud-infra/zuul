@@ -2283,11 +2283,11 @@ class Launcher:
 
     def doesProviderHaveQuotaForNode(self, provider, node, log):
         total = self.getProviderQuota(provider).copy()
-        log.debug("Provider quota before Zuul: %s", total)
+        log.debug("Provider %s quota before Zuul: %s", provider, total)
         total.subtract(self.getQuotaUsed(provider))
-        log.debug("Provider quota including Zuul: %s", total)
+        log.debug("Provider %s quota including Zuul: %s", provider, total)
         total.subtract(node.quota)
-        log.debug("Node required quota: %s", node.quota)
+        log.debug("Node %s required quota: %s", node, node.quota)
         return total.nonNegative()
 
     def runStatsElection(self):
