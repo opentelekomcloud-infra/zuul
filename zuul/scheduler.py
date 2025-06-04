@@ -3370,7 +3370,6 @@ class Scheduler(threading.Thread):
                         canonical_name=iba.canonical_name,
                         artifact_uuid=iba.uuid,
                         endpoint_name=endpoint_name,
-                        providers=providers,
                         config_hash=config_hash,
                         timestamp=time.time(),
                         validated=iba.validated,
