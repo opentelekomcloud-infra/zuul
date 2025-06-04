@@ -1583,6 +1583,14 @@ class ImageUpload(zkobject.LockableZKObject):
         )
         return json.dumps(data, sort_keys=True).encode("utf-8")
 
+    def isPermittedForProvider(self, image, provider):
+        if provider.canonical_name in self.providers:
+            return True
+
+        endpoint = provider.getEndpoint()
+        return (self.config_hash == image.config_hash and
+                endpoint.canonical_name == self.endpoint_name)
+
 
 class Image(ConfigObject):
     """A zuul or cloud image.

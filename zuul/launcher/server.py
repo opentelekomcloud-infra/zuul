@@ -214,7 +214,7 @@ class UploadJob:
                 'zuul_upload_uuid': upload.uuid,
             }
             artifact = self.image_build_artifact
-            image_name = f'{provider_image.name}-{artifact.uuid}'
+            image_name = f'{provider_image.name}-{upload.uuid}'
 
             upload_args[upload.uuid] = dict(
                 provider=provider,
@@ -1368,8 +1368,7 @@ class Launcher:
                     # the requested image.
                     valid_uploads = (
                         u for u in uploads
-                        if provider.canonical_name in u.providers
-                        and u.uuid == request.image_upload_uuid
+                        if u.uuid == request.image_upload_uuid
                     )
                     if not any(valid_uploads):
                         continue
@@ -2323,7 +2322,7 @@ class Launcher:
         known_uploads.update(set(uploads))
         valid_uploads = [
             upload for upload in uploads
-            if (provider.canonical_name in upload.providers and
+            if (upload.isPermittedForProvider(image, provider) and
                 upload.state == upload.State.READY and
                 upload.validated and
                 upload.external_id)
@@ -2340,7 +2339,7 @@ class Launcher:
             oldest_good_timestamp = 0
         new_uploads = [
             upload for upload in uploads
-            if (provider.canonical_name in upload.providers and
+            if (upload.isPermittedForProvider(image, provider) and
                 upload.timestamp > oldest_good_timestamp)
         ]
         keep_uploads.update(set(new_uploads))
@@ -2440,8 +2439,6 @@ class Launcher:
             return None
         image_cname = image.canonical_name
         uploads = self.image_upload_registry.getUploadsForImage(image_cname)
-        # TODO: we could also check config hash here to start using an
-        # image that wasn't originally attached to this provider.
         if node.image_upload_uuid:
             valid_uploads = [
                 u for u in uploads if u.uuid == node.image_upload_uuid
@@ -2449,7 +2446,7 @@ class Launcher:
         else:
             valid_uploads = [
                 upload for upload in uploads
-                if (provider.canonical_name in upload.providers and
+                if (upload.isPermittedForProvider(image, provider) and
                     upload.validated and
                     upload.external_id)
             ]
