@@ -129,9 +129,15 @@ class DeleteJob:
                         self.log.info("Deleting image upload %s", self.upload)
                         with self.upload.activeContext(ctx):
                             self.upload.state = self.upload.State.DELETING
-                        provider_cname = self.upload.providers[0]
-                        provider = self.launcher.\
-                            _getProviderByCanonicalName(provider_cname)
+
+                        for provider in self.launcher.getProvidersForEndpoint(
+                                self.upload.endpoint_name):
+                            break
+                        else:
+                            self.log.exception(
+                                "Unable to find provider for upload %s",
+                                self.upload)
+                            return
                         if self.upload.external_id:
                             provider.deleteImage(self.upload.external_id)
                         self.upload.delete(ctx)
@@ -178,24 +184,29 @@ class UploadJob:
 
     def _getUploadArguments(self, uploads, upload_args):
         for upload in uploads:
-            # The upload has a list of providers with identical
-            # configurations.  Pick one of them as a representative.
-            provider_cname = upload.providers[0]
-            provider = self.launcher._getProviderByCanonicalName(
-                provider_cname)
-            provider_image = None
-            for image in provider.images.values():
-                if image.canonical_name == upload.canonical_name:
-                    provider_image = image
-            if provider_image is None:
+            # The upload can be valid for multiple providers with
+            # identical configurations. Pick one of them as a
+            # representative.
+            for provider in self.launcher.getProvidersForEndpoint(
+                    upload.endpoint_name):
+                for provider_image in provider.images.values():
+                    if (provider_image.canonical_name == upload.canonical_name
+                        and provider_image.config_hash == upload.config_hash):
+                        break
+                else:
+                    # No matching image found
+                    continue
+                break
+            else:
                 raise Exception(
                     f"Unable to find image {upload.canonical_name}")
+            artifact = self.image_build_artifact
             metadata = {
                 'zuul_system_id': self.launcher.system.system_id,
+                'zuul_image_uuid': artifact.uuid,
                 'zuul_upload_uuid': upload.uuid,
             }
-            artifact = self.image_build_artifact
-            image_name = f'{provider_image.name}-{artifact.uuid}'
+            image_name = f'{provider_image.name}-{upload.uuid}'
 
             upload_args[upload.uuid] = dict(
                 provider=provider,
@@ -1248,8 +1259,7 @@ class Launcher:
                     # the requested image.
                     valid_uploads = (
                         u for u in uploads
-                        if provider.canonical_name in u.providers
-                        and u.uuid == request.image_upload_uuid
+                        if u.uuid == request.image_upload_uuid
                     )
                     if not any(valid_uploads):
                         continue
@@ -2086,8 +2096,7 @@ class Launcher:
         uploads = self.image_upload_registry.getUploadsForImage(image_cname)
         valid_uploads = [
             upload for upload in uploads
-            if (provider.canonical_name in upload.providers and
-                upload.state == upload.State.READY and
+            if (upload.state == upload.State.READY and
                 upload.validated and
                 upload.external_id)
         ]
@@ -2103,8 +2112,7 @@ class Launcher:
             oldest_good_timestamp = 0
         new_uploads = [
             upload for upload in uploads
-            if (provider.canonical_name in upload.providers and
-                upload.timestamp > oldest_good_timestamp)
+            if upload.timestamp > oldest_good_timestamp
         ]
         keep_uploads.update(set(new_uploads))
 
@@ -2198,8 +2206,6 @@ class Launcher:
             return None
         image_cname = image.canonical_name
         uploads = self.image_upload_registry.getUploadsForImage(image_cname)
-        # TODO: we could also check config hash here to start using an
-        # image that wasn't originally attached to this provider.
         if node.image_upload_uuid:
             valid_uploads = [
                 u for u in uploads if u.uuid == node.image_upload_uuid
@@ -2207,7 +2213,7 @@ class Launcher:
         else:
             valid_uploads = [
                 upload for upload in uploads
-                if (provider.canonical_name in upload.providers and
+                if (upload.config_hash == image.config_hash and
                     upload.validated and
                     upload.external_id)
             ]
@@ -2216,6 +2222,13 @@ class Launcher:
         # Uploads are already sorted by timestamp
         image_upload = valid_uploads[-1]
         return image_upload.external_id
+
+    def getProvidersForEndpoint(self, endpoint_name):
+        for tenant_name, providers in self.tenant_providers.items():
+            for provider in providers:
+                endpoint = provider.getEndpoint()
+                if endpoint.canonical_name == endpoint_name:
+                    yield provider
 
     def getQuotaUsed(self, provider):
         used = model.QuotaInformation()
