@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5f5b4cd1_6cf435ae",
+        "filename": "doc/source/project-config.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-05T16:18:54Z",
+      "side": 1,
+      "message": "I like the explicit choice with an attribute, but I don\u0027t love adding to the regex since it really only affects branch matchers.\n\nI\u0027d like to make it clear this is only used for branch matchers.  How about we do the following:\n\n* Document it as an attribute under job.branches.  So the user would provide a \"regex\" object there, but in addition to the normal regex fields, they can include an attribute named something like \"match-containing-branches: bool\" which would toggle the behavior we\u0027re interested in.\n* For implementation, pop that attribute off before constructing the ZuulRegex.\n* Save the attribute on the change matcher instead of the ZuulRegex.\n\nThat will let us have an attribute specifically tailored to this, which lets us give it a more specific name, and avoids any confusion with other uses of ZuulRegex.",
+      "revId": "e85a2935bdf1c8127acda5b8ace0a1cf84a1b4a6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
