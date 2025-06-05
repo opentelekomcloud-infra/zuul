@@ -191,6 +191,24 @@
       "message": "The construction of the condition here read oddly to me at first, but I guess what we\u0027re trying to ensure is that we update if `self.zuul_query_ltime is None` or `self.zuul_query_ltime \u003c\u003d data.zuul_query_ltime` which is what happens if you distribute the not through the condition so this should work.",
       "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d75c1d1_9c93aece",
+        "filename": "zuul/driver/gerrit/gerritmodel.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-05T01:14:57Z",
+      "side": 1,
+      "message": "Yeah, my brain conceived of it as \"make sure we have an ltime before comparing it, and if the aggregate of all that fails we should update\".",
+      "parentUuid": "c3390795_d3ca2c99",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
