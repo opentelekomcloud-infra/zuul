@@ -704,8 +704,15 @@ class NodescanWorker:
 
     def join(self):
         self.thread.join()
-        os.close(self.wake_read)
-        os.close(self.wake_write)
+
+        for fd in (self.wake_read, self.wake_write):
+            try:
+                os.close(fd)
+            except OSError as e:
+                # If the nodescan worker is joined multiple times the
+                # file descriptors have already been closed.
+                if e.errno != errno.EBADF:
+                    raise
 
     def addRequest(self, request):
         """Submit a nodescan request"""
