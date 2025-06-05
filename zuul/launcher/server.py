@@ -2269,7 +2269,11 @@ class Launcher:
         for resource in total.quota.keys():
             used_r = used.quota.get(resource, used.default)
             total_r = total.quota[resource]
-            pct = max(used_r / total_r, pct)
+            if not total_r:
+                pct = 1.0
+                break
+            else:
+                pct = max(used_r / total_r, pct)
         if pct < 1.0:
             # If we are below 100% usage, lose precision so that we only
             # consider 10% gradiations.  This may help us avoid
