@@ -1279,6 +1279,14 @@ class Launcher:
                     )
                     if not any(valid_uploads):
                         continue
+                # Check if the provider could possibly handle the
+                # request based on quota but not current zuul usage.
+                # TODO: consider the impact of a multi-node request
+                # for the same label where that single request is
+                # larger than the capacity.
+                if not self.doesProviderHaveQuotaForLabel(
+                        provider, label, log, include_usage=False):
+                    continue
                 providers_for_label[i].append(provider)
             providers_for_all_labels &= set(providers_for_label[i])
 
@@ -2311,11 +2319,13 @@ class Launcher:
             pct = round(pct, 1)
         return pct
 
-    def doesProviderHaveQuotaForLabel(self, provider, label, log):
+    def doesProviderHaveQuotaForLabel(self, provider, label, log,
+                                      include_usage=True):
         total = self.getProviderQuota(provider).copy()
         log.debug("Provider %s quota before Zuul: %s", provider, total)
-        total.subtract(self.getQuotaUsed(provider))
-        log.debug("Provider %s quota including Zuul: %s", provider, total)
+        if include_usage:
+            total.subtract(self.getQuotaUsed(provider))
+            log.debug("Provider %s quota including Zuul: %s", provider, total)
         label_quota = provider.getQuotaForLabel(label)
         total.subtract(label_quota)
         log.debug("Label %s required quota: %s", label, label_quota)
