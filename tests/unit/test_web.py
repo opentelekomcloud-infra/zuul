@@ -1976,6 +1976,8 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
             'image_names': None,
             'image_upload_uuid': None,
             'relative_priority': 0,
+            'provider_node_data': [],
+            'is_locked': False,
         }
         self.assertEqual(expected, data[0])
         self.hold_nodeset_requests_in_queue = False

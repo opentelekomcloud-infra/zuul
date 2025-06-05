@@ -627,10 +627,24 @@ class ProviderNodeConverter:
             'label': node.label,
             'connection_type': node.connection_type,
             'external_id': None,
-            'provider': node.provider,
             'state': node.state,
             'state_time': state_time,
             'comment': None,
+            'max_ready_age': node.max_ready_age,
+            'interface_ip': node.interface_ip,
+            'public_ipv4': node.public_ipv4,
+            'private_ipv4': node.private_ipv4,
+            'public_ipv6': node.public_ipv6,
+            'private_ipv6': node.private_ipv6,
+            'slot': node.slot,
+            'az': node.az,
+            'cloud': node.cloud,
+            'provider': node.provider,
+            'region': node.region,
+            'username': node.username,
+            'hold_expiration': node.hold_expiration,
+            'quota': node.quota.getResources(),
+            'is_locked': node.is_locked,
         }
         return ret
 
@@ -644,10 +658,24 @@ class ProviderNodeConverter:
             'label': str,
             'connection_type': str,
             'external_id': str,
-            'provider': str,
             'state': str,
             'state_time': str,
             'comment': str,
+            'max_ready_age': int,
+            'interface_ip': str,
+            'public_ipv4': str,
+            'private_ipv4': str,
+            'public_ipv6': str,
+            'private_ipv6': str,
+            'slot': int,
+            'az': str,
+            'cloud': str,
+            'provider': str,
+            'region': str,
+            'username': str,
+            'hold_expiration': int,
+            'quota': dict,
+            'is_locked': bool,
         })
 
 
@@ -658,6 +686,16 @@ class NodesetRequestConverter:
     def toDict(request):
         request_time = _datetimeToString(
             datetime.utcfromtimestamp(request.request_time))
+
+        provider_node_data = [
+            {
+                'uuid': data['uuid'],
+                'executor_zone': data['executor_zone'],
+                'failed_providers': data['failed_providers'],
+            }
+            for data in request.provider_node_data
+        ]
+
         ret = {
             'uuid': request.uuid,
             'state': request.state,
@@ -675,6 +713,8 @@ class NodesetRequestConverter:
             'image_names': request.image_names,
             'image_upload_uuid': request.image_upload_uuid,
             'relative_priority': request.relative_priority,
+            'provider_node_data': provider_node_data,
+            'is_locked': request.is_locked,
         }
         return ret
 
@@ -697,6 +737,14 @@ class NodesetRequestConverter:
             'image_names': [str],
             'image_upload_uuid': str,
             'relative_priority': int,
+            'provider_node_data': [
+                {
+                    'uuid': str,
+                    'executor_zone': str,
+                    'failed_providers': [str],
+                }
+            ],
+            'is_locked': bool,
         })
 
 
