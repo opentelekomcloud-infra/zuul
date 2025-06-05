@@ -488,9 +488,9 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
             volume = None
         return quota_from_limits(compute, volume)
 
-    def getQuotaForLabel(self, label):
-        flavor = self._findFlavor(label.flavor_name, label.min_ram)
-        return quota_from_flavor(flavor, label=label)
+    def getQuotaForLabel(self, label, flavor):
+        os_flavor = self._findFlavorByName(flavor.flavor_name)
+        return quota_from_flavor(os_flavor, label=label)
 
     def getAZs(self):
         # TODO: This is currently unused; it's unclear if we will need
