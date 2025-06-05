@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a03e361c_7ed09f1d",
+        "filename": "tests/unit/test_sos.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-05T00:45:43Z",
+      "side": 1,
+      "message": "Nit with the fix in place this last step should no longer occur. Not sure if we want to make that more clear in this comment.",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ed0f05df_2ee4cf47",
+        "filename": "tests/unit/test_sos.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 498,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-05T00:45:43Z",
+      "side": 1,
+      "message": "I think this set() call may be redundant as we call clear against this Event on line 574",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c386a0b8_640f1fa3",
+        "filename": "tests/unit/test_sos.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-05T00:45:43Z",
+      "side": 1,
+      "message": "I think this set() call may be redundant as we call clear against this Event on line 573",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a5fd0c04_32751d91",
+        "filename": "tests/unit/test_sos.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 535,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-05T00:45:43Z",
+      "side": 1,
+      "message": "Nit this event is just a normal comment event not a change-merged event as the code comment indicate. I think that may not matter for the purposes of the test as this is sufficient to trigger the change update behavior but maybe we should modify the comment for less confusion?\n\nAlternatively we could call `getChangeMergedEvent` instead?",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2b5f6744_5a604159",
+        "filename": "tests/unit/test_sos.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-05T00:45:43Z",
+      "side": 1,
+      "message": "I guess we don\u0027t need to restore the orig_* functions in the pipeline and gerrit connection at this point because we won\u0027t try to update the change again? Or maybe we will try to update the change again but that doesn\u0027t matter for the assertions below because those assertions are all for things that side effect after the first update and not the second? (I think the second might occur with change 2 merging).",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c3390795_d3ca2c99",
+        "filename": "zuul/driver/gerrit/gerritmodel.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-05T00:45:43Z",
+      "side": 1,
+      "message": "The construction of the condition here read oddly to me at first, but I guess what we\u0027re trying to ensure is that we update if `self.zuul_query_ltime is None` or `self.zuul_query_ltime \u003c\u003d data.zuul_query_ltime` which is what happens if you distribute the not through the condition so this should work.",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
