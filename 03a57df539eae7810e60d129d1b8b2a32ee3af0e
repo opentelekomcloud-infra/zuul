@@ -36,6 +36,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "74f007aa_2167c6df",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 3653,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-05T16:26:01Z",
+      "side": 1,
+      "message": "No, we still want a comment here so that we know to remove the backwards compatibility later.  Please add it back with 35 as the number.\n\nIt means: once we drop support for model api versions older than 35 we can remove the fallback code.",
+      "parentUuid": "2acb4aee_a6149ab2",
+      "revId": "03a57df539eae7810e60d129d1b8b2a32ee3af0e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "868e37ac_62edf1e1",
