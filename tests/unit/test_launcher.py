@@ -1275,6 +1275,7 @@ class TestLauncher(LauncherBaseTestCase):
 
         requests = []
         ctx = self.createZKContext(None)
+        self.log.debug("JEB create requests")
         for _ in range(2):
             request = model.NodesetRequest.new(
                 ctx,
@@ -1291,14 +1292,19 @@ class TestLauncher(LauncherBaseTestCase):
             )
             requests.append(request)
 
+        self.log.debug("JEB created requests")
+        time.sleep(5)
+        self.log.debug("JEB revise requests")
         # Revise relative priority, so that the last requests has
         # the highest relative priority.
         request1_p2, request2_p1 = requests
         client.reviseRequest(request1_p2, relative_priority=2)
         client.reviseRequest(request2_p1, relative_priority=1)
+        self.log.debug("JEB revised requests")
 
         # Delete the initial request to free up the instance
         request0.delete(ctx)
+        self.log.debug("JEB deleted request")
         # Last request should be fulfilled
         for _ in iterate_timeout(10, "request to be fulfilled"):
             request2_p1.refresh(ctx)
