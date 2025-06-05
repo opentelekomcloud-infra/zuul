@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "41466ec1_07e822ce",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-05T01:01:08Z",
+      "side": 1,
+      "message": "This patchset 3 update is just a rebase update. I want to explore the idea of having an attribute on the regex type and that requires I sync up on the MODEL_VERSION so wanted to rebase.",
+      "revId": "ea97ee1ab22c3b5d1d3ba881d1838c9ed0657889",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
