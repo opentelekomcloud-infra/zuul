@@ -1126,6 +1126,17 @@ class TestLauncher(LauncherBaseTestCase):
         with testtools.ExpectedException(Exception):
             self.requestNodes(["debian-normal"])
 
+    @simple_layout('layouts/nodepool.yaml',
+                   enable_nodepool=True)
+    @driver_config('test_launcher', quotas={
+        'instances': 0,
+    })
+    def test_quota_insufficient_capacity(self):
+        # Test that we fail requests which are impossible to satisfy
+        self.waitUntilSettled()
+        request = self.requestNodes(["debian-normal"])
+        self.assertEqual(request.state, model.NodesetRequest.State.FAILED)
+
     @simple_layout('layouts/nodepool-nodescan.yaml', enable_nodepool=True)
     @okay_tracebacks('_checkNodescanRequest')
     @mock.patch('paramiko.transport.Transport')
@@ -1277,6 +1288,8 @@ class TestLauncher(LauncherBaseTestCase):
 
         # Make sure the next requests always have current quota info
         self.launcher._provider_quota_cache = cachetools.TTLCache(
+            maxsize=8192, ttl=0)
+        self.launcher._provider_available_cache = cachetools.TTLCache(
             maxsize=8192, ttl=0)
 
         requests = []
