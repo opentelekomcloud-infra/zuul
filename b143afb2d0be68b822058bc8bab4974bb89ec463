@@ -195,6 +195,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f364e85f_dfed56fb",
+        "filename": "tests/unit/test_sos.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 535,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-06T16:04:11Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6169ccd6_4419fe65",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2b5f6744_5a604159",
