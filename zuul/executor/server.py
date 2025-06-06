@@ -3649,11 +3649,16 @@ class AnsibleJob(object):
                     algorithm=algorithm)
             iat = int(time.time())
             ttl = oidc_config['ttl']
+            if 'name' in oidc_config:
+                # MODEL_API >= 35
+                secret_name = oidc_config['name']
+            else:
+                secret_name = oidc_name
             exp = iat + ttl
             tenant = self.arguments['zuul']['tenant']
             canonical_project_name = \
                 self.arguments['zuul']['project']['canonical_name']
-            sub = f'secret:{tenant}/{canonical_project_name}/{oidc_name}'
+            sub = f'secret:{tenant}/{canonical_project_name}/{secret_name}'
             iss = oidc_config.get('iss', self.arguments["zuul_root_url"])
 
             payload = {
