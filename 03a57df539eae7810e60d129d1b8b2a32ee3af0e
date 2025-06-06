@@ -56,6 +56,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "c96c87c9_e9f8d772",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 3653,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-06-06T06:21:23Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "74f007aa_2167c6df",
+      "revId": "03a57df539eae7810e60d129d1b8b2a32ee3af0e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "868e37ac_62edf1e1",
         "filename": "zuul/executor/server.py",
         "patchSetId": 3
