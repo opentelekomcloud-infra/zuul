@@ -36,6 +36,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "318349c9_33d85729",
+        "filename": "tests/unit/test_sos.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-06T15:11:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d70128d1_c6d1f698",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ed0f05df_2ee4cf47",
@@ -71,6 +89,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "843aee27_d7a8609b",
+        "filename": "tests/unit/test_sos.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 498,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-06T15:11:43Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "7c2fa419_68d0b740",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c386a0b8_640f1fa3",
@@ -102,6 +138,24 @@
       "side": 1,
       "message": "Ditto.",
       "parentUuid": "c386a0b8_640f1fa3",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5857f769_61b3c854",
+        "filename": "tests/unit/test_sos.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-06T15:11:43Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "1d26da3c_45f74327",
       "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -172,6 +226,24 @@
       "side": 1,
       "message": "Yeah, we don\u0027t call \"review\" again, and the other two have their events set to fall through, so we can leave them as-is.",
       "parentUuid": "2b5f6744_5a604159",
+      "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "68caeb48_8679f16b",
+        "filename": "tests/unit/test_sos.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-06T15:11:43Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "b59e60e6_24beab66",
       "revId": "b143afb2d0be68b822058bc8bab4974bb89ec463",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
