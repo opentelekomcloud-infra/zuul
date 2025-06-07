@@ -57,6 +57,7 @@ class FakeConfig(object):
 
 class WebMixin:
     config_ini_data = {}
+    default_token_groups = None
 
     def startWebServer(self):
         self.zuul_ini_config = FakeConfig(self.config_ini_data)
@@ -103,6 +104,24 @@ class WebMixin:
     def options_url(self, url, *args, **kwargs):
         return requests.options(
             urllib.parse.urljoin(self.base_url, url), *args, **kwargs)
+
+    def _getToken(self, admin=None, groups=None):
+        if admin is None:
+            admin = ['tenant-one']
+        if groups is None:
+            groups = self.default_token_groups
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'testuser',
+                 'zuul': {
+                     'admin': admin,
+                 },
+                 'exp': int(time.time()) + 3600}
+        if groups:
+            authz['groups'] = groups
+        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                           algorithm='HS256')
+        return token
 
 
 class BaseTestWeb(ZuulTestCase, WebMixin):
@@ -1499,20 +1518,6 @@ class TestWeb(BaseTestWeb):
 class TestWebProviders(LauncherBaseTestCase, WebMixin):
     config_file = 'zuul-connections-nodepool.conf'
     tenant_config_file = 'config/multi-tenant-provider/main.yaml'
-
-    def _getToken(self, admin=None):
-        if admin is None:
-            admin = ['tenant-one']
-        authz = {'iss': 'zuul_operator',
-                 'aud': 'zuul.example.com',
-                 'sub': 'testuser',
-                 'zuul': {
-                     'admin': admin,
-                 },
-                 'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
-                           algorithm='HS256')
-        return token
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_web_providers(self):
