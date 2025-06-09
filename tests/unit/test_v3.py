@@ -9247,6 +9247,95 @@ class TestUnreachable(AnsibleZuulTestCase):
         for build in conn.getBuilds():
             self.assertEqual(build.error_detail, 'Host unreachable')
 
+    def test_unreachable_nodeset_alternates(self):
+        # Test nodeset alternative behavior with unreachable hosts.
+        # We increment the nodeset alternative if we encounter an
+        # unreachable host; but we don't increment it for other types
+        # of retries.
+        self.wait_timeout = 120
+
+        # Output extra ansible info so we might see errors.
+        self.executor_server.verbose = True
+        self.executor_server.keep_jobdir = True
+
+        in_repo_conf = textwrap.dedent(
+            """
+            - nodeset:
+                name: test-nodeset
+                alternatives:
+                  - nodes:
+                      - name: controller
+                        label: fast-label
+                  - nodes:
+                      - name: controller
+                        label: slow-label
+            - job:
+                name: pre-failure
+                attempts: 2
+                nodeset: test-nodeset
+                pre-run: playbooks/pre-fail.yaml
+            - project:
+                check:
+                  jobs:
+                    - pre-failure
+                    - pre-unreachable:
+                        attempts: 3
+                        nodeset: test-nodeset
+                    - run-unreachable
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        # The result must be retry limit because jobs with unreachable nodes
+        # will be retried.
+        self.assertIn('RETRY_LIMIT', A.messages[0])
+        self.assertHistory([
+            dict(name='pre-unreachable', result=None, changes='1,1'),
+            dict(name='pre-unreachable', result=None, changes='1,1'),
+            dict(name='pre-unreachable', result=None, changes='1,1'),
+            dict(name='run-unreachable', result=None, changes='1,1'),
+            dict(name='run-unreachable', result=None, changes='1,1'),
+            dict(name='pre-failure', result=None, changes='1,1'),
+            dict(name='pre-failure', result=None, changes='1,1'),
+        ], ordered=False)
+
+        pre_unreachable_labels = []
+        pre_failure_labels = []
+        for build in self.history:
+            inv_path = os.path.join(build.jobdir.root,
+                                    'ansible', 'inventory.yaml')
+            with open(inv_path, 'r') as f:
+                inventory = yaml.safe_load(f)
+            if build.name == 'pre-unreachable':
+                # Get an ordered list of label requests we make for
+                # the pre jobs
+                label = inventory['all']['hosts'][
+                    'controller']['nodepool']['label']
+                pre_unreachable_labels.append(label)
+            elif build.name == 'pre-failure':
+                # Get an ordered list of label requests we make for
+                # the pre jobs
+                label = inventory['all']['hosts'][
+                    'controller']['nodepool']['label']
+                pre_failure_labels.append(label)
+            else:
+                # The other jobs don't request nodes
+                self.assertEqual({}, inventory['all']['hosts'])
+        # The pre-unreachable job should continue to iterate through
+        # the nodeset alternatives (and repeat the last one).
+        self.assertEqual(['fast-label', 'slow-label', 'slow-label'],
+                         pre_unreachable_labels)
+        # The pre-failure job, since it is a "normal" failure of the
+        # pre-run playbook, should continue to use the first nodeset
+        # alternative.
+        self.assertEqual(['fast-label', 'fast-label'],
+                         pre_failure_labels)
+
 
 class TestJobPause(AnsibleZuulTestCase):
     tenant_config_file = 'config/job-pause/main.yaml'
