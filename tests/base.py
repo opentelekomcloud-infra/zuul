@@ -788,10 +788,10 @@ class RecordingAnsibleJob(zuul.executor.server.AnsibleJob):
         build = self.executor_server.job_builds[self.build_request.uuid]
         build.jobdir = self.jobdir
 
-        self.result, error_detail = super(
+        self.result, unreachable, error_detail = super(
             RecordingAnsibleJob, self).runPlaybooks(args)
         self.recordResult(self.result)
-        return self.result, error_detail
+        return self.result, unreachable, error_detail
 
     def runAnsible(self, cmd, timeout, playbook, ansible_version,
                    allow_pre_fail, wrapped=True, cleanup=False):
