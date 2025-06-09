@@ -3061,11 +3061,13 @@ class Scheduler(threading.Thread):
         result_data = event_result.get("data", {})
         secret_result_data = event_result.get("secret_data", {})
         warnings = event_result.get("warnings", [])
+        unreachable = event_result.get("unreachable", False)
 
         log.info("Build complete, result %s, warnings %s", result, warnings)
 
         with build.activeContext(manager.current_context):
             build.error_detail = event_result.get("error_detail")
+            build.unreachable = unreachable
 
             if result is None:
                 build.retry = True

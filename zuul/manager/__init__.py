@@ -2205,6 +2205,13 @@ class PipelineManager(metaclass=ABCMeta):
         build_set = build.build_set
 
         if build.retry:
+            if build.unreachable and build.job.incrementNodesetIndex():
+                # If we are retrying a build because it encountered an
+                # unreachable host, increment the nodeset.
+                log.info("Next node request for retried build of job "
+                         f"{build.job.name} of item {build_set.item} "
+                         f"with nodeset alternative {build.job.nodeset_index}")
+
             if build_set.getJobNodeSetInfo(build.job):
                 build_set.removeJobNodeSetInfo(build.job)
 
@@ -2302,13 +2309,9 @@ class PipelineManager(metaclass=ABCMeta):
                 build_set.repo_state_state = build_set.COMPLETE
 
     def _handleNodeRequestFallback(self, log, build_set, job, old_request):
-        if len(job.nodeset_alternatives) <= job.nodeset_index + 1:
+        if not job.incrementNodesetIndex():
             # No alternatives to fall back upon
             return False
-
-        # Increment the nodeset index and remove the old request
-        with job.activeContext(self.current_context):
-            job.nodeset_index = job.nodeset_index + 1
 
         log.info("Re-attempting node request for job "
                  f"{job.name} of item {build_set.item} "
