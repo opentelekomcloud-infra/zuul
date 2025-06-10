@@ -637,6 +637,12 @@ class GitlabConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                 bi.present = True
         return valid_flags, list(branch_infos.values())
 
+    def getProjectBranchSha(self, project_name, branch_name,
+                            zuul_event_id=None):
+        branch = self.gl_client.get_project_branch(project_name, branch_name,
+                                                   zuul_event_id)
+        return branch['commit']['id']
+
     def isBranchProtected(self, project_name, branch_name,
                           zuul_event_id=None):
         branch = self.gl_client.get_project_branch(project_name, branch_name,

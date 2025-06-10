@@ -1071,6 +1071,7 @@ class TestConnectionsBranchCache(ZuulTestCase):
 
         # Ensure that the empty list of branches is valid and is not
         # seen as an error
+        self.init_repo("org/newproject")
         newproject = source.getProject('org/newproject')
         connection.addProject(newproject)
         tpc = zuul.model.TenantProjectConfig(newproject)

@@ -1843,6 +1843,25 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         resp = resp.json()
         return resp['default_branch']
 
+    def getProjectBranchSha(self, project, branch_name):
+        github = self.getGithubClient(project.name)
+        url = github.session.build_url('repos', project.name, 'branches',
+                                       branch_name)
+        resp = github.session.get(url)
+
+        if resp.status_code == 403:
+            self.log.error(str(resp))
+            rate_limit = github.rate_limit()
+            if rate_limit['resources']['core']['remaining'] == 0:
+                self.log.warning("Rate limit exceeded")
+            return None
+        elif resp.status_code == 404:
+            raise Exception("Got status code 404 when fetching "
+                            "project %s branch %s", project.name, branch_name)
+
+        resp = resp.json()
+        return resp['commit']['sha']
+
     def isBranchProtected(self, project_name: str, branch_name: str,
                           zuul_event_id=None) -> Optional[bool]:
         github = self.getGithubClient(

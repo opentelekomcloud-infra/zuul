@@ -3619,8 +3619,8 @@ class TestGlobalRepoState(AnsibleZuulTestCase):
         # of override-checkout
         repo = github.repo_from_project('org/requiredproject-github')
         repo._set_branch_protection('master', True)
-        repo._create_branch('feat-x')
         self.create_branch('org/requiredproject-github', 'feat-x')
+        repo._create_branch('feat-x')
         self.fake_github.emitEvent(self.fake_github.getPushEvent(
             'org/requiredproject-github', ref='refs/heads/feat-x'))
 

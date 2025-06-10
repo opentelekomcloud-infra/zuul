@@ -42,6 +42,33 @@ Zuul implements the timer using `apscheduler`_, Please check the
       words, it is not guaranteed to vary from one run of the timer
       trigger to the next).
 
+   .. attr:: dereference
+      :default: false
+
+      Whether the branch tip should be dereferenced when enqueued.
+
+      This controls the behavior when the timer trigger for a given
+      project-branch activates a second or more time for a given
+      project-branch while a queue item for that project-branch is
+      still in the pipeline.
+
+      If set to the default value of ``false``, then the triggering
+      event and queue item will only include the name of the branch;
+      this means that Zuul will see an identical queue item in the
+      pipeline and will not enqueue a duplicate entry.
+
+      If set to ``true`` then Zuul will look up the current Git sha of
+      the tip of each project-branch when enqueueing that
+      project-branch and include that information in the triggering
+      event and queue item.  If the timer trigger activates a second
+      time while a given project-branch is still in the pipeline, the
+      behavior then depends on whether the Git commit sha differs.  If
+      the branch has changed between the two activations, Zuul will
+      treat the second activation as distinct and enqueue a new item
+      for the same project-branch (but with a different ``newrev``
+      value).  If the Git commit sha is the same on both activations,
+      Zuul will not enqueue a second entry.
+
    .. warning::
        Be aware the day-of-week value differs from cron.
        The first weekday is Monday (0), and the last is Sunday (6).
