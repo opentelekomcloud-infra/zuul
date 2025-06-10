@@ -2815,6 +2815,8 @@ class AnsibleJob(object):
             }
             if data.get('ca_crt'):
                 cluster['certificate-authority-data'] = data['ca_crt']
+            if data.get('tls-server-name'):
+                cluster['tls-server-name'] = data['tls-server-name']
             if data['skiptls']:
                 cluster['insecure-skip-tls-verify'] = True
             kube_cfg['clusters'].append({

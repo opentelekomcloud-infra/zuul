@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The executor service is now able to use a kubernetes provider configured
+    with a custom tls-server-name. Previously the attribute was not being
+    transmitted by the launcher service, which resulted in a connection error
+    because the TLS certificate couldn't be validated properly.
