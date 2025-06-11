@@ -33,6 +33,24 @@
       "message": "I wonder if the available quota should cause a cache refresh of the provider quota so that we don\u0027t have `MAX_QUOTA_AGE*2` stale data if the caches are updating fully out of sync with each other.",
       "revId": "d17d4ff3aa34278c098c4be1dedc49660b015d28",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0f74c53_8bb5580c",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 2316,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-11T17:11:12Z",
+      "side": 1,
+      "message": "I think to fully resolve that, we\u0027d need to sort of tie the two together so that if either one has expired we query both. but we\u0027ve sort of downgraded all of our quota handling to \"approximate\" rather than \"exact\", especially because of multiple launchers. So I think as long as neither of the values are too old, it\u0027ll be good enough.",
+      "parentUuid": "5c9f8922_66b31b45",
+      "revId": "d17d4ff3aa34278c098c4be1dedc49660b015d28",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
