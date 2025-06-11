@@ -969,7 +969,11 @@ class Launcher:
         else:
             self.statsd_timer = nullcontext
 
+        # Raw provider quota
         self._provider_quota_cache = cachetools.TTLCache(
+            maxsize=8192, ttl=self.MAX_QUOTA_AGE)
+        # Provider quota - unmanaged usage
+        self._provider_available_cache = cachetools.TTLCache(
             maxsize=8192, ttl=self.MAX_QUOTA_AGE)
 
         self.tracing = tracing.Tracing(self.config)
@@ -1287,6 +1291,21 @@ class Launcher:
                     )
                     if not any(valid_uploads):
                         continue
+                # Check if the provider could possibly handle the
+                # request based on quota but not current zuul usage.
+                # TODO: consider the impact of a multi-node request
+                # for the same label where that single request is
+                # larger than the capacity.
+                try:
+                    if not self.doesProviderHaveQuotaForLabel(
+                            provider, label, log, include_usage=False):
+                        continue
+                except Exception:
+                    self.log.exception(
+                        "Error checking quota for label %s "
+                        "in provider %s", label, provider)
+                    raise NodesetRequestError(
+                        "Unable to determine quota")
                 providers_for_label[i].append(provider)
             providers_for_all_labels &= set(providers_for_label[i])
 
@@ -2284,6 +2303,17 @@ class Launcher:
         self.log.debug("Provider quota for %s: %s",
                        provider.name, quota)
 
+        self._provider_quota_cache[provider.canonical_name] = quota
+        return quota
+
+    def getProviderQuotaAvailable(self, provider):
+        val = self._provider_available_cache.get(provider.canonical_name)
+        if val:
+            return val
+
+        # This is initialized with the full tenant quota and later becomes
+        # the quota available for nodepool.
+        quota = self.getProviderQuota(provider).copy()
         unmanaged = self.getUnmanagedQuotaUsed(provider)
         self.log.debug("Provider unmanaged quota used for %s: %s",
                        provider.name, unmanaged)
@@ -2291,12 +2321,12 @@ class Launcher:
         # Subtract the unmanaged quota usage from nodepool_max
         # to get the quota available for us.
         quota.subtract(unmanaged)
-        self._provider_quota_cache[provider.canonical_name] = quota
+        self._provider_available_cache[provider.canonical_name] = quota
         return quota
 
     def getQuotaPercentage(self, provider):
         # This is cached and updated every 5 minutes
-        total = self.getProviderQuota(provider).copy()
+        total = self.getProviderQuotaAvailable(provider).copy()
         # This is continuously updated in the background
         used = self.api.nodes_cache.getQuota(provider)
         pct = 0.0
@@ -2319,18 +2349,26 @@ class Launcher:
             pct = round(pct, 1)
         return pct
 
-    def doesProviderHaveQuotaForLabel(self, provider, label, log):
-        total = self.getProviderQuota(provider).copy()
-        log.debug("Provider %s quota before Zuul: %s", provider, total)
-        total.subtract(self.getQuotaUsed(provider))
-        log.debug("Provider %s quota including Zuul: %s", provider, total)
+    def doesProviderHaveQuotaForLabel(self, provider, label, log,
+                                      include_usage=True):
+        if include_usage:
+            total = self.getProviderQuotaAvailable(provider).copy()
+            log.debug("Provider %s quota available before Zuul: %s",
+                      provider, total)
+            total.subtract(self.getQuotaUsed(provider))
+            log.debug("Provider %s quota available including Zuul: %s",
+                      provider, total)
+        else:
+            total = self.getProviderQuota(provider).copy()
+            log.debug("Provider %s quota before Zuul: %s", provider, total)
+
         label_quota = provider.getQuotaForLabel(label)
         total.subtract(label_quota)
         log.debug("Label %s required quota: %s", label, label_quota)
         return total.nonNegative()
 
     def doesProviderHaveQuotaForNode(self, provider, node, log):
-        total = self.getProviderQuota(provider).copy()
+        total = self.getProviderQuotaAvailable(provider).copy()
         log.debug("Provider %s quota before Zuul: %s", provider, total)
         total.subtract(self.getQuotaUsed(provider))
         log.debug("Provider %s quota including Zuul: %s", provider, total)
