@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "81e7a012_2fbe0907",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-11T16:56:58Z",
+      "side": 1,
+      "message": "One small thought inline. I\u0027m happy for us to land this as is and determine later if the cache ttls need to be more in sync.",
+      "revId": "d17d4ff3aa34278c098c4be1dedc49660b015d28",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5c9f8922_66b31b45",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 2316,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-11T16:56:58Z",
+      "side": 1,
+      "message": "I wonder if the available quota should cause a cache refresh of the provider quota so that we don\u0027t have `MAX_QUOTA_AGE*2` stale data if the caches are updating fully out of sync with each other.",
+      "revId": "d17d4ff3aa34278c098c4be1dedc49660b015d28",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
