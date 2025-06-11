@@ -1036,6 +1036,7 @@ class Launcher:
         )
 
         self.nodescan_worker = NodescanWorker()
+        self._run_lock = threading.Lock()
         self.launcher_thread = threading.Thread(
             target=self.run,
             name="Launcher",
@@ -1070,7 +1071,8 @@ class Launcher:
         while self._running:
             loop_start = time.monotonic()
             try:
-                self._run()
+                with self._run_lock:
+                    self._run()
             except Exception:
                 self.log.exception("Error in main thread:")
             loop_duration = time.monotonic() - loop_start
@@ -1142,7 +1144,7 @@ class Launcher:
         )
 
     def _acceptRequest(self, request, log, ready_nodes):
-        log.debug("Accepting request %s", request)
+        log.debug("Considering request %s", request)
         # Create provider nodes for the requested labels
         label_providers = self._selectProviders(request, log)
         with (self.createZKContext(request._lock, log) as ctx,
@@ -1195,11 +1197,36 @@ class Launcher:
                     finally:
                         node.releaseLock(ctx)
                 else:
+                    # If we have not assigned any nodes to this
+                    # request we don't have to proceed if there is no
+                    # quota.
+                    if not bool(request.provider_node_data):
+                        try:
+                            has_quota = self.doesProviderHaveQuotaForLabel(
+                                provider, label, log)
+                        except Exception:
+                            self.log.exception(
+                                "Error checking quota for label %s "
+                                "in provider %s", label, provider)
+                            raise NodesetRequestError(
+                                "Unable to determine quota")
+                        if not has_quota:
+                            log.debug("Deferring request %s "
+                                      "due to insufficient quota", request)
+                            # TODO: We may want to consider all the
+                            # labels at once so that if we can
+                            # fulfilly any label immediately, we
+                            # accept the request; currently this will
+                            # happen only if we can fulfill the first
+                            # label immediately.
+                            return
                     node = self._requestNode(
                         label, request, provider, log, ctx)
                     log.debug("Requested node %s", node.uuid)
                 request.addProviderNode(node)
-            request.state = model.NodesetRequest.State.ACCEPTED
+            if request.provider_node_data:
+                log.debug("Accepting request %s", request)
+                request.state = model.NodesetRequest.State.ACCEPTED
 
     def _selectProviders(self, request, log):
         providers = self.tenant_providers.get(request.tenant_name)
@@ -1208,7 +1235,7 @@ class Launcher:
                 f"No provider for tenant {request.tenant_name}")
 
         # Start with a randomized list of providers so that different
-        # requsets may have different behavior.
+        # requests may have different behavior.
         random.shuffle(providers)
 
         # Sort that list by quota
@@ -2291,6 +2318,16 @@ class Launcher:
             # to the launcher with the smallest backlog.
             pct = round(pct, 1)
         return pct
+
+    def doesProviderHaveQuotaForLabel(self, provider, label, log):
+        total = self.getProviderQuota(provider).copy()
+        log.debug("Provider %s quota before Zuul: %s", provider, total)
+        total.subtract(self.getQuotaUsed(provider))
+        log.debug("Provider %s quota including Zuul: %s", provider, total)
+        label_quota = provider.getQuotaForLabel(label)
+        total.subtract(label_quota)
+        log.debug("Label %s required quota: %s", label, label_quota)
+        return total.nonNegative()
 
     def doesProviderHaveQuotaForNode(self, provider, node, log):
         total = self.getProviderQuota(provider).copy()

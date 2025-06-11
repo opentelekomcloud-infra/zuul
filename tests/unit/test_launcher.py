@@ -26,6 +26,7 @@ from zuul import model
 import zuul.driver.aws.awsendpoint
 from zuul.launcher.client import LauncherClient
 
+import cachetools
 import fixtures
 import responses
 import testtools
@@ -903,7 +904,9 @@ class TestLauncher(LauncherBaseTestCase):
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     @okay_tracebacks('_getQuotaForInstanceType')
-    def test_failed_node(self):
+    @mock.patch('zuul.launcher.server.Launcher.doesProviderHaveQuotaForLabel',
+                return_value=True)
+    def test_failed_node(self, mock_quota):
         # Test a node failure outside of the create state machine
         ctx = self.createZKContext(None)
         request = self.requestNodes(["debian-invalid"])
@@ -1257,13 +1260,12 @@ class TestLauncher(LauncherBaseTestCase):
                 except NoNodeError:
                     break
 
-    @simple_layout('layouts/nodepool-multi-provider.yaml',
+    @simple_layout('layouts/nodepool.yaml',
                    enable_nodepool=True)
     @driver_config('test_launcher', quotas={
         'instances': 1,
     })
     def test_relative_priority(self):
-        # Test that we spread quota use out among multiple providers
         self.waitUntilSettled()
 
         client = LauncherClient(self.zk_client, None)
@@ -1272,6 +1274,10 @@ class TestLauncher(LauncherBaseTestCase):
         request0 = self.requestNodes(["debian-normal"])
         nodes0 = self.getNodes(request0)
         self.assertEqual(1, len(nodes0))
+
+        # Make sure the next requests always have current quota info
+        self.launcher._provider_quota_cache = cachetools.TTLCache(
+            maxsize=8192, ttl=0)
 
         requests = []
         ctx = self.createZKContext(None)
@@ -1291,14 +1297,19 @@ class TestLauncher(LauncherBaseTestCase):
             )
             requests.append(request)
 
+        # Allow the main loop to run to verify that we defer the
+        # requests
+        time.sleep(2)
         # Revise relative priority, so that the last requests has
         # the highest relative priority.
-        request1_p2, request2_p1 = requests
-        client.reviseRequest(request1_p2, relative_priority=2)
-        client.reviseRequest(request2_p1, relative_priority=1)
+        with self.launcher._run_lock:
+            request1_p2, request2_p1 = requests
+            client.reviseRequest(request1_p2, relative_priority=2)
+            client.reviseRequest(request2_p1, relative_priority=1)
 
-        # Delete the initial request to free up the instance
-        request0.delete(ctx)
+            # Delete the initial request to free up the instance
+            request0.delete(ctx)
+
         # Last request should be fulfilled
         for _ in iterate_timeout(10, "request to be fulfilled"):
             request2_p1.refresh(ctx)
@@ -1307,7 +1318,7 @@ class TestLauncher(LauncherBaseTestCase):
 
         # Lower priority request should not be fulfilled
         request1_p2.refresh(ctx)
-        self.assertEqual(request1_p2.State.ACCEPTED, request1_p2.state)
+        self.assertEqual(request1_p2.State.REQUESTED, request1_p2.state)
 
 
 class TestLauncherUpload(LauncherBaseTestCase):

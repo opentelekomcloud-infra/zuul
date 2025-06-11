@@ -147,7 +147,7 @@ class BaseCloudDriverTest(ZuulTestCase):
         with testtools.ExpectedException(Exception):
             self.waitForNodeRequest(request2, 10)
         request2 = client.getRequest(request2.uuid)
-        self.assertEqual(request2.state, model.NodesetRequest.State.ACCEPTED)
+        self.assertEqual(request2.state, model.NodesetRequest.State.REQUESTED)
 
         client.returnNodeset(nodeset1)
         self.waitUntilSettled()
