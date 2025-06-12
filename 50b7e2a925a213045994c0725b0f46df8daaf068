@@ -16,6 +16,24 @@
       "message": "nit: I think the \"remove the old request\" part is still done in _handleNodeRequestFallback() in the pipeline manager (where this code originated from), so maybe we should update the comment to avoid confusion.",
       "revId": "50b7e2a925a213045994c0725b0f46df8daaf068",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "92f5d192_cb7e7697",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3672,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-12T21:23:14Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "708a22df_2dfac190",
+      "revId": "50b7e2a925a213045994c0725b0f46df8daaf068",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
