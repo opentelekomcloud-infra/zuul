@@ -175,7 +175,7 @@
       create_tarball_directory: build
       # set node version here again because the js-build parent job overwrites
       # the project var below
-      node_version: 23
+      node_version: 22
     run: playbooks/dashboard/run.yaml
     nodeset: ubuntu-jammy
 
@@ -380,7 +380,7 @@
 - project:
     queue: zuul
     vars:
-      node_version: 23
+      node_version: 22
       release_python: python3
       ensure_tox_version: "<4"
     check:
