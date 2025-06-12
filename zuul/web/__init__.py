@@ -17,6 +17,8 @@ import cherrypy
 import socket
 from collections import defaultdict
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from opentelemetry import trace
 from ws4py.server.cherrypyserver import WebSocketPlugin, WebSocketTool
 from ws4py.websocket import WebSocket
@@ -3085,6 +3087,7 @@ class FakeCacheKey:
 class ZuulWeb(object):
     log = logging.getLogger("zuul.web")
     tracer = trace.get_tracer("zuul")
+    _stats_interval = IntervalTrigger(seconds=60)
 
     @staticmethod
     def generateRouteMap(api, oidc, include_auth):
@@ -3423,6 +3426,7 @@ class ZuulWeb(object):
                     controller,
                     '/api/connection/%s' % connection.connection_name)
 
+        self.apsched = BackgroundScheduler()
         cherrypy.tools.stats = StatsTool(self.statsd, self.metrics)
 
         conf = {
@@ -3489,6 +3493,11 @@ class ZuulWeb(object):
             else:
                 break
 
+        self.apsched.start()
+        self.apsched.add_job(cherrypy.tools.stats.emitStats,
+                             name="Regular cherrypy stats reporting",
+                             trigger=self._stats_interval)
+
         self.log.info("Starting HTTP listeners")
         self.stream_manager.start()
         self.wsplugin = WebSocketPlugin(cherrypy.engine)
@@ -3509,6 +3518,9 @@ class ZuulWeb(object):
         self.keystore.stop()
         self._running = False
         self.component_info.state = self.component_info.STOPPED
+
+        self.apsched.shutdown()
+
         cherrypy.engine.exit()
         # Not strictly necessary, but without this, if the server is
         # started again (e.g., in the unit tests) it will reuse the

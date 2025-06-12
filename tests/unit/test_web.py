@@ -57,6 +57,7 @@ class FakeConfig(object):
 
 class WebMixin:
     config_ini_data = {}
+    stats_interval = None
 
     def startWebServer(self):
         self.zuul_ini_config = FakeConfig(self.config_ini_data)
@@ -68,7 +69,8 @@ class WebMixin:
                            self.git_url_with_auth, self.addCleanup,
                            self.test_root,
                            info=zuul.model.WebInfo.fromConfig(
-                               self.zuul_ini_config)))
+                               self.zuul_ini_config),
+                           stats_interval=self.stats_interval))
 
         self.executor_server.hold_jobs_in_build = True
 
@@ -1494,6 +1496,23 @@ class TestWeb(BaseTestWeb):
                 'voting': True}}
 
         self.assertEqual(job_params, resp.json())
+
+
+class TestWebStatsReporting(BaseTestWeb):
+    stats_interval = 1
+
+    def test_default_statsd_reporting(self):
+        # Let the system settle out then wait 2x the reporting interval
+        # before we check that things have reported.
+        self.waitUntilSettled()
+        time.sleep(2)
+        hostname = normalize_statsd_name(socket.getfqdn())
+        self.assertReportedStat(
+            f'zuul.web.server.{hostname}.threadpool.idle',
+            value='10', kind='g')
+        self.assertReportedStat(
+            f'zuul.web.server.{hostname}.threadpool.queue',
+            value='0', kind='g')
 
 
 class TestWebProviders(LauncherBaseTestCase, WebMixin):
