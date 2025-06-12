@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e363bcf6_e79ea493",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1176,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-12T21:58:24Z",
+      "side": 1,
+      "message": "Should we really be popping here?  I would expect us to leave the original dict untouched, especially since we\u0027ve already used it in make_regex, so there\u0027s no real reason to alter it.\n\nProbably best to just change this to a .get?\n\nnit: Also... since we\u0027re pretty performance sensitive here now, would it be faster to just inline the conditional instead of making an inline function?  (or at least, define the function at module top level?)",
+      "revId": "63cfbd53634a1c8f729bcbbbac2b6b5a04df1228",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
