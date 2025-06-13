@@ -3132,8 +3132,13 @@ class Scheduler(threading.Thread):
             # removed from ZK.
             request_id = build.build_set.getJobNodeRequestID(build.job)
             if request_id:
-                self.nodepool.deleteNodeRequest(
-                    request_id, event_id=build.zuul_event_id)
+                if self.nodepool.isNodeRequestID(request_id):
+                    self.nodepool.deleteNodeRequest(
+                        request_id, event_id=build.zuul_event_id)
+                else:
+                    req = self.launcher.getRequest(request_id)
+                    if req:
+                        self.launcher.deleteRequest(req)
 
             # The build is completed and the nodes were already returned
             # by the executor. For consistency, also remove the node
