@@ -53,9 +53,9 @@ openshift
 # For AWS driver
 boto3>=1.20.0
 # For gcloud driver
-google-api-python-client
+google-api-python-client>=2.168.0
 # For ibmvpc driver
-ibm-vpc
-ibm-platform-services
-ibm-cos-sdk>=2.11.0
+ibm-vpc>=0.28.0
+ibm-platform-services>=0.64.0
+ibm-cos-sdk>=2.14.0
 mmh3
