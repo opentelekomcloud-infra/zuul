@@ -1333,6 +1333,22 @@ class TestLauncher(LauncherBaseTestCase):
         request1_p2.refresh(ctx)
         self.assertEqual(request1_p2.State.REQUESTED, request1_p2.state)
 
+    @simple_layout('layouts/launcher-noop.yaml',
+                   enable_nodepool=True)
+    @okay_tracebacks('_getQuotaForInstanceType')
+    def test_noop_job(self):
+        # Test that nodeset fallback works
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.data['status'], 'NEW')
+        self.assertEqual(A.reported, 1)
+        self.assertIn('Build succeeded', A.messages[0])
+        self.assertHistory([])
+        ids = self.scheds.first.sched.launcher.getRequestIds()
+        self.assertEqual(0, len(ids))
+
 
 class TestLauncherUpload(LauncherBaseTestCase):
 
