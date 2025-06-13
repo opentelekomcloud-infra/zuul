@@ -343,6 +343,12 @@ configuration. Some examples of tenant definitions are:
             strong trust relationship between this project and the
             projects it is permitted to configure.
 
+            The project names that this specifies (or matches, if a
+            regular expression) may not include config-projects.  When
+            using regular expressions, care must be taken not to use
+            an expression generous enough to accidentally include a
+            config-project (e.g., ``.*`` should not be used).
+
       .. attr:: <project-group>
 
          The items in the list are dictionaries with the following
