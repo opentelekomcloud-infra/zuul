@@ -6151,6 +6151,31 @@ For CI problems and help debugging, contact ci@example.org"""
                          ['100-0000000001'])
         zk_nodepool.deleteNodeRequest(req2.id)
 
+    @simple_layout('layouts/nodepool.yaml')
+    def test_nodeset_request_cleanup(self):
+        "Test that we cleanup leaked nodeset requests"
+
+        ctx = self.createZKContext(None)
+        zuul.model.NodesetRequest.new(
+            ctx,
+            tenant_name="tenant-one",
+            pipeline_name="test",
+            buildset_uuid=uuid4().hex,
+            job_uuid=uuid4().hex,
+            job_name="foobar",
+            labels=["debian-normal"],
+            priority=100,
+            request_time=time.time(),
+            zuul_event_id=uuid4().hex,
+            span_info=None,
+        )
+
+        ids = self.scheds.first.sched.launcher.getRequestIds()
+        self.assertEqual(1, len(ids))
+        self.scheds.first.sched._runNodeRequestCleanup()
+        ids = self.scheds.first.sched.launcher.getRequestIds()
+        self.assertEqual(0, len(ids))
+
     def test_nodepool_failure(self):
         "Test that jobs are reported after a nodepool failure"
 

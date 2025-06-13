@@ -707,6 +707,8 @@ class Scheduler(threading.Thread):
             req = self.nodepool.zk_nodepool.getNodeRequest(req_id, cached=True)
             if req.requestor == self.system.system_id:
                 zk_requests.add(req_id)
+        for req_id in self.launcher.getRequestIds():
+            zk_requests.add(req_id)
         # Get all the current node requests in the queues
         outstanding_requests = set()
         for tenant in self.abide.tenants.values():
@@ -729,7 +731,12 @@ class Scheduler(threading.Thread):
         for req_id in leaked_requests:
             try:
                 self.log.warning("Deleting leaked node request: %s", req_id)
-                self.nodepool.zk_nodepool.deleteNodeRequest(req_id)
+                if self.nodepool.isNodeRequestID(req_id):
+                    self.nodepool.zk_nodepool.deleteNodeRequest(req_id)
+                else:
+                    req = self.launcher.getRequest(req_id)
+                    if req:
+                        self.launcher.deleteRequest(req)
             except Exception:
                 self.log.exception("Error deleting leaked node request: %s",
                                    req_id)

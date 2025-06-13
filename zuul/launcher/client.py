@@ -100,6 +100,16 @@ class LauncherClient:
         except NoNodeError:
             pass
 
+    def getRequestIds(self):
+        # Do not use this if a cache is available; this should only be
+        # used by components (like the scheduler) which do not
+        # otherwise have a cache.
+        path = f'{NodesetRequest.ROOT}/{NodesetRequest.REQUESTS_PATH}'
+        try:
+            return self.zk_client.client.get_children(path)
+        except NoNodeError:
+            return []
+
     def getNodesetInfo(self, request):
         # TODO: populated other nodeset info fields
         zone = request.executor_zones[0] if request.executor_zones else None
