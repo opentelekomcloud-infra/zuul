@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Zuul project definitions can now specify name as a list of strings
+    or list of regexes. Each entry in the list will be applied to any
+    matching projects. This may simplify configuration of projects from
+    within central config projects as you can explicitly list project names
+    rather than relying on potentially complicated regexes.
