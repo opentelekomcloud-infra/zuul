@@ -1354,7 +1354,7 @@ class ProjectParser(object):
         }
 
         project = {
-            'name': str,
+            'name': to_list(str),
             'description': str,
             'branches': to_list(vs.Any(ZUUL_REGEX, str)),
             'vars': ansible_vars_dict,
@@ -1371,10 +1371,7 @@ class ProjectParser(object):
 
         return vs.Schema(project)
 
-    def fromYaml(self, conf):
-        self.schema(conf)
-
-        project_name = conf.get('name')
+    def _fromYaml(self, project_name, conf):
         source_context = conf['_source_context']
         if not project_name:
             # There is no name defined so implicitly add the name
@@ -1433,6 +1430,21 @@ class ProjectParser(object):
             project_config.variables = variables
 
         return project_config
+
+    def fromYaml(self, conf):
+        self.schema(conf)
+
+        projects = []
+        project_name = as_list(conf.get('name'))
+        if not project_name:
+            # We need an empty name signifier so that this case can be
+            # handled by _fromYaml().
+            project_name.append(None)
+        for project in project_name:
+            project_config = self._fromYaml(project, conf)
+            projects.append(project_config)
+
+        return projects
 
 
 class PipelineParser(object):
@@ -2818,14 +2830,15 @@ class TenantParser(object):
                 with pcontext.accumulator.catchErrors():
                     # we need to separate the regex projects as they are
                     # processed differently later
-                    name = config_project.get('name')
-                    parsed_project = pcontext.project_parser.fromYaml(
+                    parsed_projects = pcontext.project_parser.fromYaml(
                         config_project)
-                    if name and name.startswith('^'):
-                        parsed_config.projects_by_regex.setdefault(
-                            name, []).append(parsed_project)
-                    else:
-                        parsed_config.projects.append(parsed_project)
+                    for parsed_project in parsed_projects:
+                        name = parsed_project.name
+                        if name and name.startswith('^'):
+                            parsed_config.projects_by_regex.setdefault(
+                                name, []).append(parsed_project)
+                        else:
+                            parsed_config.projects.append(parsed_project)
 
         return parsed_config
 

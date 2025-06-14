@@ -230,7 +230,7 @@ class TestJob(BaseTestCase):
                                   'run': 'playbooks/python27.yaml'}}
                 ]
             }
-        })
+        })[0]
         self.layout.addProjectConfig(self.project.canonical_name,
                                      project_config)
 
@@ -300,7 +300,7 @@ class TestJob(BaseTestCase):
                     'python27',
                 ]
             }
-        })
+        })[0]
         self.layout.addProjectConfig(self.project.canonical_name,
                                      project_config)
 
@@ -377,7 +377,7 @@ class TestJob(BaseTestCase):
                     'job'
                 ]
             }
-        })
+        })[0]
 
         self.layout.addProjectConfig(self.project.canonical_name,
                                      project_config)
@@ -458,7 +458,7 @@ class TestJob(BaseTestCase):
             'gate': {
                 'jobs': ['python27'],
             }
-        })
+        })[0]
         self.layout.addProjectConfig(self.project.canonical_name,
                                      project_config)
 
@@ -1168,7 +1168,7 @@ class TestJob(BaseTestCase):
                     'job'
                 ]
             }
-        })
+        })[0]
 
         self.layout.addProjectConfig(job_project.canonical_name,
                                      project_config)
@@ -1185,6 +1185,87 @@ class TestJob(BaseTestCase):
                 item.freezeJobGraph(self.layout, ctx,
                                     skip_file_matcher=False,
                                     redact_secrets_and_keys=False)
+
+    @mock.patch("zuul.model.zkobject.ZKObject._save")
+    def test_project_as_list(self, save_mock):
+        # Bootstrap a second project without our config.
+        self.project2 = model.Project('project2', self.source)
+        tpc = model.TenantProjectConfig(self.project2)
+        tpc.trusted = True
+        self.tenant.addTPC(tpc)
+        base = self.pcontext.job_parser.fromYaml({
+            '_source_context': self.context,
+            '_start_mark': self.start_mark,
+            'name': 'base',
+            'parent': None,
+            'timeout': 30,
+        }, None)
+        self.layout.addJob(base)
+        python27 = self.pcontext.job_parser.fromYaml({
+            '_source_context': self.context,
+            '_start_mark': self.start_mark,
+            'name': 'python27',
+            'parent': 'base',
+            'timeout': 40,
+        }, None)
+        self.layout.addJob(python27)
+
+        project_configs = self.pcontext.project_parser.fromYaml({
+            '_source_context': self.context,
+            '_start_mark': self.start_mark,
+            'name': ['project', 'project2'],
+            'gate': {
+                'jobs': [
+                    {'python27': {'timeout': 70,
+                                  'run': 'playbooks/python27.yaml'}}
+                ]
+            }
+        })
+        self.layout.addProjectConfig(self.project.canonical_name,
+                                     project_configs[0])
+        self.layout.addProjectConfig(self.project2.canonical_name,
+                                     project_configs[1])
+
+        change = model.Change(self.project)
+        change.branch = 'master'
+        change.cache_stat = Dummy(key=Dummy(reference=uuid.uuid4().hex))
+        item = self.queue.enqueueChanges([change], None)
+
+        self.assertTrue(base.changeMatchesBranch(self.tenant, change))
+        self.assertTrue(python27.changeMatchesBranch(self.tenant, change))
+
+        with self.zk_context as ctx:
+            item.freezeJobGraph(self.layout, ctx,
+                                skip_file_matcher=False,
+                                redact_secrets_and_keys=False)
+        self.assertEqual(len(item.getJobs()), 1)
+        job = item.getJobs()[0]
+        self.assertEqual(job.name, 'python27')
+        self.assertEqual(job.timeout, 70)
+        self.assertEqual(job.affected_projects, ['git.example.com/project'])
+
+        change = model.Change(self.project2)
+        change.branch = 'master'
+        change.cache_stat = Dummy(key=Dummy(reference=uuid.uuid4().hex))
+        item = self.queue.enqueueChanges([change], None)
+
+        self.assertTrue(base.changeMatchesBranch(self.tenant, change))
+        self.assertTrue(python27.changeMatchesBranch(self.tenant, change))
+
+        with self.zk_context as ctx:
+            item.freezeJobGraph(self.layout, ctx,
+                                skip_file_matcher=False,
+                                redact_secrets_and_keys=False)
+        self.assertEqual(len(item.getJobs()), 1)
+        job = item.getJobs()[0]
+        self.assertEqual(job.name, 'python27')
+        self.assertEqual(job.timeout, 70)
+        # The first project provides all of the information required to run
+        # this job.
+        self.assertEqual(job.affected_projects, ['git.example.com/project'])
+        # But we can check that the item is for project2
+        self.assertEqual(len(item.changes), 1)
+        self.assertEqual(item.changes[0], change)
 
 
 class FakeFrozenJob(model.Job):

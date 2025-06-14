@@ -74,7 +74,10 @@ pipeline.
       the project should be included (e.g., `git.example.com/foo`).
       This can also be a regex. In this case the regex must start with ``^``
       and match the full project name following the same rule as name without
-      regex. If not given it is implicitly derived from the project where this
+      regex. It can also be a list of names and/or regexes using the rules
+      just outlined. With a list the project configuration is applied to
+      every project that matches each name or regex in the list.
+      If not given it is implicitly derived from the project where this
       is defined.
 
    .. attr:: templates
