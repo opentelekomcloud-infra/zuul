@@ -10,9 +10,11 @@
   post_tasks:
 
     - name: Setup 2.7 container environment
+      when: "(zuul_ansible_version | int) <= 9"
       include_tasks: 2.7-container.yaml
 
     - name: Setup inventory
+      when: "(zuul_ansible_version | int) <= 9"
       include_tasks: create-inventory.yaml
 
     - name: Install pip
