@@ -16,6 +16,24 @@
       "message": "You should be able to use \"as_list\" here and drop the get and conditional.",
       "revId": "0e031e6bd5e9903442fb1fb5705a345d945b963f",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab2a2019_af9bd5b6",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1441,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-16T23:23:48Z",
+      "side": 1,
+      "message": "I noticed that `as_list` returns empty list if you pass it something falsey. In this case we\u0027re relying on the falsey `None` value to indicate a project definition that gets its project name from the source context. I did end up updating the code to use as_list despite this as I think it makes this slightly different than usual situation a bit more clear.\n\nLet me know if you prefer the old code, this code or maybe even something else.",
+      "parentUuid": "3d8f55c7_8a80bd67",
+      "revId": "0e031e6bd5e9903442fb1fb5705a345d945b963f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
