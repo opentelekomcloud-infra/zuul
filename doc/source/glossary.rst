@@ -10,6 +10,7 @@ Glossary
 
       A job which cannot be run directly, and is only intended to
       serve as a parent on top of which other jobs are constructed.
+      See :attr:`job.abstract` job configuration setting.
 
    artifact
 
@@ -96,6 +97,7 @@ Glossary
       accessible via the same connection.  Zuul is expected to
       incorporate any cross-project dependencies into the context
       for the change declaring that dependency relationship.
+      See :ref:`project_gating` for a thorough description.
 
    data secret
 
@@ -222,6 +224,7 @@ Glossary
       gating workflow, cues may be taken from its users, but it is
       ultimately the gating system which controls merging of changes
       and not the users themselves.
+      See :ref:`project_gating` for a thorough description.
 
    project pipeline
 
@@ -372,7 +375,9 @@ Glossary
       Playbooks defined in a :term:`config-project` run in the
       *trusted* execution context.  The trusted execution context may
       have access to extra directories within the bubblewrap container
-      if the operator has configured these.
+      if the operator has configured these (see
+      :attr:`executor.trusted_ro_paths` and similar in the executor
+      configuration).
 
    untrusted execution context
 
