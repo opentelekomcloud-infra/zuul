@@ -1,4 +1,3 @@
-# Copyright 2018 BMW Car IT GmbH
 # Copyright 2025 Acme Gating, LLC
 #
 # This module is free software: you can redistribute it and/or modify
@@ -22,5 +21,20 @@ normal = paths._import_ansible_action_plugin("normal")
 class ActionModule(normal.ActionModule):
 
     def run(self, tmp=None, task_vars=None):
-        stream_setup.stream_setup_run(self, task_vars)
+        module_name = self._task.action
+        if module_name in (
+                'ansible.windows.win_shell',
+                'ansible.windows.win_command',
+        ):
+            stream_setup.stream_setup_run(self, task_vars)
         return super(ActionModule, self).run(tmp, task_vars)
+
+    def _execute_module(self, module_name=None, **kw):
+        if module_name is None:
+            module_name = self._task.action
+        if module_name == 'ansible.windows.win_shell':
+            module_name = 'win_shell'
+        elif module_name == 'ansible.windows.win_command':
+            module_name = 'win_command'
+        return super(ActionModule, self)._execute_module(
+            module_name=module_name, **kw)
