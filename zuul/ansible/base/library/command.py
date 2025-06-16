@@ -5,8 +5,7 @@
 # Copyright: (c) 2016, Toshio Kuratomi <tkuratomi@ansible.com>
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
+from __future__ import annotations
 
 
 # flake8: noqa
@@ -26,12 +25,11 @@ version_added: historical
 description:
      - The C(ansible.builtin.command) module takes the command name followed by a list of space-delimited arguments.
      - The given command will be executed on all selected nodes.
-     - The command(s) will not be
-       processed through the shell, so variables like C($HOSTNAME) and operations
-       like C("*"), C("<"), C(">"), C("|"), C(";") and C("&") will not work.
+     - The command(s) will not be processed through the shell, so operations like C("*"), C("<"), C(">"), C("|"), C(";") and C("&") will not work.
+       Also, environment variables are resolved via Python, not shell, see O(expand_argument_vars) and are left unchanged if not matched.
        Use the M(ansible.builtin.shell) module if you need these features.
-     - To create C(command) tasks that are easier to read than the ones using space-delimited
-       arguments, pass parameters using the C(args) L(task keyword,https://docs.ansible.com/ansible/latest/reference_appendices/playbooks_keywords.html#task)
+     - To create C(command) tasks that are easier to read than the ones using space-delimited arguments,
+       pass parameters using the C(args) L(task keyword,https://docs.ansible.com/ansible/latest/reference_appendices/playbooks_keywords.html#task)
        or use O(cmd) parameter.
      - Either a free form command or O(cmd) parameter is required, see the examples.
      - For Windows targets, use the M(ansible.windows.win_command) module instead.
@@ -52,8 +50,8 @@ attributes:
 options:
   expand_argument_vars:
     description:
-      - Expands the arguments that are variables, for example C($HOME) will be expanded before being passed to the
-        command to run.
+      - Expands the arguments that are variables, for example C($HOME) will be expanded before being passed to the command to run.
+      - If a variable is not matched, it is left unchanged, unlike shell substitution which would remove it.
       - Set to V(false) to disable expansion and treat the value as a literal argument.
     type: bool
     default: true
@@ -61,7 +59,7 @@ options:
   free_form:
     description:
       - The command module takes a free form string as a command to run.
-      - There is no actual parameter named 'free form'.
+      - There is no actual parameter named C(free_form).
   cmd:
     type: str
     description:
