@@ -13,6 +13,7 @@
     _new_inventory: "{{ _inventory_yaml['content'] | b64decode | from_yaml }}"
 
 - name: Setup new facts
+  when: "(zuul_ansible_version | int) <= 9"
   set_fact:
     _docker_inventory:
       all:
@@ -29,6 +30,7 @@
             ansible_python_interpreter: /usr/local/bin/python2.7
 
 - name: Merge all facts
+  when: "(zuul_ansible_version | int) <= 9"
   set_fact:
     _new_inventory: '{{ _new_inventory | combine(_docker_inventory, recursive=True) }}'
 

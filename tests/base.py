@@ -822,6 +822,14 @@ class RecordingAnsibleJob(zuul.executor.server.AnsibleJob):
         for host in hosts:
             if not host['host_vars'].get('ansible_connection'):
                 host['host_vars']['ansible_connection'] = 'local'
+                # Ansible will find our test venv python interpreter
+                # due to the "local" connection, but it won't be in
+                # the bwrap environment.  Force it to use the system
+                # python instead.
+                if host['host_vars'].get(
+                        'ansible_python_interpreter', 'auto') == 'auto':
+                    host['host_vars']['ansible_python_interpreter'] =\
+                        '/usr/bin/python3'
         return hosts
 
     def pause(self):
