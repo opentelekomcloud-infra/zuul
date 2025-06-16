@@ -91,9 +91,6 @@
         - item3
       failed_when: false
 
-    - name: Print binary data
-      command: echo -e '\x80abc'
-
     - name: Find any console log files
       find:
         paths: /tmp

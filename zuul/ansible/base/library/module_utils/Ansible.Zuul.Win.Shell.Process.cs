@@ -428,7 +428,7 @@ namespace Ansible.Zuul.Win.Shell.Process
                                            SafeFileHandle stderrWrite, FileStream stdinStream, byte[] stdin, IntPtr hProcess, string outputEncoding,
                                            string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes)
         {
-            // Default to using UTF-8 as the output encoding, this should be a sane default for most scenarios.
+            // Default to using UTF-8 as the output encoding, this should be a logical default for most scenarios.
             outputEncoding = String.IsNullOrEmpty(outputEncoding) ? "utf-8" : outputEncoding;
             Encoding encodingInstance = Encoding.GetEncoding(outputEncoding);
 

@@ -4418,14 +4418,14 @@ class FunctionalAnsibleMixIn(object):
                           output)
 
 
-class TestAnsible8(AnsibleZuulTestCase, FunctionalAnsibleMixIn):
-    tenant_config_file = 'config/ansible/main8.yaml'
-    ansible_major_minor = '2.15'
-
-
 class TestAnsible9(AnsibleZuulTestCase, FunctionalAnsibleMixIn):
     tenant_config_file = 'config/ansible/main9.yaml'
     ansible_major_minor = '2.16'
+
+
+class TestAnsible11(AnsibleZuulTestCase, FunctionalAnsibleMixIn):
+    tenant_config_file = 'config/ansible/main11.yaml'
+    ansible_major_minor = '2.18'
 
 
 class TestPrePlaybooks(AnsibleZuulTestCase):
@@ -10695,8 +10695,8 @@ class TestAnsibleVersion(AnsibleZuulTestCase):
 
         self.assertHistory([
             dict(name='ansible-default', result='SUCCESS', changes='1,1'),
-            dict(name='ansible-8', result='SUCCESS', changes='1,1'),
             dict(name='ansible-9', result='SUCCESS', changes='1,1'),
+            dict(name='ansible-11', result='SUCCESS', changes='1,1'),
         ], ordered=False)
 
 
@@ -10715,8 +10715,8 @@ class TestDefaultAnsibleVersion(AnsibleZuulTestCase):
         self.assertHistory([
             dict(name='ansible-default-zuul-conf', result='SUCCESS',
                  changes='1,1'),
-            dict(name='ansible-8', result='SUCCESS', changes='1,1'),
             dict(name='ansible-9', result='SUCCESS', changes='1,1'),
+            dict(name='ansible-11', result='SUCCESS', changes='1,1'),
         ], ordered=False)
 
 
