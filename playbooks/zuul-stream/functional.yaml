@@ -77,13 +77,18 @@
           mv job-output.txt job-output-success-19885.txt
           mv job-output.json job-output-success-19885.json
 
-    - name: Validate text outputs
+    - name: Validate text outputs node1 and node2
       include_tasks: validate.yaml
       loop:
         - { node: 'node1', filename: 'job-output-success-19887.txt' }
         - { node: 'node2', filename: 'job-output-success-19887.txt' }
         - { node: 'node1', filename: 'job-output-success-19885.txt' }
         - { node: 'node2', filename: 'job-output-success-19885.txt' }
+
+    - name: Validate text outputs node3
+      include_tasks: validate.yaml
+      when: "(zuul_ansible_version | int) <= 9"
+      loop:
         # node3 only listen on 19887
         - { node: 'node3', filename: 'job-output-success-19887.txt' }
 
@@ -122,13 +127,27 @@
           mv job-output.json job-output-failure.json
 
     - name: Validate output - failure shell task with exception
+      when: "(zuul_ansible_version | int) <= 9"
       shell: |
         egrep "^.+\| node1 \| Exception: Test module failure exception fail-task" job-output-failure.txt
         egrep "^.+\| node2 \| Exception: Test module failure exception fail-task" job-output-failure.txt
         egrep "^.+\| node3 \| Exception: Test module failure exception fail-task" job-output-failure.txt
 
     - name: Validate output - failure item loop with exception
+      when: "(zuul_ansible_version | int) <= 9"
       shell: |
         egrep "^.+\| node1 \| Exception: Test module failure exception fail-loop" job-output-failure.txt
         egrep "^.+\| node2 \| Exception: Test module failure exception fail-loop" job-output-failure.txt
         egrep "^.+\| node3 \| Exception: Test module failure exception fail-loop" job-output-failure.txt
+
+    - name: Validate output - failure shell task with exception
+      when: "(zuul_ansible_version | int) > 9"
+      shell: |
+        egrep "^.+\| node1 \| Exception: Test module failure exception fail-task" job-output-failure.txt
+        egrep "^.+\| node2 \| Exception: Test module failure exception fail-task" job-output-failure.txt
+
+    - name: Validate output - failure item loop with exception
+      when: "(zuul_ansible_version | int) > 9"
+      shell: |
+        egrep "^.+\| node1 \| Exception: Test module failure exception fail-loop" job-output-failure.txt
+        egrep "^.+\| node2 \| Exception: Test module failure exception fail-loop" job-output-failure.txt
