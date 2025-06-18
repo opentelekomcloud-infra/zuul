@@ -1000,6 +1000,8 @@ class Launcher:
         self.stop_event = threading.Event()
         self.join_event = threading.Event()
 
+        COMPONENT_REGISTRY.registry.registerCallback(self.wake_event.set)
+
         self.connection_filter = get_default(
             self.config, "launcher", "connection_filter")
         self.api = LauncherApi(
