@@ -126,6 +126,7 @@ class DeleteJob:
             with self.launcher.createZKContext(None, self.log) as ctx:
                 try:
                     with self.upload.locked(ctx, blocking=False):
+                        self.upload.refresh(ctx)
                         self.log.info("Deleting image upload %s", self.upload)
                         with self.upload.activeContext(ctx):
                             self.upload.state = self.upload.State.DELETING
@@ -162,6 +163,7 @@ class UploadJob:
             with self.image_build_artifact.locked(ctx, blocking=False):
                 for upload in self.uploads:
                     if upload.acquireLock(ctx, blocking=False):
+                        upload.refresh(ctx)
                         if upload.external_id:
                             upload.releaseLock(ctx)
                         else:
@@ -1114,6 +1116,7 @@ class Launcher:
                         log.debug("Failed to lock matching request %s",
                                   request)
                         continue
+                    request.refresh(ctx)
 
             if not self._cachesReadyForRequest(request):
                 self.log.debug("Caches are not up-to-date for %s", request)
@@ -1181,6 +1184,7 @@ class Launcher:
                         log.debug("Failed to lock matching ready node %s",
                                   node)
                         continue
+                    node.refresh(ctx)
                     try:
                         tags = provider.getNodeTags(
                             self.system.system_id, label, node.uuid,
@@ -1437,6 +1441,7 @@ class Launcher:
                     if not node.acquireLock(ctx, blocking=False):
                         log.debug("Failed to lock matching node %s", node)
                         continue
+                    node.refresh(ctx)
 
             request = self.api.getNodesetRequest(node.request_id)
             if ((request or node.request_id is None)
@@ -2181,10 +2186,11 @@ class Launcher:
                 if not upload.is_locked:
                     with self.createZKContext(None, self.log) as ctx:
                         try:
-                            with (upload.locked(ctx, blocking=False),
-                                  upload.activeContext(ctx)):
+                            with upload.locked(ctx, blocking=False):
                                 # Double check the state after lock.
+                                upload.refresh(ctx)
                                 if upload.state == upload.State.UPLOADING:
+                                with upload.activeContext(ctx):
                                     upload.state = upload.State.PENDING
                         except LockException:
                             # Upload locked again (lock / cache update race)
