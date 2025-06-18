@@ -1247,7 +1247,8 @@ class Scheduler(threading.Thread):
 
         self.log.debug("Removing autohold %s", hold_request)
         try:
-            self.nodepool.zk_nodepool.deleteHoldRequest(hold_request)
+            self.nodepool.zk_nodepool.deleteHoldRequest(
+                hold_request, self.launcher)
         except Exception:
             self.log.exception(
                 "Error removing autohold request %s:", hold_request)

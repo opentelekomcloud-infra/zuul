@@ -4585,7 +4585,8 @@ class ExecutorServer(BaseMergeServer):
         try:
             self.nodepool.zk_nodepool.lockHoldRequest(request)
             self.log.info("Removing expired hold request %s", request)
-            self.nodepool.zk_nodepool.deleteHoldRequest(request)
+            self.nodepool.zk_nodepool.deleteHoldRequest(
+                request, self.executor_server.launcher)
         except Exception:
             self.log.exception(
                 "Failed to delete expired hold request %s", request
@@ -4680,10 +4681,18 @@ class ExecutorServer(BaseMergeServer):
         request = self._getAutoholdRequest(ansible_job.arguments)
         if request is not None:
             self.log.debug("Got autohold %s", request)
-            self.nodepool.holdNodeSet(
-                ansible_job.nodeset, request, ansible_job.build_request,
-                duration, ansible_job.zuul_event_id)
-            return True
+
+            if ansible_job.node_request:
+                self.nodepool.holdNodeSet(
+                    ansible_job.nodeset, request, ansible_job.build_request,
+                    duration, ansible_job.zuul_event_id)
+                return True
+            elif ansible_job.nodeset_request:
+                self.launcher.holdNodeSet(
+                    self.nodepool.zk_nodepool,
+                    ansible_job.nodeset, request, ansible_job.build_request,
+                    duration, ansible_job.zuul_event_id)
+                return True
         return False
 
     def startBuild(self, build_request, data):

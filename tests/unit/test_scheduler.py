@@ -2349,7 +2349,7 @@ class TestScheduler(ZuulTestCase):
         self.assertEqual(request2.current_count, request3.current_count)
 
         # Deleting hold request should set held nodes to used
-        self.sched_zk_nodepool.deleteHoldRequest(request3)
+        self.sched_zk_nodepool.deleteHoldRequest(request3, None)
         node_states = [n['state'] for n in self.fake_nodepool.getNodes()]
         self.assertEqual(3, len(node_states))
         self.assertEqual([zuul.model.STATE_USED] * 3, node_states)
