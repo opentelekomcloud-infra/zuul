@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8846c902_7626216f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 31625
+      },
+      "writtenOn": "2025-06-18T18:58:03Z",
+      "side": 1,
+      "message": "That all makes sense James and I appreciate the clarity. I\u0027m glad making our use case possible also had some independent and self-evident benefits with regard to readability.",
+      "revId": "30addfbe6ce7a0a73d829f44061c4e34d5624876",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "65231eae_0b5a0954",
@@ -32,6 +49,24 @@
       "side": 1,
       "message": "Ah, yes. I cherry-picked our fork\u0027s commit as a starting point and when I resolved the lines I must have missed the comment.",
       "parentUuid": "65231eae_0b5a0954",
+      "revId": "30addfbe6ce7a0a73d829f44061c4e34d5624876",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c278e0a_a44e302d",
+        "filename": "Dockerfile",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 31625
+      },
+      "writtenOn": "2025-06-18T18:58:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bc2e4243_3a1667ef",
       "revId": "30addfbe6ce7a0a73d829f44061c4e34d5624876",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
