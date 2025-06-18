@@ -332,12 +332,6 @@ class UploadJob:
             finally:
                 for upload in uploads:
                     try:
-                        upload.releaseLock(ctx)
-                        self.log.debug("Released upload lock for %s", upload)
-                    except Exception:
-                        self.log.exception("Unable to release lock for %s",
-                                           upload)
-                    try:
                         with upload.activeContext(ctx):
                             if upload.external_id:
                                 upload.state = upload.State.READY
@@ -345,6 +339,12 @@ class UploadJob:
                                 upload.state = upload.State.PENDING
                     except Exception:
                         self.log.exception("Unable to update state for %s",
+                                           upload)
+                    try:
+                        upload.releaseLock(ctx)
+                        self.log.debug("Released upload lock for %s", upload)
+                    except Exception:
+                        self.log.exception("Unable to release lock for %s",
                                            upload)
                 if path:
                     try:
