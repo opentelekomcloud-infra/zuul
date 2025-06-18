@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "65231eae_0b5a0954",
+        "filename": "Dockerfile",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-18T18:36:16Z",
+      "side": 1,
+      "message": "Oops we should probably fix the version in this comment; I\u0027m guessing the downgrade merged after you started your change.\n\n(We downgraded from 23 to 22 because 22 is LTS).",
+      "revId": "30addfbe6ce7a0a73d829f44061c4e34d5624876",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
