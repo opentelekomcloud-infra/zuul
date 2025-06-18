@@ -2629,6 +2629,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             create_state={},
             delete_state={},
             host_key_checking=None,
+            comment=None,
             # Node data
             boot_timeout=None,
             executor_zone=None,
@@ -2702,6 +2703,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             label_config_hash=self.label_config_hash,
             tags=self.tags,
             connection_name=self.connection_name,
+            comment=self.comment,
             create_state=self.create_state,
             delete_state=self.delete_state,
             quota=self.quota.getResources(),
@@ -2723,6 +2725,13 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         if self.state != self.State.READY:
             return False
         return (self.state_time + self.max_ready_age) < time.time()
+
+    def hasHoldExpired(self):
+        if not self.hold_expiration:
+            return False
+        if self.state != self.State.HOLD:
+            return False
+        return (self.state_time + self.hold_expiration) < time.time()
 
     def getDriverData(self):
         return dict()

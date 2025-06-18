@@ -1349,6 +1349,132 @@ class TestLauncher(LauncherBaseTestCase):
         ids = self.scheds.first.sched.launcher.getRequestIds()
         self.assertEqual(0, len(ids))
 
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_autohold(self):
+        self.scheds.first.sched.autohold(
+            'tenant-one', 'review.example.com/org/project', 'check-job',
+            ".*", "reason text", 1, None)
+
+        # There should be a record in ZooKeeper
+        request_list = self.sched_zk_nodepool.getHoldRequests()
+        self.assertEqual(1, len(request_list))
+        request = self.sched_zk_nodepool.getHoldRequest(
+            request_list[0])
+        self.assertIsNotNone(request)
+        self.assertEqual('tenant-one', request.tenant)
+        self.assertEqual('review.example.com/org/project', request.project)
+        self.assertEqual('check-job', request.job)
+        self.assertEqual('reason text', request.reason)
+        self.assertEqual(1, request.max_count)
+        self.assertEqual(0, request.current_count)
+        self.assertEqual([], request.nodes)
+
+        # First check that successful jobs do not autohold
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+
+        self.waitUntilSettled()
+
+        self.assertEqual(A.data['status'], 'NEW')
+        self.assertEqual(A.reported, 1)
+        self.assertHistory([
+            dict(name='check-job', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+
+        # Check for a held node
+        held_node = None
+        self.launcher.api.nodes_cache.waitForSync()
+        for node in self.launcher.api.nodes_cache.getItems():
+            if node.state == node.State.HOLD:
+                held_node = node
+                break
+        self.assertIsNone(held_node)
+
+        # Hold in build to check the stats
+        self.executor_server.hold_jobs_in_build = True
+
+        # Now test that failed jobs are autoheld
+
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        self.executor_server.failJob('check-job', B)
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+
+        self.waitUntilSettled()
+
+        # Get the build request object
+        build = list(self.getCurrentBuilds())[0]
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(B.data['status'], 'NEW')
+        self.assertEqual(B.reported, 1)
+
+        self.assertHistory([
+            dict(name='check-job', result='SUCCESS', changes='1,1'),
+            dict(name='check-job', result='FAILURE', changes='2,1'),
+        ], ordered=False)
+        self.assertTrue(build.held)
+
+        # Check for a held node
+        held_node = None
+        self.launcher.api.nodes_cache.waitForSync()
+        for node in self.launcher.api.nodes_cache.getItems():
+            if node.state == node.State.HOLD:
+                held_node = node
+                break
+        self.assertIsNotNone(held_node)
+        self.assertEqual(held_node.comment, "reason text")
+
+        # The hold request current_count should have incremented
+        # and we should have recorded the held node ID.
+        request2 = self.sched_zk_nodepool.getHoldRequest(
+            request.id)
+        self.assertEqual(request.current_count + 1, request2.current_count)
+        self.assertEqual(1, len(request2.nodes))
+        self.assertEqual(1, len(request2.nodes[0]["nodes"]))
+
+        # Another failed change should not hold any more nodes
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        self.executor_server.failJob('check-job', C)
+        self.fake_gerrit.addEvent(C.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(C.data['status'], 'NEW')
+        self.assertEqual(C.reported, 1)
+        self.assertHistory([
+            dict(name='check-job', result='SUCCESS', changes='1,1'),
+            dict(name='check-job', result='FAILURE', changes='2,1'),
+            dict(name='check-job', result='FAILURE', changes='3,1'),
+        ], ordered=False)
+
+        held_nodes = 0
+        self.launcher.api.nodes_cache.waitForSync()
+        for node in self.launcher.api.nodes_cache.getItems():
+            if node.state == node.State.HOLD:
+                held_nodes += 1
+        self.assertEqual(held_nodes, 1)
+
+        # request current_count should not have changed
+        request3 = self.sched_zk_nodepool.getHoldRequest(
+            request2.id)
+        self.assertEqual(request2.current_count, request3.current_count)
+
+        # Deleting hold request should set held nodes to used
+        client = LauncherClient(self.zk_client, None)
+        self.sched_zk_nodepool.deleteHoldRequest(request3, client)
+
+        held_nodes = 0
+        self.launcher.api.nodes_cache.waitForSync()
+        for node in self.launcher.api.nodes_cache.getItems():
+            if node.state == node.State.HOLD:
+                held_nodes += 1
+        self.assertEqual(held_nodes, 0)
+
+        for _ in iterate_timeout(60, "node to be deleted"):
+            if len(self.launcher.api.nodes_cache.getItems()) == 0:
+                break
+
 
 class TestLauncherUpload(LauncherBaseTestCase):
 

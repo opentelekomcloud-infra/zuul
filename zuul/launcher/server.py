@@ -1510,6 +1510,11 @@ class Launcher:
         if node.state in node.LAUNCHER_STATES:
             return True
 
+        if node.state == node.State.HOLD:
+            if node.hasHoldExpired():
+                return True
+            return False
+
         if node.request_id:
             request_exists = bool(self.api.getNodesetRequest(node.request_id))
             return not request_exists
