@@ -27,8 +27,10 @@ import {
   PageSection,
   PageSectionVariants,
   ClipboardCopy,
+  Button,
 } from '@patternfly/react-core'
 import {
+  SquareIcon,
   BuildIcon,
   BundleIcon,
   FingerprintIcon,
@@ -42,20 +44,107 @@ import { IconProperty } from '../Misc'
 import { deleteNodesetRequest } from '../api'
 import { addNotification } from '../actions/notifications'
 import { addApiError } from '../actions/adminActions'
+import { fetchNodesIfNeeded } from '../actions/nodes'
 import { fetchNodesetRequestsIfNeeded } from '../actions/nodesetRequests'
 import { Fetchable } from '../containers/Fetching'
+import NodePopover from '../containers/nodes/NodePopover'
 
+const NODE_ICON_CONFIGS = {
+  requested: {
+    variant: 'pending',
+  },
+  building: {
+    variant: 'info',
+  },
+  ready: {
+    variant: 'success',
+  },
+  failed: {
+    variant: 'danger',
+  },
+  tempfailed: {
+    variant: 'warning',
+  },
+  'in-use': {
+    variant: 'info',
+  },
+  used: {
+    variant: 'info',
+  },
+  outdated: {
+    variant: 'info',
+  },
+  hold: {
+    variant: 'info',
+  },
+  unknown: {
+    variant: 'pending',
+  },
+}
+
+function NodeSquare({ node }) {
+  const iconConfig = NODE_ICON_CONFIGS[node.state] || NODE_ICON_CONFIGS['unknown']
+  return (
+    <Button
+      variant="plain"
+      className={`zuul-item-square zuul-item-square-${iconConfig.variant}`}
+    >
+      <SquareIcon />
+    </Button>
+  )
+}
+
+NodeSquare.propTypes = {
+  node: PropTypes.object,
+}
+
+function NodeSquareWithPopover({ node }) {
+  return (
+    <NodePopover
+      node={node}
+      triggerElement={<NodeSquare node={node} />}
+    />
+  )
+}
+
+NodeSquareWithPopover.propTypes = {
+  node: PropTypes.object,
+}
+
+function NodeStates({ request, allNodes }) {
+  if (!request.provider_node_data) {
+    return <></>
+  }
+
+  const requestNodes = request.provider_node_data.map((nodeData) => (
+    allNodes[nodeData.uuid])).filter(n => n !== undefined)
+
+  return (
+    <>
+      {requestNodes.map((node) => (
+        <NodeSquareWithPopover key={node.uuid} node={node}/>
+      ))}
+    </>
+  )
+}
+
+NodeStates.propTypes = {
+  request: PropTypes.object,
+  allNodes: PropTypes.object,
+}
 
 class NodesetRequestsPage extends React.Component {
   static propTypes = {
     tenant: PropTypes.object,
     user: PropTypes.object,
-    remoteData: PropTypes.object,
+    remoteRequests: PropTypes.object,
+    remoteNodes: PropTypes.object,
     dispatch: PropTypes.func
   }
 
   updateData = (force) => {
     this.props.dispatch(fetchNodesetRequestsIfNeeded(this.props.tenant, force))
+    this.props.dispatch(fetchNodesIfNeeded(this.props.tenant, force))
   }
 
   componentDidMount () {
@@ -89,9 +178,12 @@ class NodesetRequestsPage extends React.Component {
   }
 
   render () {
-    const { remoteData } = this.props
-    const nodesetRequests = remoteData.requests
-
+    const { remoteRequests, remoteNodes } = this.props
+    const nodesetRequests = remoteRequests.requests
+    //const xallNodes = remoteNodes.nodes.reduce((map, obj) =>
+    //  (map[obj.uuid] = obj, map), {})
+    const allNodes = remoteNodes.nodes.reduce((obj, item) =>
+      ({...obj, [item.uuid]: item}), {})
     const columns = [
       {
         title: (
@@ -110,6 +202,12 @@ class NodesetRequestsPage extends React.Component {
           <IconProperty icon={<RunningIcon />} value="State" />
         ),
         dataLabel: 'state',
+      },
+      {
+        title: (
+          <IconProperty icon={<SquareIcon />} value="Nodes" />
+        ),
+        dataLabel: 'nodes',
       },
       {
         title: (
@@ -146,6 +244,7 @@ class NodesetRequestsPage extends React.Component {
         {title: request.uuid, props: {column: 'UUID'}},
         {title: request.labels.join(','), props: {column: 'Labels' }},
         {title: request.state, props: {column: 'State'}},
+        {title: <NodeStates request={request} allNodes={allNodes} />, props: {column: 'State'}},
         {title: moment_tz.utc(request.request_time).fromNow(), props: {column: 'Age'}},
         {title: <ClipboardCopy hoverTip="Copy" clickTip="Copied" variant="inline-compact">{request.buildset_uuid}</ClipboardCopy>, props: {column: 'Buildset'}},
         {title: request.pipeline_name, props: {column: 'Pipeline'}},
@@ -168,7 +267,7 @@ class NodesetRequestsPage extends React.Component {
       <PageSection variant={PageSectionVariants.light}>
         <PageSection style={{paddingRight: '5px'}}>
           <Fetchable
-            isFetching={remoteData.isFetching}
+            isFetching={remoteRequests.isFetching}
             fetchCallback={this.updateData}
           />
         </PageSection>
@@ -190,6 +289,7 @@ class NodesetRequestsPage extends React.Component {
 
 export default connect(state => ({
   tenant: state.tenant,
-  remoteData: state.nodesetRequests,
+  remoteRequests: state.nodesetRequests,
+  remoteNodes: state.nodes,
   user: state.user,
 }))(NodesetRequestsPage)
