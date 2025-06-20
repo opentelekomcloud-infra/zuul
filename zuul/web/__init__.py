@@ -44,6 +44,7 @@ from zuul import exceptions
 from zuul.configloader import ConfigLoader
 from zuul.connection import BaseConnection, ReadOnlyBranchCacheError
 import zuul.lib.repl
+from zuul.launcher.client import LauncherClient
 from zuul.lib import commandsocket, encryption, streamer_utils, tracing
 from zuul.lib.ansible import AnsibleManager
 from zuul.lib.jsonutil import ZuulJSONEncoder
@@ -631,7 +632,7 @@ class ProviderNodeConverter:
             'external_id': None,
             'state': node.state,
             'state_time': state_time,
-            'comment': None,
+            'comment': getattr(node, 'comment', None),
             'max_ready_age': node.max_ready_age,
             'interface_ip': node.interface_ip,
             'public_ipv4': node.public_ipv4,
@@ -1655,7 +1656,7 @@ class ZuulWebAPI(object):
         # User is authorized, so remove the autohold request
         self.log.debug("Removing autohold %s", request)
         try:
-            self.zk_nodepool.deleteHoldRequest(request)
+            self.zk_nodepool.deleteHoldRequest(request, self.zuulweb.launcher)
         except Exception:
             self.log.exception(
                 "Error removing autohold request %s:", request)
@@ -3358,6 +3359,7 @@ class ZuulWeb(object):
             items_path=ProviderNode.NODES_PATH,
             locks_path=ProviderNode.LOCKS_PATH,
             zkobject_class=ProviderNode)
+        self.launcher = LauncherClient(self.zk_client, None)
 
         self.management_events = TenantManagementEventQueue.createRegistry(
             self.zk_client)

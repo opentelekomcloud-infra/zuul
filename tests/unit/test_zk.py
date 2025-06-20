@@ -177,7 +177,7 @@ class TestNodepool(ZooKeeperBaseTestCase):
         self.assertIsNone(req2.lock)
 
         # Test deleting the request
-        self.zk_nodepool.deleteHoldRequest(req1)
+        self.zk_nodepool.deleteHoldRequest(req1, None)
         self.assertEqual([], self.zk_nodepool.getHoldRequests())
 
 

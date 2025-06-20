@@ -15,10 +15,12 @@
 import logging
 import time
 
+from collections import defaultdict
 from zuul.model import (
     NodesetInfo,
     NodesetRequest,
     ProviderNode,
+    STATE_HOLD,
     STATE_IN_USE,
     STATE_READY,
     STATE_USED,
@@ -34,6 +36,10 @@ from opentelemetry import trace
 class LauncherClient:
     log = logging.getLogger("zuul.LauncherClient")
     tracer = trace.get_tracer("zuul")
+    # The kind of resources we report stats on.  We need a complete
+    # list in order to report 0 level gauges.
+    resource_types = ('ram', 'cores', 'instances')
+    HOLD_REQUEST_ROOT = '/zuul/hold-requests'
 
     def __init__(self, zk_client, stop_event):
         self.zk_client = zk_client
@@ -110,6 +116,14 @@ class LauncherClient:
         except NoNodeError:
             return []
 
+    def getProviderNode(self, node_id):
+        # Do not use this if a cache is available; this should only be
+        # used by components (like the scheduler) which do not
+        # otherwise have a cache.
+        path = ProviderNode._getPath(node_id)
+        with self.createZKContext(None, self.log) as ctx:
+            return ProviderNode.fromZK(ctx, path)
+
     def getNodesetInfo(self, request):
         # TODO: populated other nodeset info fields
         zone = request.executor_zones[0] if request.executor_zones else None
@@ -165,10 +179,11 @@ class LauncherClient:
                 continue
             with self.createZKContext(provider_node._lock, log) as ctx:
                 try:
-                    node.state = STATE_USED
-                    provider_node.updateAttributes(
-                        ctx, state=ProviderNode.State.USED)
-                    log.debug("Released %s", provider_node)
+                    if provider_node.state == provider_node.State.IN_USE:
+                        node.state = STATE_USED
+                        provider_node.updateAttributes(
+                            ctx, state=ProviderNode.State.USED)
+                        log.debug("Released %s", provider_node)
                 except Exception:
                     log.exception("Unable to return node %s", provider_node)
                 finally:
@@ -176,6 +191,120 @@ class LauncherClient:
                         provider_node.releaseLock(ctx)
                     except Exception:
                         log.exception("Error unlocking node %s", provider_node)
+
+    def addResources(self, target, source):
+        for key, value in source.items():
+            if key in self.resource_types:
+                target[key] += value
+
+    def holdNodeSet(self, zk_nodepool, nodeset, request, build, duration,
+                    zuul_event_id=None):
+        '''
+        Perform a hold on the given set of nodes.
+
+        :param NodeSet nodeset: The object containing the set of nodes to hold.
+        :param HoldRequest request: Hold request associated with the NodeSet
+        '''
+        log = get_annotated_logger(self.log, zuul_event_id)
+        log.info("Holding nodeset %s", nodeset)
+        resources = defaultdict(int)
+        nodes = nodeset.getNodes()
+
+        log.info(
+            "Nodeset %s with %s nodes was in use for %s seconds for build %s "
+            "for project %s",
+            nodeset, len(nodeset.nodes), duration, build, request.project)
+
+        node_ids = []
+        for node in nodes:
+            provider_node = getattr(node, "_provider_node", None)
+            if not provider_node:
+                raise Exception("No associated provider node for %s", node)
+            if not provider_node.hasLock():
+                raise Exception("Provider node %s is not locked",
+                                provider_node)
+            if node.resources:
+                self.addResources(resources, node.resources)
+
+            node_ids.append(provider_node.uuid)
+            with self.createZKContext(provider_node._lock, log) as ctx:
+                with provider_node.activeContext(ctx):
+                    provider_node.setState(ProviderNode.State.HOLD)
+                    provider_node.comment = request.reason
+                    if request.node_expiration:
+                        provider_node.hold_expiration = request.node_expiration
+                log.debug("Held %s", provider_node)
+            node.state = STATE_HOLD
+
+        request.nodes.append(dict(
+            niz=True,
+            build=build.uuid,
+            nodes=node_ids,
+        ))
+        request.current_count += 1
+
+        # Request has been used at least the maximum number of times so set
+        # the expiration time so that it can be auto-deleted.
+        if request.current_count >= request.max_count and not request.expired:
+            request.expired = time.time()
+
+        # Give ourselves a few seconds to try to obtain the lock rather than
+        # immediately give up.
+        zk_nodepool.lockHoldRequest(request, timeout=5)
+
+        try:
+            zk_nodepool.storeHoldRequest(request)
+        except Exception:
+            # If we fail to update the request count, we won't consider it
+            # a real autohold error by passing the exception up. It will
+            # just get used more than the original count specified.
+            # It's possible to leak some held nodes, though, which would
+            # require manual node deletes.
+            log.exception("Unable to update hold request %s:", request)
+        finally:
+            # Although any exceptions thrown here are handled higher up in
+            # _doBuildCompletedEvent, we always want to try to unlock it.
+            zk_nodepool.unlockHoldRequest(request)
+
+        # TODO: implement stats reporting
+        # if resources and duration:
+        #     self.emitStatsResourceCounters(
+        #         request.tenant, request.project, resources, duration)
+
+    def markHeldNodesAsUsed(self, hold_request, node_group):
+        """
+        Changes the state for each held node for the hold request to 'used'.
+
+        :returns: True if all nodes marked USED, False otherwise.
+        """
+
+        failure = False
+        for node_id in node_group['nodes']:
+            provider_node = self.getProviderNode(node_id)
+            if not provider_node:
+                continue
+            if provider_node.state == provider_node.State.USED:
+                continue
+            with self.createZKContext(None, self.log) as ctx:
+                if not provider_node.acquireLock(ctx):
+                    raise Exception(f"Failed to lock node {provider_node}")
+            with self.createZKContext(provider_node._lock, self.log) as ctx:
+                try:
+                    with provider_node.activeContext(ctx):
+                        provider_node.setState(ProviderNode.State.USED)
+                    self.log.debug("Released %s", provider_node)
+                except Exception:
+                    failure = True
+                    self.log.exception("Unable to return node %s",
+                                       provider_node)
+                finally:
+                    try:
+                        provider_node.releaseLock(ctx)
+                    except Exception:
+                        self.log.exception("Error unlocking node %s",
+                                           provider_node)
+
+        return not failure
 
     def createZKContext(self, lock, log):
         return ZKContext(self.zk_client, lock, self.stop_event, log)
