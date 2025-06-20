@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b2eba2a9_0f27fed2",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1436,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-20T15:12:31Z",
+      "side": 1,
+      "message": "Above on line 1422 we use the launcher api to get the actual node record and verify that it\u0027s held.  I think that accomplishes what you\u0027re describing, and is slightly more future-proof since we\u0027ll drop the niz flag eventually.",
+      "parentUuid": "66fef8c6_eff1976e",
+      "revId": "7fb69d0f09c7aa6f0c08ac2f7dd400253d0a42b9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a520cb80_e9b33d1d",
         "filename": "zuul/launcher/client.py",
         "patchSetId": 2
@@ -31,6 +49,24 @@
       "writtenOn": "2025-06-20T15:07:28Z",
       "side": 1,
       "message": "Is this todo something we want to get in place before landing the change or are we happy with stats at a later time?",
+      "revId": "7fb69d0f09c7aa6f0c08ac2f7dd400253d0a42b9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a7c80641_5772aa16",
+        "filename": "zuul/launcher/client.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-20T15:12:31Z",
+      "side": 1,
+      "message": "A later time I think.  We\u0027re still not up to par on stats reporting from the launcher.  This calculation is something that happens for existing nodepool nodes, but we don\u0027t currently emit these stats for launchers.  Once we start emitting tenant summary stats for launcher nodes, we can/should add this back in as well.",
+      "parentUuid": "a520cb80_e9b33d1d",
       "revId": "7fb69d0f09c7aa6f0c08ac2f7dd400253d0a42b9",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
