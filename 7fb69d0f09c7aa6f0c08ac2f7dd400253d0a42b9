@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66fef8c6_eff1976e",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1436,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-20T15:07:28Z",
+      "side": 1,
+      "message": "Should we also check that the niz flag is set in the nodes list? This seems to be an important detail in ensuring that launcher is used to hold niz managed nodes rather than nodepool and nodepool managed nodes.",
+      "revId": "7fb69d0f09c7aa6f0c08ac2f7dd400253d0a42b9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a520cb80_e9b33d1d",
+        "filename": "zuul/launcher/client.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-06-20T15:07:28Z",
+      "side": 1,
+      "message": "Is this todo something we want to get in place before landing the change or are we happy with stats at a later time?",
+      "revId": "7fb69d0f09c7aa6f0c08ac2f7dd400253d0a42b9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
