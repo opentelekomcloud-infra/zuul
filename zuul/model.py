@@ -3673,6 +3673,18 @@ class FrozenJob(zkobject.ZKObject):
             playbooks = getattr(self, k)
             yield from playbooks
 
+    def incrementNodesetIndex(self):
+        if len(self.nodeset_alternatives) <= self.nodeset_index + 1:
+            # No alternatives to fall back upon
+            return False
+
+        context = self.buildset.item.manager.current_context
+        # Increment the nodeset index
+        with self.activeContext(context):
+            self.nodeset_index = self.nodeset_index + 1
+
+        return True
+
 
 class Job(ConfigObject):
     """A Job represents the defintion of actions to perform.
@@ -5478,6 +5490,7 @@ class Build(zkobject.ZKObject):
             paused=False,
             retry=False,
             held=False,
+            unreachable=False,
             zuul_event_id=None,
             build_request_ref=None,
             span_info=None,
@@ -5501,6 +5514,7 @@ class Build(zkobject.ZKObject):
             "pre_fail": self.pre_fail,
             "retry": self.retry,
             "held": self.held,
+            "unreachable": self.unreachable,
             "zuul_event_id": self.zuul_event_id,
             "build_request_ref": self.build_request_ref,
             "span_info": self.span_info,

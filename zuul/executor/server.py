@@ -1730,7 +1730,7 @@ class AnsibleJob(object):
 
         # job_output is out of scope now; playbook methods may open
         # the file again on their own.
-        result, error_detail = self.runPlaybooks(args)
+        result, unreachable, error_detail = self.runPlaybooks(args)
 
         # Stop the persistent SSH connections.
         setup_status, setup_code = self.runAnsibleCleanup(
@@ -1745,6 +1745,7 @@ class AnsibleJob(object):
         result_data = dict(result=result,
                            error_detail=error_detail,
                            warnings=warnings,
+                           unreachable=unreachable,
                            data=data,
                            secret_data=secret_data)
         # TODO do we want to log the secret data here?
@@ -1980,6 +1981,7 @@ class AnsibleJob(object):
         error_detail = None
         aborted = False
         unknown_result = False
+        unreachable = False
 
         with open(self.jobdir.job_output_file, 'a') as job_output:
             job_output.write("{now} | Running Ansible setup\n".format(
@@ -2000,7 +2002,8 @@ class AnsibleJob(object):
                 error_detail = "Ansible setup timeout"
             elif setup_status == self.RESULT_UNREACHABLE:
                 error_detail = "Host unreachable"
-            return result, error_detail
+                unreachable = True
+            return result, unreachable, error_detail
 
         # Freeze the variables so that we have a copy of them without
         # any jinja templates for use in the trusted execution
@@ -2017,7 +2020,7 @@ class AnsibleJob(object):
         if freeze_status != self.RESULT_NORMAL:
             if freeze_status == self.RESULT_TIMED_OUT:
                 error_detail = "Ansible variable freeze timeout"
-            return result, error_detail
+            return result, unreachable, error_detail
 
         self.loadFrozenHostvars()
         pre_failed = False
@@ -2055,6 +2058,7 @@ class AnsibleJob(object):
                 allow_post_result = False
                 if pre_status == self.RESULT_UNREACHABLE:
                     error_detail = "Host unreachable"
+                    unreachable = True
                 break
 
         self.log.debug(
@@ -2094,6 +2098,7 @@ class AnsibleJob(object):
                     allow_post_result = False
                     should_retry = True
                     error_detail = "Host unreachable"
+                    unreachable = True
                     break
                 elif job_status == self.RESULT_NORMAL:
                     success = (job_code == 0)
@@ -2165,6 +2170,7 @@ class AnsibleJob(object):
                 # chance to upload logs.
                 should_retry = True
                 error_detail = "Host unreachable"
+                unreachable = True
             if post_status != self.RESULT_NORMAL or post_code != 0:
                 # If we encountered a pre-failure, that takes
                 # precedence over the post result.
@@ -2177,15 +2183,15 @@ class AnsibleJob(object):
                     self._logFinalPlaybookError()
 
         if unknown_result:
-            return None, None
+            return None, unreachable, None
 
         if aborted:
-            return 'ABORTED', None
+            return 'ABORTED', unreachable, None
 
         if should_retry:
-            return None, error_detail
+            return None, unreachable, error_detail
 
-        return result, error_detail
+        return result, unreachable, error_detail
 
     def _logFinalPlaybookError(self):
         # Failures in the final post playbook can include failures
