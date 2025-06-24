@@ -137,21 +137,25 @@ class OpenstackDeleteStateMachine(statemachine.StateMachine):
         self.endpoint = endpoint
         self.node = node
         super().__init__(node.delete_state)
-        self.floating_ips = None
+
+        # Restore local objects
+        self.server = None
+        self.floating_ips = []
+        if self.node.openstack_server_id:
+            self.server = self.endpoint._getServer(
+                self.node.openstack_server_id)
+            if (self.server and
+                self.endpoint._hasFloatingIps() and
+                self.server.get('addresses')):
+                self.floating_ips = self.endpoint._getFloatingIps(
+                    self.server)
 
     def advance(self):
         if self.state == self.START:
             if self.node.openstack_server_id:
-                self.server = self.endpoint._getServer(
-                    self.node.openstack_server_id)
-                if (self.server and
-                    self.endpoint._hasFloatingIps() and
-                    self.server.get('addresses')):
-                    self.floating_ips = self.endpoint._getFloatingIps(
-                        self.server)
-                    for fip in self.floating_ips:
-                        self.endpoint._deleteFloatingIp(fip)
-                        self.state = self.FLOATING_IP_DELETING
+                for fip in self.floating_ips:
+                    self.endpoint._deleteFloatingIp(fip)
+                    self.state = self.FLOATING_IP_DELETING
                 if not self.floating_ips:
                     self.state = self.SERVER_DELETE_SUBMIT
             else:
