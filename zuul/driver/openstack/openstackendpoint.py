@@ -211,7 +211,6 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
         self.label = label
         self.flavor = flavor
         self.image = image
-        self.server = None
         self.hostname = hostname
         self.az = label.az
         super().__init__(node.create_state)
@@ -240,6 +239,23 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
         )
         self.node.quota = quota_from_flavor(self.os_flavor, label=self.label)
         self.node.openstack_server_id = None
+        self.node.openstack_floating_ip_id = None
+
+        if self.state == SERVER_CREATING_SUBMIT:
+            for instance in self.endpoint.listInstances():
+                if instance.metadata.get('zuul_node_uuid') == node.uuid:
+                    self.node.openstack_server_id = openstack_server_id
+            if self.node.openstack_server_id:
+                self.state = self.SERVER_CREATING
+
+        self.server = None
+        if self.node.openstack_server_id:
+            self.server = self.endpoint._getServer(
+                self.node.openstack_server_id)
+        self.floating_ip = None
+        if self.node.openstack_floating_ip_id:
+            self.floating_ip = self.endpoint._refreshFloatingIp(
+                dict(id=self.node.openstack_floating_ip_id))
 
     def _handleServerFault(self):
         # Return True if this is a quota fault
@@ -312,6 +328,7 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
                     self.endpoint._needsFloatingIp(self.server)):
                     self.floating_ip = self.endpoint._createFloatingIp(
                         self.server)
+                    self.node.openstack_floating_ip_id = self.floating_ip['id']
                     self.state = self.FLOATING_IP_CREATING
                 else:
                     self.state = self.COMPLETE
