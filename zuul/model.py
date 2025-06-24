@@ -2667,7 +2667,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
     def __repr__(self):
         return (f"<{self.__class__.__name__} uuid={self.uuid},"
                 f" label={self.label}, state={self.state},"
-                f" path={self.getPath()}>")
+                f" provider={self.provider}>")
 
     def getPath(self):
         return self._getPath(self.uuid)
