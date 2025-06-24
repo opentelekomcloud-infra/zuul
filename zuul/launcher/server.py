@@ -1310,8 +1310,7 @@ class Launcher:
                     self.log.exception(
                         "Error checking quota for label %s "
                         "in provider %s", label, provider)
-                    raise NodesetRequestError(
-                        "Unable to determine quota")
+                    continue
                 providers_for_label[i].append(provider)
             providers_for_all_labels &= set(providers_for_label[i])
 
@@ -2339,7 +2338,13 @@ class Launcher:
 
     def getQuotaPercentage(self, provider):
         # This is cached and updated every 5 minutes
-        total = self.getProviderQuotaAvailable(provider).copy()
+        try:
+            total = self.getProviderQuotaAvailable(provider).copy()
+        except Exception:
+            self.log.exception("Unable to get provider quota")
+            # If there is an error getting quota information, assume
+            # the provider is having problems and report it as full.
+            return 1.0
         # This is continuously updated in the background
         used = self.api.nodes_cache.getQuota(provider)
         pct = 0.0
