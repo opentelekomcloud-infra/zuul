@@ -1544,6 +1544,8 @@ class Launcher:
                 if not node.create_state_machine:
                     log.debug("Building node %s", node)
                     provider = self._getProviderForNode(node)
+                    if not node.provider:
+                        node.provider = provider.canonical_name
                     image_external_id = self.getImageExternalId(node, provider)
                     log.debug("Node %s external id %s",
                               node, image_external_id)
@@ -1619,8 +1621,7 @@ class Launcher:
 
                 if not node.delete_state_machine:
                     log.debug("Cleaning up node %s", node)
-                    provider = self._getProviderForNode(
-                        node, ignore_label=True)
+                    provider = self._getProviderForNode(node)
                     node.delete_state_machine = provider.getDeleteStateMachine(
                         node, log)
 
@@ -1778,7 +1779,7 @@ class Launcher:
             ready_nodes[node.label].append(node)
         return ready_nodes
 
-    def _getProviderForNode(self, node, ignore_label=False):
+    def _getProviderForNode(self, node):
         # Common case when a node is assigned to a provider
         if node.provider:
             return self._getProviderByCanonicalName(node.provider)
@@ -1787,8 +1788,6 @@ class Launcher:
         for provider in self._getProviders():
             if provider.connection_name != node.connection_name:
                 continue
-            if ignore_label:
-                return provider
             if not (label := provider.labels.get(node.label)):
                 continue
             if label.config_hash == node.label_config_hash:
