@@ -209,9 +209,9 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
         self.label = label
         self.flavor = flavor
         self.image = image
-        self.server = None
         self.hostname = hostname
         self.az = label.az
+        self.create_future = None
         super().__init__(node.create_state)
         self.attempts = node.create_state.get("attempts", 0)
         self.image_external_id = node.create_state.get(
@@ -237,7 +237,26 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
             flavor_name=flavor.flavor_name,
         )
         self.node.quota = quota_from_flavor(self.os_flavor, label=self.label)
-        self.node.openstack_server_id = None
+
+        if self.state == self.SERVER_CREATING_SUBMIT:
+            for instance in self.endpoint.listInstances():
+                if instance.metadata.get('zuul_node_uuid') == node.uuid:
+                    self.node.openstack_server_id =\
+                        instance.openstack_server_id
+            if self.node.openstack_server_id:
+                self.state = self.SERVER_CREATING
+
+        self.server = None
+        if self.node.openstack_server_id:
+            self.server = self.endpoint._refreshServer(
+                dict(
+                    id=self.node.openstack_server_id,
+                    status='_unknown',
+                ))
+        self.floating_ip = None
+        if self.node.openstack_floating_ip_id:
+            self.floating_ip = self.endpoint._refreshFloatingIp(
+                dict(id=self.node.openstack_floating_ip_id))
 
     def _handleServerFault(self):
         # Return True if this is a quota fault
@@ -257,27 +276,35 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
             self.log.exception(
                 'Failed to retrieve node error information:')
 
+    def toDict(self):
+        data = super().toDict()
+        data.update(
+            attempts=self.attempts,
+            image_external_id=self.image_external_id,
+        )
+        return data
+
     def advance(self):
         if self.state == self.START:
-            self.node.openstack_server_id = None
-            self.create_future = self.endpoint._submitApi(
-                self.endpoint._createServer,
-                self.hostname,
-                image=self.image_external,
-                flavor=self.os_flavor,
-                key_name=self.label.key_name,
-                az=self.az,
-                config_drive=self.config_drive,
-                networks=self.label.networks,
-                security_groups=self.label.security_groups,
-                boot_from_volume=self.label.boot_from_volume,
-                volume_size=self.label.volume_size,
-                instance_properties=self.metadata,
-                userdata=self.label.userdata,
-            )
             self.state = self.SERVER_CREATING_SUBMIT
 
         if self.state == self.SERVER_CREATING_SUBMIT:
+            if not self.create_future:
+                self.create_future = self.endpoint._submitApi(
+                    self.endpoint._createServer,
+                    self.hostname,
+                    image=self.image_external,
+                    flavor=self.os_flavor,
+                    key_name=self.label.key_name,
+                    az=self.az,
+                    config_drive=self.config_drive,
+                    networks=self.label.networks,
+                    security_groups=self.label.security_groups,
+                    boot_from_volume=self.label.boot_from_volume,
+                    volume_size=self.label.volume_size,
+                    instance_properties=self.metadata,
+                    userdata=self.label.userdata,
+                )
             try:
                 try:
                     self.server = self.endpoint._completeApi(
@@ -310,6 +337,7 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
                     self.endpoint._needsFloatingIp(self.server)):
                     self.floating_ip = self.endpoint._createFloatingIp(
                         self.server)
+                    self.node.openstack_floating_ip_id = self.floating_ip['id']
                     self.state = self.FLOATING_IP_CREATING
                 else:
                     self.state = self.COMPLETE
