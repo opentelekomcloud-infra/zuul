@@ -2442,7 +2442,8 @@ class ZuulWebAPI(object):
             provider_cnames = [p.canonical_name for p in providers]
             for node in self.zuulweb.nodes_cache.getItems():
                 if node.provider in provider_cnames:
-                    ret.append(ProviderNodeConverter.toDict(node))
+                    if node.tenant_name == tenant.name:
+                        ret.append(ProviderNodeConverter.toDict(node))
         return ret
 
     @cherrypy.expose
