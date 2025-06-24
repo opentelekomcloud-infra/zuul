@@ -1543,7 +1543,7 @@ class Launcher:
                 provider = None
                 if not node.create_state_machine:
                     log.debug("Building node %s", node)
-                    provider = self._getProviderForNode(node)
+                    provider = self._getProviderByCanonicalName(node.provider)
                     if not node.provider:
                         node.provider = provider.canonical_name
                     image_external_id = self.getImageExternalId(node, provider)
@@ -1554,7 +1554,8 @@ class Launcher:
 
                 old_state = node.create_state_machine.state
                 if old_state == node.create_state_machine.START:
-                    provider = provider or self._getProviderForNode(node)
+                    provider = provider or \
+                        self._getProviderByCanonicalName(node.provider)
                     if not self.doesProviderHaveQuotaForNode(
                             provider, node, log):
                         # Consider this provider paused, don't attempt
@@ -1621,7 +1622,7 @@ class Launcher:
 
                 if not node.delete_state_machine:
                     log.debug("Cleaning up node %s", node)
-                    provider = self._getProviderForNode(node)
+                    provider = self._getProviderByCanonicalName(node.provider)
                     node.delete_state_machine = provider.getDeleteStateMachine(
                         node, log)
 
@@ -1673,8 +1674,6 @@ class Launcher:
 
         for label, provider in self._getMissingMinReadySlots():
             node_uuid = uuid.uuid4().hex
-            # We don't pass a provider here as the node should not
-            # be directly associated with a tenant or provider.
             image = provider.images[label.image]
             tags = provider.getNodeTags(
                 self.system.system_id, label, node_uuid)
@@ -1693,14 +1692,13 @@ class Launcher:
                     connection_name=provider.connection_name,
                     zuul_event_id=uuid.uuid4().hex,
                     tenant_name=None,
-                    provider=None,
+                    provider=provider.canonical_name,
                     tags=tags,
                     # Set any node attributes we already know here
                     connection_port=image.connection_port,
                     connection_type=image.connection_type,
                 )
-                self.log.debug("Created min-ready node %s via provider %s",
-                               node, provider)
+                self.log.debug("Created min-ready node %s", node)
 
     def _getMissingMinReadySlots(self):
         candidate_launchers = {
@@ -1741,10 +1739,31 @@ class Launcher:
                     if p.hasLabel(label_name)
                 ]
                 for _ in range(tenant_min_ready, labels[0].min_ready):
-                    provider = random.choice(label_providers)
-                    label = provider.labels[label_name]
-                    yield label, provider
-                    unassigned_hashes[label.name].append(label.config_hash)
+                    # Mirror the process we use for provider selection
+                    # in selectProviders.
+                    random.shuffle(label_providers)
+                    label_providers.sort(
+                        key=lambda p: self.getQuotaPercentage(p))
+
+                    chosen_provider = None
+                    for provider in label_providers:
+                        label = provider.labels[label_name]
+                        try:
+                            if not self.doesProviderHaveQuotaForLabel(
+                                    provider, label, self.log,
+                                    include_usage=False):
+                                continue
+                        except Exception:
+                            self.log.exception(
+                                "Error checking quota for label %s "
+                                "in provider %s", label, provider)
+                            continue
+                        chosen_provider = provider
+                        break
+
+                    if chosen_provider:
+                        yield label, chosen_provider
+                        unassigned_hashes[label.name].append(label.config_hash)
 
     def _hasHighestMinReadyScore(
             self, label_cname, label_scores, candidate_launchers):
@@ -1778,21 +1797,6 @@ class Launcher:
                 continue
             ready_nodes[node.label].append(node)
         return ready_nodes
-
-    def _getProviderForNode(self, node):
-        # Common case when a node is assigned to a provider
-        if node.provider:
-            return self._getProviderByCanonicalName(node.provider)
-
-        # Fallback for min-ready nodes w/o a assigned provider
-        for provider in self._getProviders():
-            if provider.connection_name != node.connection_name:
-                continue
-            if not (label := provider.labels.get(node.label)):
-                continue
-            if label.config_hash == node.label_config_hash:
-                return provider
-        raise ProviderNodeError(f"Unable to find provider for node {node}")
 
     def _updateNodeFromInstance(self, node, instance):
         if instance is None:
@@ -1853,7 +1857,7 @@ class Launcher:
 
     def _hasProvider(self, node):
         try:
-            self._getProviderForNode(node)
+            self._getProviderByCanonicalName(node.provider)
         except ProviderNodeError:
             return False
         return True
@@ -1863,7 +1867,7 @@ class Launcher:
             for provider in tenant_providers:
                 if provider.canonical_name == provider_cname:
                     return provider
-        raise Exception(f"Unable to find {provider_cname}")
+        raise ProviderNodeError(f"Unable to find {provider_cname}")
 
     def start(self):
         self.log.debug("Starting command processor")
