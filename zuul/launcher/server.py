@@ -1779,23 +1779,20 @@ class Launcher:
         return ready_nodes
 
     def _getProviderForNode(self, node, ignore_label=False):
-        for tenant_name, tenant_providers in self.tenant_providers.items():
-            # Min-ready nodes don't have an assigned tenant
-            if node.tenant_name and tenant_name != node.tenant_name:
+        # Common case when a node is assigned to a provider
+        if node.provider:
+            return self._getProviderByCanonicalName(node.provider)
+
+        # Fallback for min-ready nodes w/o a assigned provider
+        for provider in self._getProviders():
+            if provider.connection_name != node.connection_name:
                 continue
-            for provider in tenant_providers:
-                # Common case when a node is assigned to a provider
-                if provider.canonical_name == node.provider:
-                    return provider
-                # Fallback for min-ready nodes w/o a assigned provider
-                if provider.connection_name != node.connection_name:
-                    continue
-                if ignore_label:
-                    return provider
-                if not (label := provider.labels.get(node.label)):
-                    continue
-                if label.config_hash == node.label_config_hash:
-                    return provider
+            if ignore_label:
+                return provider
+            if not (label := provider.labels.get(node.label)):
+                continue
+            if label.config_hash == node.label_config_hash:
+                return provider
         raise ProviderNodeError(f"Unable to find provider for node {node}")
 
     def _updateNodeFromInstance(self, node, instance):
