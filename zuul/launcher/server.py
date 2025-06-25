@@ -375,6 +375,7 @@ class EndpointUploadJob:
         # configurations.  Pick one of them as a representative.
         self.log.info("Starting upload %s", self.upload)
         external_id = self.job.run()
+        self.log.info("Finished upload %s", self.upload)
         with self.launcher.createZKContext(self.upload._lock, self.log) as ctx:
             self.upload.updateAttributes(
                 ctx,
