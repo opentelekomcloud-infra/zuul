@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The connection to the ElasticSearch endpoint is protected and prevent docs to
+    be sent to the endpoint if Zuul is not connected to the endpoint.
