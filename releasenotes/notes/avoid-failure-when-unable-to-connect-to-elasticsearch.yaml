@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The connection to the ElasticSearch endpoint is protected and prevent docs to
+    be sent to the endpoint if Zuul has not successfuly connected to the endpoint at initialization.
+    Furthermore we handle any other exceptions when adding docs to the endpoint to avoid buildset error
+    in case of issue accessing the ElasticSearch endpoint.

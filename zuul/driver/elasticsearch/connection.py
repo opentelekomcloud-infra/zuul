@@ -60,6 +60,7 @@ class ElasticsearchConnection(BaseConnection):
     def __init__(self, driver, connection_name, connection_config):
         super(ElasticsearchConnection, self).__init__(
             driver, connection_name, connection_config)
+        self.connected = False
         self.uri = self.connection_config.get('uri').split(',')
         self.cnx_opts = {}
         use_ssl = self.connection_config.get('use_ssl', True)
@@ -83,14 +84,15 @@ class ElasticsearchConnection(BaseConnection):
                 'client_cert', None)
             self.cnx_opts['client_key'] = self.connection_config.get(
                 'client_key', None)
-        self.es = Elasticsearch(
-            self.uri, **self.cnx_opts)
         try:
+            self.es = Elasticsearch(self.uri, **self.cnx_opts)
             self.log.debug("Elasticsearch info: %s" % self.es.info())
-        except Exception as e:
-            self.log.warn("An error occured on estabilishing "
-                          "connection to Elasticsearch: %s" % e)
-        self.ic = IndicesClient(self.es)
+            self.ic = IndicesClient(self.es)
+            self.connected = True
+        except Exception:
+            self.log.exception(
+                f"An error occured on estabilishing connection {self.connection_name}"
+                f"to Elasticsearch")
 
     def setIndex(self, index):
         settings = {
@@ -118,41 +120,54 @@ class ElasticsearchConnection(BaseConnection):
             yield d
 
     def add_docs(self, source_it, index):
+        if not self.connected:
+            self.log.warn(
+                f"Unable to index docs to {self.uri} as Zuul is not connected"
+                f"to the endpoint"
+            )
+        return None
 
         self.setIndex(index)
 
-        try:
-            bulk(self.es, self.gen(source_it, index))
-            self.es.indices.refresh(index=index)
-            self.log.debug('%s docs indexed to %s' % (
-                len(source_it), self.connection_name))
-        except BulkIndexError as exc:
-            self.log.warn("Some docs failed to be indexed (%s)" % exc)
-            # We give flexibility by allowing any type of job's vars and
-            # zuul return data to be indexed with EL dynamic mapping enabled.
-            # It may happen that a doc own a field with a value that does not
-            # match the previous data type that EL has detected for that field.
-            # In that case the whole doc is not indexed by EL.
-            # Here we want to mitigate by indexing the errorneous docs in a
-            # <index-name>.errorneous index by flattening the doc data as yaml.
-            # This ensures the doc is indexed and can be tracked and eventually
-            # be modified and re-indexed by an operator.
-            errorneous_docs = []
-            for d in exc.errors:
-                if d['index']['error']['type'] == 'mapper_parsing_exception':
-                    errorneous_doc = {
-                        'uuid': d['index']['data']['uuid'],
-                        'blob': yaml.dump(d['index']['data'])
-                    }
-                    errorneous_docs.append(errorneous_doc)
+        def _add_docs():
             try:
-                mapping_errorneous_index = "%s.errorneous" % index
-                bulk(
-                    self.es,
-                    self.gen(errorneous_docs, mapping_errorneous_index))
-                self.es.indices.refresh(index=mapping_errorneous_index)
-                self.log.info(
-                    "%s errorneous docs indexed" % (len(errorneous_docs)))
+                bulk(self.es, self.gen(source_it, index))
+                self.es.indices.refresh(index=index)
+                self.log.debug('%s docs indexed to %s' % (
+                    len(source_it), self.connection_name))
             except BulkIndexError as exc:
-                self.log.warn(
-                    "Some errorneous docs failed to be indexed (%s)" % exc)
+                self.log.warn("Some docs failed to be indexed (%s)" % exc)
+                # We give flexibility by allowing any type of job's vars and
+                # zuul return data to be indexed with EL dynamic mapping enabled.
+                # It may happen that a doc own a field with a value that does not
+                # match the previous data type that EL has detected for that field.
+                # In that case the whole doc is not indexed by EL.
+                # Here we want to mitigate by indexing the errorneous docs in a
+                # <index-name>.errorneous index by flattening the doc data as yaml.
+                # This ensures the doc is indexed and can be tracked and eventually
+                # be modified and re-indexed by an operator.
+                errorneous_docs = []
+                for d in exc.errors:
+                    if d['index']['error']['type'] == 'mapper_parsing_exception':
+                        errorneous_doc = {
+                            'uuid': d['index']['data']['uuid'],
+                            'blob': yaml.dump(d['index']['data'])
+                        }
+                        errorneous_docs.append(errorneous_doc)
+                try:
+                    mapping_errorneous_index = "%s.errorneous" % index
+                    bulk(
+                        self.es,
+                        self.gen(errorneous_docs, mapping_errorneous_index))
+                    self.es.indices.refresh(index=mapping_errorneous_index)
+                    self.log.info(
+                        "%s errorneous docs indexed" % (len(errorneous_docs)))
+                except BulkIndexError as exc:
+                    self.log.warn(
+                        "Some errorneous docs failed to be indexed (%s)" % exc)
+
+        try:
+            _add_docs()
+        except Exception:
+            self.log.exception(f"Unhandled error when adding docs to "
+                               f"connection {self.connection_name}")
