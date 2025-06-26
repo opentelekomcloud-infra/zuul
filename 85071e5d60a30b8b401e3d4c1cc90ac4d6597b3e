@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3cac534f_f8652bcf",
+        "filename": "releasenotes/notes/avoid-failure-when-unable-to-connect-to-elasticsearch.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9311
+      },
+      "writtenOn": "2025-06-26T10:07:51Z",
+      "side": 1,
+      "message": "Though, shouldn\u0027t it be an error when reporting fails? I worry that this will hide an issue, resulting in lost build results.",
+      "revId": "85071e5d60a30b8b401e3d4c1cc90ac4d6597b3e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
