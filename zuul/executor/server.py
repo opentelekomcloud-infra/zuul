@@ -3990,7 +3990,8 @@ class ExecutorServer(BaseMergeServer):
         self.system = ZuulSystem(self.zk_client)
         self.nodepool = Nodepool(self.zk_client, self.system.system_id,
                                  self.statsd)
-        self.launcher = LauncherClient(self.zk_client, None)
+        self.launcher = LauncherClient(self.zk_client, None,
+                                       component_info=self.component_info)
 
         self.management_events = TenantManagementEventQueue.createRegistry(
             self.zk_client)

@@ -1603,6 +1603,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         self.assertEqual(1, len(data[2]['build_artifacts']))
         self.assertEqual(1, len(data[1]['build_artifacts'][0]['uploads']))
         self.assertEqual(1, len(data[2]['build_artifacts'][0]['uploads']))
+        ba = data[1]['build_artifacts'][0]
+        self.assertFalse(ba['is_locked'])
+        self.assertIsNone(ba['lock_holder'])
+        upload = data[1]['build_artifacts'][0]['uploads'][0]
+        self.assertFalse(upload['is_locked'])
+        self.assertIsNone(upload['lock_holder'])
         # The builds have a lot of random data
         data[1].pop('build_artifacts')
         data[2].pop('build_artifacts')
