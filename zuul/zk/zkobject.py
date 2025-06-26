@@ -41,6 +41,7 @@ from zuul.zk.locks import SessionAwareLock
 class BaseZKContext:
     profile_logger = logging.getLogger('zuul.profile')
     profile_default = False
+    default_lock_identifier = None
     # Only changed by unit tests.
     # The default scales with number of procs.
     _max_workers = None
@@ -75,7 +76,8 @@ class BaseZKContext:
 
 
 class ZKContext(BaseZKContext):
-    def __init__(self, zk_client, lock, stop_event, log):
+    def __init__(self, zk_client, lock, stop_event, log,
+                 default_lock_identifier=None):
         super().__init__()
         if isinstance(zk_client, ZooKeeperClient):
             client = zk_client.client
@@ -95,6 +97,7 @@ class ZKContext(BaseZKContext):
         self.cumulative_write_bytes = 0
         self.build_references = False
         self.profile = self.profile_default
+        self.default_lock_identifier = default_lock_identifier
 
     def sessionIsValid(self):
         return (not self.lock or self.lock.is_still_valid())
@@ -520,7 +523,7 @@ class LockableZKObject(ZKObject):
 
     def __new__(klass, *args, **kwargs):
         zko = super().__new__(klass)
-        zko._set(_lock_contenders=set())
+        zko._set(_lock_contenders=dict())
         return zko
 
     def getLockPath(self):
@@ -586,16 +589,19 @@ class LockableZKObject(ZKObject):
             except Exception:
                 context.log.exception("Failed to release lock on %s", self)
 
-    def acquireLock(self, context, blocking=True, timeout=None):
+    def acquireLock(self, context, blocking=True, timeout=None,
+                    identifier=None):
         have_lock = False
         lock = None
         path = self.getLockPath()
+        identifier = identifier or context.default_lock_identifier
         try:
             # We create the lock path when we create the object in ZK,
             # so there is no need to ensure the path on lock.  This
             # lets us avoid re-creating the lock if the object was
             # deleted behind our back.
             lock = SessionAwareLock(context.client, path,
+                                    identifier=identifier,
                                     ensure_path=False)
             have_lock = lock.acquire(blocking, timeout)
         except NoNodeError:

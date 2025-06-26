@@ -1437,6 +1437,7 @@ class ImageBuildArtifact(zkobject.LockableZKObject):
             # Attributes that are not serialized
             lock=None,
             is_locked=False,
+            lock_holder=None,
         )
 
     @property
@@ -1519,6 +1520,7 @@ class ImageUpload(zkobject.LockableZKObject):
             # Attributes that are not serialized
             lock=None,
             is_locked=False,
+            lock_holder=None,
         )
 
     @property
@@ -2428,6 +2430,7 @@ class NodesetRequest(zkobject.LockableZKObject):
             # Attributes that are not serialized
             lock=None,
             is_locked=False,
+            lock_holder=None,
             _revision=revision,
             # Attributes set by the launcher
             _lscores=None,
@@ -2657,6 +2660,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             node_properties={},
             # Attributes that are not serialized
             is_locked=False,
+            lock_holder=None,
             create_state_machine=None,
             delete_state_machine=None,
             nodescan_request=None,

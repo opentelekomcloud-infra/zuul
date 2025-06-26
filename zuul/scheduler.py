@@ -365,7 +365,8 @@ class Scheduler(threading.Thread):
             self.executor = self._executor_client_class(self.config, self)
             self.merger = self._merger_client_class(self.config, self)
             self.launcher = self._launcher_client_class(
-                self.zk_client, self.stop_event)
+                self.zk_client, self.stop_event,
+                component_info=self.component_info)
             self.nodepool = nodepool.Nodepool(
                 self.zk_client, self.system.system_id, self.statsd,
                 scheduler=True)
@@ -3354,61 +3355,66 @@ class Scheduler(threading.Thread):
 
     def createImageUploads(self, iba):
         # iba is an ImageBuildArtifact
-        with iba.locked(self.zk_client) as lock:
-            with self.createZKContext(lock, self.log) as ctx:
-                # Providers may share image upload configurations, but
-                # these shared configurations may appear on distinct
-                # endpoints.  Identify the unique configurations for
-                # each endpoint and create one upload for each.
-                uploads = defaultdict(list)  # (endpoint, hash) -> [providers]
-                for tenant in self.abide.tenants.values():
-                    for provider in tenant.layout.providers.values():
-                        for image in provider.images.values():
-                            if (image.canonical_name == iba.canonical_name and
-                                image.format == iba.format):
-                                # This image is needed, add this endpoint
-                                endpoint = provider.getEndpoint()
-                                key = (endpoint.canonical_name,
-                                       image.config_hash)
-                                uploads[key].append(provider.canonical_name)
-                for (endpoint_name, config_hash), providers in uploads.items():
-                    upload_uuid = uuid.uuid4().hex
-                    self.log.info(
-                        "Storing image upload: "
-                        "uuid: %s name: %s artifact uuid: %s "
-                        "endpoint: %s config hash: %s",
-                        upload_uuid, iba.canonical_name, iba.uuid,
-                        endpoint_name, config_hash)
-                    ImageUpload.new(
-                        ctx,
-                        uuid=upload_uuid,
-                        canonical_name=iba.canonical_name,
-                        artifact_uuid=iba.uuid,
-                        endpoint_name=endpoint_name,
-                        providers=providers,
-                        config_hash=config_hash,
-                        timestamp=time.time(),
-                        validated=iba.validated,
-                        _state=ImageUpload.State.PENDING,
-                        state_time=time.time(),
-                    )
-                # Only mark the iba as ready once all the upload
-                # records for it have been created.
-                with iba.activeContext(ctx):
-                    iba.state = iba.State.READY
+        with self.createZKContext(None, self.log) as outer_ctx:
+            with iba.locked(outer_ctx) as lock:
+                with self.createZKContext(lock, self.log) as ctx:
+                    # Providers may share image upload configurations, but
+                    # these shared configurations may appear on distinct
+                    # endpoints.  Identify the unique configurations for
+                    # each endpoint and create one upload for each.
+                    # (endpoint, hash) -> [providers]
+                    uploads = defaultdict(list)
+                    for tenant in self.abide.tenants.values():
+                        for provider in tenant.layout.providers.values():
+                            for image in provider.images.values():
+                                if (image.canonical_name == iba.canonical_name
+                                    and image.format == iba.format):
+                                    # This image is needed, add this endpoint
+                                    endpoint = provider.getEndpoint()
+                                    key = (endpoint.canonical_name,
+                                           image.config_hash)
+                                    uploads[key].append(
+                                        provider.canonical_name)
+                    for (endpoint_name, config_hash), providers in \
+                            uploads.items():
+                        upload_uuid = uuid.uuid4().hex
+                        self.log.info(
+                            "Storing image upload: "
+                            "uuid: %s name: %s artifact uuid: %s "
+                            "endpoint: %s config hash: %s",
+                            upload_uuid, iba.canonical_name, iba.uuid,
+                            endpoint_name, config_hash)
+                        ImageUpload.new(
+                            ctx,
+                            uuid=upload_uuid,
+                            canonical_name=iba.canonical_name,
+                            artifact_uuid=iba.uuid,
+                            endpoint_name=endpoint_name,
+                            providers=providers,
+                            config_hash=config_hash,
+                            timestamp=time.time(),
+                            validated=iba.validated,
+                            _state=ImageUpload.State.PENDING,
+                            state_time=time.time(),
+                        )
+                    # Only mark the iba as ready once all the upload
+                    # records for it have been created.
+                    with iba.activeContext(ctx):
+                        iba.state = iba.State.READY
 
     def validateImageUpload(self, image_upload_uuid):
         with self.createZKContext(None, self.log) as ctx:
             upload = ImageUpload()
             upload._set(uuid=image_upload_uuid)
             upload.refresh(ctx)
-        with upload.locked(self.zk_client, blocking=True) as lock:
-            with self.createZKContext(lock, self.log) as ctx:
-                upload.updateAttributes(
-                    ctx,
-                    validated=True,
-                    timestamp=time.time(),
-                )
+        with self.createZKContext(None, self.log) as outer_ctx:
+            with upload.locked(outer_ctx, blocking=True) as lock:
+                with self.createZKContext(lock, self.log) as ctx:
+                    upload.updateAttributes(
+                        ctx,
+                        validated=True,
+                        timestamp=time.time(),
+                    )
 
     def createZKContext(self, lock, log):
         return ZKContext(self.zk_client, lock, self.stop_event, log)
