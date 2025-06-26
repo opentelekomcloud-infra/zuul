@@ -13,7 +13,6 @@
 # under the License.
 
 import base64
-import concurrent.futures
 import contextlib
 import ipaddress
 import time
@@ -646,61 +645,21 @@ class TestAwsDriver(BaseCloudDriverTest):
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_state_machines_instance(self):
-        self._test_state_machines("debian-normal")
+        label_name = "debian-normal"
+        provider_name = "aws-us-east-1-main"
+        node_class = AwsProviderNode
+        future_names = ['host_create_future', 'create_future']
+        self._test_state_machines(label_name, provider_name,
+                                  node_class, future_names)
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_state_machines_dedicated_host(self):
-        self._test_state_machines("debian-dedicated")
-
-    def _test_state_machines(self, label):
-        # Stop the launcher main loop, so we can drive the state machine
-        # on our own.
-        self.waitUntilSettled()
-        self.launcher._running = False
-        self.launcher.wake_event.set()
-        self.launcher.launcher_thread.join()
-
-        layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
-        provider = layout.providers['aws-us-east-1-main']
-        # Start the endpoint since we're going to use the scheduler's endpoint.
-        provider.getEndpoint().start()
-
-        with self.createZKContext(None) as ctx:
-            node = AwsProviderNode.new(ctx, label=label)
-            execute_future = False
-            for _ in iterate_timeout(60, "create state machine to complete"):
-                with node.activeContext(ctx):
-                    # Re-create the SM from the state in ZK
-                    sm = provider.getCreateStateMachine(node, None, self.log)
-                    node.create_state_machine = sm
-                    with self._block_futures():
-                        sm.advance()
-                    # If there are pending futures we will try to re-create
-                    # the SM once from the state and then advance it once
-                    # more so the futures can complete.
-                    pending_futures = [
-                        f for f in (sm.host_create_future, sm.create_future)
-                        if f]
-                    if pending_futures:
-                        if execute_future:
-                            concurrent.futures.wait(pending_futures)
-                            sm.advance()
-                        # Toggle future execution flag
-                        execute_future = not execute_future
-                if sm.complete:
-                    break
-
-            for _ in iterate_timeout(60, "delete state machine to complete"):
-                with node.activeContext(ctx):
-                    # Re-create the SM from the state in ZK
-                    sm = provider.getDeleteStateMachine(node, self.log)
-                    node.delete_state_machine = sm
-                    sm.advance()
-                if sm.complete:
-                    break
-                # Avoid busy-looping as we have to wait for the TTL
-                # cache to expire.
-                time.sleep(0.5)
+        label_name = "debian-dedicated"
+        provider_name = "aws-us-east-1-main"
+        node_class = AwsProviderNode
+        future_names = ['host_create_future', 'create_future']
+        self._test_state_machines(label_name, provider_name,
+                                  node_class, future_names)
 
     @contextlib.contextmanager
     def _block_futures(self):
