@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ce64703_42386d0b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-06-26T10:11:13Z",
+      "side": 1,
+      "message": "There are two main issues that need to be addressed:\n\n- Decorrelate pipeline errors from actual build/buildset errors, and I think you\u0027re solving that here by ensuring Exception are caught and logged.\n- Find a way to report on reporter issues beyond zuul application logs, since Zuul users might be left wondering why they\u0027re not getting emails or elasticsearch data as expected.\n\nLet\u0027s fix #1 with this patch, and think about how we could implement #2.",
+      "revId": "85071e5d60a30b8b401e3d4c1cc90ac4d6597b3e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3cac534f_f8652bcf",
@@ -14,6 +31,97 @@
       "writtenOn": "2025-06-26T10:07:51Z",
       "side": 1,
       "message": "Though, shouldn\u0027t it be an error when reporting fails? I worry that this will hide an issue, resulting in lost build results.",
+      "revId": "85071e5d60a30b8b401e3d4c1cc90ac4d6597b3e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "248d980a_e555df76",
+        "filename": "zuul/driver/elasticsearch/connection.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-06-26T10:11:13Z",
+      "side": 1,
+      "message": "should there be a refresh process for this? Otherwise we only check the connection once at instantiation time.",
+      "revId": "85071e5d60a30b8b401e3d4c1cc90ac4d6597b3e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18b3db53_e1ebf0d2",
+        "filename": "zuul/driver/elasticsearch/connection.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-06-26T10:11:13Z",
+      "side": 1,
+      "message": "typo: while establishing",
+      "revId": "85071e5d60a30b8b401e3d4c1cc90ac4d6597b3e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "081b6632_e1bf21a7",
+        "filename": "zuul/driver/elasticsearch/connection.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-06-26T10:11:13Z",
+      "side": 1,
+      "message": "I\u0027d bump this to error level. If this reporter is used, there\u0027s an expectation that it should push data properly.",
+      "revId": "85071e5d60a30b8b401e3d4c1cc90ac4d6597b3e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c7c40de3_b36597ac",
+        "filename": "zuul/driver/elasticsearch/connection.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-06-26T10:11:13Z",
+      "side": 1,
+      "message": "same; looks more like an error than a warning",
+      "revId": "85071e5d60a30b8b401e3d4c1cc90ac4d6597b3e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3388f675_047d5f7c",
+        "filename": "zuul/driver/elasticsearch/connection.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-06-26T10:11:13Z",
+      "side": 1,
+      "message": "is that correct? this looks like a typo to \"erroneous\"",
+      "range": {
+        "startLine": 158,
+        "startChar": 51,
+        "endLine": 158,
+        "endChar": 61
+      },
       "revId": "85071e5d60a30b8b401e3d4c1cc90ac4d6597b3e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
