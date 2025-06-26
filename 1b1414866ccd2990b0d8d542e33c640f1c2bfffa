@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "55829023_4699107a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-06-26T10:05:51Z",
+      "side": 1,
+      "message": "I think we should have a test for each driver similar to https://opendev.org/zuul/zuul/src/commit/c09aed098feef070af0457ad983921f69f2e33b6/tests/unit/test_aws_driver.py#L655 that ensures that we can restore/continue from each stage.",
+      "revId": "1b1414866ccd2990b0d8d542e33c640f1c2bfffa",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
