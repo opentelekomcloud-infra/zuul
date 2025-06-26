@@ -2989,6 +2989,7 @@ class DummyLockable(LockableZKObject):
         self._set(
             uuid=uuid.uuid4().hex,
             is_locked=False,
+            lock_holder=None,
         )
 
     def serialize(self, context):
