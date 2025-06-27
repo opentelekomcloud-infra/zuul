@@ -391,8 +391,7 @@ class EndpointUploadJob:
         with self.launcher.createZKContext(self.upload._lock, self.log) as ctx:
             self.upload.updateAttributes(
                 ctx,
-                external_id=external_id,
-                timestamp=time.time())
+                external_id=external_id)
         if not self.upload.validated:
             self.launcher.addImageValidateEvent(self.upload)
 
