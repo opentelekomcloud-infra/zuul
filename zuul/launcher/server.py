@@ -224,6 +224,7 @@ class UploadJob:
             )
             if job:
                 uploads.remove(upload)
+                self.log.debug("Scheduling import for %s", upload)
                 future = self.launcher.endpoint_upload_executor.submit(
                     EndpointUploadJob(self.launcher, upload, job).run
                 )
@@ -243,6 +244,7 @@ class UploadJob:
             )
             if job:
                 uploads.remove(upload)
+                self.log.debug("Scheduling upload for %s", upload)
                 future = self.launcher.endpoint_upload_executor.submit(
                     EndpointUploadJob(self.launcher, upload, job).run
                 )
@@ -298,6 +300,8 @@ class UploadJob:
         uploads = []
         with self.launcher.createZKContext(None, self.log) as ctx:
             try:
+                self.log.debug("Starting upload job for %s",
+                               self.image_build_artifact)
                 # Get a list of uploads we hold locks for
                 self._acquireUploadLocks(ctx, uploads)
                 if not uploads:
@@ -327,17 +331,23 @@ class UploadJob:
 
                 for upload, future in futures:
                     try:
+                        self.log.debug("Waiting for upload %s", upload)
                         future.result()
-                        self.log.info("Finished upload %s", upload)
                     except Exception:
                         self.log.exception("Unable to upload image %s", upload)
             finally:
+                self.log.debug("Finalizing upload job for %s",
+                               self.image_build_artifact)
                 for upload in uploads:
                     try:
                         with upload.activeContext(ctx):
                             if upload.external_id:
+                                self.log.debug(
+                                    "Marking upload %s ready", upload)
                                 upload.state = upload.State.READY
                             else:
+                                self.log.debug(
+                                    "Marking upload %s pending", upload)
                                 upload.state = upload.State.PENDING
                     except Exception:
                         self.log.exception("Unable to update state for %s",
@@ -354,6 +364,8 @@ class UploadJob:
                         self.log.info("Deleted %s", path)
                     except Exception:
                         self.log.exception("Unable to delete %s", path)
+                self.log.debug("Finished upload job for %s",
+                               self.image_build_artifact)
 
 
 class EndpointUploadJob:
@@ -2142,8 +2154,6 @@ class Launcher:
 
     def checkOldImage(self, tenant_name, provider, image,
                       keep_uploads):
-        self.log.debug("Checking for old artifacts for image %s",
-                       image.canonical_name)
         image_cname = image.canonical_name
         uploads = self.image_upload_registry.getUploadsForImage(image_cname)
         valid_uploads = [
