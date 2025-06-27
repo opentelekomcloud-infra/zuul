@@ -2085,16 +2085,13 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                 # previous review was 'approved' or 'changes_requested', as
                 # the GitHub model does not change the vote if a comment is
                 # added after the fact. THANKS GITHUB!
-                if review['grantedOn'] > reviews[login]['grantedOn']:
-                    if (review['type'] == 'commented' and
+                if (review['type'] == 'commented' and
                         reviews[login]['type'] in
                         ('approved', 'changes_requested')):
-                        log.debug("Discarding comment review %s due to "
-                                  "an existing vote %s" % (review,
-                                                           reviews[login]))
-                        pass
-                    else:
-                        reviews[login] = review
+                    log.debug("Discarding comment review %s due to "
+                              "an existing vote %s", review, reviews[login])
+                else:
+                    reviews[login] = review
 
         return reviews.values()
 
