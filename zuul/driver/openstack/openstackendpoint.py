@@ -127,7 +127,6 @@ class ZuulOpenstackServer(UserDict):
 
 class OpenstackDeleteStateMachine(statemachine.StateMachine):
     FLOATING_IP_DELETING = 'deleting floating ip'
-    SERVER_DELETE_SUBMIT = 'submit delete server'
     SERVER_DELETE = 'delete server'
     SERVER_DELETING = 'deleting server'
     COMPLETE = 'complete'
@@ -137,23 +136,28 @@ class OpenstackDeleteStateMachine(statemachine.StateMachine):
         self.endpoint = endpoint
         self.node = node
         super().__init__(node.delete_state)
-        self.floating_ips = None
+        self.delete_future = None
+
+        # Restore local objects
+        self.server = None
+        self.floating_ips = []
+        if self.node.openstack_server_id:
+            self.server = self.endpoint._getServer(
+                self.node.openstack_server_id)
+            if (self.server and
+                self.endpoint._hasFloatingIps() and
+                self.server.get('addresses')):
+                self.floating_ips = self.endpoint._getFloatingIps(
+                    self.server)
 
     def advance(self):
         if self.state == self.START:
             if self.node.openstack_server_id:
-                self.server = self.endpoint._getServer(
-                    self.node.openstack_server_id)
-                if (self.server and
-                    self.endpoint._hasFloatingIps() and
-                    self.server.get('addresses')):
-                    self.floating_ips = self.endpoint._getFloatingIps(
-                        self.server)
-                    for fip in self.floating_ips:
-                        self.endpoint._deleteFloatingIp(fip)
-                        self.state = self.FLOATING_IP_DELETING
+                for fip in self.floating_ips:
+                    self.endpoint._deleteFloatingIp(fip)
+                    self.state = self.FLOATING_IP_DELETING
                 if not self.floating_ips:
-                    self.state = self.SERVER_DELETE_SUBMIT
+                    self.state = self.SERVER_DELETE
             else:
                 self.state = self.COMPLETE
 
@@ -169,15 +173,13 @@ class OpenstackDeleteStateMachine(statemachine.StateMachine):
             if self.floating_ips:
                 return
             else:
-                self.state = self.SERVER_DELETE_SUBMIT
-
-        if self.state == self.SERVER_DELETE_SUBMIT:
-            self.delete_future = self.endpoint._submitApi(
-                self.endpoint._deleteServer,
-                self.node.openstack_server_id)
-            self.state = self.SERVER_DELETE
+                self.state = self.SERVER_DELETE
 
         if self.state == self.SERVER_DELETE:
+            if not self.delete_future:
+                self.delete_future = self.endpoint._submitApi(
+                    self.endpoint._deleteServer,
+                    self.node.openstack_server_id)
             if self.endpoint._completeApi(self.delete_future):
                 self.state = self.SERVER_DELETING
 
