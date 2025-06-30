@@ -361,9 +361,14 @@ class UploadJob:
                                     "Marking upload %s ready", upload)
                                 upload.state = upload.State.READY
                             else:
+                                new_upload = upload.copy(ctx)
                                 self.log.debug(
-                                    "Marking upload %s pending", upload)
-                                upload.state = upload.State.PENDING
+                                    "Replacing upload %s with %s",
+                                    upload, new_upload)
+                                self.log.debug(
+                                    "Marking upload %s deleting", upload)
+                                upload.state = upload.State.DELETING
+                                self.launcher.upload_deleted_event.set()
                     except Exception:
                         self.log.exception("Unable to update state for %s",
                                            upload)
