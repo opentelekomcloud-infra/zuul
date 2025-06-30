@@ -2442,6 +2442,13 @@ class Launcher:
             provider_nodes[node.provider][node.state] += 1
             provider_label_nodes[node.provider][node.label][node.state] += 1
 
+        requests = {}
+        for state in model.NodesetRequest.State:
+            requests[state] = 0
+        for request in self.api.requests_cache.getItems():
+            if request.state != request.State.TEST_HOLD:
+                requests[request.state] += 1
+
         providers = {}
         for tenant_name, tenant_providers in self.tenant_providers.items():
             for tenant_provider in tenant_providers:
@@ -2480,4 +2487,9 @@ class Launcher:
         for state, value in nodes.items():
             self.statsd.gauge(
                 f'zuul.nodes.state.{state.value}',
+                value)
+        # zuul.nodeset_requests.state.<state> gauge
+        for state, value in requests.items():
+            self.statsd.gauge(
+                f'zuul.nodeset_requests.state.{state.value}',
                 value)
