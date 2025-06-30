@@ -1635,6 +1635,7 @@ class Launcher:
                         node, ignore_label=True)
                     node.delete_state_machine = provider.getDeleteStateMachine(
                         node, log)
+                    node.setState(node.State.DELETING)
 
                 old_state = node.delete_state_machine.state
 

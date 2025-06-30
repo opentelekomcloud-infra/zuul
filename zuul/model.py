@@ -2578,6 +2578,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         IN_USE = "in-use"
         USED = "used"
         OUTDATED = "outdated"
+        DELETING = "deleting"
         HOLD = "hold"
 
     # States where quota counts
@@ -2588,6 +2589,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         State.USED,
         State.OUTDATED,
         State.HOLD,
+        State.DELETING,
     )
 
     FINAL_STATES = (
@@ -2606,6 +2608,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         State.FAILED,
         State.USED,
         State.OUTDATED,
+        State.DELETING,
     )
 
     ROOT = "/zuul/nodes"
