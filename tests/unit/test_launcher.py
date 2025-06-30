@@ -1497,7 +1497,15 @@ class TestLauncherUpload(LauncherBaseTestCase):
             if len(artifacts) == count:
                 return artifacts
 
+    def _waitForUploads(self, image_name, count):
+        for _ in iterate_timeout(30, "uploads to settle"):
+            uploads = self.launcher.image_upload_registry.\
+                getUploadsForImage(image_name)
+            if len(uploads) == count:
+                return uploads
+
     def _upload_run(test, self, *args, **kw):
+        # Fail on first upload of this image
         if 'ubuntu-local' in self.image_name:
             if self.image_name not in test._ubuntu_images:
                 test._ubuntu_images.append(self.image_name)
@@ -1539,6 +1547,13 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
+
+        for _ in iterate_timeout(
+                30, ""):
+            if (self.scheds.first.sched.local_layout_state.get("tenant-one") ==
+                self.launcher.local_layout_state.get("tenant-one")):
+                break
+
         for name in [
                 'review.example.com%2Forg%2Fcommon-config/debian-local',
                 'review.example.com%2Forg%2Fcommon-config/ubuntu-local',
@@ -1546,9 +1561,7 @@ class TestLauncherUpload(LauncherBaseTestCase):
             artifacts = self._waitForArtifacts(name, 1)
             self.assertEqual('raw', artifacts[0].format)
             self.assertTrue(artifacts[0].validated)
-            uploads = self.launcher.image_upload_registry.getUploadsForImage(
-                name)
-            self.assertEqual(1, len(uploads))
+            uploads = self._waitForUploads(name, 1)
             self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
             if 'ubuntu' in name:
                 self.assertIsNone(uploads[0].external_id)
