@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b5678bd_d49dc814",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-06-30T17:55:29Z",
+      "side": 1,
+      "message": "This has a significant impact on the node lifecycle in the launcher, so before we do this, we may want to see if we can just get used to \"USED\" meaning \"DELETING\".  They should be effectively the same.",
+      "revId": "93289e77655db4bdb276938fa9820b5302978fa9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
