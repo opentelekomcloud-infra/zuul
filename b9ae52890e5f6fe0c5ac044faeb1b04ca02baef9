@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "25945353_f15e6c4c",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-06-30T11:01:38Z",
+      "side": 1,
+      "message": "nit: since this is a variable it should use snake_case instead of camelCase (also in the docstring below)",
+      "revId": "b9ae52890e5f6fe0c5ac044faeb1b04ca02baef9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
