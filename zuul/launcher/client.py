@@ -41,7 +41,8 @@ class LauncherClient:
     resource_types = ('ram', 'cores', 'instances')
     HOLD_REQUEST_ROOT = '/zuul/hold-requests'
 
-    def __init__(self, zk_client, stop_event):
+    def __init__(self, zk_client, stop_event, component_info=None):
+        self.component_info = component_info
         self.zk_client = zk_client
         self.stop_event = stop_event
 
@@ -307,7 +308,12 @@ class LauncherClient:
         return not failure
 
     def createZKContext(self, lock, log):
-        return ZKContext(self.zk_client, lock, self.stop_event, log)
+        if self.component_info:
+            identifier = self.component_info.hostname
+        else:
+            identifier = None
+        return ZKContext(self.zk_client, lock, self.stop_event, log,
+                         default_lock_identifier=identifier)
 
     def _getInitialRequestState(self, job):
         return (NodesetRequest.State.REQUESTED if job.nodeset.nodes

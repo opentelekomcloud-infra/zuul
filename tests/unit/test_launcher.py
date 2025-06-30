@@ -568,7 +568,7 @@ class TestLauncher(LauncherBaseTestCase):
                 url='http://example.com/image.raw.zst',
                 timestamp=time.time(),
             )
-            with iba.locked(self.zk_client):
+            with iba.locked(ctx):
                 model.ImageUpload.new(
                     ctx,
                     uuid='upload-uuid',

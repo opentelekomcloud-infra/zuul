@@ -1954,7 +1954,8 @@ class Launcher:
         self.repl = None
 
     def createZKContext(self, lock, log):
-        return ZKContext(self.zk_client, lock, self.join_event, log)
+        return ZKContext(self.zk_client, lock, self.join_event, log,
+                         default_lock_identifier=self.component_info.hostname)
 
     def updateTenantProviders(self):
         # We need to handle new and deleted tenants, so we need to

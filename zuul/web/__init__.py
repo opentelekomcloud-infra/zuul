@@ -474,6 +474,8 @@ class ImageUploadConverter:
             'validated': upload.validated,
             'state': upload.state,
             'state_time': state_time,
+            'is_locked': upload.is_locked,
+            'lock_holder': upload.lock_holder,
         }
         return ret
 
@@ -489,6 +491,8 @@ class ImageUploadConverter:
             'validated': str,
             'state': str,
             'state_time': str,
+            'is_locked': bool,
+            'lock_holder': str,
         })
 
 
@@ -514,6 +518,8 @@ class ImageBuildArtifactConverter:
             'validated': build.validated,
             'state': build.state,
             'state_time': state_time,
+            'is_locked': build.is_locked,
+            'lock_holder': build.lock_holder,
         }
         if uploads:
             ret['uploads'] = [ImageUploadConverter.toDict(u)
@@ -535,6 +541,8 @@ class ImageBuildArtifactConverter:
             'validated': str,
             'state': str,
             'state_time': str,
+            'is_locked': bool,
+            'lock_holder': str,
             'uploads': [ImageUploadConverter.schema()],
         })
 
@@ -648,6 +656,7 @@ class ProviderNodeConverter:
             'hold_expiration': node.hold_expiration,
             'quota': node.quota.getResources(),
             'is_locked': node.is_locked,
+            'lock_holder': node.lock_holder,
         }
         return ret
 
@@ -679,6 +688,7 @@ class ProviderNodeConverter:
             'hold_expiration': int,
             'quota': dict,
             'is_locked': bool,
+            'lock_holder': str,
         })
 
 
@@ -718,6 +728,7 @@ class NodesetRequestConverter:
             'relative_priority': request.relative_priority,
             'provider_node_data': provider_node_data,
             'is_locked': request.is_locked,
+            'lock_holder': request.lock_holder,
         }
         return ret
 
@@ -748,6 +759,7 @@ class NodesetRequestConverter:
                 }
             ],
             'is_locked': bool,
+            'lock_holder': str,
         })
 
 
