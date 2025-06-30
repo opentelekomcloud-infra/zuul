@@ -12,12 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import contextlib
 import os
 import time
+from unittest import mock
 
 import fixtures
 
 from zuul.driver.openstack import OpenstackDriver
+from zuul.driver.openstack.openstackmodel import OpenstackProviderNode
 import zuul.driver.openstack.openstackendpoint
 
 from tests.fake_openstack import (
@@ -98,6 +101,13 @@ class BaseOpenstackDriverTest(ZuulTestCase):
         self.patch(zuul.driver.openstack.openstackendpoint,
                    'CACHE_TTL', 1)
         super().setUp()
+
+    @contextlib.contextmanager
+    def _block_futures(self):
+        with (mock.patch(
+                'zuul.driver.openstack.openstackendpoint.'
+                'OpenstackProviderEndpoint._completeApi', return_value=None)):
+            yield
 
 
 class TestOpenstackDriver(BaseOpenstackDriverTest, BaseCloudDriverTest):
@@ -192,6 +202,15 @@ class TestOpenstackDriver(BaseOpenstackDriverTest, BaseCloudDriverTest):
                 break
             time.sleep(1)
 
+    @simple_layout('layouts/openstack/nodepool.yaml', enable_nodepool=True)
+    def test_state_machines(self):
+        label_name = "debian-normal"
+        provider_name = "openstack-main"
+        node_class = OpenstackProviderNode
+        future_names = ['delete_future', 'create_future']
+        self._test_state_machines(label_name, provider_name,
+                                  node_class, future_names)
+
 
 class TestOpenstackDriverFloatingIp(BaseOpenstackDriverTest,
                                     BaseCloudDriverTest):
@@ -204,6 +223,15 @@ class TestOpenstackDriverFloatingIp(BaseOpenstackDriverTest,
     def test_openstack_fip(self):
         self._test_node_lifecycle('debian-normal')
 
+    @simple_layout('layouts/openstack/nodepool.yaml', enable_nodepool=True)
+    def test_state_machines(self):
+        label_name = "debian-normal"
+        provider_name = "openstack-main"
+        node_class = OpenstackProviderNode
+        future_names = ['delete_future', 'create_future']
+        self._test_state_machines(label_name, provider_name,
+                                  node_class, future_names)
+
 
 class TestOpenstackDriverAutoAttachFloatingIp(BaseOpenstackDriverTest,
                                               BaseCloudDriverTest):
@@ -213,3 +241,12 @@ class TestOpenstackDriverAutoAttachFloatingIp(BaseOpenstackDriverTest,
     @simple_layout('layouts/openstack/nodepool.yaml', enable_nodepool=True)
     def test_openstack_auto_attach_fip(self):
         self._test_node_lifecycle('debian-normal')
+
+    @simple_layout('layouts/openstack/nodepool.yaml', enable_nodepool=True)
+    def test_state_machines(self):
+        label_name = "debian-normal"
+        provider_name = "openstack-main"
+        node_class = OpenstackProviderNode
+        future_names = ['delete_future', 'create_future']
+        self._test_state_machines(label_name, provider_name,
+                                  node_class, future_names)
