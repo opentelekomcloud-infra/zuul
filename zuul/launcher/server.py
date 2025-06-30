@@ -2448,12 +2448,18 @@ class Launcher:
                 providers[tenant_provider.canonical_name] = tenant_provider
         for provider in providers.values():
             safe_pname = normalize_statsd_name(provider.canonical_name)
-            limits = provider.getQuotaLimits().getResources()
-            # zuul.provider.<provider>.limit.<limit> gauge
-            for limit, value in limits.items():
-                safe_limit = normalize_statsd_name(limit)
+            limits = self.getProviderQuota(provider).getResources()
+            # zuul.provider.<provider>.limit.<resource> gauge
+            for res, value in limits.items():
+                safe_res = normalize_statsd_name(res)
                 self.statsd.gauge(
-                    f'zuul.provider.{safe_pname}.limit.{safe_limit}',
+                    f'zuul.provider.{safe_pname}.limit.{safe_res}',
+                    value)
+            usage = self.api.nodes_cache.getQuota(provider).getResources()
+            for res, value in usage.items():
+                safe_res = normalize_statsd_name(res)
+                self.statsd.gauge(
+                    f'zuul.provider.{safe_pname}.usage.{safe_res}',
                     value)
             # zuul.provider.<provider>.nodes.state.<state> gauge
             for state, value in provider_nodes[
