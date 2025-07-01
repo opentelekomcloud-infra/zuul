@@ -906,7 +906,9 @@ class TestLauncher(LauncherBaseTestCase):
     @okay_tracebacks('_getQuotaForInstanceType')
     @mock.patch('zuul.launcher.server.Launcher.doesProviderHaveQuotaForLabel',
                 return_value=True)
-    def test_failed_node(self, mock_quota):
+    @mock.patch('zuul.driver.aws.awsprovider.AwsProvider.getQuotaForLabel',
+                return_value=model.QuotaInformation())
+    def test_failed_node(self, mock_quota, mock_quota2):
         # Test a node failure outside of the create state machine
         ctx = self.createZKContext(None)
         request = self.requestNodes(["debian-invalid"])
