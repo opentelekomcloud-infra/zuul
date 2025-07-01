@@ -1183,15 +1183,14 @@ class Launcher:
                         continue
                     if node.hasExpired():
                         continue
-                    for provider in self.tenant_providers[request.tenant_name]:
-                        if provider.connection_name != node.connection_name:
-                            continue
-                        if not (plabel := provider.labels.get(label.name)):
-                            continue
-                        if node.label_config_hash != plabel.config_hash:
-                            continue
-                        break
-                    else:
+                    # Check to see if this node is valid in this tenant
+                    if (provider.connection_name !=
+                        node.connection_name):
+                        continue
+                    if not (plabel :=
+                            provider.labels.get(label.name)):
+                        continue
+                    if node.label_config_hash != plabel.config_hash:
                         continue
 
                     if not node.acquireLock(ctx, blocking=False):
@@ -1206,6 +1205,7 @@ class Launcher:
                         with self.createZKContext(node._lock, self.log) as ctx:
                             node.updateAttributes(
                                 ctx,
+                                provider=provider.canonical_name,
                                 request_id=request.uuid,
                                 tenant_name=request.tenant_name,
                                 tags=tags,

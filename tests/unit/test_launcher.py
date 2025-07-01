@@ -1591,6 +1591,23 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
     tenant_config_file = "config/launcher-min-ready/main.yaml"
 
     def test_min_ready(self):
+        # tenant-one:
+        #   common-config:
+        #     Provider aws-us-east-1-main
+        #       debian-normal (t3.medium)  (hash A)
+        #   project1:
+        #     Provider aws-ca-central-1-main
+        #       debian-normal (t3.small)   (hash B)
+        # tenant-two:
+        #   common-config:
+        #     Provider aws-us-east-1-main
+        #       debian-normal (t3.medium)  (hash A)
+
+        # min-ready=2 for debian-normal
+        #   2 from aws-us-east-1-main
+        #   0-2 from aws-ca-central-1-main
+        # min-ready=1 for debian-emea
+        #   1 from aws-eu-central-1-main
         for _ in iterate_timeout(60, "nodes to be ready"):
             nodes = self.launcher.api.nodes_cache.getItems()
             # Since we are randomly picking a provider to fill the
@@ -1618,8 +1635,11 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
 
         for _ in iterate_timeout(30, "nodes to be in-use"):
             # We expect the launcher to use the min-ready nodes
+            # project2 will definitely use a ready node; project1 may
+            # or may not depending on which providers were selected
+            # for ready nodes and nodeset requests.
             in_use_nodes = [n for n in nodes if n.state == n.State.IN_USE]
-            if len(in_use_nodes) == 2:
+            if len(in_use_nodes) >= 1:
                 break
 
         self.assertEqual(nodes[0].host_keys, [])
