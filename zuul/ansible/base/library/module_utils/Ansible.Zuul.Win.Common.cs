@@ -23,7 +23,6 @@ using System.Threading;
 using System.Text.RegularExpressions;
 using System.Xml;
 
-//AssemblyReference -Name netstandard.dll
 //AssemblyReference -Name System.Xml.dll
 //AssemblyReference -Name System.Xml.ReaderWriter.dll
 
