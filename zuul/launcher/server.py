@@ -1369,6 +1369,7 @@ class Launcher:
         tags = provider.getNodeTags(
             self.system.system_id, label, node_uuid, provider, request)
         node_class = provider.driver.getProviderNodeClass()
+        label_quota = provider.getQuotaForLabel(label)
         node = node_class.new(
             ctx,
             uuid=node_uuid,
@@ -1389,6 +1390,7 @@ class Launcher:
             # Set any node attributes we already know here
             connection_port=image.connection_port,
             connection_type=image.connection_type,
+            quota=label_quota,
         )
         log.debug("Requested node %s", node)
         return node
