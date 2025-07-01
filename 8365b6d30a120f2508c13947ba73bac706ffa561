@@ -16,6 +16,24 @@
       "message": "I guess we don\u0027t have to run the else: continue anymore beacuse we\u0027re no longer doing an inner loop over providers and just considering them one at a time? Then if the selected provider has a ready node we use it?",
       "revId": "8365b6d30a120f2508c13947ba73bac706ffa561",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ca4894be_ee11e840",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1195,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-01T00:45:38Z",
+      "side": 0,
+      "message": "Yep.  This is the main part of the change that makes it less efficient.  We will only use a ready node if it happens to match the provider we decided to use to create nodes; before we would have used any provider in the tenant.",
+      "parentUuid": "592e83cb_eb2a2444",
+      "revId": "8365b6d30a120f2508c13947ba73bac706ffa561",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
