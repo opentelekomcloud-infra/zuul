@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ffebb271_175f79fe",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1191,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-01T00:42:22Z",
+      "side": 1,
+      "message": "This case preexists this change but I\u0027m confused how there would be a ready_for_label node in a provider that doesn\u0027t have the label. Is this to handle the case where you remove a label from a provider and have stale nodes left behind? We\u0027d just wait for the ready node timeout to clean up the node in those cases?",
+      "revId": "4563e00f3e4281678443e561a26e7dc9cf075644",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}

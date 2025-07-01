@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "592e83cb_eb2a2444",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1195,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-01T00:42:22Z",
+      "side": 0,
+      "message": "I guess we don\u0027t have to run the else: continue anymore beacuse we\u0027re no longer doing an inner loop over providers and just considering them one at a time? Then if the selected provider has a ready node we use it?",
+      "revId": "8365b6d30a120f2508c13947ba73bac706ffa561",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
