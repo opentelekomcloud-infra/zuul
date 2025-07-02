@@ -646,6 +646,10 @@ class TestLauncher(LauncherBaseTestCase):
 
         nodes = self.launcher.api.nodes_cache.getItems()
         self.assertEqual(nodes[0].host_keys, [])
+        provider = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-main')
+        used = self.launcher.getUnmanagedQuotaUsed(provider)
+        self.assertEqual(0, used.getResources().get('instances', 0))
 
         self.executor_server.hold_jobs_in_build = False
         self.executor_server.release()
