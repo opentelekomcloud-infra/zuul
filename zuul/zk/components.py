@@ -101,15 +101,14 @@ class BaseComponent(ZooKeeperBase):
         if name not in self.content.keys():
             return super().__setattr__(name, value)
 
-        # Set the value in the local content dict
-        self.content[name] = value
-
         with self.register_lock:
             if not self.path:
                 self.log.error(
                     "Path is not set on this component, did you forget "
                     "to call register()?"
                 )
+                # Set the value in the local content dict
+                self.content[name] = value
                 return
 
             # Update the ZooKeeper node
@@ -118,6 +117,9 @@ class BaseComponent(ZooKeeperBase):
                 self.kazoo_client.set(self.path, content)
             except NoNodeError:
                 self.log.error("Could not update %s in ZooKeeper", self)
+
+        # Set the value in the local content dict
+        self.content[name] = value
 
     def register(self, model_api=MODEL_API):
         self.content['model_api'] = model_api
