@@ -2303,7 +2303,7 @@ class Launcher:
     def getUnmanagedQuotaUsed(self, provider):
         used = model.QuotaInformation()
 
-        node_ids = self.api.nodes_cache.getKeys()
+        node_ids = [n.uuid for n in self.api.nodes_cache.getItems()]
         endpoint = provider.getEndpoint()
         system_id = self.system.system_id
         for instance in endpoint.listInstances():
