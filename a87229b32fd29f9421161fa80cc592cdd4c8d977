@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "605f478e_4fc3fad2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-07-03T05:29:37Z",
+      "side": 1,
+      "message": "I like that change and I think the design language works pretty well for this use case. A few thoughts:\n\n- As opposed to the square icons on the status page I\u0027m somehow expecting the icons in the nodeset table to show the popover when hovering over them. I think this would be more intuitive than always have to click on them. For the status page we decided against that as it was too \"cluttered\", but for the nodeset table this might be an improvement. Since we are implementing the NodePopover in its own class it should be easy to implement this without conflicting with the functionality of the status page.\n\n- The square icons in the table feel a little static. This might already improve with the mouse-hover functionality, but another idea would be to use some CSS transition/color grading to show that something is going on for certain states, e.g. \"in-use\" and \"building\". I\u0027m thinking about a pulse animation (e.g. https://codepen.io/saigowthamr/pen/PowdZqy) or something similar to the job progress bar. Originally, I wanted to do this also for the status page, but again - on that page this might produce too much noise. For the nodeset table it might look pretty good as there are not that many icons compared to the status page.",
+      "revId": "a87229b32fd29f9421161fa80cc592cdd4c8d977",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b9f4fd83_1da9486e",
+        "filename": "web/src/pages/NodesetRequests.jsx",
+        "patchSetId": 2
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-07-03T05:29:37Z",
+      "side": 1,
+      "message": "Maybe we could use the `pf-container-node` icon here instead, which basically shows an HDD, and should be used for nodes or hosts according to the PF4 documentation: https://v4-archive.patternfly.org/v4/guidelines/icons (you can search for the icon on that page, there is no directly link).\n\nI think that icon looks more interesting than the plain square and it should still work well while still showing the squares for the actual nodes within the table.",
+      "revId": "a87229b32fd29f9421161fa80cc592cdd4c8d977",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
