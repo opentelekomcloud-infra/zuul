@@ -1351,14 +1351,14 @@ class Launcher:
                 provider = main_provider
                 log.debug(
                     "Selected request main provider %s "
-                    "from candidate providers: %s",
-                    provider, candidate_providers)
+                    "for label %s index %s from candidate providers: %s",
+                    provider, label_name, i, candidate_providers)
             else:
                 provider = candidate_providers[0]
                 log.debug(
                     "Selected provider %s "
-                    "from candidate providers: %s",
-                    provider, candidate_providers)
+                    "for label %s index %s from candidate providers: %s",
+                    provider, label_name, i, candidate_providers)
             label = provider.labels[label_name]
             label_providers.append((label, provider))
 
@@ -1399,9 +1399,6 @@ class Launcher:
         return node
 
     def _checkRequest(self, request, log):
-        requested_nodes = [self.api.getProviderNode(p)
-                           for p in request.nodes]
-
         requested_nodes = []
         for i, node_id in enumerate(request.nodes):
             node = self.api.getProviderNode(node_id)
@@ -1415,7 +1412,9 @@ class Launcher:
                     add_failed_provider = node.provider
                 else:
                     add_failed_provider = None
-                log.info("Retrying request with provider %s", provider)
+                log.info(
+                    "Retrying node for label %s index %s with provider %s",
+                    label, i, provider)
                 with self.createZKContext(request._lock, log) as ctx:
                     node = self._requestNode(
                         label, request, provider, log, ctx)
