@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f681ce4c_fa41b32c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-03T21:22:31Z",
+      "side": 1,
+      "message": "I agree with both.  In the next PS, I added hover functionality.  But also, I do want to be able to mouse into the popover to copy text.  That\u0027s another problem we had with the status page.  That gets better in later versions of patternfly-react.  For now, I did a slightly hacky thing where if you click twice it gets pinned.  That\u0027s not very discoverable, but maybe it\u0027s good enough for a little while.\n\nRegarding animation -- I think that could be useful, but there\u0027s a chance that in many or most cases we just end up with a line or throbbing blue squares which may not be helpful.  I think I\u0027d like to see what happens with static colors first.  So maybe let\u0027s consider that as another change.",
+      "parentUuid": "605f478e_4fc3fad2",
+      "revId": "a87229b32fd29f9421161fa80cc592cdd4c8d977",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b9f4fd83_1da9486e",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-07-03T05:29:37Z",
       "side": 1,
       "message": "Maybe we could use the `pf-container-node` icon here instead, which basically shows an HDD, and should be used for nodes or hosts according to the PF4 documentation: https://v4-archive.patternfly.org/v4/guidelines/icons (you can search for the icon on that page, there is no directly link).\n\nI think that icon looks more interesting than the plain square and it should still work well while still showing the squares for the actual nodes within the table.",
+      "revId": "a87229b32fd29f9421161fa80cc592cdd4c8d977",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "231caa83_a0ec5ec1",
+        "filename": "web/src/pages/NodesetRequests.jsx",
+        "patchSetId": 2
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-03T21:22:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b9f4fd83_1da9486e",
       "revId": "a87229b32fd29f9421161fa80cc592cdd4c8d977",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
