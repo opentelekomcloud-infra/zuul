@@ -1269,29 +1269,30 @@ class Launcher:
         # by label index number
         providers_for_label = {}
         # Which providers are used by existing nodes in this request
-        existing_providers = collections.Counter()
+        existing_provider_names = collections.Counter()
 
         for i, label_name in enumerate(request.labels):
-            provider_failures = collections.Counter()
+            provider_failure_names = collections.Counter()
             pnd = request.getProviderNodeData(i)
             if pnd:
-                provider_failures.update(pnd['failed_providers'])
+                provider_failure_names.update(pnd['failed_providers'])
                 if pnd['uuid']:
                     existing_node = self.api.getProviderNode(pnd['uuid'])
                     # Special case for the current node just failed
                     if existing_node.state == existing_node.State.FAILED:
-                        provider_failures[existing_node.provider] += 1
-                    existing_providers[existing_node.provider] += 1
+                        provider_failure_names[existing_node.provider] += 1
+                    existing_provider_names[existing_node.provider] += 1
             candidate_providers = [
                 p for p in providers
                 if p.hasLabel(label_name)
-                and provider_failures[p.canonical_name] < p.launch_attempts
+                and (provider_failure_names[p.canonical_name] <
+                     p.launch_attempts)
             ]
             providers_for_label[i] = []
             for provider in providers:
                 if not (label := provider.labels.get(label_name)):
                     continue
-                if (provider_failures[provider.canonical_name]
+                if (provider_failure_names[provider.canonical_name]
                         >= provider.launch_attempts):
                     continue
                 image = provider.images[label.image]
@@ -1332,9 +1333,11 @@ class Launcher:
             p for p in providers if p in providers_for_all_labels]
 
         main_provider = None
-        most_common = existing_providers.most_common(1)
+        most_common = existing_provider_names.most_common(1)
         if most_common:
-            main_provider = most_common[0][0]
+            main_provider_name = most_common[0][0]
+            main_provider = self._getProviderByCanonicalName(
+                main_provider_name)
         elif providers_for_all_labels:
             main_provider = providers_for_all_labels[0]
 

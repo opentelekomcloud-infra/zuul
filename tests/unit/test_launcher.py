@@ -25,6 +25,7 @@ from zuul import exceptions
 from zuul import model
 import zuul.driver.aws.awsendpoint
 from zuul.launcher.client import LauncherClient
+import zuul.launcher.server
 
 import cachetools
 import fixtures
@@ -1111,6 +1112,39 @@ class TestLauncher(LauncherBaseTestCase):
                          'aws-us-west-1-main', nodes2[0].provider)
         self.assertEqual('review.example.com%2Forg%2Fcommon-config/'
                          'aws-us-east-1-main', nodes2[1].provider)
+
+    @simple_layout('layouts/nodepool-multi-provider.yaml',
+                   enable_nodepool=True)
+    @driver_config('test_launcher', quotas={
+        'instances': 2,
+    })
+    @okay_tracebacks('_checkNodescanRequest')
+    def test_provider_selection_locality_failure(self):
+        # Test that we use the same provider for multiple nodes within
+        # a request if possible.
+        self.waitUntilSettled()
+
+        orig_advance = zuul.launcher.server.NodescanRequest.advance
+        failed_count = 0
+
+        def my_advance(*args, **kw):
+            nonlocal failed_count
+            if failed_count > 0:
+                return orig_advance(*args, **kw)
+            failed_count += 1
+            raise Exception("Test exception")
+
+        with mock.patch.object(
+            zuul.launcher.server.NodescanRequest, 'advance', my_advance
+        ):
+            request1 = self.requestNodes(["debian-normal", "debian-normal"],
+                                         timeout=20)
+        nodes1 = self.getNodes(request1)
+        self.assertEqual(2, len(nodes1))
+
+        # These can be served from either provider; both should be
+        # assigned to the same one.
+        self.assertEqual(nodes1[0].provider, nodes1[1].provider)
 
     @simple_layout('layouts/nodepool.yaml',
                    enable_nodepool=True)
