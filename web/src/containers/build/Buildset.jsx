@@ -71,7 +71,7 @@ function Buildset({ buildset, timezone, tenant, user, preferences }) {
   }
 
   function formatMessage() {
-    const lines = buildset.message.split('\n')
+    const lines = buildset.message ? buildset.message.split('\n') : []
     if (lines.length > BUILDSET_MESSAGE_PREVIEW_LINES) {
       const chunk = BUILDSET_MESSAGE_PREVIEW_LINES
       const lines_preview = lines.slice(0, chunk)
