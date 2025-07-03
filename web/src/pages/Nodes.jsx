@@ -27,26 +27,27 @@ import * as moment_tz from 'moment-timezone'
 import {
   PageSection,
   PageSectionVariants,
-  ClipboardCopy,
 } from '@patternfly/react-core'
 import {
   BuildIcon,
-  ClusterIcon,
-  ConnectedIcon,
+  LockIcon,
   OutlinedCalendarAltIcon,
-  TagIcon,
-  RunningIcon,
   PencilAltIcon,
+  RunningIcon,
+  TagIcon,
   ZoneIcon,
 } from '@patternfly/react-icons'
-import { IconProperty } from '../Misc'
+import {
+  formatProviderName,
+  getNodeStyle,
+  IconProperty,
+} from '../Misc'
 
 import { setNodeState } from '../api'
 import { addNotification } from '../actions/notifications'
 import { addApiError } from '../actions/adminActions'
 import { fetchNodesIfNeeded } from '../actions/nodes'
 import { Fetchable } from '../containers/Fetching'
-
 
 class NodesPage extends React.Component {
   static propTypes = {
@@ -90,6 +91,12 @@ class NodesPage extends React.Component {
       })
   }
 
+  renderNodeState(node) {
+    const style = getNodeStyle(node)
+
+    return <span style={{color:style.color}}>{node.state}</span>
+  }
+
   render () {
     const { remoteData } = this.props
     const nodes = remoteData.nodes
@@ -103,27 +110,9 @@ class NodesPage extends React.Component {
       },
       {
         title: (
-          <IconProperty icon={<TagIcon />} value="Labels" />
+          <IconProperty icon={<TagIcon />} value="Label" />
         ),
-        dataLabel: 'labels',
-      },
-      {
-        title: (
-          <IconProperty icon={<ConnectedIcon />} value="Connection" />
-        ),
-        dataLabel: 'connection',
-      },
-      {
-        title: (
-          <IconProperty icon={<ClusterIcon />} value="Server" />
-        ),
-        dataLabel: 'server',
-      },
-      {
-        title: (
-          <IconProperty icon={<ZoneIcon />} value="Provider" />
-        ),
-        dataLabel: 'provider',
+        dataLabel: 'label',
       },
       {
         title: (
@@ -139,6 +128,18 @@ class NodesPage extends React.Component {
       },
       {
         title: (
+          <IconProperty icon={<LockIcon />} value="Locked" />
+        ),
+        dataLabel: 'locked',
+      },
+      {
+        title: (
+          <IconProperty icon={<ZoneIcon />} value="Provider" />
+        ),
+        dataLabel: 'provider',
+      },
+      {
+        title: (
           <IconProperty icon={<PencilAltIcon />} value="Comment" />
         ),
         dataLabel: 'comment',
@@ -150,20 +151,17 @@ class NodesPage extends React.Component {
     ]
     let rows = []
     nodes.forEach((node) => {
-        const extid = typeof(node.external_id) === 'string' ?
-              node.external_id : JSON.stringify(node.external_id)
         const state_time = typeof(node.state_time) === 'string' ?
               moment_tz.utc(node.state_time) :
               moment.unix(node.state_time)
         const r = [
-            {title: node.id, props: {column: 'ID'}},
-            {title: node.type.join(','), props: {column: 'Label' }},
-            {title: node.connection_type, props: {column: 'Connection'}},
-            {title: <ClipboardCopy hoverTip="Copy" clickTip="Copied" variant="inline-compact">{extid}</ClipboardCopy>, props: {column: 'Server'}},
-            {title: node.provider, props: {column: 'Provider'}},
-            {title: node.state, props: {column: 'State'}},
-            {title: state_time.fromNow(), props: {column: 'Age'}},
-            {title: node.comment, props: {column: 'Comment'}},
+          {title: node.id, props: {column: 'ID'}},
+          {title: node.type.join(','), props: {column: 'Label' }},
+          {title: this.renderNodeState(node), props: {column: 'State'}},
+          {title: state_time.fromNow(), props: {column: 'Age'}},
+          {title: node.lock_holder, props: {column: 'Locked'}},
+          {title: formatProviderName(node.provider), props: {column: 'Provider'}},
+          {title: node.comment, props: {column: 'Comment'}},
         ]
       if (node.uuid && this.props.user.isAdmin && this.props.user.scope.indexOf(this.props.tenant.name) !== -1) {
         r.push({title:
