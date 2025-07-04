@@ -2133,6 +2133,7 @@ class Launcher:
                        if iba.state in
                        (iba.State.DELETING, iba.State.READY)]
 
+        known_providers = set(self.tenant_providers.keys())
         uploads_by_artifact = collections.defaultdict(list)
         latest_upload_timestamp = 0
         for upload in self.image_upload_registry.getItems():
@@ -2143,6 +2144,20 @@ class Launcher:
             if not iba:
                 self.log.warning("Unable to find artifact for upload %s",
                                  upload.artifact_uuid)
+                continue
+            if set(upload.providers).isdisjoint(known_providers):
+                # An orphaned upload means that either
+                # a) the provider was removed without following the
+                #    provider removal procedure (clear out images before
+                #    deleting the provider)
+                # or
+                # b) that we could not load the provider e.g. due to a
+                #    config error.
+                # In both cases we want to keep the uploads in case the
+                # provider shows up again.
+                self.log.warning(
+                    "Keeping orphaned upload %s with unknown providers %s",
+                    upload, upload.providers)
                 continue
             if (iba.state == iba.State.DELETING or
                 upload.state == upload.State.DELETING or
