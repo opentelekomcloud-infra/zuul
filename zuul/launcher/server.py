@@ -40,6 +40,7 @@ import zuul.lib.repl
 from zuul.lib import commandsocket, tracing
 from zuul.lib.collections import DefaultKeyDict
 from zuul.lib.config import get_default
+from zuul.lib.monitoring import MonitoringServer
 from zuul.zk.image_registry import (
     ImageBuildRegistry,
     ImageUploadRegistry,
@@ -1014,6 +1015,10 @@ class Launcher:
 
         COMPONENT_REGISTRY.registry.registerCallback(self.wake_event.set)
 
+        self.monitoring_server = MonitoringServer(config, 'launcher',
+                                                  self.component_info)
+        self.monitoring_server.start()
+
         self.connection_filter = get_default(
             self.config, "launcher", "connection_filter")
         self.api = LauncherApi(
@@ -1921,6 +1926,7 @@ class Launcher:
         self.endpoint_upload_executor.shutdown()
         self.nodescan_worker.stop()
         self.connections.stop()
+        self.monitoring_server.stop()
         # Endpoints are stopped by drivers
         self.log.debug("Stopped launcher")
 
@@ -1934,6 +1940,7 @@ class Launcher:
         self.zk_client.disconnect()
         self.tracing.stop()
         self.nodescan_worker.join()
+        self.monitoring_server.join()
         self.log.debug("Joined launcher")
 
     def runCommand(self):
