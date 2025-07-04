@@ -84,9 +84,10 @@ class ExecutorClient(object):
         # TODO: deprecate and remove this variable?
         params["zuul"]["_inheritance_path"] = list(job.inheritance_path)
 
+        if job.image_build_name:
+            params["zuul"]["image_build_name"] = job.image_build_name
         if image_formats := self.getImageFormats(job, item):
             params["zuul"]["image_formats"] = list(image_formats)
-            params["zuul"]["image_build_name"] = job.image_build_name
 
         semaphore_handler = manager.tenant.semaphore_handler
         params['semaphore_handle'] = semaphore_handler.getSemaphoreHandle(
