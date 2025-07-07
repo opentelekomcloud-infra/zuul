@@ -16,6 +16,24 @@
       "message": "I think this change is fine, but I wonder if we could be a little more generous:\n\nCould we do this only if set(upload.providers).union(known_providers) is empty?  In other words, as long as there is any provider still in the system, we will follow the normal practice (and delete old images), but if all of the providers disappear, we will assume an error and keep them around?\n\nThat might be more convenient for users.  Then again, it might be more confusing (and less visible).\n\nThoughts?",
       "revId": "7cf24eaddbe58ab15b8a2b7161110ad89423d74d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "580310d8_1426cb35",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2153,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-07T07:14:31Z",
+      "side": 1,
+      "message": "I think I don\u0027t fully understand what you mean. It looks like `set(upload.providers).union(known_providers)` can never be empty as we can\u0027t have an upload w/o providers.\n\nChecking if the upload providers are disjoint from known providers seems to be the behavior you described. So we will only skip the cleanup if none of the upload\u0027s providers is in the known providers.",
+      "parentUuid": "60f7c7fc_54da09e1",
+      "revId": "7cf24eaddbe58ab15b8a2b7161110ad89423d74d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
