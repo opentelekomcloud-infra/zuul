@@ -4018,7 +4018,7 @@ class ZuulTestCase(BaseTestCase):
                   pipeline_lock(self.zk_client, tenant, pipeline)):
                 request = model.NodesetRequest.new(
                     ctx,
-                    tenant_name="tenant-one",
+                    tenant_name=tenant,
                     pipeline_name="check",
                     buildset_uuid=uuid.uuid4().hex,
                     job_uuid=uuid.uuid4().hex,

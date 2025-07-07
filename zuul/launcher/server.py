@@ -1341,8 +1341,12 @@ class Launcher:
         most_common = existing_provider_names.most_common(1)
         if most_common:
             main_provider_name = most_common[0][0]
-            main_provider = self._getProviderByCanonicalName(
-                main_provider_name)
+            for main_provider in providers:
+                if main_provider.canonical_name == main_provider_name:
+                    break
+            else:
+                raise Exception(
+                    f"Unable to find provider {main_provider_name}")
         elif providers_for_all_labels:
             main_provider = providers_for_all_labels[0]
 
@@ -1881,6 +1885,10 @@ class Launcher:
         return True
 
     def _getProviderByCanonicalName(self, provider_cname):
+        # Note this scans all tenants, and identical providers in
+        # different tenants may have different python objects, so only
+        # use this method if the call site doesn't care which
+        # tenant-provider object is returned.
         for tenant_providers in self.tenant_providers.values():
             for provider in tenant_providers:
                 if provider.canonical_name == provider_cname:
