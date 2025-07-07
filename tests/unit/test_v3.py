@@ -3210,6 +3210,50 @@ class TestInRepoConfig(ZuulTestCase):
         self.assertEqual(A.reported, 1)
         self.assertIn('ceiling may not be less than', A.messages[0])
 
+    def test_pre_timeout_config_error(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: test
+                pre-timeout: 60
+                timeout: 30
+            """)
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('common-config', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(A.reported, 1)
+        self.assertIn('exceeds its timeout of 30', A.messages[0])
+
+    def test_pre_timeout_config_error_inheritance(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: parent
+                pre-timeout: 60
+            - job:
+                name: project-test1
+                parent: parent
+                timeout: 30
+                run: playbooks/project-test1.yaml
+            - project:
+                check:
+                  jobs: ['project-test1']
+            """)
+        file_dict = {'.zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(A.reported, 1)
+        self.assertHistory([
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+        ], ordered=True)
+        build = self.getJobFromHistory('project-test1')
+        self.assertEqual(30, build.job.timeout)
+        self.assertEqual(30, build.job.pre_timeout)
+
 
 class TestInRepoConfigSOS(ZuulTestCase):
     config_file = 'zuul-connections-gerrit-and-github.conf'
