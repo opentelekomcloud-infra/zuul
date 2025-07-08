@@ -636,6 +636,54 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual("test_external_id", uploads[0].external_id)
         self.assertTrue(uploads[0].validated)
 
+    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        getonly_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="test_external_id")
+    def test_launcher_image_cleanup(self, mock_image_upload_run):
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+        ], ordered=False)
+
+        # Clear out Zuul config to remove the provider, which
+        # has the same effect as a provider config error.
+        files = {'zuul.yaml': ""}
+        self.addCommitToRepo(
+            'org/common-config', 'Change label config', files)
+
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+
+        def _assert_image_state():
+            name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
+            artifacts = self._waitForArtifacts(name, 1)
+            self.assertEqual('raw', artifacts[0].format)
+            self.assertTrue(artifacts[0].validated)
+
+            uploads = self.launcher.image_upload_registry.getUploadsForImage(
+                name)
+            self.assertEqual(1, len(uploads))
+            self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
+            self.assertEqual("test_external_id", uploads[0].external_id)
+            self.assertTrue(uploads[0].validated)
+
+        self.launcher.checkOldImages()
+        _assert_image_state()
+
+        self.commitConfigUpdate(
+            "org/common-config", 'layouts/nodepool-image.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+
+        self.launcher.checkOldImages()
+        _assert_image_state()
+
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_jobs_executed(self):
         self.executor_server.hold_jobs_in_build = True

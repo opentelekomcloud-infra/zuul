@@ -2127,8 +2127,10 @@ class Launcher:
         self.log.debug("Checking for old images")
         self.upload_deleted_event.clear()
         keep_uploads = set()
+        known_providers = set()
         for tenant_name, providers in self.tenant_providers.items():
             for provider in providers:
+                known_providers.add(provider.canonical_name)
                 for image in provider.images.values():
                     if image.type == 'zuul':
                         self.checkOldImage(tenant_name, provider, image,
@@ -2151,6 +2153,20 @@ class Launcher:
             if not iba:
                 self.log.warning("Unable to find artifact for upload %s",
                                  upload.artifact_uuid)
+                continue
+            if set(upload.providers).isdisjoint(known_providers):
+                # An orphaned upload means that either
+                # a) the provider was removed without following the
+                #    provider removal procedure (clear out images before
+                #    deleting the provider)
+                # or
+                # b) that we could not load the provider e.g. due to a
+                #    config error.
+                # In both cases we want to keep the uploads in case the
+                # provider shows up again.
+                self.log.warning(
+                    "Keeping orphaned upload %s with unknown providers %s",
+                    upload, upload.providers)
                 continue
             if (iba.state == iba.State.DELETING or
                 upload.state == upload.State.DELETING or
