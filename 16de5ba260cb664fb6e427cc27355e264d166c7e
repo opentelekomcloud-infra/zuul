@@ -16,6 +16,23 @@
       "message": "recheck zk connection loss",
       "revId": "16de5ba260cb664fb6e427cc27355e264d166c7e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "705a89ae_c9e81ee6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-07-08T10:38:01Z",
+      "side": 1,
+      "message": "OTOH, there\u0027s no wheel for python3.13 in google-re2 yet.\nhttps://github.com/google/re2/issues/516",
+      "revId": "16de5ba260cb664fb6e427cc27355e264d166c7e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
