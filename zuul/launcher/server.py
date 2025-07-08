@@ -100,6 +100,11 @@ class ProviderNodeError(Exception):
     pass
 
 
+class LaunchTimeoutError(ProviderNodeError):
+    """The node exceeded the provider's launch-timeout"""
+    pass
+
+
 class LauncherStatsElection(SessionAwareElection):
     """Election for emitting launcher stats."""
 
@@ -1486,9 +1491,10 @@ class Launcher:
                         with node.activeContext(ctx):
                             node.setState(state)
                         self.wake_event.set()
-                except Exception:
+                except Exception as e:
                     state = node.State.FAILED
-                    log.exception("Marking node %s as %s", node, state)
+                    if not isinstance(e, LaunchTimeoutError):
+                        log.exception("Marking node %s as %s", node, state)
                     with self.createZKContext(node._lock, self.log) as ctx:
                         with node.activeContext(ctx):
                             node.setState(state)
@@ -1567,13 +1573,11 @@ class Launcher:
         return False
 
     def _checkNode(self, node, log):
-        # TODO: check timeout
         with self.createZKContext(node._lock, self.log) as ctx:
             with node.activeContext(ctx):
-                provider = None
+                provider = self._getProviderForNode(node)
                 if not node.create_state_machine:
                     log.debug("Building node %s", node)
-                    provider = self._getProviderForNode(node)
                     image_external_id = self.getImageExternalId(node, provider)
                     log.debug("Node %s external id %s",
                               node, image_external_id)
@@ -1582,7 +1586,6 @@ class Launcher:
 
                 old_state = node.create_state_machine.state
                 if old_state == node.create_state_machine.START:
-                    provider = provider or self._getProviderForNode(node)
                     if not self.doesProviderHaveQuotaForNode(
                             provider, node, log):
                         # Consider this provider paused, don't attempt
@@ -1602,6 +1605,12 @@ class Launcher:
                     node.setState(node.State.BUILDING)
 
                 if not node.create_state_machine.complete:
+                    if provider.launch_timeout:
+                        now = time.time()
+                        if (now - node.create_state_machine.start_time >
+                            provider.launch_timeout):
+                            log.error("Timeout creating node %s", node)
+                            raise LaunchTimeoutError("Timeout creating node")
                     self.wake_event.set()
                     return
                 # Note this method has the side effect of updating
