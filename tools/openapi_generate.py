@@ -59,6 +59,8 @@ def parse_docstring(doc):
             ptype, pname, pdesc = m.groups()
             if ptype == 'str':
                 ptype = 'string'
+            elif ptype == 'int':
+                ptype = 'integer'
             pbuf = [pdesc.strip()]
             continue
         if pname:
@@ -75,7 +77,7 @@ def parse_docstring(doc):
 
 def generate_spec():
     api = ZuulWebAPI
-    route_map = ZuulWeb.generateRouteMap(api, True)
+    route_map = ZuulWeb.generateRouteMap(api, True, True)
     # Iterate over each route
     for r in route_map.mapper.matchlist:
         # Some of our routes have globs in the variable names; remove
@@ -89,6 +91,8 @@ def generate_spec():
         # action is the ZuulWebAPI method name
         action = r.defaults['action']
         # handler is the ZuulWebAPI method itself
+        if not hasattr(api, action):
+            continue
         handler = getattr(api, action)
         # Parse the docstring if available
         doc = handler.__doc__

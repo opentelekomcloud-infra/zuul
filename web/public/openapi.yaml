@@ -4,13 +4,42 @@ info:
   version: v1
 openapi: 3.0.0
 paths:
+  /.well-known/jwks: {}
+  /.well-known/openid-configuration: {}
   /api:
     get:
       operationId: index
       parameters: []
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  authorizations:
+                    type: string
+                  builds:
+                    type: string
+                  buildsets:
+                    type: string
+                  components:
+                    type: string
+                  connections:
+                    type: string
+                  info:
+                    type: string
+                  jobs:
+                    type: string
+                  projects:
+                    type: string
+                  status:
+                    type: string
+                  tenant_info:
+                    type: string
+                  tenants:
+                    type: string
+                type: object
+          description: Returns a map of available API endpoints
       summary: ''
       tags:
       - tenant
@@ -19,8 +48,15 @@ paths:
       operationId: root_authorizations
       parameters: []
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  zuul.admin:
+                    type: boolean
+                type: object
+          description: Returns authorization information for the authenticated user
       summary: ''
       tags:
       - tenant
@@ -29,8 +65,25 @@ paths:
       operationId: components
       parameters: []
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    hostname:
+                      type: string
+                    last_seen:
+                      type: string
+                    name:
+                      type: string
+                    type:
+                      type: string
+                    version:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of Zuul components and their status
       summary: ''
       tags:
       - tenant
@@ -39,8 +92,23 @@ paths:
       operationId: connections
       parameters: []
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    canonical_hostname:
+                      type: string
+                    driver:
+                      type: string
+                    name:
+                      type: string
+                    server:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of configured connections
       summary: ''
       tags:
       - tenant
@@ -49,8 +117,37 @@ paths:
       operationId: info
       parameters: []
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  info:
+                    properties:
+                      capabilities:
+                        properties:
+                          auth:
+                            properties:
+                              auth_log_file_requests:
+                                type: boolean
+                              default_realm:
+                                type: string
+                              read_protected:
+                                type: boolean
+                            type: object
+                          job_history:
+                            type: boolean
+                        type: object
+                      stats:
+                        properties:
+                          last_reconfigured:
+                            type: string
+                          version:
+                            type: string
+                        type: object
+                    type: object
+                type: object
+          description: Returns information about the Zuul instance
       summary: ''
       tags:
       - tenant
@@ -64,8 +161,16 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  zuul.admin:
+                    type: boolean
+                type: object
+          description: Returns authorization information for the authenticated user
+            in the tenant context
       summary: ''
       tags:
       - tenant
@@ -79,8 +184,43 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    current_count:
+                      type: integer
+                    held_nodes:
+                      items:
+                        type: string
+                      type: array
+                    id:
+                      type: string
+                    job:
+                      type: string
+                    max_count:
+                      type: integer
+                    node_expiration:
+                      type: string
+                    nodes:
+                      items:
+                        type: string
+                      type: array
+                    project:
+                      type: string
+                    reason:
+                      type: string
+                    ref_filter:
+                      type: string
+                    tenant:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of autohold requests for the tenant
+        404:
+          description: Tenant not found
       summary: ''
       tags:
       - tenant
@@ -99,8 +239,19 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                  success:
+                    type: boolean
+                type: object
+          description: Deletes an autohold request
+        404:
+          description: Autohold request not found
       summary: ''
       tags:
       - tenant
@@ -118,8 +269,41 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  current_count:
+                    type: integer
+                  held_nodes:
+                    items:
+                      type: string
+                    type: array
+                  id:
+                    type: string
+                  job:
+                    type: string
+                  max_count:
+                    type: integer
+                  node_expiration:
+                    type: string
+                  nodes:
+                    items:
+                      type: string
+                    type: array
+                  project:
+                    type: string
+                  reason:
+                    type: string
+                  ref_filter:
+                    type: string
+                  tenant:
+                    type: string
+                type: object
+          description: Returns details of a specific autohold request
+        404:
+          description: Autohold request not found
       summary: ''
       tags:
       - tenant
@@ -164,167 +348,312 @@ paths:
     get:
       operationId: build_times
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: query
+      - description: Filter by project name
+        in: query
         name: project
         schema:
           type: string
-      - in: query
+      - description: Filter by pipeline name
+        in: query
         name: pipeline
         schema:
           type: string
-      - in: query
+      - description: Filter by branch name
+        in: query
         name: branch
         schema:
           type: string
-      - in: query
+      - description: Filter by git ref
+        in: query
         name: ref
         schema:
           type: string
-      - in: query
+      - description: Filter by job name
+        in: query
         name: job_name
         schema:
           type: string
-      - in: query
+      - description: Filter by final status (true/false)
+        in: query
         name: final
         schema:
           type: string
-      - in: query
+      - description: Filter builds after this timestamp
+        in: query
         name: start_time
         schema:
           type: string
-      - in: query
+      - description: Filter builds before this timestamp
+        in: query
         name: end_time
         schema:
           type: string
-      - in: query
+      - description: 'Maximum number of results to return (default: 50)'
+        in: query
         name: limit
         schema:
-          type: string
-      - in: query
+          type: integer
+      - description: 'Number of results to skip for pagination (default: 0)'
+        in: query
         name: skip
         schema:
-          type: string
-      - in: query
+          type: integer
+      - description: Result types to exclude from results
+        in: query
         name: exclude_result
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    branch:
+                      type: string
+                    duration:
+                      type: integer
+                    end_time:
+                      type: string
+                    final:
+                      type: boolean
+                    job_name:
+                      type: string
+                    newrev:
+                      type: string
+                    pipeline:
+                      type: string
+                    project:
+                      type: string
+                    ref:
+                      type: string
+                    result:
+                      type: string
+                    start_time:
+                      type: string
+                    uuid:
+                      type: string
+                    voting:
+                      type: boolean
+                  type: object
+                type: array
+          description: Returns build timing information for analysis
+        404:
+          description: Tenant not found
+      summary: Return build timing information for analysis. This endpoint provides
+        build timing data that can be used for performance analysis and metrics collection.
+        It supports filtering by various criteria.
       tags:
       - tenant
   /api/tenant/{tenant_name}/build/{uuid}:
     get:
       operationId: build
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The UUID of the build to retrieve
+        in: path
         name: uuid
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  _id:
+                    type: string
+                  artifacts:
+                    items:
+                      properties:
+                        metadata:
+                          type: object
+                        name:
+                          type: string
+                        url:
+                          type: string
+                      type: object
+                    type: array
+                  duration:
+                    type: string
+                  end_time:
+                    type: string
+                  error_detail:
+                    type: string
+                  final:
+                    type: string
+                  held:
+                    type: string
+                  job_name:
+                    type: string
+                  log_url:
+                    type: string
+                  nodeset:
+                    type: string
+                  provides:
+                    items:
+                      properties:
+                        name:
+                          type: string
+                      type: object
+                    type: array
+                  ref:
+                    description: The ref
+                    properties:
+                      branch:
+                        type: string
+                      change:
+                        type: string
+                      newrev:
+                        type: string
+                      oldrev:
+                        type: string
+                      patchset:
+                        type: string
+                      project:
+                        type: string
+                      ref:
+                        type: string
+                      ref_url:
+                        type: string
+                    type: object
+                  result:
+                    type: string
+                  start_time:
+                    type: string
+                  uuid:
+                    type: string
+                  voting:
+                    type: string
+                type: object
+          description: Returns details of a specific build
+        404:
+          description: Build not found
+      summary: Get details of a specific build. This endpoint returns comprehensive
+        information about a single build including its result, timing, artifacts,
+        and associated buildset.
       tags:
       - tenant
   /api/tenant/{tenant_name}/builds:
     get:
       operationId: builds
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: query
+      - description: Filter by project name
+        in: query
         name: project
         schema:
           type: string
-      - in: query
+      - description: Filter by pipeline name
+        in: query
         name: pipeline
         schema:
           type: string
-      - in: query
+      - description: Filter by change number
+        in: query
         name: change
         schema:
           type: string
-      - in: query
+      - description: Filter by branch name
+        in: query
         name: branch
         schema:
           type: string
-      - in: query
+      - description: Filter by patchset number
+        in: query
         name: patchset
         schema:
           type: string
-      - in: query
+      - description: Filter by git ref
+        in: query
         name: ref
         schema:
           type: string
-      - in: query
+      - description: Filter by new revision
+        in: query
         name: newrev
         schema:
           type: string
-      - in: query
+      - description: Filter by build UUID
+        in: query
         name: uuid
         schema:
           type: string
-      - in: query
+      - description: Filter by job name
+        in: query
         name: job_name
         schema:
           type: string
-      - in: query
+      - description: Filter by voting status (true/false)
+        in: query
         name: voting
         schema:
           type: string
-      - in: query
+      - description: Filter by nodeset name
+        in: query
         name: nodeset
         schema:
           type: string
-      - in: query
+      - description: Filter by build result
+        in: query
         name: result
         schema:
           type: string
-      - in: query
+      - description: Filter by final status (true/false)
+        in: query
         name: final
         schema:
           type: string
-      - in: query
+      - description: Filter by held status (true/false)
+        in: query
         name: held
         schema:
           type: string
-      - in: query
+      - description: Filter by completion status (true/false)
+        in: query
         name: complete
         schema:
           type: string
-      - in: query
+      - description: 'Maximum number of results to return (default: 50)'
+        in: query
         name: limit
         schema:
-          type: string
-      - in: query
+          type: integer
+      - description: 'Number of results to skip for pagination (default: 0)'
+        in: query
         name: skip
         schema:
-          type: string
-      - in: query
+          type: integer
+      - description: Minimum build index
+        in: query
         name: idx_min
         schema:
-          type: string
-      - in: query
+          type: integer
+      - description: Maximum build index
+        in: query
         name: idx_max
         schema:
-          type: string
-      - in: query
+          type: integer
+      - description: Result types to exclude from results
+        in: query
         name: exclude_result
         schema:
           type: string
@@ -405,7 +734,8 @@ paths:
           description: Returns the list of builds
         404:
           description: Tenant not found
-      summary: List the executed builds
+      summary: List the executed builds. This endpoint provides a list of executed
+        builds with various filtering options for analysis and monitoring.
       tags:
       - tenant
   /api/tenant/{tenant_name}/buildset/{uuid}:
@@ -423,8 +753,137 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  _id:
+                    type: string
+                  builds:
+                    items:
+                      description: The build
+                      properties:
+                        _id:
+                          type: string
+                        artifacts:
+                          items:
+                            properties:
+                              metadata:
+                                type: object
+                              name:
+                                type: string
+                              url:
+                                type: string
+                            type: object
+                          type: array
+                        duration:
+                          type: string
+                        end_time:
+                          type: string
+                        error_detail:
+                          type: string
+                        final:
+                          type: string
+                        held:
+                          type: string
+                        job_name:
+                          type: string
+                        log_url:
+                          type: string
+                        nodeset:
+                          type: string
+                        provides:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          type: array
+                        ref:
+                          description: The ref
+                          properties:
+                            branch:
+                              type: string
+                            change:
+                              type: string
+                            newrev:
+                              type: string
+                            oldrev:
+                              type: string
+                            patchset:
+                              type: string
+                            project:
+                              type: string
+                            ref:
+                              type: string
+                            ref_url:
+                              type: string
+                          type: object
+                        result:
+                          type: string
+                        start_time:
+                          type: string
+                        uuid:
+                          type: string
+                        voting:
+                          type: string
+                      type: object
+                    type: array
+                  event_id:
+                    type: string
+                  event_timestamp:
+                    type: string
+                  events:
+                    items:
+                      description: The buildset event
+                      properties:
+                        description:
+                          type: string
+                        event_time:
+                          type: string
+                        event_type:
+                          type: string
+                      type: object
+                    type: array
+                  first_build_start_time:
+                    type: string
+                  last_build_end_time:
+                    type: string
+                  message:
+                    type: string
+                  pipeline:
+                    type: string
+                  refs:
+                    items:
+                      description: The ref
+                      properties:
+                        branch:
+                          type: string
+                        change:
+                          type: string
+                        newrev:
+                          type: string
+                        oldrev:
+                          type: string
+                        patchset:
+                          type: string
+                        project:
+                          type: string
+                        ref:
+                          type: string
+                        ref_url:
+                          type: string
+                      type: object
+                    type: array
+                  result:
+                    type: string
+                  uuid:
+                    type: string
+                type: object
+          description: Returns a buildset
+        404:
+          description: Tenant not found
       summary: ''
       tags:
       - tenant
@@ -432,65 +891,85 @@ paths:
     get:
       operationId: buildsets
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: query
+      - description: Filter by project name
+        in: query
         name: project
         schema:
           type: string
-      - in: query
+      - description: Filter by pipeline name
+        in: query
         name: pipeline
         schema:
           type: string
-      - in: query
+      - description: Filter by change number
+        in: query
         name: change
         schema:
           type: string
-      - in: query
+      - description: Filter by branch name
+        in: query
         name: branch
         schema:
           type: string
-      - in: query
+      - description: Filter by patchset number
+        in: query
         name: patchset
         schema:
           type: string
-      - in: query
+      - description: Filter by git ref
+        in: query
         name: ref
         schema:
           type: string
-      - in: query
+      - description: Filter by new revision
+        in: query
         name: newrev
         schema:
           type: string
-      - in: query
+      - description: Filter by buildset UUID
+        in: query
         name: uuid
         schema:
           type: string
-      - in: query
+      - description: Filter by buildset result
+        in: query
         name: result
         schema:
           type: string
-      - in: query
+      - description: Filter by completion status (true/false)
+        in: query
         name: complete
         schema:
           type: string
-      - in: query
+      - description: 'Maximum number of results to return (default: 50)'
+        in: query
         name: limit
         schema:
-          type: string
-      - in: query
+          type: integer
+      - description: 'Number of results to skip for pagination (default: 0)'
+        in: query
         name: skip
         schema:
-          type: string
-      - in: query
+          type: integer
+      - description: Minimum buildset index
+        in: query
         name: idx_min
         schema:
-          type: string
-      - in: query
+          type: integer
+      - description: Maximum buildset index
+        in: query
         name: idx_max
+        schema:
+          type: integer
+      - description: Result types to exclude from results
+        in: query
+        name: exclude_result
         schema:
           type: string
       responses:
@@ -546,51 +1025,118 @@ paths:
           description: Returns the list of buildsets
         404:
           description: Tenant not found
-      summary: ''
+      summary: List the executed buildsets. This endpoint provides a list of executed
+        buildsets with various filtering options for analysis and monitoring.
       tags:
       - tenant
   /api/tenant/{tenant_name}/config-errors:
     get:
       operationId: config_errors
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: query
+      - description: Filter errors by project name
+        in: query
         name: project
         schema:
           type: string
-      - in: query
+      - description: Filter errors by branch name
+        in: query
         name: branch
         schema:
           type: string
-      - in: query
+      - description: Filter errors by severity level
+        in: query
         name: severity
         schema:
           type: string
-      - in: query
+      - description: Filter errors by error name
+        in: query
         name: name
         schema:
           type: string
-      - in: query
+      - description: 'Maximum number of errors to return (default: 50)'
+        in: query
         name: limit
         schema:
-          type: string
-      - in: query
+          type: integer
+      - description: 'Number of errors to skip for pagination (default: 0)'
+        in: query
         name: skip
         schema:
-          type: string
+          type: integer
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    error:
+                      type: string
+                    name:
+                      type: string
+                    severity:
+                      type: string
+                    short_error:
+                      type: string
+                    source_context:
+                      properties:
+                        branch:
+                          type: string
+                        path:
+                          type: string
+                        project_name:
+                          type: string
+                        trusted:
+                          type: boolean
+                      type: object
+                  type: object
+                type: array
+          description: Returns configuration errors for the tenant
+        404:
+          description: Tenant not found
+      summary: Return configuration errors for the tenant. This endpoint provides
+        a list of configuration errors encountered during tenant configuration loading,
+        with optional filtering capabilities.
       tags:
       - tenant
   /api/tenant/{tenant_name}/console-stream:
     get:
       operationId: console_stream_get
+      parameters:
+      - description: 'The name of the tenant Note: Authentication is handled within
+          the WebSocket protocol itself, not via HTTP headers, as headers are not
+          included during the WebSocket upgrade.'
+        in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        101:
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: WebSocket connection established for streaming console logs
+        400:
+          description: Invalid WebSocket request
+        404:
+          description: Tenant not found
+      summary: Establish WebSocket connection for streaming console logs. This endpoint
+        upgrades the HTTP connection to a WebSocket for real-time streaming of console
+        logs from builds. The WebSocket protocol is used to provide live log streaming
+        capabilities to clients.
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/flavors:
+    get:
+      operationId: flavors
       parameters:
       - in: path
         name: tenant_name
@@ -598,8 +1144,204 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  description: The image
+                  properties:
+                    canonical_name:
+                      type: string
+                    description:
+                      type: string
+                    name:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of flavors
+        404:
+          description: Tenant not found
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/image-build-artifact/{artifact_id}:
+    delete:
+      operationId: image_build_artifact_delete
+      parameters:
+      - description: The name of the tenant
+        in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - description: The ID of the artifact to delete
+        in: path
+        name: artifact_id
+        required: true
+        schema:
+          type: string
+      responses:
+        204:
+          description: Image build artifact deletion initiated successfully
+        404:
+          description: Image build artifact not found in tenant
+      summary: Delete an image build artifact. This endpoint marks an image build
+        artifact for deletion. The artifact must belong to the specified tenant.
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/image-upload/{upload_id}:
+    delete:
+      operationId: image_upload_delete
+      parameters:
+      - description: The name of the tenant
+        in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - description: The ID of the upload to delete
+        in: path
+        name: upload_id
+        required: true
+        schema:
+          type: string
+      responses:
+        204:
+          description: Image upload deletion initiated successfully
+        404:
+          description: Image upload not found in tenant
+      summary: Delete an image upload. This endpoint marks an image upload for deletion.
+        The upload must belong to the specified tenant via its associated build artifact.
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/image/{image_name}/build:
+    post:
+      operationId: image_build
+      parameters:
+      - description: The name of the tenant
+        in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - description: The name of the image to build
+        in: path
+        name: image_name
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                type: object
+          description: Triggers an image build for the specified image
+        404:
+          description: Image not found in tenant
+      summary: Trigger an image build for a specific image. This endpoint triggers
+        a build for the specified image in the tenant. The image must be of type "zuul"
+        and available in the tenant's providers.
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/images:
+    get:
+      operationId: images
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  description: The image
+                  properties:
+                    branch:
+                      type: string
+                    build_artifacts:
+                      items:
+                        description: The image build artifact
+                        properties:
+                          build_tenant:
+                            type: boolean
+                          build_uuid:
+                            type: string
+                          canonical_name:
+                            type: string
+                          format:
+                            type: string
+                          is_locked:
+                            type: boolean
+                          lock_holder:
+                            type: string
+                          md5sum:
+                            type: string
+                          sha256:
+                            type: string
+                          state:
+                            type: string
+                          state_time:
+                            type: string
+                          timestamp:
+                            type: string
+                          uploads:
+                            items:
+                              description: The image upload
+                              properties:
+                                artifact_uuid:
+                                  type: string
+                                canonical_name:
+                                  type: string
+                                endpoint_name:
+                                  type: string
+                                external_id:
+                                  type: string
+                                is_locked:
+                                  type: boolean
+                                lock_holder:
+                                  type: string
+                                state:
+                                  type: string
+                                state_time:
+                                  type: string
+                                timestamp:
+                                  type: string
+                                uuid:
+                                  type: string
+                                validated:
+                                  type: string
+                              type: object
+                            type: array
+                          url:
+                            type: string
+                          uuid:
+                            type: string
+                          validated:
+                            type: string
+                        type: object
+                      type: array
+                    canonical_name:
+                      type: string
+                    name:
+                      type: string
+                    project_canonical_name:
+                      type: string
+                    type:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of images
+        404:
+          description: Tenant not found
       summary: ''
       tags:
       - tenant
@@ -613,8 +1355,43 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  info:
+                    properties:
+                      capabilities:
+                        properties:
+                          auth:
+                            properties:
+                              auth_log_file_requests:
+                                type: boolean
+                              default_realm:
+                                type: string
+                              niz:
+                                type: boolean
+                              read_protected:
+                                type: boolean
+                            type: object
+                          job_history:
+                            type: boolean
+                        type: object
+                      stats:
+                        properties:
+                          last_reconfigured:
+                            type: string
+                          version:
+                            type: string
+                        type: object
+                      tenant:
+                        type: string
+                    type: object
+                type: object
+          description: Returns information about a specific tenant
+        404:
+          description: Tenant not found
       summary: ''
       tags:
       - tenant
@@ -622,20 +1399,117 @@ paths:
     get:
       operationId: job
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The name of the job to retrieve
+        in: path
         name: job_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    abstract:
+                      type: boolean
+                    attempts:
+                      type: integer
+                    branches:
+                      items:
+                        type: string
+                      type: array
+                    cleanup_run:
+                      items:
+                        type: string
+                      type: array
+                    dependencies:
+                      items:
+                        type: string
+                      type: array
+                    description:
+                      type: string
+                    files:
+                      items:
+                        type: string
+                      type: array
+                    final:
+                      type: boolean
+                    group_variables:
+                      type: object
+                    host_variables:
+                      type: object
+                    irrelevant_files:
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      type: string
+                    nodeset:
+                      type: object
+                    override_branch:
+                      type: string
+                    override_checkout:
+                      type: string
+                    parent:
+                      type: string
+                    post_review:
+                      type: boolean
+                    post_run:
+                      items:
+                        type: string
+                      type: array
+                    pre_run:
+                      items:
+                        type: string
+                      type: array
+                    protected:
+                      type: boolean
+                    required_projects:
+                      items:
+                        type: object
+                      type: array
+                    retry:
+                      type: boolean
+                    roles:
+                      items:
+                        type: object
+                      type: array
+                    run:
+                      items:
+                        type: string
+                      type: array
+                    secrets:
+                      items:
+                        type: object
+                      type: array
+                    semaphore:
+                      type: string
+                    tags:
+                      items:
+                        type: string
+                      type: array
+                    timeout:
+                      type: integer
+                    variables:
+                      type: object
+                    voting:
+                      type: boolean
+                  type: object
+                type: array
+          description: Returns detailed information about a specific job
+        404:
+          description: Tenant or Job not found
+      summary: Return detailed information about a specific job. This endpoint provides
+        comprehensive information about a job, including all its variants, configuration,
+        and dependencies.
       tags:
       - tenant
   /api/tenant/{tenant_name}/jobs:
@@ -718,15 +1592,62 @@ paths:
     get:
       operationId: labels
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    boot_timeout:
+                      type: integer
+                    cloud:
+                      type: string
+                    image:
+                      type: string
+                    instance_type:
+                      type: string
+                    key_name:
+                      type: string
+                    launch_timeout:
+                      type: integer
+                    max_servers:
+                      type: integer
+                    min_ready:
+                      type: integer
+                    name:
+                      type: string
+                    nodepool_provider:
+                      type: string
+                    pools:
+                      items:
+                        properties:
+                          current:
+                            type: integer
+                          max:
+                            type: integer
+                          min:
+                            type: integer
+                          name:
+                            type: string
+                        type: object
+                      type: array
+                    type:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of labels configured in the tenant
+        404:
+          description: Tenant not found
+      summary: Return the list of labels configured in the tenant. This endpoint provides
+        information about all labels available in the tenant, including both nodepool
+        labels and tenant-configured labels with their properties.
       tags:
       - tenant
   /api/tenant/{tenant_name}/nodes:
@@ -739,89 +1660,356 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    comment:
+                      type: string
+                    connection_type:
+                      type: string
+                    external_id:
+                      type: string
+                    id:
+                      type: string
+                    provider:
+                      type: string
+                    state:
+                      type: string
+                    state_time:
+                      type: string
+                    type:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of nodes allocated to the tenant
+        404:
+          description: Tenant not found
       summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/nodes/{node_id}:
+    put:
+      operationId: nodes_put
+      parameters:
+      - description: The name of the tenant
+        in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - description: 'The unique identifier of the node to update Request body should
+          contain: - state: The new state for the node (HOLD or USED)'
+        in: path
+        name: node_id
+        required: true
+        schema:
+          type: string
+      responses:
+        201:
+          description: Node state updated successfully
+        400:
+          description: Invalid request body or node state
+        404:
+          description: Node not found
+      summary: Update the state of a specific node. This endpoint allows updating
+        the state of a node to either HOLD or USED. The node must belong to the specified
+        tenant and the request must include a valid state in the JSON body.
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/nodeset-requests:
+    get:
+      operationId: nodeset_requests
+      parameters:
+      - description: The name of the tenant
+        in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  description: The nodeset request
+                  properties:
+                    buildset_uuid:
+                      type: string
+                    image_names:
+                      items:
+                        type: string
+                      type: array
+                    image_upload_uuid:
+                      type: string
+                    is_locked:
+                      type: boolean
+                    job_name:
+                      type: string
+                    labels:
+                      items:
+                        type: string
+                      type: array
+                    lock_holder:
+                      type: string
+                    pipeline_name:
+                      type: string
+                    priority:
+                      type: integer
+                    provider_node_data:
+                      items:
+                        properties:
+                          executor_zone:
+                            type: string
+                          failed_providers:
+                            items:
+                              type: string
+                            type: array
+                          uuid:
+                            type: string
+                        type: object
+                      type: array
+                    relative_priority:
+                      type: integer
+                    request_time:
+                      type: string
+                    state:
+                      type: string
+                    uuid:
+                      type: string
+                    zuul_event_id:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of nodeset requests for the tenant
+        404:
+          description: Tenant not found
+      summary: List all nodeset requests for the tenant. This endpoint provides a
+        list of all nodeset requests that belong to the specified tenant. Nodeset
+        requests are used to request specific sets of nodes for job execution.
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/nodeset-requests/{request_id}:
+    delete:
+      operationId: nodeset_requests_delete
+      parameters:
+      - description: The name of the tenant
+        in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - description: The unique identifier of the nodeset request to delete
+        in: path
+        name: request_id
+        required: true
+        schema:
+          type: string
+      responses:
+        204:
+          description: Nodeset request deleted successfully
+        404:
+          description: Nodeset request not found
+      summary: Delete a specific nodeset request. This endpoint allows deletion of
+        a nodeset request by its ID. The request must belong to the specified tenant
+        and the user must have appropriate permissions.
       tags:
       - tenant
   /api/tenant/{tenant_name}/pipeline/{pipeline_name}/project/{project_name}/branch/{branch_name}/freeze-job/{job_name}:
     get:
       operationId: project_freeze_job
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The name of the pipeline
+        in: path
         name: pipeline_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The name of the project
+        in: path
         name: project_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The name of the branch
+        in: path
         name: branch_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The name of the job to freeze
+        in: path
         name: job_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  ansible_split_streams:
+                    type: boolean
+                  ansible_version:
+                    type: string
+                  cleanup_playbooks:
+                    items:
+                      type: object
+                    type: array
+                  extra_vars:
+                    type: object
+                  failure_output:
+                    type: string
+                  group_vars:
+                    type: object
+                  host_vars:
+                    type: object
+                  job:
+                    type: string
+                  nodeset:
+                    type: object
+                  override_branch:
+                    type: string
+                  override_checkout:
+                    type: string
+                  playbooks:
+                    items:
+                      type: object
+                    type: array
+                  post_playbooks:
+                    items:
+                      type: object
+                    type: array
+                  post_timeout:
+                    type: integer
+                  pre_playbooks:
+                    items:
+                      type: object
+                    type: array
+                  pre_timeout:
+                    type: integer
+                  secret_vars:
+                    type: object
+                  timeout:
+                    type: integer
+                  vars:
+                    type: object
+                  workspace_checkout:
+                    type: string
+                  workspace_scheme:
+                    type: string
+                  zuul:
+                    type: object
+                type: object
+          description: Returns detailed configuration for a specific frozen job
+        404:
+          description: Tenant, pipeline, project, or job not found
+      summary: Freeze and return detailed configuration for a specific job. This endpoint
+        freezes a specific job within a project pipeline and branch, returning its
+        complete configuration including playbooks, variables, nodesets, and other
+        execution parameters. This is useful for debugging job configurations and
+        understanding how jobs are executed.
       tags:
       - tenant
   /api/tenant/{tenant_name}/pipeline/{pipeline_name}/project/{project_name}/branch/{branch_name}/freeze-jobs:
     get:
       operationId: project_freeze_jobs
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The name of the pipeline
+        in: path
         name: pipeline_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The name of the project
+        in: path
         name: project_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The name of the branch
+        in: path
         name: branch_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    dependencies:
+                      items:
+                        type: object
+                      type: array
+                    name:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of frozen jobs for the project pipeline and
+            branch
+        404:
+          description: Tenant, pipeline, or project not found
+      summary: Freeze and return all jobs for a project pipeline and branch. This
+        endpoint freezes the job graph for a specific project, pipeline, and branch
+        combination, returning a list of all jobs with their dependencies. This is
+        useful for understanding what jobs would be executed for a given configuration.
       tags:
       - tenant
   /api/tenant/{tenant_name}/pipelines:
     get:
       operationId: pipelines
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    triggers:
+                      items:
+                        properties:
+                          driver:
+                            type: string
+                          name:
+                            type: string
+                        type: object
+                      type: array
+                  type: object
+                type: array
+          description: Returns the list of pipelines configured in the tenant
+        404:
+          description: Tenant not found
+      summary: Return the list of pipelines configured in the tenant. This endpoint
+        provides information about all pipelines configured in the tenant, including
+        their associated triggers and drivers.
       tags:
       - tenant
   /api/tenant/{tenant_name}/project-ssh-key/{project_name}.pub:
@@ -855,59 +2043,217 @@ paths:
     get:
       operationId: project
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The name of the project to retrieve
+        in: path
         name: project_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  canonical_name:
+                    type: string
+                  configs:
+                    items:
+                      properties:
+                        branch:
+                          type: string
+                        pipelines:
+                          items:
+                            properties:
+                              jobs:
+                                items:
+                                  items:
+                                    properties:
+                                      abstract:
+                                        type: boolean
+                                      branches:
+                                        items:
+                                          type: string
+                                        type: array
+                                      dependencies:
+                                        items:
+                                          type: string
+                                        type: array
+                                      description:
+                                        type: string
+                                      files:
+                                        items:
+                                          type: string
+                                        type: array
+                                      final:
+                                        type: boolean
+                                      irrelevant_files:
+                                        items:
+                                          type: string
+                                        type: array
+                                      name:
+                                        type: string
+                                      protected:
+                                        type: boolean
+                                      variables:
+                                        type: object
+                                      voting:
+                                        type: boolean
+                                    type: object
+                                  type: array
+                                type: array
+                              name:
+                                type: string
+                              queue_name:
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                    type: array
+                  connection_name:
+                    type: string
+                  metadata:
+                    properties:
+                      default_branch:
+                        type: string
+                      exclude_branches:
+                        items:
+                          type: string
+                        type: array
+                      exclude_refs:
+                        items:
+                          type: string
+                        type: array
+                      exclude_unprotected_branches:
+                        type: boolean
+                      include_branches:
+                        items:
+                          type: string
+                        type: array
+                      include_refs:
+                        items:
+                          type: string
+                        type: array
+                      merge_mode:
+                        type: string
+                      template_projects:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  name:
+                    type: string
+                type: object
+          description: Returns detailed information about a specific project
+        404:
+          description: Tenant or Project not found
+      summary: Return detailed information about a specific project. This endpoint
+        provides comprehensive information about a project, including its configuration,
+        pipeline jobs, and metadata.
       tags:
       - tenant
   /api/tenant/{tenant_name}/project/{project_name}/autohold:
     get:
       operationId: autohold_project_get
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: The name of the project
+        in: path
         name: project_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    current_count:
+                      type: integer
+                    held_nodes:
+                      items:
+                        type: string
+                      type: array
+                    id:
+                      type: string
+                    job:
+                      type: string
+                    max_count:
+                      type: integer
+                    node_expiration:
+                      type: string
+                    nodes:
+                      items:
+                        type: string
+                      type: array
+                    project:
+                      type: string
+                    reason:
+                      type: string
+                    ref_filter:
+                      type: string
+                    tenant:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of autohold requests for the project
+        404:
+          description: Tenant or project not found
+      summary: Get autohold requests for a specific project. This endpoint returns
+        all autohold requests for the specified project within the tenant.
       tags:
       - tenant
     post:
       operationId: autohold_project_post
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: 'The name of the project Request body must contain: - job: The
+          job name to hold nodes for - count: Number of nodes to hold (must be > 0)
+          - reason: Reason for the autohold - node_hold_expiration: Expiration time
+          for held nodes - change: Change to filter on (mutually exclusive with ref)
+          - ref: Ref pattern to filter on (mutually exclusive with change)'
+        in: path
         name: project_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                  success:
+                    type: boolean
+                type: object
+          description: Creates a new autohold request for the project
+        400:
+          description: Invalid request body or parameters
+        404:
+          description: Tenant or project not found
+      summary: Create an autohold request for a specific project. This endpoint allows
+        administrators to create autohold requests that will hold nodes for failed
+        jobs on the specified project.
       tags:
       - tenant
   /api/tenant/{tenant_name}/project/{project_name}/dequeue:
@@ -925,8 +2271,23 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  items_dequeued:
+                    type: integer
+                  message:
+                    type: string
+                  success:
+                    type: boolean
+                type: object
+          description: Dequeues changes from a project pipeline
+        400:
+          description: Invalid request data
+        404:
+          description: Tenant or project not found
       summary: ''
       tags:
       - tenant
@@ -934,40 +2295,102 @@ paths:
     get:
       operationId: enqueue
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: 'The name of the project Request body must contain: - pipeline:
+          The name of the pipeline - change: The change to enqueue (mutually exclusive
+          with ref/oldrev/newrev) OR - ref: The ref to enqueue - oldrev: The old revision
+          - newrev: The new revision'
+        in: path
         name: project_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: Enqueues a change or ref to the specified pipeline
+        400:
+          description: Invalid request body or unknown pipeline
+        404:
+          description: Tenant or project not found
+      summary: Enqueue a change or ref to a project pipeline. This endpoint allows
+        administrators to manually enqueue changes or refs to a specific pipeline
+        for processing. The request body must contain either a change reference or
+        ref information.
       tags:
       - tenant
   /api/tenant/{tenant_name}/projects:
     get:
       operationId: projects
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    canonical_name:
+                      type: string
+                    connection_name:
+                      type: string
+                    name:
+                      type: string
+                    type:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of projects configured in the tenant
+        404:
+          description: Tenant not found
+      summary: Return the list of projects configured in the tenant. This endpoint
+        provides information about all projects that are configured in the tenant,
+        including their type (config or untrusted).
       tags:
       - tenant
   /api/tenant/{tenant_name}/promote:
     get:
       operationId: promote
+      parameters:
+      - description: 'The name of the tenant Request body must contain: - pipeline:
+          The name of the pipeline - changes: List of changes to promote'
+        in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: Promotes changes in the specified pipeline
+        400:
+          description: Invalid request body or unknown pipeline
+        404:
+          description: Tenant not found
+      summary: Promote changes in a tenant pipeline. This endpoint allows administrators
+        to promote changes within a pipeline, moving them ahead in the queue for processing.
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/providers:
+    get:
+      operationId: providers
       parameters:
       - in: path
         name: tenant_name
@@ -975,8 +2398,113 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  description: The provider
+                  properties:
+                    canonical_name:
+                      type: string
+                    flavors:
+                      items:
+                        properties:
+                          canonical_name:
+                            type: string
+                          name:
+                            type: string
+                        type: object
+                      type: array
+                    images:
+                      items:
+                        properties:
+                          build_artifacts:
+                            items:
+                              description: The image build artifact
+                              properties:
+                                build_tenant:
+                                  type: boolean
+                                build_uuid:
+                                  type: string
+                                canonical_name:
+                                  type: string
+                                format:
+                                  type: string
+                                is_locked:
+                                  type: boolean
+                                lock_holder:
+                                  type: string
+                                md5sum:
+                                  type: string
+                                sha256:
+                                  type: string
+                                state:
+                                  type: string
+                                state_time:
+                                  type: string
+                                timestamp:
+                                  type: string
+                                uploads:
+                                  items:
+                                    description: The image upload
+                                    properties:
+                                      artifact_uuid:
+                                        type: string
+                                      canonical_name:
+                                        type: string
+                                      endpoint_name:
+                                        type: string
+                                      external_id:
+                                        type: string
+                                      is_locked:
+                                        type: boolean
+                                      lock_holder:
+                                        type: string
+                                      state:
+                                        type: string
+                                      state_time:
+                                        type: string
+                                      timestamp:
+                                        type: string
+                                      uuid:
+                                        type: string
+                                      validated:
+                                        type: string
+                                    type: object
+                                  type: array
+                                url:
+                                  type: string
+                                uuid:
+                                  type: string
+                                validated:
+                                  type: string
+                              type: object
+                            type: array
+                          canonical_name:
+                            type: string
+                          name:
+                            type: string
+                          type:
+                            type: string
+                        type: object
+                      type: array
+                    labels:
+                      items:
+                        properties:
+                          canonical_name:
+                            type: string
+                          name:
+                            type: string
+                        type: object
+                      type: array
+                    name:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of providers
+        404:
+          description: Tenant not found
       summary: ''
       tags:
       - tenant
@@ -997,56 +2525,211 @@ paths:
       summary: ''
       tags:
       - tenant
-  /api/tenant/{tenant_name}/status:
+  /api/tenant/{tenant_name}/state:
     get:
-      operationId: status
+      operationId: state_post
       parameters:
-      - in: path
+      - description: 'The name of the tenant Request body may contain: - trigger_queue_discarding:
+          Boolean to enable/disable trigger queue discarding - trigger_queue_paused:
+          Boolean to pause/unpause trigger queue - result_queue_paused: Boolean to
+          pause/unpause result queue - reason: Optional reason for the state change
+          (max 4096 characters)'
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: 'Return the tenant status. Note: the output format is not currently
-        documented and subject to change without notice.'
+        200:
+          description: Tenant state updated successfully
+        400:
+          description: Invalid request body
+        404:
+          description: Tenant not found
+      summary: Update tenant pipeline state configuration. This endpoint allows administrators
+        to update the state of tenant pipeline queues, including pausing or discarding
+        configurations.
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/status:
+    get:
+      operationId: status
+      parameters:
+      - description: The name of the tenant to get status for
+        in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  management_event_queue:
+                    properties:
+                      length:
+                        type: integer
+                    type: object
+                  pipelines:
+                    items:
+                      properties:
+                        change_queues:
+                          items:
+                            properties:
+                              heads:
+                                items:
+                                  properties:
+                                    id:
+                                      type: string
+                                    items:
+                                      items:
+                                        properties:
+                                          change:
+                                            type: string
+                                          id:
+                                            type: string
+                                          jobs:
+                                            items:
+                                              properties:
+                                                canceled:
+                                                  type: boolean
+                                                dependencies:
+                                                  items:
+                                                    type: string
+                                                  type: array
+                                                elapsed_time:
+                                                  type: integer
+                                                name:
+                                                  type: string
+                                                node_labels:
+                                                  items:
+                                                    type: string
+                                                  type: array
+                                                node_name:
+                                                  type: string
+                                                paused:
+                                                  type: boolean
+                                                remaining_time:
+                                                  type: integer
+                                                report_url:
+                                                  type: string
+                                                result:
+                                                  type: string
+                                                retry:
+                                                  type: boolean
+                                                url:
+                                                  type: string
+                                                voting:
+                                                  type: boolean
+                                                worker:
+                                                  properties:
+                                                    extra:
+                                                      type: object
+                                                    fqdn:
+                                                      type: string
+                                                    hostname:
+                                                      type: string
+                                                    ips:
+                                                      items:
+                                                        type: string
+                                                      type: array
+                                                    name:
+                                                      type: string
+                                                    program:
+                                                      type: string
+                                                    version:
+                                                      type: string
+                                                  type: object
+                                              type: object
+                                            type: array
+                                          project:
+                                            type: string
+                                        type: object
+                                      type: array
+                                  type: object
+                                type: array
+                              name:
+                                type: string
+                            type: object
+                          type: array
+                        name:
+                          type: string
+                      type: object
+                    type: array
+                  tenant_name:
+                    type: string
+                  trigger_event_queue:
+                    properties:
+                      length:
+                        type: integer
+                    type: object
+                type: object
+          description: Returns the current status of the tenant pipelines
+        404:
+          description: Tenant not found
+      summary: Return the current status of the tenant pipelines. This endpoint provides
+        a comprehensive view of the tenant's pipeline status, including queue lengths,
+        pipeline states, and job information.
       tags:
       - tenant
   /api/tenant/{tenant_name}/status/change/{change}:
     get:
       operationId: status_change
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
-      - in: path
+      - description: 'The change identifier to filter by Note: the output format is
+          not currently documented and subject to change without notice.'
+        in: path
         name: change
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: 'Return the status for a single change. Note: the output format is
-        not currently documented and subject to change without notice.'
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+          description: Returns the pipeline status filtered for a specific change
+        404:
+          description: Tenant not found
+      summary: Return the status for a single change. This endpoint returns the pipeline
+        status information filtered to show only the status relevant to the specified
+        change.
       tags:
       - tenant
   /api/tenant/{tenant_name}/tenant-status:
     get:
       operationId: tenant_status
       parameters:
-      - in: path
+      - description: The name of the tenant
+        in: path
         name: tenant_name
         required: true
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
-      summary: ''
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  config_error_count:
+                    type: integer
+                type: object
+          description: Returns basic tenant status information
+        404:
+          description: Tenant not found
+      summary: Return basic tenant status information. This endpoint provides a simplified
+        status for the tenant, including configuration error counts and other basic
+        metrics.
       tags:
       - tenant
   /api/tenants:
@@ -1063,12 +2746,6 @@ paths:
                     name:
                       description: Tenant name
                       type: string
-                    projects:
-                      description: Tenant project count
-                      type: integer
-                    queue:
-                      description: Active changes count
-                      type: integer
                   type: object
                 type: array
           description: Returns the list of tenants
@@ -1077,5 +2754,7 @@ paths:
       summary: ''
       tags:
       - tenant
+  /{tenant_name}/.well-known/jwks: {}
+  /{tenant_name}/.well-known/openid-configuration: {}
 tags:
 - name: tenant

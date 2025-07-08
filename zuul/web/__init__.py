@@ -1366,6 +1366,18 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST', ])
     @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Dequeues changes from a project pipeline',
+        schema=Prop('The dequeue result', {
+            'success': bool,
+            'items_dequeued': int,
+            'message': str,
+        }),
+    )
+    @openapi_response(400, 'Invalid request data')
+    @openapi_response(404, 'Tenant or project not found')
     def dequeue(self, tenant_name, tenant, auth, project_name):
         if cherrypy.request.method != 'POST':
             raise cherrypy.HTTPError(405)
@@ -1401,7 +1413,34 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST', ])
     @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Enqueues a change or ref to the specified pipeline',
+        schema=Prop('Enqueue result', bool),
+    )
+    @openapi_response(400, 'Invalid request body or unknown pipeline')
+    @openapi_response(404, 'Tenant or project not found')
     def enqueue(self, tenant_name, tenant, auth, project_name):
+        """Enqueue a change or ref to a project pipeline.
+
+        This endpoint allows administrators to manually enqueue changes
+        or refs to a specific pipeline for processing. The request body
+        must contain either a change reference or ref information.
+
+        :param str tenant_name: The name of the tenant
+        :param str project_name: The name of the project
+
+        Request body must contain:
+        - pipeline: The name of the pipeline
+        - change: The change to enqueue (mutually exclusive with
+                  ref/oldrev/newrev)
+        OR
+        - ref: The ref to enqueue
+        - oldrev: The old revision
+        - newrev: The new revision
+
+        """
         if cherrypy.request.method != 'POST':
             raise cherrypy.HTTPError(405)
         self.log.info(f'User {auth.uid} requesting enqueue on '
@@ -1457,7 +1496,27 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST', ])
     @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Promotes changes in the specified pipeline',
+        schema=Prop('Promote result', bool),
+    )
+    @openapi_response(400, 'Invalid request body or unknown pipeline')
+    @openapi_response(404, 'Tenant not found')
     def promote(self, tenant_name, tenant, auth):
+        """Promote changes in a tenant pipeline.
+
+        This endpoint allows administrators to promote changes within
+        a pipeline, moving them ahead in the queue for processing.
+
+        :param str tenant_name: The name of the tenant
+
+        Request body must contain:
+        - pipeline: The name of the pipeline
+        - changes: List of changes to promote
+
+        """
         if cherrypy.request.method != 'POST':
             raise cherrypy.HTTPError(405)
 
@@ -1487,7 +1546,29 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST', ])
     @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @openapi_response(
+        code=200,
+        description='Tenant state updated successfully',
+    )
+    @openapi_response(400, 'Invalid request body')
+    @openapi_response(404, 'Tenant not found')
     def state_post(self, tenant_name, tenant, auth):
+        """Update tenant pipeline state configuration.
+
+        This endpoint allows administrators to update the state of tenant
+        pipeline queues, including pausing or discarding configurations.
+
+        :param str tenant_name: The name of the tenant
+
+        Request body may contain:
+        - trigger_queue_discarding: Boolean to enable/disable trigger
+                                    queue discarding
+        - trigger_queue_paused: Boolean to pause/unpause trigger queue
+        - result_queue_paused: Boolean to pause/unpause result queue
+        - reason: Optional reason for the state change
+                  (max 4096 characters)
+
+        """
         body = cherrypy.request.json
         current_state = self.zuulweb.event_watcher.tenant_state[tenant.name]
         with self.zuulweb.createZKContext(None, self.log) as ctx:
@@ -1519,6 +1600,25 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the list of autohold requests for the tenant',
+        schema=Prop('The list of autohold requests', [{
+            'id': str,
+            'tenant': str,
+            'project': str,
+            'job': str,
+            'ref_filter': str,
+            'reason': str,
+            'max_count': int,
+            'current_count': int,
+            'nodes': [str],
+            'node_expiration': str,
+            'held_nodes': [str],
+        }]),
+    )
+    @openapi_response(404, 'Tenant not found')
     def autohold_list(self, tenant_name, tenant, auth, *args, **kwargs):
         # filter by project if passed as a query string
         project_name = cherrypy.request.params.get('project', None)
@@ -1528,7 +1628,35 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['GET', 'POST'])
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the list of autohold requests for the project',
+        schema=Prop('The list of autohold requests', [{
+            'id': str,
+            'tenant': str,
+            'project': str,
+            'job': str,
+            'ref_filter': str,
+            'reason': str,
+            'max_count': int,
+            'current_count': int,
+            'nodes': [str],
+            'node_expiration': str,
+            'held_nodes': [str],
+        }]),
+    )
+    @openapi_response(404, 'Tenant or project not found')
     def autohold_project_get(self, tenant_name, tenant, auth, project_name):
+        """Get autohold requests for a specific project.
+
+        This endpoint returns all autohold requests for the specified
+        project within the tenant.
+
+        :param str tenant_name: The name of the tenant
+        :param str project_name: The name of the project
+
+        """
         # Note: GET handling is redundant with autohold_list
         # and could be removed.
         return self._autohold_list(tenant_name, project_name)
@@ -1538,7 +1666,35 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     # Options handled by _get method
     @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Creates a new autohold request for the project',
+        schema=Prop('Autohold creation result', {
+            'success': bool,
+            'message': str,
+        }),
+    )
+    @openapi_response(400, 'Invalid request body or parameters')
+    @openapi_response(404, 'Tenant or project not found')
     def autohold_project_post(self, tenant_name, tenant, auth, project_name):
+        """Create an autohold request for a specific project.
+
+        This endpoint allows administrators to create autohold requests
+        that will hold nodes for failed jobs on the specified project.
+
+        :param str tenant_name: The name of the tenant
+        :param str project_name: The name of the project
+
+        Request body must contain:
+        - job: The job name to hold nodes for
+        - count: Number of nodes to hold (must be > 0)
+        - reason: Reason for the autohold
+        - node_hold_expiration: Expiration time for held nodes
+        - change: Change to filter on (mutually exclusive with ref)
+        - ref: Ref pattern to filter on (mutually exclusive with change)
+
+        """
         project = self._getProjectOrRaise(tenant, project_name)
         self.log.info(f'User {auth.uid} requesting autohold on '
                       f'{tenant_name}/{project_name}')
@@ -1640,6 +1796,25 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['GET', 'DELETE', ])
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns details of a specific autohold request',
+        schema=Prop('The autohold request details', {
+            'id': str,
+            'tenant': str,
+            'project': str,
+            'job': str,
+            'ref_filter': str,
+            'reason': str,
+            'max_count': int,
+            'current_count': int,
+            'nodes': [str],
+            'node_expiration': str,
+            'held_nodes': [str],
+        }),
+    )
+    @openapi_response(404, 'Autohold request not found')
     def autohold_get(self, tenant_name, tenant, auth, request_id):
         request = self._getAutoholdRequest(tenant_name, request_id)
         return {
@@ -1660,6 +1835,16 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     # Options handled by get method
     @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Deletes an autohold request',
+        schema=Prop('The deletion result', {
+            'success': bool,
+            'message': str,
+        }),
+    )
+    @openapi_response(404, 'Autohold request not found')
     def autohold_delete(self, tenant_name, tenant, auth, request_id):
         request = self._getAutoholdRequest(tenant_name, request_id)
         self.log.info(f'User {auth.uid} requesting autohold-delete on '
@@ -1697,6 +1882,24 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_root_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns a map of available API endpoints',
+        schema=Prop('The API endpoint map', {
+            'info': str,
+            'connections': str,
+            'components': str,
+            'authorizations': str,
+            'tenants': str,
+            'tenant_info': str,
+            'status': str,
+            'jobs': str,
+            'projects': str,
+            'builds': str,
+            'buildsets': str,
+        }),
+    )
     def index(self, auth):
         return {
             'info': '/api/info',
@@ -1746,6 +1949,27 @@ class ZuulWebAPI(object):
     @cherrypy.expose
     @cherrypy.tools.handle_options()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns information about the Zuul instance',
+        schema=Prop('The Zuul instance information', {
+            'info': {
+                'capabilities': {
+                    'job_history': bool,
+                    'auth': {
+                        'default_realm': str,
+                        'read_protected': bool,
+                        'auth_log_file_requests': bool,
+                    },
+                },
+                'stats': {
+                    'version': str,
+                    'last_reconfigured': str,
+                },
+            },
+        }),
+    )
     # Info endpoints never require authentication because they supply
     # authentication information.
     def info(self):
@@ -1765,6 +1989,30 @@ class ZuulWebAPI(object):
     @cherrypy.tools.save_params()
     @cherrypy.tools.handle_options()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns information about a specific tenant',
+        schema=Prop('The tenant information', {
+            'info': {
+                'tenant': str,
+                'capabilities': {
+                    'job_history': bool,
+                    'auth': {
+                        'default_realm': str,
+                        'read_protected': bool,
+                        'niz': bool,
+                        'auth_log_file_requests': bool,
+                    },
+                },
+                'stats': {
+                    'version': str,
+                    'last_reconfigured': str,
+                },
+            },
+        }),
+    )
+    @openapi_response(404, 'Tenant not found')
     # Info endpoints never require authentication because they supply
     # authentication information.
     def tenant_info(self, tenant_name):
@@ -1864,6 +2112,15 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_root_auth(require_auth=True)
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description=('Returns authorization information for the '
+                     'authenticated user'),
+        schema=Prop('The authorization information', {
+            'zuul.admin': bool,
+        }),
+    )
     def root_authorizations(self, auth):
         return {'zuul': {'admin': auth.admin,
                          'scope': ['*']}, }
@@ -1872,6 +2129,15 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth(require_auth=True)
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description=('Returns authorization information for the '
+                     'authenticated user in the tenant context'),
+        schema=Prop('The authorization information', {
+            'zuul.admin': bool,
+        }),
+    )
     def tenant_authorizations(self, tenant_name, tenant, auth):
         return {'zuul': {'admin': auth.admin,
                          'scope': [tenant_name, ]}, }
@@ -1899,6 +2165,17 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_root_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the list of configured connections',
+        schema=Prop('The list of connections', [{
+            'name': str,
+            'driver': str,
+            'server': str,
+            'canonical_hostname': str,
+        }]),
+    )
     def connections(self, auth):
         ret = [s.connection.toDict()
                for s in self.zuulweb.connections.getSources()]
@@ -1908,6 +2185,18 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type="application/json; charset=utf-8")
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_root_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the list of Zuul components and their status',
+        schema=Prop('The list of components', [{
+            'hostname': str,
+            'name': str,
+            'type': str,
+            'version': str,
+            'last_seen': str,
+        }]),
+    )
     def components(self, auth):
         ret = {}
         for kind, components in self.zuulweb.component_registry.all():
@@ -2017,11 +2306,66 @@ class ZuulWebAPI(object):
     @cherrypy.tools.save_params()
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the current status of the tenant pipelines',
+        schema=Prop('The tenant status', {
+            'tenant_name': str,
+            'trigger_event_queue': {
+                'length': int,
+            },
+            'management_event_queue': {
+                'length': int,
+            },
+            'pipelines': [{
+                'name': str,
+                'change_queues': [{
+                    'name': str,
+                    'heads': [{
+                        'id': str,
+                        'items': [{
+                            'id': str,
+                            'change': str,
+                            'project': str,
+                            'jobs': [{
+                                'name': str,
+                                'result': str,
+                                'voting': bool,
+                                'url': str,
+                                'report_url': str,
+                                'elapsed_time': int,
+                                'remaining_time': int,
+                                'worker': {
+                                    'name': str,
+                                    'hostname': str,
+                                    'ips': [str],
+                                    'fqdn': str,
+                                    'program': str,
+                                    'version': str,
+                                    'extra': dict,
+                                },
+                                'canceled': bool,
+                                'retry': bool,
+                                'node_labels': [str],
+                                'node_name': str,
+                                'dependencies': [str],
+                                'paused': bool,
+                            }],
+                        }],
+                    }],
+                }],
+            }],
+        }),
+    )
+    @openapi_response(404, 'Tenant not found')
     def status(self, tenant_name, tenant, auth):
-        """Return the tenant status.
+        """Return the current status of the tenant pipelines.
 
-        Note: the output format is not currently documented and
-        subject to change without notice.
+        This endpoint provides a comprehensive view of the tenant's pipeline
+        status, including queue lengths, pipeline states, and job information.
+
+        :param str tenant_name: The name of the tenant to get status for
 
         """
         return self._getStatus(tenant)[1]
@@ -2031,8 +2375,22 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description=('Returns the pipeline status filtered for a '
+                     'specific change'),
+        schema=Prop('Filtered pipeline status for the change', dict),
+    )
+    @openapi_response(404, 'Tenant not found')
     def status_change(self, tenant_name, tenant, auth, change):
         """Return the status for a single change.
+
+        This endpoint returns the pipeline status information filtered
+        to show only the status relevant to the specified change.
+
+        :param str tenant_name: The name of the tenant
+        :param str change: The change identifier to filter by
 
         Note: the output format is not currently documented and
         subject to change without notice.
@@ -2103,9 +2461,42 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns configuration errors for the tenant',
+        schema=Prop('The list of configuration errors', [{
+            'source_context': {
+                'project_name': str,
+                'branch': str,
+                'path': str,
+                'trusted': bool,
+            },
+            'error': str,
+            'short_error': str,
+            'severity': str,
+            'name': str,
+        }]),
+    )
+    @openapi_response(404, 'Tenant not found')
     def config_errors(self, tenant_name, tenant, auth,
                       project=None, branch=None, severity=None, name=None,
                       limit=50, skip=0):
+        """Return configuration errors for the tenant.
+
+        This endpoint provides a list of configuration errors encountered
+        during tenant configuration loading, with optional filtering
+        capabilities.
+
+        :param str tenant_name: The name of the tenant
+        :param str project: Filter errors by project name
+        :param str branch: Filter errors by branch name
+        :param str severity: Filter errors by severity level
+        :param str name: Filter errors by error name
+        :param int limit: Maximum number of errors to return (default: 50)
+        :param int skip: Number of errors to skip for pagination (default: 0)
+
+        """
         skip = int(skip)
         limit = int(limit)
         count = 0
@@ -2136,7 +2527,24 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns basic tenant status information',
+        schema=Prop('The tenant status', {
+            'config_error_count': int,
+        }),
+    )
+    @openapi_response(404, 'Tenant not found')
     def tenant_status(self, tenant_name, tenant, auth):
+        """Return basic tenant status information.
+
+        This endpoint provides a simplified status for the tenant, including
+        configuration error counts and other basic metrics.
+
+        :param str tenant_name: The name of the tenant
+
+        """
         ret = {
             'config_error_count': len(tenant.layout.loading_errors.errors),
         }
@@ -2148,7 +2556,54 @@ class ZuulWebAPI(object):
         content_type='application/json; charset=utf-8', handler=json_handler)
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns detailed information about a specific job',
+        schema=Prop('The job details', [{
+            'name': str,
+            'description': str,
+            'parent': str,
+            'tags': [str],
+            'branches': [str],
+            'files': [str],
+            'irrelevant_files': [str],
+            'variables': dict,
+            'host_variables': dict,
+            'group_variables': dict,
+            'dependencies': [str],
+            'pre_run': [str],
+            'run': [str],
+            'post_run': [str],
+            'cleanup_run': [str],
+            'timeout': int,
+            'voting': bool,
+            'semaphore': str,
+            'attempts': int,
+            'retry': bool,
+            'abstract': bool,
+            'protected': bool,
+            'final': bool,
+            'override_branch': str,
+            'override_checkout': str,
+            'post_review': bool,
+            'required_projects': [dict],
+            'roles': [dict],
+            'secrets': [dict],
+            'nodeset': dict,
+        }]),
+    )
+    @openapi_response(404, 'Tenant or Job not found')
     def job(self, tenant_name, tenant, auth, job_name):
+        """Return detailed information about a specific job.
+
+        This endpoint provides comprehensive information about a job,
+        including all its variants, configuration, and dependencies.
+
+        :param str tenant_name: The name of the tenant
+        :param str job_name: The name of the job to retrieve
+
+        """
         job_name = urllib.parse.unquote_plus(job_name)
         job_variants = tenant.layout.jobs.get(job_name)
         if job_variants is None:
@@ -2164,7 +2619,27 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the list of projects configured in the tenant',
+        schema=Prop('The list of projects', [{
+            'name': str,
+            'canonical_name': str,
+            'connection_name': str,
+            'type': str,
+        }]),
+    )
+    @openapi_response(404, 'Tenant not found')
     def projects(self, tenant_name, tenant, auth):
+        """Return the list of projects configured in the tenant.
+
+        This endpoint provides information about all projects that are
+        configured in the tenant, including their type (config or untrusted).
+
+        :param str tenant_name: The name of the tenant
+
+        """
         result = []
         for tpc in tenant.all_tpcs:
             project = tpc.project
@@ -2179,7 +2654,57 @@ class ZuulWebAPI(object):
         content_type='application/json; charset=utf-8', handler=json_handler)
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns detailed information about a specific project',
+        schema=Prop('The project details', {
+            'name': str,
+            'canonical_name': str,
+            'connection_name': str,
+            'configs': [{
+                'branch': str,
+                'pipelines': [{
+                    'name': str,
+                    'queue_name': str,
+                    'jobs': [[{
+                        'name': str,
+                        'description': str,
+                        'variables': dict,
+                        'dependencies': [str],
+                        'voting': bool,
+                        'abstract': bool,
+                        'protected': bool,
+                        'final': bool,
+                        'branches': [str],
+                        'files': [str],
+                        'irrelevant_files': [str],
+                    }]],
+                }],
+            }],
+            'metadata': {
+                'merge_mode': str,
+                'default_branch': str,
+                'template_projects': [str],
+                'exclude_unprotected_branches': bool,
+                'exclude_branches': [str],
+                'include_branches': [str],
+                'exclude_refs': [str],
+                'include_refs': [str],
+            },
+        }),
+    )
+    @openapi_response(404, 'Tenant or Project not found')
     def project(self, tenant_name, tenant, auth, project_name):
+        """Return detailed information about a specific project.
+
+        This endpoint provides comprehensive information about a project,
+        including its configuration, pipeline jobs, and metadata.
+
+        :param str tenant_name: The name of the tenant
+        :param str project_name: The name of the project to retrieve
+
+        """
         project = self._getProjectOrRaise(tenant, project_name)
 
         result = project.toDict()
@@ -2252,7 +2777,28 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the list of pipelines configured in the tenant',
+        schema=Prop('The list of pipelines', [{
+            'name': str,
+            'triggers': [{
+                'name': str,
+                'driver': str,
+            }],
+        }]),
+    )
+    @openapi_response(404, 'Tenant not found')
     def pipelines(self, tenant_name, tenant, auth):
+        """Return the list of pipelines configured in the tenant.
+
+        This endpoint provides information about all pipelines configured
+        in the tenant, including their associated triggers and drivers.
+
+        :param str tenant_name: The name of the tenant
+
+        """
         ret = []
         for pipeline_name, manager in tenant.layout.pipeline_managers.items():
             triggers = []
@@ -2314,7 +2860,25 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST'])
     @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Triggers an image build for the specified image',
+        schema=Prop('Build trigger confirmation', {
+            'message': str,
+        }),
+    )
+    @openapi_response(404, 'Image not found in tenant')
     def image_build(self, tenant_name, tenant, auth, image_name):
+        """Trigger an image build for a specific image.
+
+        This endpoint triggers a build for the specified image in the tenant.
+        The image must be of type "zuul" and available in the tenant's
+        providers.
+
+        :param str tenant_name: The name of the tenant
+        :param str image_name: The name of the image to build
+        """
         providers = self.zuulweb.tenant_providers.get(tenant.name)
         if not providers:
             raise cherrypy.HTTPError(404, "Image not found in tenant")
@@ -2342,8 +2906,21 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['DELETE'])
     @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @openapi_response(
+        code=204,
+        description='Image build artifact deletion initiated successfully',
+    )
+    @openapi_response(404, 'Image build artifact not found in tenant')
     def image_build_artifact_delete(self, tenant_name, tenant, auth,
                                     artifact_id):
+        """Delete an image build artifact.
+
+        This endpoint marks an image build artifact for deletion. The artifact
+        must belong to the specified tenant.
+
+        :param str tenant_name: The name of the tenant
+        :param str artifact_id: The ID of the artifact to delete
+        """
         iba = self.zuulweb.image_build_registry.getItem(artifact_id)
 
         if not iba or tenant.name != iba.build_tenant_name:
@@ -2366,7 +2943,20 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['DELETE'])
     @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @openapi_response(
+        code=204,
+        description='Image upload deletion initiated successfully',
+    )
+    @openapi_response(404, 'Image upload not found in tenant')
     def image_upload_delete(self, tenant_name, tenant, auth, upload_id):
+        """Delete an image upload.
+
+        This endpoint marks an image upload for deletion. The upload must
+        belong to the specified tenant via its associated build artifact.
+
+        :param str tenant_name: The name of the tenant
+        :param str upload_id: The ID of the upload to delete
+        """
         upload = self.zuulweb.image_upload_registry.getItem(upload_id)
         if upload:
             iba = self.zuulweb.image_build_registry.getItem(
@@ -2412,7 +3002,41 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the list of labels configured in the tenant',
+        schema=Prop('The list of labels', [{
+            'name': str,
+            'type': str,
+            'cloud': str,
+            'key_name': str,
+            'min_ready': int,
+            'max_servers': int,
+            'boot_timeout': int,
+            'launch_timeout': int,
+            'instance_type': str,
+            'image': str,
+            'nodepool_provider': str,
+            'pools': [{
+                'name': str,
+                'current': int,
+                'max': int,
+                'min': int,
+            }],
+        }]),
+    )
+    @openapi_response(404, 'Tenant not found')
     def labels(self, tenant_name, tenant, auth):
+        """Return the list of labels configured in the tenant.
+
+        This endpoint provides information about all labels available
+        in the tenant, including both nodepool labels and tenant-configured
+        labels with their properties.
+
+        :param str tenant_name: The name of the tenant
+
+        """
         allowed_labels = tenant.allowed_labels or []
         disallowed_labels = tenant.disallowed_labels or []
         labels = set()
@@ -2430,6 +3054,22 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the list of nodes allocated to the tenant',
+        schema=Prop('The list of nodes', [{
+            'id': str,
+            'type': str,
+            'connection_type': str,
+            'external_id': str,
+            'provider': str,
+            'state': str,
+            'state_time': str,
+            'comment': str,
+        }]),
+    )
+    @openapi_response(404, 'Tenant not found')
     def nodes(self, tenant_name, tenant, auth):
         ret = []
         for node_id in self.zk_nodepool.getNodes(cached=True):
@@ -2464,7 +3104,25 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['PUT', ])
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=201,
+        description='Node state updated successfully',
+    )
+    @openapi_response(400, 'Invalid request body or node state')
+    @openapi_response(404, 'Node not found')
     def nodes_put(self, tenant_name, tenant, auth, node_id):
+        """Update the state of a specific node.
+
+        This endpoint allows updating the state of a node to either HOLD
+        or USED. The node must belong to the specified tenant and the request
+        must include a valid state in the JSON body.
+
+        :param str tenant_name: The name of the tenant
+        :param str node_id: The unique identifier of the node to update
+
+        Request body should contain:
+        - state: The new state for the node (HOLD or USED)
+        """
         node = self.zuulweb.nodes_cache.getItem(node_id)
         if not node or node.tenant_name != tenant.name:
             raise cherrypy.HTTPError(404, "Node not found")
@@ -2489,7 +3147,23 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the list of nodeset requests for the tenant',
+        schema=Prop('The list of nodeset requests',
+                    [NodesetRequestConverter.schema()]),
+    )
+    @openapi_response(404, 'Tenant not found')
     def nodeset_requests(self, tenant_name, tenant, auth):
+        """List all nodeset requests for the tenant.
+
+        This endpoint provides a list of all nodeset requests that belong to
+        the specified tenant. Nodeset requests are used to request specific
+        sets of nodes for job execution.
+
+        :param str tenant_name: The name of the tenant
+        """
         ret = []
         # TODO: remove this providers check once nodepool is gone
         providers = self.zuulweb.tenant_providers.get(tenant.name)
@@ -2504,7 +3178,22 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['DELETE', ])
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=204,
+        description='Nodeset request deleted successfully',
+    )
+    @openapi_response(404, 'Nodeset request not found')
     def nodeset_requests_delete(self, tenant_name, tenant, auth, request_id):
+        """Delete a specific nodeset request.
+
+        This endpoint allows deletion of a nodeset request by its ID.
+        The request must belong to the specified tenant and the user must
+        have appropriate permissions.
+
+        :param str tenant_name: The name of the tenant
+        :param str request_id: The unique identifier of the nodeset request
+                               to delete
+        """
         request = self.zuulweb.requests_cache.getItem(request_id)
         if not request or request.tenant_name != tenant.name:
             raise cherrypy.HTTPError(404, "Request not found")
@@ -2586,8 +3275,33 @@ class ZuulWebAPI(object):
                voting=None, nodeset=None, result=None, final=None,
                held=None, complete=None, limit=50, skip=0,
                idx_min=None, idx_max=None, exclude_result=None):
-        """
-        List the executed builds
+        """List the executed builds.
+
+        This endpoint provides a list of executed builds with various
+        filtering options for analysis and monitoring.
+
+        :param str tenant_name: The name of the tenant
+        :param str project: Filter by project name
+        :param str pipeline: Filter by pipeline name
+        :param str change: Filter by change number
+        :param str branch: Filter by branch name
+        :param str patchset: Filter by patchset number
+        :param str ref: Filter by git ref
+        :param str newrev: Filter by new revision
+        :param str uuid: Filter by build UUID
+        :param str job_name: Filter by job name
+        :param str voting: Filter by voting status (true/false)
+        :param str nodeset: Filter by nodeset name
+        :param str result: Filter by build result
+        :param str final: Filter by final status (true/false)
+        :param str held: Filter by held status (true/false)
+        :param str complete: Filter by completion status (true/false)
+        :param int limit: Maximum number of results to return (default: 50)
+        :param int skip: Number of results to skip for pagination (default: 0)
+        :param int idx_min: Minimum build index
+        :param int idx_max: Maximum build index
+        :param str exclude_result: Result types to exclude from results
+
         """
 
         connection = self._get_connection()
@@ -2627,7 +3341,23 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns details of a specific build',
+        schema=BuildConverter.schema(),
+    )
+    @openapi_response(404, 'Build not found')
     def build(self, tenant_name, tenant, auth, uuid):
+        """Get details of a specific build.
+
+        This endpoint returns comprehensive information about a single build
+        including its result, timing, artifacts, and associated buildset.
+
+        :param str tenant_name: The name of the tenant
+        :param str uuid: The UUID of the build to retrieve
+
+        """
         connection = self._get_connection()
 
         data = connection.getBuild(tenant_name, uuid)
@@ -2666,6 +3396,27 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns build timing information for analysis',
+        schema=Prop('The list of build times', [{
+            'project': str,
+            'pipeline': str,
+            'branch': str,
+            'job_name': str,
+            'result': str,
+            'start_time': str,
+            'end_time': str,
+            'duration': int,
+            'uuid': str,
+            'ref': str,
+            'newrev': str,
+            'voting': bool,
+            'final': bool,
+        }]),
+    )
+    @openapi_response(404, 'Tenant not found')
     def build_times(self, tenant_name, tenant, auth, project=None,
                     pipeline=None, branch=None,
                     ref=None, job_name=None,
@@ -2673,6 +3424,26 @@ class ZuulWebAPI(object):
                     start_time=None, end_time=None,
                     limit=50, skip=0,
                     exclude_result=None):
+        """Return build timing information for analysis.
+
+        This endpoint provides build timing data that can be used for
+        performance analysis and metrics collection. It supports
+        filtering by various criteria.
+
+        :param str tenant_name: The name of the tenant
+        :param str project: Filter by project name
+        :param str pipeline: Filter by pipeline name
+        :param str branch: Filter by branch name
+        :param str ref: Filter by git ref
+        :param str job_name: Filter by job name
+        :param str final: Filter by final status (true/false)
+        :param str start_time: Filter builds after this timestamp
+        :param str end_time: Filter builds before this timestamp
+        :param int limit: Maximum number of results (default: 50)
+        :param int skip: Number of results to skip (default: 0)
+        :param str exclude_result: Result types to exclude from results
+
+        """
         connection = self._get_connection()
 
         if tenant_name not in self.zuulweb.abide.tenants.keys():
@@ -2760,6 +3531,29 @@ class ZuulWebAPI(object):
                   patchset=None, ref=None, newrev=None, uuid=None,
                   result=None, complete=None, limit=50, skip=0,
                   idx_min=None, idx_max=None, exclude_result=None):
+        """List the executed buildsets.
+
+        This endpoint provides a list of executed buildsets with various
+        filtering options for analysis and monitoring.
+
+        :param str tenant_name: The name of the tenant
+        :param str project: Filter by project name
+        :param str pipeline: Filter by pipeline name
+        :param str change: Filter by change number
+        :param str branch: Filter by branch name
+        :param str patchset: Filter by patchset number
+        :param str ref: Filter by git ref
+        :param str newrev: Filter by new revision
+        :param str uuid: Filter by buildset UUID
+        :param str result: Filter by buildset result
+        :param str complete: Filter by completion status (true/false)
+        :param int limit: Maximum number of results (default: 50)
+        :param int skip: Number of results to skip (default: 0)
+        :param int idx_min: Minimum buildset index
+        :param int idx_max: Maximum buildset index
+        :param str exclude_result: Result types to exclude from results
+
+        """
         connection = self._get_connection()
 
         if complete:
@@ -2871,7 +3665,28 @@ class ZuulWebAPI(object):
     # The Authorization header is not included when upgrading to
     # websocket, so the websocket handler itself will validate auth
     # using the websocket protocol.
+    @openapi_response(
+        code=101,
+        description=('WebSocket connection established for streaming '
+                     'console logs'),
+        content_type='text/plain',
+        schema=Prop('WebSocket upgrade response', str),
+    )
+    @openapi_response(400, 'Invalid WebSocket request')
+    @openapi_response(404, 'Tenant not found')
     def console_stream_get(self, tenant_name):
+        """Establish WebSocket connection for streaming console logs.
+
+        This endpoint upgrades the HTTP connection to a WebSocket for real-time
+        streaming of console logs from builds. The WebSocket protocol is used
+        to provide live log streaming capabilities to clients.
+
+        :param str tenant_name: The name of the tenant
+
+        Note: Authentication is handled within the WebSocket protocol itself,
+        not via HTTP headers, as headers are not included during the WebSocket
+        upgrade.
+        """
         pass
 
     @cherrypy.expose
@@ -2879,8 +3694,31 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description=('Returns the list of frozen jobs for the project '
+                     'pipeline and branch'),
+        schema=Prop('The list of frozen jobs', [{
+            'name': str,
+            'dependencies': [dict],
+        }]),
+    )
+    @openapi_response(404, 'Tenant, pipeline, or project not found')
     def project_freeze_jobs(self, tenant_name, tenant, auth,
                             pipeline_name, project_name, branch_name):
+        """Freeze and return all jobs for a project pipeline and branch.
+
+        This endpoint freezes the job graph for a specific project, pipeline,
+        and branch combination, returning a list of all jobs with their
+        dependencies. This is useful for understanding what jobs would be
+        executed for a given configuration.
+
+        :param str tenant_name: The name of the tenant
+        :param str pipeline_name: The name of the pipeline
+        :param str project_name: The name of the project
+        :param str branch_name: The name of the branch
+        """
         item, change = self._freeze_jobs(
             tenant, pipeline_name, project_name, branch_name)
 
@@ -2900,9 +3738,53 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns detailed configuration for a specific frozen job',
+        schema=Prop('The frozen job configuration', {
+            'job': str,
+            'zuul': dict,
+            'pre_timeout': int,
+            'timeout': int,
+            'post_timeout': int,
+            'override_branch': str,
+            'override_checkout': str,
+            'ansible_version': str,
+            'ansible_split_streams': bool,
+            'workspace_scheme': str,
+            'workspace_checkout': str,
+            'playbooks': [dict],
+            'pre_playbooks': [dict],
+            'post_playbooks': [dict],
+            'cleanup_playbooks': [dict],
+            'nodeset': dict,
+            'vars': dict,
+            'extra_vars': dict,
+            'host_vars': dict,
+            'group_vars': dict,
+            'secret_vars': dict,
+            'failure_output': str,
+        }),
+    )
+    @openapi_response(404, 'Tenant, pipeline, project, or job not found')
     def project_freeze_job(self, tenant_name, tenant, auth,
                            pipeline_name, project_name, branch_name,
                            job_name):
+        """Freeze and return detailed configuration for a specific job.
+
+        This endpoint freezes a specific job within a project pipeline and
+        branch, returning its complete configuration including playbooks,
+        variables, nodesets, and other execution parameters. This is useful
+        for debugging job configurations and understanding how jobs are
+        executed.
+
+        :param str tenant_name: The name of the tenant
+        :param str pipeline_name: The name of the pipeline
+        :param str project_name: The name of the project
+        :param str branch_name: The name of the branch
+        :param str job_name: The name of the job to freeze
+        """
         # TODO(jhesketh): Allow a canonical change/item to be passed in which
         # would return the job with any in-change modifications.
         item, change = self._freeze_jobs(
