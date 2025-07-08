@@ -796,6 +796,17 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(self.getJobFromHistory('check-job').node,
                          'debian-normal')
 
+    @simple_layout('layouts/launch-timeout.yaml', enable_nodepool=True)
+    def test_launcher_launch_timeout(self):
+        with mock.patch(
+            'zuul.driver.aws.awsendpoint.AwsProviderEndpoint._refresh'
+        ) as refresh_mock:
+            # Patch 'endpoint._refresh()' to return w/o updating
+            refresh_mock.side_effect = lambda o: o
+
+            request = self.requestNodes(['debian-normal'])
+            self.assertEqual(request.state, model.NodesetRequest.State.FAILED)
+
     @simple_layout('layouts/nodepool-untrusted-conf.yaml',
                    enable_nodepool=True)
     @return_data(
