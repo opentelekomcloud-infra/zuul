@@ -1202,8 +1202,13 @@ class Launcher:
                         log.debug("Failed to lock matching ready node %s",
                                   node)
                         continue
-                    node.refresh(ctx)
                     try:
+                        node.refresh(ctx)
+                        # Double check if it's still available
+                        if (node.request_id or
+                            node.state != node.State.READY):
+                            ready_nodes[label.name].remove(node)
+                            continue
                         tags = provider.getNodeTags(
                             self.system.system_id, label, node.uuid,
                             provider, request)
