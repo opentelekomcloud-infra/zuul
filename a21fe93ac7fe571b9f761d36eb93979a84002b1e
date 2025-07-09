@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7c991b09_4dcf3899",
+        "filename": "zuul/driver/openstack/openstackendpoint.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 13252
+      },
+      "writtenOn": "2025-07-09T15:53:21Z",
+      "side": 1,
+      "message": "```suggestion\n                    if all(s in error_message for s in (\u0027exceed\u0027, \u0027quota\u0027)):\n```\nthat would include the first added case with little risk of overmatching?",
+      "range": {
+        "startLine": 352,
+        "startChar": 57,
+        "endLine": 352,
+        "endChar": 64
+      },
+      "revId": "a21fe93ac7fe571b9f761d36eb93979a84002b1e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
