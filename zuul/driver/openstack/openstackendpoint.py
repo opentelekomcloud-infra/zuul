@@ -351,6 +351,8 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
                     error_message = self.server['fault']['message'].lower()
                     if all(s in error_message for s in ('exceeds', 'quota')):
                         raise exceptions.QuotaException("Quota exceeded")
+                    if "Quota exceeded" in error_message:
+                        raise exceptions.QuotaException("Quota exceeded")
                 raise exceptions.LaunchStatusException("Server in error state")
             else:
                 return
