@@ -22,6 +22,24 @@
       },
       "revId": "a21fe93ac7fe571b9f761d36eb93979a84002b1e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a4bb4c6c_217e5947",
+        "filename": "zuul/driver/openstack/openstackendpoint.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-09T16:55:06Z",
+      "side": 1,
+      "message": "True.  Maybe let\u0027s keep that in mind if we refactor this.",
+      "parentUuid": "7c991b09_4dcf3899",
+      "revId": "a21fe93ac7fe571b9f761d36eb93979a84002b1e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
