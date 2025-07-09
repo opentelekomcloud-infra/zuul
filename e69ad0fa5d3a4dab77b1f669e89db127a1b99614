@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7321822d_bbe3c50d",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-09T23:10:41Z",
+      "side": 1,
+      "message": "See my other concern. We may want this raw_body content to be more than 4096 bytes to ensure coverage of the looping.",
+      "revId": "e69ad0fa5d3a4dab77b1f669e89db127a1b99614",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "927ca177_754fccbc",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-09T23:10:41Z",
+      "side": 1,
+      "message": "Due to the size limit on the read here don\u0027t we need to do this in a loop until we reach EOF?",
+      "range": {
+        "startLine": 302,
+        "startChar": 28,
+        "endLine": 302,
+        "endChar": 32
+      },
+      "revId": "e69ad0fa5d3a4dab77b1f669e89db127a1b99614",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
