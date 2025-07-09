@@ -1595,6 +1595,8 @@ class Launcher:
                         # quota.
                         self.wake_event.set()
                         return
+                    # Start the clock for launch-timeout from this point.
+                    node.create_state_machine.start_time = time.time()
                 instance = node.create_state_machine.advance()
                 new_state = node.create_state_machine.state
                 if old_state != new_state:
