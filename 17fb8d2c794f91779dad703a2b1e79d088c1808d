@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "f397c2e9_9706e8ab",
+        "filename": "web/src/Misc.jsx",
+        "patchSetId": 1
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-09T13:52:06Z",
+      "side": 1,
+      "message": "The reason for the change is to have consistent colors for the states on both the nodes page and the nodeset requests page.  I agree with you that the orange color for building nodes is off-putting, but the real driver here is that on the *nodes* page, we want all of the in-use nodes to be blue.  That *does* match the status page (because those jobs are (generally) going to be blue).\n\nSo with:\n\n1) in-use \u003d blue\n2) used/failed/outdated \u003d red (these are all nodes that should be deleted)\n\nWe\u0027re running out of colors for building.  It\u0027s not ideal, but at least \"warning\" (orange) suggests some kind of activity.\n\nWe could consider having it pulse, but if we want to do the same thing on the nodes list page, we would have the word \"building\" be pulsing blue.  That might be annoying and difficult to read (it\u0027s already not easy to read blue words).\n\nPerhaps we should just introduce a new color; I\u0027m open to suggestions.",
+      "parentUuid": "1e05a59f_b2305975",
+      "revId": "17fb8d2c794f91779dad703a2b1e79d088c1808d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2b2919c2_426cb2d5",
         "filename": "web/src/Misc.jsx",
         "patchSetId": 1
@@ -31,6 +49,24 @@
       "writtenOn": "2025-07-09T09:42:15Z",
       "side": 1,
       "message": "Why do we want to use the same color for \"used\" nodes as for failed ones? I could imagine that this makes it harder to spot actual failures.",
+      "revId": "17fb8d2c794f91779dad703a2b1e79d088c1808d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a234a80_f0e19552",
+        "filename": "web/src/Misc.jsx",
+        "patchSetId": 1
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-09T13:52:06Z",
+      "side": 1,
+      "message": "As noted above, the idea is \"red \u003d delete\"",
+      "parentUuid": "2b2919c2_426cb2d5",
       "revId": "17fb8d2c794f91779dad703a2b1e79d088c1808d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
