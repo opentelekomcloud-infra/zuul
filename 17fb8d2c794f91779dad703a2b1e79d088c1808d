@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e05a59f_b2305975",
+        "filename": "web/src/Misc.jsx",
+        "patchSetId": 1
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-07-09T09:42:15Z",
+      "side": 1,
+      "message": "Compared to the previous version, I found the blue icons more pleasant than the current orange ones, as most of the requests were in state building when I viewed the page. I think it makes sense to use a different color for an \"active\" state like `building` compared to other states like `requested` or `hold`.\n\nHowever, comparing this page to the status page - where we use orange/warning mainly for error-like states (merge_conflict on a queue item and post_failure, node_failure, retry_limit on jobs) - viewing this page with a lot of building nodes gets a negative touch, like something is really wrong here, although the nodes are just building. I think this doesn\u0027t really fit to the design language of Zuul where we usually assume that everything succeeds until it proves different and therefore most of the squares are green on the status page.\n\nIf we would take over this design language, we would make the `building` icons also green, but that would make them hard to differentiate from `ready` nodes (which I think is more important for nodes than it is for queue items on the status page). This leads me again to the idea that we might want to give `building` nodes a little animation. Then we would have a transition from `building` (green with animation) to `ready` (green without animation) or red in case something went wrong.",
+      "revId": "17fb8d2c794f91779dad703a2b1e79d088c1808d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2b2919c2_426cb2d5",
+        "filename": "web/src/Misc.jsx",
+        "patchSetId": 1
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-07-09T09:42:15Z",
+      "side": 1,
+      "message": "Why do we want to use the same color for \"used\" nodes as for failed ones? I could imagine that this makes it harder to spot actual failures.",
+      "revId": "17fb8d2c794f91779dad703a2b1e79d088c1808d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
