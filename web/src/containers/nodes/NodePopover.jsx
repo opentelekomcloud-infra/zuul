@@ -16,10 +16,11 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
-
 import {
   Popover,
 } from '@patternfly/react-core'
+
+import { formatProviderName } from '../../Misc'
 
 function NodePopover({ node, triggerElement }) {
   // TODO (felix): Move the triggerElement to be used as children
@@ -49,7 +50,7 @@ function NodePopover({ node, triggerElement }) {
       bodyContent={
         <>
           <div>State: {node.state}</div>
-          <div>Provider: {node.provider}</div>
+          <div>Provider: {formatProviderName(node.provider)}</div>
         </>
       }
     >

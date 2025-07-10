@@ -26,7 +26,6 @@ import * as moment_tz from 'moment-timezone'
 import {
   PageSection,
   PageSectionVariants,
-  ClipboardCopy,
   Button,
 } from '@patternfly/react-core'
 import {
@@ -40,7 +39,11 @@ import {
   StreamIcon,
   TagIcon,
 } from '@patternfly/react-icons'
-import { IconProperty } from '../Misc'
+import { Link } from 'react-router-dom'
+import {
+  getNodeStyle,
+  IconProperty,
+} from '../Misc'
 
 import { deleteNodesetRequest } from '../api'
 import { addNotification } from '../actions/notifications'
@@ -51,45 +54,12 @@ import { Fetchable } from '../containers/Fetching'
 import NodePopover from '../containers/nodes/NodePopover'
 
 
-const NODE_ICON_CONFIGS = {
-  requested: {
-    variant: 'pending',
-  },
-  building: {
-    variant: 'info',
-  },
-  ready: {
-    variant: 'success',
-  },
-  failed: {
-    variant: 'danger',
-  },
-  tempfailed: {
-    variant: 'warning',
-  },
-  'in-use': {
-    variant: 'info',
-  },
-  used: {
-    variant: 'info',
-  },
-  outdated: {
-    variant: 'info',
-  },
-  hold: {
-    variant: 'info',
-  },
-  unknown: {
-    variant: 'pending',
-  },
-}
-
 function NodeSquare({ node }) {
-  const iconConfig = NODE_ICON_CONFIGS[node.state] || NODE_ICON_CONFIGS['unknown']
+  const nodeStyle = getNodeStyle(node)
   return (
     <Button
       variant="plain"
-      className={`zuul-item-square zuul-item-square-${iconConfig.variant}`}
+      className={`zuul-item-square zuul-item-square-${nodeStyle.variant}`}
     >
       <SquareIcon />
     </Button>
@@ -199,15 +169,15 @@ class NodesetRequestsPage extends React.Component {
       },
       {
         title: (
-          <IconProperty icon={<RunningIcon />} value="State" />
-        ),
-        dataLabel: 'state',
-      },
-      {
-        title: (
           <IconProperty icon={<ContainerNodeIcon />} value="Nodes" />
         ),
         dataLabel: 'nodes',
+      },
+      {
+        title: (
+          <IconProperty icon={<RunningIcon />} value="State" />
+        ),
+        dataLabel: 'state',
       },
       {
         title: (
@@ -243,10 +213,10 @@ class NodesetRequestsPage extends React.Component {
       const r = [
         {title: request.uuid, props: {column: 'UUID'}},
         {title: request.labels.join(','), props: {column: 'Labels' }},
+        {title: <NodeStates request={request} allNodes={allNodes} />, props: {column: 'Nodes'}},
         {title: request.state, props: {column: 'State'}},
-        {title: <NodeStates request={request} allNodes={allNodes} />, props: {column: 'State'}},
         {title: moment_tz.utc(request.request_time).fromNow(), props: {column: 'Age'}},
-        {title: <ClipboardCopy hoverTip="Copy" clickTip="Copied" variant="inline-compact">{request.buildset_uuid}</ClipboardCopy>, props: {column: 'Buildset'}},
+        {title: <Link to={`${this.props.tenant.linkPrefix}/buildset/${request.buildset_uuid}`}>{request.buildset_uuid}</Link>, props: {column: 'Buildset'}},
         {title: request.pipeline_name, props: {column: 'Pipeline'}},
         {title: request.job_name, props: {column: 'Job'}},
       ]
