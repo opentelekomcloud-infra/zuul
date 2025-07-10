@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d15747b7_8f5166ec",
+        "filename": "web/src/Misc.jsx",
+        "patchSetId": 1
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-07-10T09:02:00Z",
+      "side": 1,
+      "message": "I think using blue for in-use nodes makes sense and would fit to the colors for the job progress bars on the status page.\n\nI also had the impression that we\u0027re running out of colors for that purpose. I think it\u0027s fine to continue with this and improve the colors later on (we did the same with the status page). It looks like we are on the same track here.\n\nRegarding the pulse animation: If we want to use the same colors also for the state words on the node-list page that might indeed be a little problematic. I still think that an animation would improve the overall look-and-feel of the noderequest page. But we can still experiment with this later on.",
+      "parentUuid": "f397c2e9_9706e8ab",
+      "revId": "17fb8d2c794f91779dad703a2b1e79d088c1808d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2b2919c2_426cb2d5",
         "filename": "web/src/Misc.jsx",
         "patchSetId": 1
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "As noted above, the idea is \"red \u003d delete\"",
       "parentUuid": "2b2919c2_426cb2d5",
+      "revId": "17fb8d2c794f91779dad703a2b1e79d088c1808d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c8743ded_d4dee07d",
+        "filename": "web/src/Misc.jsx",
+        "patchSetId": 1
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-07-10T09:02:00Z",
+      "side": 1,
+      "message": "Thanks for the explanation. I think that makes sense.",
+      "parentUuid": "5a234a80_f0e19552",
       "revId": "17fb8d2c794f91779dad703a2b1e79d088c1808d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
