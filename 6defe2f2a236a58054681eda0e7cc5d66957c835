@@ -16,6 +16,23 @@
       "message": "In one of my experimental changes I did something similar by reducing the space between the square icon and the popover. This is also not an ideal solution and might look a little odd, but it would remove the necessity to double click on the popover (which first closes and then reopens it).\n\nThe way that works is that it reduces the gap between both elements to a minimum, so the mouse pointer directly switches from the square element to the popover without leaving either element on the way and thus the popover stays open. I don\u0027t think that any of those solutions is ideal, but maybe you can give it a try and see how it compares: https://review.opendev.org/c/zuul/zuul/+/923647.",
       "revId": "6defe2f2a236a58054681eda0e7cc5d66957c835",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f7f382d_2940a6c8",
+        "filename": "web/src/pages/NodesetRequests.jsx",
+        "patchSetId": 3
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-07-10T08:56:33Z",
+      "side": 1,
+      "message": "I also spotted a node in state `deleting` in one of the preview pages. It looks like this state isn\u0027t covered here.",
+      "revId": "6defe2f2a236a58054681eda0e7cc5d66957c835",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
