@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "34c3a86d_a8ad006e",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 4334,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-11T22:29:05Z",
+      "side": 1,
+      "message": "If it\u0027s a string reference to a NodeSet object.\n\nContext: this is a Job, and job.nodeset can be a string reference to a NodeSet object, or it can be an inline nodeset definition.\n\nIf it\u0027s an inline nodeset definition, it gets converted to a NodeSet object and that\u0027s what\u0027s stored on job.nodeset.  If that\u0027s the case, we need to validate it because nothing else has.\n\nIf it\u0027s a string, then it\u0027s a reference to a standalone nodeset defined as its own config object.  That will have already had its labels validated, so we don\u0027t need to add an error to the job for this.",
+      "parentUuid": "7e8e62a4_9fad4114",
+      "revId": "810c8e86ad8c060a359a02ddb1476971a7842429",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "431ddb7e_cad7233f",
@@ -35,6 +53,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f868b0a7_72ac1773",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 4338,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-11T22:29:05Z",
+      "side": 1,
+      "message": "Wait, you did know the two cases already!  And I typed all that...\n\nAnyway, that\u0027s a great idea, we should totally do that.",
+      "parentUuid": "431ddb7e_cad7233f",
+      "revId": "810c8e86ad8c060a359a02ddb1476971a7842429",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c38fcc98_01274f9d",
@@ -48,6 +84,24 @@
       "writtenOn": "2025-07-11T22:20:39Z",
       "side": 1,
       "message": "I feel like this comment should probably be updated to indicate that this isn\u0027t necessary with niz due to built in nodeset validation?",
+      "revId": "810c8e86ad8c060a359a02ddb1476971a7842429",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a00fad4b_f57576ae",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 9727,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-11T22:29:05Z",
+      "side": 1,
+      "message": "Good point.  It\u0027s actually not necessary because niz makes allowed/disallowed labels obsolete (it\u0027s allowed if it\u0027s in the tenant).",
+      "parentUuid": "c38fcc98_01274f9d",
       "revId": "810c8e86ad8c060a359a02ddb1476971a7842429",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
