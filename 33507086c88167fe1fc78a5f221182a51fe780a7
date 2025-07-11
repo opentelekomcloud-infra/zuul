@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a321a4b5_f16cf90a",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-11T09:29:52Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "1ef6b3ee_84eae37d",
+      "revId": "33507086c88167fe1fc78a5f221182a51fe780a7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a260ac85_06b915fa",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-07-11T00:04:40Z",
       "side": 1,
       "message": "I think the changes in this method could cause a problem if one provider didn\u0027t have any new uploads, but another provider did.  Imagine:\n\nprovider1: has uploads [1,2,3,4]\nprovider2: has uploads [1,2]\n\nIf we don\u0027t consider provider membership, then we will think that we only need to keep 3,4 and we would delete the only uploads in provider2.  But if we do consider provider membership, we\u0027ll keep all 4.",
+      "revId": "33507086c88167fe1fc78a5f221182a51fe780a7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c8874678_a2490953",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 2219,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-11T09:29:52Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "a260ac85_06b915fa",
       "revId": "33507086c88167fe1fc78a5f221182a51fe780a7",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
