@@ -1166,6 +1166,9 @@ class Launcher:
                         continue
                     request.refresh(ctx)
 
+                request._set(_span=tracing.startSpanInContext(
+                    request.span_info, "NodesetRequestProcessing"))
+
             if not self._cachesReadyForRequest(request):
                 self.log.debug("Caches are not up-to-date for %s", request)
                 continue
@@ -1188,6 +1191,8 @@ class Launcher:
             except Exception:
                 log.exception("Error processing request %s", request)
             if request.state in request.FINAL_STATES:
+                request._span.set_attributes(request.getSpanAttributes())
+                request._span.end()
                 with self.createZKContext(None, log) as ctx:
                     request.releaseLock(ctx)
 
