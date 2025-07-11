@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1ef6b3ee_84eae37d",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-11T00:04:40Z",
+      "side": 1,
+      "message": "I think you put this in for debugging purposes, but I\u0027d rather omit it.  I\u0027m trying to keep the metadata minimal since it could be limited on some cloud platforms4.  We can trace back to get the artifact uuid from the upload uuid through the api or logs.",
+      "revId": "33507086c88167fe1fc78a5f221182a51fe780a7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a260ac85_06b915fa",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 2219,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-11T00:04:40Z",
+      "side": 1,
+      "message": "I think the changes in this method could cause a problem if one provider didn\u0027t have any new uploads, but another provider did.  Imagine:\n\nprovider1: has uploads [1,2,3,4]\nprovider2: has uploads [1,2]\n\nIf we don\u0027t consider provider membership, then we will think that we only need to keep 3,4 and we would delete the only uploads in provider2.  But if we do consider provider membership, we\u0027ll keep all 4.",
+      "revId": "33507086c88167fe1fc78a5f221182a51fe780a7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
