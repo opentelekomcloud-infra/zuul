@@ -2560,6 +2560,14 @@ class NodesetRequest(zkobject.LockableZKObject):
         return (f"<NodesetRequest uuid={self.uuid}, state={self.state},"
                 f" labels={self.labels}, path={self.getPath()}>")
 
+    def getSpanAttributes(self):
+        return dict(
+            uuid=self.uuid,
+            state=self.state,
+            job=self.job_name,
+            zuul_event_id=self.zuul_event_id,
+        )
+
 
 class NodesetRequestRevision(zkobject.ZKObject):
     # We don't want to re-create the request in case it was deleted

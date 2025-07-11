@@ -3222,6 +3222,10 @@ class Scheduler(threading.Thread):
             if request.state == request.State.FAILED:
                 self.launcher.deleteRequest(request)
 
+            # End the NodesetRequest span
+            tracing.endSavedSpan(request.span_info,
+                                 attributes=request.getSpanAttributes())
+
         job = build_set.item.getJob(request.job_uuid)
         if build_set.getJobNodeSetInfo(job) is None:
             manager.onNodesProvisioned(
