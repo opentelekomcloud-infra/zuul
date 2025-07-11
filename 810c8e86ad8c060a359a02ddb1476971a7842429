@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7e8e62a4_9fad4114",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 4334,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-11T22:20:39Z",
+      "side": 1,
+      "message": "When is the nodeset not a NodeSet? Is that for the empty NodeSet?",
+      "revId": "810c8e86ad8c060a359a02ddb1476971a7842429",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "431ddb7e_cad7233f",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 4338,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-11T22:20:39Z",
+      "side": 1,
+      "message": "Why not call `self.nodeset.validateReferences(layout)` here? Then we can use the same validation code for anonymous and named Nodesets.",
+      "revId": "810c8e86ad8c060a359a02ddb1476971a7842429",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c38fcc98_01274f9d",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 9727,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-11T22:20:39Z",
+      "side": 1,
+      "message": "I feel like this comment should probably be updated to indicate that this isn\u0027t necessary with niz due to built in nodeset validation?",
+      "revId": "810c8e86ad8c060a359a02ddb1476971a7842429",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
