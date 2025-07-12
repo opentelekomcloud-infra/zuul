@@ -788,7 +788,7 @@ class GitlabConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         change.blocking_discussions_resolved = \
             change.mr.get('blocking_discussions_resolved', True)
         change.approved = change.mr['approved']
-        change.message = change.mr.get('description', "")
+        change.message = change.mr.get('description', "") or ""
         change.labels = change.mr['labels']
         change.updated_at = int(dateutil.parser.parse(
             change.mr['updated_at']).timestamp())
