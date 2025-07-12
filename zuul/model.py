@@ -25,6 +25,7 @@ import time
 import textwrap
 import types
 import urllib.parse
+import uuid
 from collections import OrderedDict, defaultdict, namedtuple, UserDict
 from enum import StrEnum
 from functools import partial, total_ordering
@@ -1521,6 +1522,22 @@ class ImageUpload(zkobject.LockableZKObject):
             lock=None,
             is_locked=False,
             lock_holder=None,
+        )
+
+    def copy(self, context):
+        upload_uuid = uuid.uuid4().hex
+        return ImageUpload.new(
+            context,
+            uuid=upload_uuid,
+            canonical_name=self.canonical_name,
+            artifact_uuid=self.artifact_uuid,
+            endpoint_name=self.endpoint_name,
+            providers=self.providers,
+            config_hash=self.config_hash,
+            timestamp=self.timestamp,
+            validated=self.validated,
+            _state=ImageUpload.State.PENDING,
+            state_time=time.time(),
         )
 
     @property
