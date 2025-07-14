@@ -324,6 +324,17 @@ def registerProjects(source_name, client, config):
                 client.addProjectByName(project)
 
 
+def copyConfig(config):
+    # Since the config contains a regex we cannot use copy.deepcopy()
+    # as this will raise an exception with Python <3.7
+    config_data = StringIO()
+    config.write(config_data)
+    config_data.seek(0)
+    new_config = ConfigParser()
+    new_config.read_file(config_data)
+    return new_config
+
+
 class FakeChangeDB:
     def __init__(self):
         # A dictionary of server -> dict as below
@@ -2220,14 +2231,7 @@ class SchedulerTestManager:
                upstream_root, poller_events, git_url_with_auth,
                add_cleanup, validate_tenants, wait_for_init,
                disable_pipelines):
-        # Since the config contains a regex we cannot use copy.deepcopy()
-        # as this will raise an exception with Python <3.7
-        config_data = StringIO()
-        config.write(config_data)
-        config_data.seek(0)
-        scheduler_config = ConfigParser()
-        scheduler_config.read_file(config_data)
-
+        scheduler_config = copyConfig(config)
         instance_id = len(self.instances)
         # Ensure a unique command socket per scheduler instance
         command_socket = os.path.join(
@@ -2587,15 +2591,28 @@ class ZuulTestCase(BaseTestCase):
             self.addCleanup, self.validate_tenants, self.wait_for_init,
             self.disable_pipelines)
 
-    def createLauncher(self):
+    def createLauncher(self, instance_id=0, connection_filter=None):
+        launcher_config = copyConfig(self.config)
+        # Ensure a unique command socket per instance
+        command_socket = os.path.join(
+            os.path.dirname(launcher_config.get("launcher", "command_socket")),
+            f"launcher-{instance_id}.socket"
+        )
+        launcher_config.set("launcher", "command_socket", command_socket)
+        launcher_config.set("launcher", "hostname", f"launcher-{instance_id}")
+
+        if connection_filter:
+            launcher_config.set(
+                "launcher", "connection_filter", connection_filter)
+
         launcher_connections = TestConnectionRegistry(
-            self.config, self.test_config,
+            launcher_config, self.test_config,
             self.additional_event_queues,
             self.upstream_root, self.poller_events,
             self.git_url_with_auth, self.addCleanup)
-        launcher_connections.configure(self.config, providers=True)
+        launcher_connections.configure(launcher_config, providers=True)
         launcher = TestLauncher(
-            self.config,
+            launcher_config,
             launcher_connections)
         launcher._start_cleanup = False
         launcher._stats_interval = 1

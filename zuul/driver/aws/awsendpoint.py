@@ -480,17 +480,6 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self.image_id_by_filter_cache = cachetools.TTLCache(
             maxsize=8192, ttl=(5 * 60))
 
-        self.aws = boto3.Session(
-            aws_access_key_id=self.connection.access_key_id,
-            aws_secret_access_key=self.connection.secret_access_key,
-            profile_name=self.connection.profile,
-            region_name=region,
-        )
-        self.ec2_client = self.aws.client("ec2")
-        self.s3 = self.aws.resource('s3')
-        self.s3_client = self.aws.client('s3')
-        self.aws_quotas = self.aws.client("service-quotas")
-        self.ebs_client = self.aws.client('ebs')
         self.provider_label_template_names = {}
         # In listResources, we reconcile AMIs which appear to be
         # imports but have no nodepool tags, however it's possible
@@ -500,9 +489,24 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self.not_our_images = set()
         self.not_our_snapshots = set()
 
+    def _getClients(self):
+        # A separate method for unit tests
+        self.aws = boto3.Session(
+            aws_access_key_id=self.connection.access_key_id,
+            aws_secret_access_key=self.connection.secret_access_key,
+            profile_name=self.connection.profile,
+            region_name=self.region,
+        )
+        self.ec2_client = self.aws.client("ec2")
+        self.s3 = self.aws.resource('s3')
+        self.s3_client = self.aws.client('s3')
+        self.aws_quotas = self.aws.client("service-quotas")
+        self.ebs_client = self.aws.client('ebs')
+
     def startEndpoint(self):
         self._running = True
         self.log.debug("Starting AWS endpoint")
+        self._getClients()
 
         # AWS has a default rate limit for creating instances that
         # works out to a sustained 2 instances/sec, but the actual
