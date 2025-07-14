@@ -191,9 +191,10 @@ class LauncherComponent(BaseComponent):
     kind = "launcher"
 
     def __init__(self, *args, **kwargs):
+        connection_filter = kwargs.pop('connection_filter', None)
         super().__init__(*args, **kwargs)
         self.initial_state = {
-            "connection_filter": None,
+            "connection_filter": connection_filter,
         }
         self.content.update(self.initial_state)
 
