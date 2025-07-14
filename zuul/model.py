@@ -2654,6 +2654,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             request_id=None,
             min_request_version=None,
             zuul_event_id=None,
+            span_info=None,
             max_ready_age=None,
             state=self.State.REQUESTED,
             state_time=time.time(),
@@ -2732,6 +2733,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             request_id=self.request_id,
             min_request_version=self.min_request_version,
             zuul_event_id=self.zuul_event_id,
+            span_info=self.span_info,
             max_ready_age=self.max_ready_age,
             state=self.state,
             state_time=self.state_time,
@@ -2799,6 +2801,16 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             tenant_name=self.tenant_name,
             username=self.username,
             node_properties=self.node_properties,
+        )
+
+    def getSpanAttributes(self):
+        return dict(
+            uuid=self.uuid,
+            request_uuid=self.request_id,
+            state=self.state,
+            provider=self.provider,
+            label=self.label,
+            zuul_event_id=self.zuul_event_id,
         )
 
 
