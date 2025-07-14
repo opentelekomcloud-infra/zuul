@@ -3234,3 +3234,32 @@ class TestRendezvousElection(ZooKeeperBaseTestCase):
         e2.running = False
         c2.state = c2.STOPPED
         t2.join()
+
+
+class TestQuotaCache(ZooKeeperBaseTestCase):
+    def test_quota_cache(self):
+        from zuul.zk.quotacache import QuotaCache
+        c1 = QuotaCache(self.zk_client, 'aws-us-west-2')
+        c2 = QuotaCache(self.zk_client, 'aws-us-west-2')
+        self.assertIsNone(c1.last_set_limits)
+
+        limits = model.QuotaInformation(foo=42)
+        c1.setLimits(limits)
+        for _ in iterate_timeout(10, "cache to sync"):
+            if c2._cached_objects:
+                break
+        self.assertEqual(limits, c2.getLimits())
+        self.assertIsNotNone(c1.last_set_limits)
+
+        res = model.QuotaInformation(bar=82)
+        c1.setResource('instance-small', res)
+        for _ in iterate_timeout(10, "cache to sync"):
+            if len(c2._cached_objects) == 2:
+                break
+        self.assertEqual(res, c2.getResource('instance-small'))
+
+        limits2 = model.QuotaInformation(foo=22)
+        c1.setLimits(limits2)
+        for _ in iterate_timeout(10, "cache to sync"):
+            if limits2 == c2.getLimits():
+                break
