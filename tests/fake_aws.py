@@ -241,9 +241,8 @@ class FakeAws:
 class FakeAwsProviderEndpoint(AwsProviderEndpoint):
     IMAGE_UPLOAD_SLEEP = 1
 
-    # Patch/override adapter methods to aid unit tests
-    def __init__(self, *args, **kw):
-        super().__init__(*args, **kw)
+    def _getClients(self):
+        super()._getClients()
 
         # Note: boto3 doesn't handle ipv6 addresses correctly
         # when in fake mode so we need to intercept the
