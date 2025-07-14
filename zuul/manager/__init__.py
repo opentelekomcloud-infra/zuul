@@ -1197,6 +1197,8 @@ class PipelineManager(metaclass=ABCMeta):
         return True
 
     def _useNodepoolFallback(self, log, job):
+        if not self.tenant.use_nodepool:
+            return False
         labels = {n.label for n in job.nodeset.getNodes()}
         for provider in self.tenant.layout.providers.values():
             labels -= set(provider.labels.keys())

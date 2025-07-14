@@ -1937,6 +1937,8 @@ class TenantParser(object):
                   'authentication-realm': str,
                   # TODO: Ignored, allowed for backwards compat, remove for v5.
                   'report-build-page': bool,
+                  # TODO: Remove after nodepool transitions
+                  'use-nodepool': bool,
                   'web-root': str,
                   }
         return vs.Schema(tenant)
@@ -1995,6 +1997,8 @@ class TenantParser(object):
         tenant.allowed_labels = conf.get('allowed-labels')
         tenant.disallowed_labels = conf.get('disallowed-labels')
         tenant.default_base_job = conf.get('default-parent', 'base')
+        # TODO: switch default value after nodepool transition
+        tenant.use_nodepool = conf.get('use-nodepool', True)
 
         tenant.unparsed_config = conf
         # tpcs is TenantProjectConfigs
@@ -2876,23 +2880,6 @@ class TenantParser(object):
                             "Skipped adding job %s which shadows "
                             "an existing job", job)
 
-        # Now that all the jobs are loaded, verify references to other
-        # config objects.
-        for nodeset in layout.nodesets.values():
-            with parse_context.errorContext(stanza='nodeset', conf=nodeset):
-                with parse_context.accumulator.catchErrors():
-                    nodeset.validateReferences(layout)
-        for jobs in layout.jobs.values():
-            for job in jobs:
-                with parse_context.errorContext(stanza='job', conf=job):
-                    with parse_context.accumulator.catchErrors():
-                        job.validateReferences(layout)
-        for manager in layout.pipeline_managers.values():
-            pipeline = manager.pipeline
-            with parse_context.errorContext(stanza='pipeline', conf=pipeline):
-                with parse_context.accumulator.catchErrors():
-                    pipeline.validateReferences(layout)
-
         if dynamic_layout:
             # We should not actually update the layout with new
             # semaphores, but so that we can validate that the config
@@ -2972,6 +2959,23 @@ class TenantParser(object):
                         flat_config,
                         parse_context.system.system_id)
                     shadow_layout.addProvider(provider)
+
+        # Now that all the objects are added, verify references to
+        # other config objects.
+        for nodeset in layout.nodesets.values():
+            with parse_context.errorContext(stanza='nodeset', conf=nodeset):
+                with parse_context.accumulator.catchErrors():
+                    nodeset.validateReferences(layout)
+        for jobs in layout.jobs.values():
+            for job in jobs:
+                with parse_context.errorContext(stanza='job', conf=job):
+                    with parse_context.accumulator.catchErrors():
+                        job.validateReferences(layout)
+        for manager in layout.pipeline_managers.values():
+            pipeline = manager.pipeline
+            with parse_context.errorContext(stanza='pipeline', conf=pipeline):
+                with parse_context.accumulator.catchErrors():
+                    pipeline.validateReferences(layout)
 
         for e in parsed_config.queue_errors:
             layout.loading_errors.addError(e)

@@ -45,6 +45,7 @@ from zuul.exceptions import (
     LabelForbiddenError,
     MaxOIDCTTLError,
     MaxTimeoutError,
+    LabelNotFoundError,
     NodesetNotFoundError,
     ProjectNotFoundError,
     ProjectNotPermittedError,
@@ -2224,6 +2225,12 @@ class NodeSet(ConfigObject):
     def validateReferences(self, layout):
         self.flattenAlternatives(layout)
 
+        if not layout.tenant.use_nodepool:
+            requested_labels = self.flattenAlternativeLabels()
+            for name in requested_labels:
+                if name not in layout.labels:
+                    raise LabelNotFoundError(name)
+
     def __repr__(self):
         if self.name:
             name = self.name + ' '
@@ -4339,6 +4346,10 @@ class Job(ConfigObject):
             layout.getJob(dependency.name)
         for pb in self.all_playbooks:
             pb.validateReferences(layout)
+
+        if not layout.tenant.use_nodepool:
+            if isinstance(self.nodeset, NodeSet):
+                self.nodeset.validateReferences(layout)
 
     def assertImagePermissions(self, image_build_name, config_object, layout):
         # config_object may be a project or an anonymous job variant
@@ -9728,18 +9739,22 @@ class Layout(object):
     def _checkAddNodeset(self, nodeset):
         # Verify that we can add a nodeset; used by top-level nodeset
         # objects as well as nested nodesets.
-        allowed_labels = self.tenant.allowed_labels
-        disallowed_labels = self.tenant.disallowed_labels
+        # Not applicable to NIZ since we which labels are
+        # allowed/disallowed is implicit due to their presence in
+        # configuration.
+        if self.tenant.use_nodepool:
+            allowed_labels = self.tenant.allowed_labels
+            disallowed_labels = self.tenant.disallowed_labels
 
-        requested_labels = nodeset.flattenAlternativeLabels()
-        filtered_labels = set(filter_allowed_disallowed(
-            requested_labels, allowed_labels, disallowed_labels))
-        rejected_labels = requested_labels - filtered_labels
-        for name in rejected_labels:
-            raise LabelForbiddenError(
-                label=name,
-                allowed_labels=allowed_labels,
-                disallowed_labels=disallowed_labels)
+            requested_labels = nodeset.flattenAlternativeLabels()
+            filtered_labels = set(filter_allowed_disallowed(
+                requested_labels, allowed_labels, disallowed_labels))
+            rejected_labels = requested_labels - filtered_labels
+            for name in rejected_labels:
+                raise LabelForbiddenError(
+                    label=name,
+                    allowed_labels=allowed_labels,
+                    disallowed_labels=disallowed_labels)
 
     def addNodeSet(self, nodeset):
         self._checkAddNodeset(nodeset)
@@ -10331,6 +10346,7 @@ class Tenant(object):
         self.layout = None
         self.allowed_triggers = None
         self.allowed_reporters = None
+        self.use_nodepool = True
         # The unparsed configuration from the main zuul config for
         # this tenant.
         self.unparsed_config = None

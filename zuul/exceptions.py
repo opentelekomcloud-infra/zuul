@@ -330,6 +330,17 @@ class NodesetNotFoundError(ConfigurationSyntaxError):
         super(NodesetNotFoundError, self).__init__(message)
 
 
+class LabelNotFoundError(ConfigurationSyntaxError):
+    zuul_error_name = 'Label Not Found'
+
+    def __init__(self, label):
+        message = textwrap.dedent("""\
+        The label "{label}" was not found.
+        """)
+        message = textwrap.fill(message.format(label=label))
+        super(LabelNotFoundError, self).__init__(message)
+
+
 class PipelineNotPermittedError(ConfigurationSyntaxError):
     zuul_error_name = 'Pipeline Forbidden'
 

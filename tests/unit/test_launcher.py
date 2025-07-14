@@ -15,6 +15,7 @@
 
 import math
 import os
+import re
 import textwrap
 import time
 import uuid
@@ -2161,3 +2162,57 @@ class TestExecutorZone(LauncherBaseTestCase):
         self.assertEqual(A.reported, 2)
         self.assertEqual(self.getJobFromHistory('check-job').node,
                          'debian-normal')
+
+
+class TestNodepoolAbsent(LauncherBaseTestCase):
+    tenant_config_file = 'config/nodepool-absent/main.yaml'
+
+    def test_normal_label(self):
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='debian-normal-job', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+
+    def test_unattached_label(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - project:
+                check:
+                  jobs:
+                    - debian-unattached-job
+            """)
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(A.data['status'], 'NEW')
+        self.assertEqual(A.reported, 1)
+        self.assertTrue(re.search('debian-unattached-job .* NODE_FAILURE',
+                                  A.messages[0]))
+
+    def test_missing_label(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: debian-missing-job
+                nodeset:
+                  nodes:
+                    - label: debian-missing
+                      name: controller
+            - project:
+                check:
+                  jobs:
+                    - debian-missing-job
+            """)
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(A.patchsets[0]['approvals'][0]['value'], "-1")
+        self.assertIn('The label "debian-missing" was not found',
+                      A.messages[0],
+                      "A should have failed the check pipeline")
