@@ -1028,6 +1028,8 @@ class Launcher:
         self._start_cleanup = True
         self.config = config
         self.connections = connections
+        self.connection_filter = get_default(
+            self.config, "launcher", "connection_filter")
         self.repl = None
         # All tenants and all providers
         self.tenant_providers = {}
@@ -1064,7 +1066,8 @@ class Launcher:
         self.hostname = get_default(self.config, "launcher", "hostname",
                                     socket.getfqdn())
         self.component_info = LauncherComponent(
-            self.zk_client, self.hostname, version=get_version_string())
+            self.zk_client, self.hostname, version=get_version_string(),
+            connection_filter=self.connection_filter)
         self.component_info.register()
         self.wake_event = threading.Event()
         self.stop_event = threading.Event()
@@ -1078,8 +1081,6 @@ class Launcher:
                                                   self.component_info)
         self.monitoring_server.start()
 
-        self.connection_filter = get_default(
-            self.config, "launcher", "connection_filter")
         self.api = LauncherApi(
             self.zk_client, COMPONENT_REGISTRY.registry, self.component_info,
             self.wake_event.set, self.connection_filter)

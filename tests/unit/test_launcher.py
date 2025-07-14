@@ -13,6 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import logging
 import math
 import os
 import re
@@ -894,6 +895,32 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(A.reported, 2)
         self.assertEqual(self.getJobFromHistory('check-job').node,
                          'debian-normal')
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_launcher_connection_filter(self):
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+
+        def launcher_score(name, item):
+            return {
+                'launcher-0': 1,
+                'launcher-1': 0,
+            }[name]
+
+        self.useFixture(fixtures.MonkeyPatch(
+            'zuul.zk.launcher.launcher_score',
+            launcher_score))
+
+        launcher2 = self.createLauncher(instance_id=1,
+                                        connection_filter="nope")
+        self.waitUntilSettled()
+        self.launcher.log = logging.getLogger("zuul.Launcher-0")
+        launcher2.log = logging.getLogger("zuul.Launcher-1")
+
+        self.requestNodes(['debian-normal'])
+
+        launcher2.stop()
+        launcher2.join()
 
     @simple_layout('layouts/launch-timeout.yaml', enable_nodepool=True)
     def test_launcher_launch_timeout(self):
