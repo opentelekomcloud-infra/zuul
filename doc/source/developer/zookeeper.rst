@@ -553,3 +553,23 @@ This is a reference for object layout in Zookeeper.
 .. path:: zuul/image-uploads/<image canonical name>/<image build uuid>/endpoint/<endpoint id>
 
    Stores information about an image upload to a particular cloud endpoint.
+
+.. path:: zuul/endpoint/<endpoint name>/quota
+   :type: QuotaCache
+
+   A TreeCache that stores quota information for the endpoint.
+
+.. path:: zuul/endpoint/<endpoint name>/quota/limits
+
+   Stores information about the quota limits of the endpoint.
+
+.. path:: zuul/endpoint/<endpoint name>/quota/unmanaged-usage
+
+   Stores information about the unmanaged quota usage of the endpoint.
+
+.. path:: zuul/endpoint/<endpoint name>/quota/resource/<resource id>
+
+   Stores information about the quota requirements of driver-defined
+   resources (such as instance or volume types).  This allows any
+   launcher to calculate the estimated quota usage of any request,
+   without having an active endpoint.
