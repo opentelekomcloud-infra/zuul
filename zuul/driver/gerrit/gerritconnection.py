@@ -374,21 +374,24 @@ class PeekQueue:
             refupdate = data.get('refUpdate', {})
             ref = refupdate.get('refName')
             inserted = False
-            if kind == 'ref-replication-scheduled':
-                # Note we can get many ref-replication-scheduled events for
-                # a single ref-replication-done event. We can also get
-                # overlapping ref-replication-scheduled events for the same
+            if kind in ('ref-replication-scheduled',
+                        'fetch-ref-replication-scheduled'):
+                # Note we can get many (fetch-)ref-replication-scheduled
+                # events for a single (fetch-)ref-replication-done
+                # event. We can also get overlapping
+                # (fetch-)ref-replication-scheduled events for the same
                 # ref. For this reason we don't use the -done events and
-                # instead rely on counting matching pairs of -scheduled and
-                # ref-replicated events. When all have paired up or we timeout
-                # the related events are considered valid.
+                # instead rely on counting matching pairs of -scheduled
+                # and (fetch-)ref-replicated events. When all have paired
+                # up or we timeout the related events are considered
+                # valid.
                 #
                 # Replication events don't use the same refUpdate and refName
                 # conventions...
                 ref = data.get('ref')
                 project = data.get('project')
                 ref_replication[(project, ref)].append(event)
-            elif kind == 'ref-replicated':
+            elif kind in ('ref-replicated', 'fetch-ref-replicated'):
                 ref = data.get('ref')
                 project = data.get('project')
                 replication_events = ref_replication[(project, ref)]
@@ -496,9 +499,8 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
     IGNORED_EVENTS = (
         'cache-eviction',  # evict-cache plugin
-        'fetch-ref-replicated',
-        'fetch-ref-replication-scheduled',
         'ref-replication-done'
+        'fetch-ref-replication-done'
     )
 
     log = logging.getLogger("zuul.GerritEventConnector")
@@ -685,6 +687,13 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
     EVENT_SOURCE_KAFKA = 'kafka'
     EVENT_SOURCE_KINESIS = 'kinesis'
     EVENT_SOURCE_GCLOUD_PUBSUB = 'gcloudpubsub'
+
+    REPLICATION_EVENTS = (
+        'ref-replication-scheduled',
+        'ref-replicated',
+        'fetch-ref-replication-scheduled',
+        'fetch-ref-replicated',
+    )
 
     def __init__(self, driver, connection_name, connection_config):
         super(GerritConnection, self).__init__(driver, connection_name,
@@ -1439,8 +1448,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
             event.change_number
         if replication:
             valid_events = valid_events or \
-                event_type == "ref-replication-scheduled" or \
-                event_type == "ref-replicated"
+                event_type in self.REPLICATION_EVENTS
         if not (valid_events):
             # Check if the events match specific filters and are
             # valid.
