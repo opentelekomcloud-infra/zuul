@@ -18,7 +18,9 @@ import math
 import threading
 import urllib.parse
 
-from zuul.lib.voluputil import Required, Optional, Nullable, assemble
+from zuul.lib.voluputil import (
+    Required, Optional, Nullable, assemble, discriminate
+)
 from zuul import model
 from zuul.zk import zkobject
 import zuul.provider.schema as provider_schema
@@ -44,9 +46,20 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
     inheritable_zuul_schema = assemble(
         provider_schema.common_image,
     )
-    schema = assemble(
+    cloud_schema = assemble(
         provider_schema.common_image,
         provider_schema.base_image,
+        doc="These are the attributes available for a Cloud image.",
+    )
+    zuul_schema = assemble(
+        provider_schema.common_image,
+        provider_schema.base_image,
+        doc="These are the attributes available for a Zuul image.",
+    )
+    schema = vs.Union(
+        cloud_schema, zuul_schema,
+        discriminant=discriminate(
+            lambda val, alt: val['type'] == alt['type']),
     )
     inheritable_schema = assemble(
         inheritable_cloud_schema,
@@ -215,8 +228,8 @@ class BaseProviderSchema(metaclass=abc.ABCMeta):
             Required('name'): str,
             Required('section'): str,
             Required('labels'): [self.getLabelSchema()],
-            Required('images'): [self.getImageSchema()],
-            Required('flavors'): [self.getFlavorSchema()],
+            Required('images', doc="images doc"): [self.getImageSchema()],
+            Required('flavors', doc="flavors doc"): [self.getFlavorSchema()],
             Optional('label-defaults', default={}):
             self.getInheritableLabelSchema(),
             Optional('image-defaults', default={}):

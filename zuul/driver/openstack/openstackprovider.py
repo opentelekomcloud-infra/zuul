@@ -58,7 +58,7 @@ class OpenstackProviderImage(BaseProviderImage):
     })
     cloud_schema = vs.All(
         assemble(
-            BaseProviderImage.schema,
+            BaseProviderImage.cloud_schema,
             openstack_cloud_schema,
             inheritable_openstack_image_schema,
         ),
@@ -75,12 +75,11 @@ class OpenstackProviderImage(BaseProviderImage):
         Optional('tags', default=dict): {str: str},
     })
     zuul_schema = assemble(
-        BaseProviderImage.schema,
+        BaseProviderImage.zuul_schema,
         openstack_zuul_schema,
         inheritable_openstack_image_schema,
         inheritable_openstack_zuul_schema,
     )
-
     inheritable_cloud_schema = assemble(
         BaseProviderImage.inheritable_cloud_schema,
         inheritable_openstack_image_schema,
@@ -93,7 +92,8 @@ class OpenstackProviderImage(BaseProviderImage):
     schema = vs.Union(
         cloud_schema, zuul_schema,
         discriminant=discriminate(
-            lambda val, alt: val['type'] == alt['type']))
+            lambda val, alt: val['type'] == alt['type']),
+    )
     inheritable_schema = assemble(
         inheritable_cloud_schema,
         inheritable_zuul_schema,
@@ -134,7 +134,10 @@ class OpenstackProviderLabel(BaseProviderLabel):
         Optional('az'): Nullable(str),
         Optional('auto-floating-ip', default=True): bool,
         Optional('boot-from-volume', default=False): bool,
-        Optional('networks', default=[]): [str],  # TODO: as_list?
+        Optional(
+            'networks', default=[],
+            doc="""The OpenStack networks to associate with the node."""
+        ): [str],  # TODO: as_list?
         Optional('security-groups', default=[]): [str],  # TODO: as_list?
     })
     inheritable_schema = assemble(
