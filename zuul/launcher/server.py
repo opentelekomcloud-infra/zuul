@@ -35,6 +35,7 @@ import cachetools
 import mmh3
 import paramiko
 import requests
+from opentelemetry import trace
 
 from zuul import exceptions, model
 import zuul.lib.repl
@@ -983,6 +984,7 @@ class CleanupWorker:
 
 class Launcher:
     log = logging.getLogger("zuul.Launcher")
+    tracer = trace.get_tracer("zuul")
     # Max. time to wait for a cache to sync
     CACHE_SYNC_TIMEOUT = 10
     # Max. time the main event loop is allowed to sleep
@@ -1421,6 +1423,9 @@ class Launcher:
             self.system.system_id, label, node_uuid, provider, request)
         node_class = provider.driver.getProviderNodeClass()
         label_quota = provider.getQuotaForLabel(label)
+        with trace.use_span(request._span):
+            node_span = self.tracer.start_span("ProviderNode")
+        span_info = tracing.getSpanInfo(node_span)
         node = node_class.new(
             ctx,
             uuid=node_uuid,
@@ -1433,6 +1438,7 @@ class Launcher:
             executor_zone=label.executor_zone,
             request_id=request.uuid,
             zuul_event_id=request.zuul_event_id,
+            span_info=span_info,
             connection_name=provider.connection_name,
             tenant_name=request.tenant_name,
             provider=provider.canonical_name,
@@ -1734,6 +1740,8 @@ class Launcher:
                 log.debug("Removing provider node %s", node)
                 node.delete(ctx)
                 node.releaseLock(ctx)
+                tracing.endSavedSpan(
+                    node.span_info, attributes=node.getSpanAttributes())
 
     def _processMinReady(self):
         if not self.api.nodes_cache.waitForSync(
