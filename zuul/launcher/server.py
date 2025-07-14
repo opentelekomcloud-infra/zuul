@@ -1538,6 +1538,17 @@ class Launcher:
                         with node.activeContext(ctx):
                             node.setState(state)
                         self.wake_event.set()
+
+                # Export span for node creation phase
+                if (node.state in node.FINAL_STATES and
+                        node.create_state_machine):
+                    with trace.use_span(tracing.restoreSpan(node.span_info)):
+                        with self.tracer.start_as_current_span(
+                            "ProviderNodeCreate",
+                            start_time=node.create_state_machine.start_time,
+                            attributes=node.getSpanAttributes()
+                        ):
+                            pass
             # Deallocate ready node w/o a request for re-use
             if (node.request_id and not request
                     and node.state == node.State.READY):
@@ -1742,8 +1753,17 @@ class Launcher:
                 log.debug("Removing provider node %s", node)
                 node.delete(ctx)
                 node.releaseLock(ctx)
-                tracing.endSavedSpan(
-                    node.span_info, attributes=node.getSpanAttributes())
+                # Export provider node spans
+                node_span = tracing.restoreSpan(node.span_info)
+                with trace.use_span(node_span, end_on_exit=True):
+                    node_span.set_attributes(node.getSpanAttributes())
+                    if node.delete_state_machine:
+                        with self.tracer.start_as_current_span(
+                            "ProviderNodeDelete",
+                            start_time=node.delete_state_machine.start_time,
+                            attributes=node.getSpanAttributes()
+                        ):
+                            pass
 
     def _processMinReady(self):
         if not self.api.nodes_cache.waitForSync(
