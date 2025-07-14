@@ -26,8 +26,17 @@ from zuul.lib.voluputil import Required, Optional, Nullable
 # section stanza, or in a section/provider label, or in a standalone
 # label.
 common_label = vs.Schema({
-    Optional('boot-timeout', default=300): int,
-    Optional('executor-zone'): Nullable(str),
+    Optional(
+        'boot-timeout', default=300,
+        doc="""The time (in seconds) to wait for a node to boot.""",
+    ): int,
+    Optional(
+        'executor-zone',
+        doc="""\
+        Specify that a Zuul executor in the specified zone is
+        used to run jobs with nodes from this label.
+        """,
+    ): Nullable(str),
     Optional('tags', default=dict): {str: str},
 })
 

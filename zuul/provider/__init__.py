@@ -53,11 +53,13 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
     cloud_schema = assemble(
         provider_schema.common_image,
         provider_schema.base_image,
+        doc="These are the attributes available for a Cloud image.",
     )
     zuul_schema = assemble(
         provider_schema.common_image,
         provider_schema.common_image_zuul,
         provider_schema.base_image,
+        doc="These are the attributes available for a Zuul image.",
     )
     schema = vs.Union(
         cloud_schema, zuul_schema,
@@ -231,8 +233,14 @@ class BaseProviderSchema(metaclass=abc.ABCMeta):
             Required('name'): str,
             Required('section'): str,
             Required('labels'): [self.getLabelSchema()],
-            Required('images'): [self.getImageSchema()],
-            Required('flavors'): [self.getFlavorSchema()],
+            Required(
+                'images',
+                doc="""A list of images associated with this provider."""
+            ): [self.getImageSchema()],
+            Required(
+                'flavors',
+                doc="""A list of flavors associated with this provider."""
+            ): [self.getFlavorSchema()],
             Optional('label-defaults', default={}):
             self.getInheritableLabelSchema(),
             Optional('image-defaults', default={}):
