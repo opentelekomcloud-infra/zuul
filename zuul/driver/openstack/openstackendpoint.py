@@ -438,10 +438,10 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
 
         self._last_image_check_failure = time.time()
         self._last_port_cleanup = None
-        self._client = self._getClient()
 
     def startEndpoint(self):
         self.log.debug("Starting OpenStack endpoint")
+        self._client = self._getClient()
         self._running = True
         # The default http connection pool size is 10; match it for
         # efficiency.
@@ -641,7 +641,7 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
         )
 
     def getImageFormat(self):
-        return self._client.config.config['image_format']
+        return self._getClient().config.config['image_format']
 
     def getRegionName(self):
         # With OpenStackSDK, users can omit the region and the SDK may
