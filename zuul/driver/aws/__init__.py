@@ -27,11 +27,11 @@ class AwsDriver(Driver, EndpointCacheMixin,
     def getConnection(self, name, config):
         return awsconnection.AwsConnection(self, name, config)
 
-    def getProvider(self, connection, tenant_name, canonical_name,
-                    provider_config, system_id):
+    def getProvider(self, zk_client, connection, tenant_name,
+                    canonical_name, provider_config, system_id):
         return awsprovider.AwsProvider(
-            self, connection, tenant_name, canonical_name, provider_config,
-            system_id)
+            self, zk_client, connection, tenant_name,
+            canonical_name, provider_config, system_id)
 
     def getProviderClass(self):
         return awsprovider.AwsProvider
@@ -53,8 +53,8 @@ class AwsDriver(Driver, EndpointCacheMixin,
         ])
         return self.getEndpointById(
             endpoint_id,
-            create_args=(self, provider.connection, provider.region,
-                         provider.system_id))
+            create_args=(self, provider.zk_client, provider.connection,
+                         provider.region, provider.system_id))
 
     def stop(self):
         self.stopEndpoints()

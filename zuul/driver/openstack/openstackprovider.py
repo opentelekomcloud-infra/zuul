@@ -201,7 +201,8 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
         # We are not fully constructed yet at this point, so we need
         # to peek to get the region and endpoint.
         region = provider_config.get('region')
-        endpoint = connection.driver._getEndpoint(connection, region, None)
+        endpoint = connection.driver._getEndpoint(
+            self.zk_client, connection, region, self.system_id)
         return OpenstackProviderImage(
             image_config, provider_config,
             image_format=endpoint.getImageFormat())
