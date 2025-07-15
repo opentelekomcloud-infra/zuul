@@ -135,8 +135,9 @@ class QuotaCache(ZuulTreeCache):
     def getResource(self, resource):
         key = self._makeKey(QuotaCache.Kind.RESOURCE, resource)
         obj = self._cached_objects.get(key)
-        quota = obj and obj.quota or {}
-        return model.QuotaInformation(**quota)
+        if obj is None:
+            raise KeyError(f"Resource {resource} not in quota cache")
+        return model.QuotaInformation(**obj.quota)
 
     def createZKContext(self):
         return ZKContext(self.zk_client, None, None, self.log)
@@ -160,9 +161,8 @@ class QuotaCache(ZuulTreeCache):
                     kind=kind,
                     resource=resource,
                 )
-        except (BadVersionError, NodeExistsError) as exc:
-            self.log.debug("Skipping update of %s: %s", path, repr(exc))
-            raise
+        except (BadVersionError, NodeExistsError):
+            self.log.debug("Skipping update of %s", path)
 
     def setLimits(self, quota_info):
         self._setValue(QuotaCache.Kind.LIMITS, None, quota_info)

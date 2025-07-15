@@ -299,11 +299,14 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
 
     def getQuotaLimits(self):
         # Get the instance and volume types that this provider handles
+        limits = self.endpoint.quota_cache.getLimits()
+        if limits is None:
+            limits = {}
+        else:
+            limits = limits.quota
         instance_types = {}
         host_types = set()
         volume_types = set()
-        ec2_quotas = self.endpoint._listEC2Quotas()
-        ebs_quotas = self.endpoint._listEBSQuotas()
         for flavor in self.flavors.values():
             if flavor.dedicated_host:
                 host_types.add(flavor.instance_type)
@@ -331,24 +334,24 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
                     continue
                 if not code:
                     continue
-                if code not in ec2_quotas:
+                if code not in limits:
                     self.log.warning(
                         "AWS quota code %s for instance type: %s not known",
                         code, instance_type)
                     continue
-                args[code] = ec2_quotas[code]
+                args[code] = limits[code]
         for host_type in host_types:
             code = self.endpoint._getQuotaCodeForHostType(host_type)
             if code in args:
                 continue
             if not code:
                 continue
-            if code not in ec2_quotas:
+            if code not in limits:
                 self.log.warning(
                     "AWS quota code %s for host type: %s not known",
                     code, host_type)
                 continue
-            args[code] = ec2_quotas[code]
+            args[code] = limits[code]
         for volume_type in volume_types:
             vquota_codes = VOLUME_QUOTA_CODES.get(volume_type)
             if not vquota_codes:
@@ -359,12 +362,12 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
             for resource, code in vquota_codes.items():
                 if code in args:
                     continue
-                if code not in ebs_quotas:
+                if code not in limits:
                     self.log.warning(
                         "AWS quota code %s for volume type: %s not known",
                         code, volume_type)
                     continue
-                value = ebs_quotas[code]
+                value = limits[code]
                 # Unit mismatch: storage limit is in TB, but usage
                 # is in GB.  Translate the limit to GB.
                 if resource == 'storage':
@@ -376,9 +379,25 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
         cloud.min(zuul)
         return cloud
 
+    def refreshQuotaLimits(self, update):
+        if self.endpoint.quota_cache.hasLimits() and not update:
+            return False
+        ec2_quotas = self.endpoint._listEC2Quotas()
+        ebs_quotas = self.endpoint._listEBSQuotas()
+        args = dict()
+        args.update(ec2_quotas)
+        args.update(ebs_quotas)
+        limits = QuotaInformation(**args)
+        self.endpoint.quota_cache.setLimits(limits)
+        return True
+
     def getQuotaForLabel(self, label):
         flavor = self.flavors[label.flavor]
         return self.endpoint.getQuotaForLabel(label, flavor)
+
+    def refreshQuotaForLabel(self, label, update):
+        flavor = self.flavors[label.flavor]
+        return self.endpoint.refreshQuotaForLabel(label, flavor, update)
 
     def downloadUrl(self, url, path):
         return self.endpoint.downloadUrl(url, path)

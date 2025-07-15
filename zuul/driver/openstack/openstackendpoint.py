@@ -531,8 +531,17 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
         return quota_from_limits(compute, volume)
 
     def getQuotaForLabel(self, label, flavor):
-        os_flavor = self._findFlavorByName(flavor.flavor_name)
-        return quota_from_flavor(os_flavor, label=label)
+        # This should not rely on the client connection, only the
+        # quota cache.
+        key = f'flavor-{flavor.flavor_name}'
+        return self.quota_cache.getResource(key)
+
+    def refreshQuotaForLabel(self, label, flavor, update):
+        key = f'flavor-{flavor.flavor_name}'
+        if update or not self.quota_cache.hasResource(key):
+            os_flavor = self._findFlavorByName(flavor.flavor_name)
+            quota = quota_from_flavor(os_flavor, label=label)
+            self.quota_cache.setResource(key, quota)
 
     def getAZs(self):
         # TODO: This is currently unused; it's unclear if we will need

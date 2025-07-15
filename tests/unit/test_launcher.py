@@ -210,6 +210,12 @@ class LauncherBaseTestCase(ZuulTestCase):
         self.patch(zuul.driver.aws.awsprovider.AwsProvider,
                    'getQuotaLimits',
                    getQuotaLimits)
+
+        def refreshQuotaLimits(self, *args, **kw):
+            return False
+        self.patch(zuul.driver.aws.awsprovider.AwsProvider,
+                   'refreshQuotaLimits',
+                   refreshQuotaLimits)
         super().setUp()
 
     def getNodes(self, request):
@@ -774,7 +780,7 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(nodes[0].host_keys, [])
         provider = self.launcher._getProvider(
             'tenant-one', 'aws-us-east-1-main')
-        used = self.launcher.getUnmanagedQuotaUsed(provider)
+        used = provider.getEndpoint().quota_cache.getUnmanagedUsage()
         self.assertEqual(0, used.getResources().get('instances', 0))
         self.launcher._runStats()
 
@@ -1060,7 +1066,7 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(set(request.nodes), {n.uuid for n in provider_nodes})
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
-    @okay_tracebacks('_getQuotaForInstanceType')
+    @okay_tracebacks('getResource')
     @mock.patch('zuul.launcher.server.Launcher.doesProviderHaveQuotaForLabel',
                 return_value=True)
     @mock.patch('zuul.driver.aws.awsprovider.AwsProvider.getQuotaForLabel',
@@ -1154,7 +1160,7 @@ class TestLauncher(LauncherBaseTestCase):
 
     @simple_layout('layouts/launcher-nodeset-fallback.yaml',
                    enable_nodepool=True)
-    @okay_tracebacks('_getQuotaForInstanceType')
+    @okay_tracebacks('getResource')
     def test_nodeset_fallback(self):
         # Test that nodeset fallback works
         self.executor_server.hold_jobs_in_build = True
@@ -1262,6 +1268,7 @@ class TestLauncher(LauncherBaseTestCase):
     @driver_config('test_launcher', quotas={
         'instances': 2,
     })
+    @okay_tracebacks('_listImportSnapshotTasks')
     def test_quota_external_usage(self):
         # Test that we spread quota use out among multiple providers
         self.waitUntilSettled()
@@ -1272,6 +1279,10 @@ class TestLauncher(LauncherBaseTestCase):
             ImageId="ami-12c6146b", MinCount=2, MaxCount=2,
         )
         self.launcher._provider_quota_cache.clear()
+
+        # The cleanup worker is responsible for recording external
+        # usage in the quota cache
+        self.launcher.cleanup_worker._run()
 
         # We expect a timeout waiting for nodes, and no other exceptions
         with testtools.ExpectedException(Exception):
@@ -1486,7 +1497,6 @@ class TestLauncher(LauncherBaseTestCase):
 
     @simple_layout('layouts/launcher-noop.yaml',
                    enable_nodepool=True)
-    @okay_tracebacks('_getQuotaForInstanceType')
     def test_noop_job(self):
         # Test that nodeset fallback works
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
