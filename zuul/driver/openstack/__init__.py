@@ -32,11 +32,11 @@ class OpenstackDriver(Driver, EndpointCacheMixin,
     def getConnection(self, name, config):
         return openstackconnection.OpenstackConnection(self, name, config)
 
-    def getProvider(self, connection, tenant_name, canonical_name,
-                    provider_config, system_id):
+    def getProvider(self, zk_client, connection, tenant_name,
+                    canonical_name, provider_config, system_id):
         return openstackprovider.OpenstackProvider(
-            self, connection, tenant_name, canonical_name, provider_config,
-            system_id)
+            self, zk_client, connection, tenant_name,
+            canonical_name, provider_config, system_id)
 
     def getProviderClass(self):
         return openstackprovider.OpenstackProvider
@@ -47,7 +47,7 @@ class OpenstackDriver(Driver, EndpointCacheMixin,
     def getProviderNodeClass(self):
         return openstackmodel.OpenstackProviderNode
 
-    def _getEndpoint(self, connection, region, system_id):
+    def _getEndpoint(self, zk_client, connection, region, system_id):
         region_str = region or ''
         endpoint_id = '/'.join([
             urllib.parse.quote_plus(connection.connection_name),
@@ -55,11 +55,12 @@ class OpenstackDriver(Driver, EndpointCacheMixin,
         ])
         return self.getEndpointById(
             endpoint_id,
-            create_args=(self, connection, region, system_id))
+            create_args=(self, zk_client, connection, region, system_id))
 
     def getEndpoint(self, provider):
-        return self._getEndpoint(provider.connection, provider.region,
-                                 provider.system_id)
+        return self._getEndpoint(
+            provider.zk_client, provider.connection, provider.region,
+            provider.system_id)
 
     def stop(self):
         self.stopEndpoints()

@@ -2954,7 +2954,7 @@ class TenantParser(object):
                     schema = connection.driver.getProviderSchema()
                     schema(flat_config)
                     provider = connection.driver.getProvider(
-                        connection, tenant.name,
+                        self.zk_client, connection, tenant.name,
                         provider_config.canonical_name,
                         flat_config,
                         parse_context.system.system_id)
