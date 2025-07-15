@@ -60,8 +60,8 @@ class QuotaCache(ZuulTreeCache):
 
     log = logging.getLogger('zuul.QuotaCache')
 
-    def __init__(self, client, endpoint):
-        self.endpoint = urllib.parse.quote_plus(endpoint)
+    def __init__(self, client, endpoint_name):
+        self.endpoint = urllib.parse.quote_plus(endpoint_name)
         root = f'/zuul/endpoint/{self.endpoint}/quota'
         resource_path = os.path.join(root, 'resource')
         super().__init__(client, root, async_worker=False)

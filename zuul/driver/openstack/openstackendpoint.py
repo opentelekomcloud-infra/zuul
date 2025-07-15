@@ -43,6 +43,7 @@ from zuul.provider import (
     BaseProviderEndpoint,
     statemachine
 )
+from zuul.zk.quotacache import QuotaCache
 
 
 CACHE_TTL = 10
@@ -416,11 +417,12 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
 
     IMAGE_UPLOAD_SLEEP = 30
 
-    def __init__(self, driver, connection, region, system_id):
+    def __init__(self, zk_client, driver, connection, region, system_id):
         name = f'{connection.connection_name}-{region}'
-        super().__init__(driver, connection, name, system_id)
+        super().__init__(zk_client, driver, connection, name, system_id)
         self.log = logging.getLogger(f"zuul.openstack.{self.name}")
         self.region = region
+        self.quota_cache = QuotaCache(self.zk_client, self.name)
 
         # Wrap these instance methods with a per-instance LRU cache so
         # that we don't leak memory over time when the endpoint is
