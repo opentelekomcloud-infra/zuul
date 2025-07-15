@@ -210,6 +210,12 @@ class LauncherBaseTestCase(ZuulTestCase):
         self.patch(zuul.driver.aws.awsprovider.AwsProvider,
                    'getQuotaLimits',
                    getQuotaLimits)
+
+        def refreshQuotaLimits(self, *args, **kw):
+            return False
+        self.patch(zuul.driver.aws.awsprovider.AwsProvider,
+                   'refreshQuotaLimits',
+                   refreshQuotaLimits)
         super().setUp()
 
     def getNodes(self, request):
