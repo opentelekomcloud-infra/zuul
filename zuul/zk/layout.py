@@ -230,7 +230,7 @@ class LayoutProvidersStore(ZooKeeperSimpleBase):
         self.connections = connections
         self.system_id = system_id
 
-    def get(self, context, tenant_name):
+    def get(self, context, zk_client, tenant_name):
         path = f"{self.tenant_root}/{tenant_name}/provider"
         try:
             repo_names = self.kazoo_client.get_children(path)
@@ -245,7 +245,8 @@ class LayoutProvidersStore(ZooKeeperSimpleBase):
             for provider_name in provider_names:
                 provider_path = (f"{path}/{provider_name}/config")
                 yield BaseProvider.fromZK(
-                    context, provider_path, self.connections, self.system_id
+                    context, provider_path, self.connections,
+                    self.system_id, zk_client
                 )
 
     def set(self, context, tenant_name, providers):

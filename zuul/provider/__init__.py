@@ -125,8 +125,9 @@ class BaseProviderEndpoint(metaclass=abc.ABCMeta):
     the unit of visibility of instances, VPCs, images, etc.
     """
 
-    def __init__(self, driver, connection, name, system_id):
+    def __init__(self, driver, zk_client, connection, name, system_id):
         self.driver = driver
+        self.zk_client = zk_client
         self.connection = connection
         self.name = name
         self.system_id = system_id
@@ -236,14 +237,12 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
     def __init__(self, *args):
         super().__init__()
         if args:
-            (driver, connection, tenant_name, canonical_name, config,
-             system_id) = args
+            (driver, zk_client, connection, tenant_name,
+             canonical_name, config, system_id) = args
             config = config.copy()
             config.pop('_source_context')
             config.pop('_start_mark')
-            parsed_config = self.parseConfig(config, connection)
-            parsed_config.pop('connection')
-            self._set(
+            attrs = dict(
                 driver=driver,
                 connection=connection,
                 connection_name=connection.connection_name,
@@ -251,15 +250,22 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
                 canonical_name=canonical_name,
                 config=config,
                 system_id=system_id,
-                **parsed_config,
+                zk_client=zk_client,
             )
+            # Some of the values above are needed when parsing
+            # (especially images)
+            self._set(**attrs)
+            parsed_config = self.parseConfig(config, connection)
+            parsed_config.pop('connection')
+            parsed_config.update(attrs)
+            self._set(**parsed_config)
 
     def __repr__(self):
         return (f"<{self.__class__.__name__} "
                 f"canonical_name={self.canonical_name}>")
 
     @classmethod
-    def fromZK(cls, context, path, connections, system_id):
+    def fromZK(cls, context, path, connections, system_id, zk_client):
         """Deserialize a Provider (subclass) from ZK.
 
         To deserialize a Provider from ZK, pass the connection
@@ -271,13 +277,18 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
 
         """
         raw_data, zstat = cls._loadData(context, path)
-        extra = {'connections': connections}
+        extra = {
+            'connections': connections,
+            'system_id': system_id,
+            'zk_client': zk_client,
+        }
         obj = cls._fromRaw(raw_data, zstat, extra)
         connection = connections.connections[obj.connection_name]
         obj._set(
             connection=connection,
             driver=connection.driver,
             system_id=system_id,
+            zk_client=zk_client,
         )
         return obj
 
@@ -301,6 +312,10 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         return ret
 
     def deserialize(self, raw, context, extra):
+        self._set(
+            system_id=extra['system_id'],
+            zk_client=extra['zk_client'],
+        )
         data = super().deserialize(raw, context)
         connections = extra['connections']
         connection = connections.connections[data['connection_name']]
