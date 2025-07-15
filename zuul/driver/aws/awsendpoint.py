@@ -446,11 +446,12 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
     IMAGE_UPLOAD_SLEEP = 30
     LAUNCH_TEMPLATE_PREFIX = 'zuul-launch-template'
 
-    def __init__(self, driver, connection, region, system_id):
+    def __init__(self, zk_client, driver, connection, region, system_id):
         name = f'{connection.connection_name}-{region}'
-        super().__init__(driver, connection, name, system_id)
+        super().__init__(zk_client, driver, connection, name, system_id)
         self.log = logging.getLogger(f"zuul.aws.{self.name}")
         self.region = region
+        self.quota_cache = QuotaCache(self.zk_client, self.name)
 
         self.rate_limiter = RateLimiter(self.name,
                                         connection.rate)

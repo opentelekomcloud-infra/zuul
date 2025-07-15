@@ -936,6 +936,21 @@ class CleanupWorker:
             if p.getEndpoint().canonical_name == endpoint.canonical_name
         ]
 
+        # First update quota; we get different classes back from
+        # listInstances and listResources, so we can't use the same
+        # call for both.  Ideally the endpoint will cache the internal
+        # API call.
+        quota_used = model.QuotaInformation()
+        system_id = self.system.system_id
+        node_ids = [n.uuid for n in self.api.nodes_cache.getItems()]
+        for instance in endpoint.listInstances():
+            meta = instance.metadata
+            if (meta.get('zuul_system_id') == system_id and
+                meta.get('zuul_node_uuid') in node_ids):
+                continue
+            quota_used.add(instance.getQuotaInformation())
+        endpoint.quota_cache.setUnmanagedUsage(quota_used)
+
         for resource in endpoint.listResources(providers):
             if (resource.metadata.get('zuul_system_id') !=
                 self.launcher.system.system_id):
@@ -2059,7 +2074,7 @@ class Launcher:
             if layout_state:
                 with self.createZKContext(tlock, self.log) as context:
                     providers = list(self.layout_providers_store.get(
-                        context, tenant_name))
+                        context, self.zk_client, tenant_name))
                     self.tenant_providers[tenant_name] = providers
                     for provider in providers:
                         self.log.debug("Loaded provider %s", provider.name)
@@ -2379,20 +2394,6 @@ class Launcher:
                 used.add(node.quota)
         return used
 
-    def getUnmanagedQuotaUsed(self, provider):
-        used = model.QuotaInformation()
-
-        node_ids = [n.uuid for n in self.api.nodes_cache.getItems()]
-        endpoint = provider.getEndpoint()
-        system_id = self.system.system_id
-        for instance in endpoint.listInstances():
-            meta = instance.metadata
-            if (meta.get('zuul_system_id') == system_id and
-                meta.get('zuul_node_uuid') in node_ids):
-                continue
-            used.add(instance.getQuotaInformation())
-        return used
-
     def getProviderQuota(self, provider):
         val = self._provider_quota_cache.get(provider.canonical_name)
         if val:
@@ -2415,7 +2416,7 @@ class Launcher:
         # This is initialized with the full tenant quota and later becomes
         # the quota available for nodepool.
         quota = self.getProviderQuota(provider).copy()
-        unmanaged = self.getUnmanagedQuotaUsed(provider)
+        unmanaged = provider.getEndpoint().quota_cache.getUnmanagedUsage()
         self.log.debug("Provider unmanaged quota used for %s: %s",
                        provider.name, unmanaged)
 
