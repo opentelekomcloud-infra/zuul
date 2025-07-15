@@ -182,6 +182,19 @@ class BaseProviderEndpoint(metaclass=abc.ABCMeta):
         """
         pass
 
+    def refreshQuotaLimits(self, update):
+        """Query the endpoint for quota limits and store them in the quota
+        cache
+
+        :param bool update: Whether an update should be performed even
+            if there are values present.
+
+        :return: Whether the cache was updated
+        :rtype: bool
+
+        """
+        raise NotImplementedError()
+
 
 class BaseProviderSchema(metaclass=abc.ABCMeta):
     def getLabelSchema(self):
@@ -237,14 +250,12 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
     def __init__(self, *args):
         super().__init__()
         if args:
-            (zk_client, driver, connection, tenant_name,
+            (driver, zk_client, connection, tenant_name,
              canonical_name, config, system_id) = args
             config = config.copy()
             config.pop('_source_context')
             config.pop('_start_mark')
-            parsed_config = self.parseConfig(config, connection)
-            parsed_config.pop('connection')
-            self._set(
+            attrs = dict(
                 driver=driver,
                 connection=connection,
                 connection_name=connection.connection_name,
@@ -253,8 +264,14 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
                 config=config,
                 system_id=system_id,
                 zk_client=zk_client,
-                **parsed_config,
             )
+            # Some of the values above are needed when parsing
+            # (especially images)
+            self._set(**attrs)
+            parsed_config = self.parseConfig(config, connection)
+            parsed_config.pop('connection')
+            parsed_config.update(attrs)
+            self._set(**parsed_config)
 
     def __repr__(self):
         return (f"<{self.__class__.__name__} "
@@ -273,7 +290,11 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
 
         """
         raw_data, zstat = cls._loadData(context, path)
-        extra = {'connections': connections}
+        extra = {
+            'connections': connections,
+            'system_id': system_id,
+            'zk_client': zk_client,
+        }
         obj = cls._fromRaw(raw_data, zstat, extra)
         connection = connections.connections[obj.connection_name]
         obj._set(
@@ -304,6 +325,10 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         return ret
 
     def deserialize(self, raw, context, extra):
+        self._set(
+            system_id=extra['system_id'],
+            zk_client=extra['zk_client'],
+        )
         data = super().deserialize(raw, context)
         connections = extra['connections']
         connection = connections.connections[data['connection_name']]
@@ -523,6 +548,17 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         """
         return model.QuotaInformation(instances=1)
 
+    def refreshQuotaForLabel(self, label, update):
+        """Query the endpoint for quota used for a label and update
+        the quota cache
+
+        :param ProviderLabel label: A config object describing
+            a label for an instance.
+        :param bool update: Whether an update should be performed even
+            if there are values present.
+        """
+        raise NotImplementedError()
+
     def getAZs(self):
         """Return a list of availability zones for this provider
 
@@ -644,6 +680,20 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         :param ProviderNode node: The node of the server
         """
         pass
+
+    def postConfig(self, update=False):
+        """Perform any provider-global actions after reconfiguration
+
+        This will be called any time a tenant layout is updated, once
+        for each provider.  It may be called multiple times for the
+        same update, and it may be called even when nothing about the
+        provider changed.
+
+        """
+        updated = self.refreshQuotaLimits(update)
+        if updated or update:
+            for label in self.labels.values():
+                self.refreshQuotaForLabel(label, update)
 
 
 class EndpointCacheMixin:

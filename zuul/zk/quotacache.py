@@ -14,6 +14,7 @@
 
 import json
 import logging
+import math
 import os
 import time
 import urllib.parse
@@ -92,13 +93,23 @@ class QuotaCache(ZuulTreeCache):
         # We should fetch if we have a matching key
         return (key, bool(key))
 
+    def hasLimits(self):
+        obj = self._cached_objects.get(('limit',))
+        return bool(obj is not None)
+
+    def hasResource(self, resource):
+        obj = self._cached_objects.get(('resource', resource))
+        return bool(obj is not None)
+
     def getLimits(self):
         obj = self._cached_objects.get(('limit',))
-        return model.QuotaInformation(**obj.quota)
+        quota = obj and obj.quota or {}
+        return model.QuotaInformation(default=math.inf, **quota)
 
     def getResource(self, resource):
         obj = self._cached_objects.get(('resource', resource))
-        return model.QuotaInformation(**obj.quota)
+        quota = obj and obj.quota or {}
+        return model.QuotaInformation(**quota)
 
     def createZKContext(self):
         return ZKContext(self.zk_client, None, None, self.log)

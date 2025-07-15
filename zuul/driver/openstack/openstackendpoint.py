@@ -525,8 +525,17 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
         return quota_from_limits(compute, volume)
 
     def getQuotaForLabel(self, label, flavor):
-        os_flavor = self._findFlavorByName(flavor.flavor_name)
-        return quota_from_flavor(os_flavor, label=label)
+        # This should not rely on the client connection, only the
+        # quota cache.
+        key = f'flavor-{flavor.flavor_name}'
+        return self.quota_cache.getResource(key)
+
+    def refreshQuotaForLabel(self, label, flavor, update):
+        key = f'flavor-{flavor.flavor_name}'
+        if update or not self.quota_cache.hasResource(key):
+            os_flavor = self._findFlavorByName(flavor.flavor_name)
+            quota = quota_from_flavor(os_flavor, label=label)
+            self.quota_cache.setResource(key, quota)
 
     def getAZs(self):
         # TODO: This is currently unused; it's unclear if we will need
@@ -619,18 +628,27 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
             self.getRegionName(),
             server, quota)
 
-    def _getClient(self):
+    @staticmethod
+    def _constructClient(config_files, cloud_name, region, rate):
         config = openstack.config.OpenStackConfig(
-            config_files=self.connection.config_files,
+            config_files=config_files,
             load_envvars=False,
             app_name='zuul',
         )
-        region = config.get_one(cloud=self.connection.cloud_name,
-                                region_name=self.region)
+        region = config.get_one(cloud=cloud_name,
+                                region_name=region)
         return openstack.connection.Connection(
             config=region,
             use_direct_get=False,
-            rate_limit=self.connection.rate,
+            rate_limit=rate,
+        )
+
+    def _getClient(self):
+        return self._constructClient(
+            self.connection.config_files,
+            self.connection.cloud_name,
+            self.region,
+            self.connection.rate,
         )
 
     def getImageFormat(self):
