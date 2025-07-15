@@ -241,14 +241,30 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
         return self.endpoint.listInstances()
 
     def getQuotaLimits(self):
-        cloud = self.endpoint.getQuotaLimits()
+        limits = self.endpoint.quota_cache.getLimits()
+        if limits is None:
+            limits = {}
+        else:
+            limits = limits.quota
+        cloud = QuotaInformation(default=math.inf, **limits)
         zuul = QuotaInformation(default=math.inf, **self.resource_limits)
         cloud.min(zuul)
         return cloud
 
+    def refreshQuotaLimits(self, update):
+        if self.endpoint.quota_cache.hasLimits() and not update:
+            return False
+        limits = self.endpoint.getQuotaLimits()
+        self.endpoint.quota_cache.setLimits(limits)
+        return True
+
     def getQuotaForLabel(self, label):
         flavor = self.flavors[label.flavor]
         return self.endpoint.getQuotaForLabel(label, flavor)
+
+    def refreshQuotaForLabel(self, label, update):
+        flavor = self.flavors[label.flavor]
+        return self.endpoint.refreshQuotaForLabel(label, flavor, update)
 
     def getImageUploadJob(self, provider_image, image_name,
                           filename, image_format, metadata, md5, sha256):

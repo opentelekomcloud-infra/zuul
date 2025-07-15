@@ -703,6 +703,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             yield AwsInstance(self.region, instance, None, quota)
 
     def getQuotaForLabel(self, label, flavor, instance_type=None):
+        # This should not rely on the client connection, only the
+        # quota cache.
+
         # When using the Fleet API, we may need to fill in quota
         # information from the actual instance, so this internal
         # method operates on the label alone or label+instance.
@@ -713,22 +716,49 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         # it is, then we will merge the two quotas below rather than
         # switch.
         if flavor.dedicated_host:
-            quota = self._getQuotaForHostType(
-                flavor.instance_type)
+            key = f'host-{flavor.instance_type}'
+            quota = self.quota_cache.getResource(key)
         elif flavor.fleet and instance_type is None:
             # For fleet API, do not check quota before launch the instance
             quota = QuotaInformation(instances=1)
         else:
             check_instance_type = flavor.instance_type or instance_type
-            quota = self._getQuotaForInstanceType(
-                check_instance_type,
-                SPOT if flavor.market_type == 'spot' else ON_DEMAND)
+            if flavor.market_type == 'spot':
+                key = f'spot-instance-{check_instance_type}'
+            else:
+                key = f'market-instance-{check_instance_type}'
+            quota = self.quota_cache.getResource(key)
         if label.volume_type:
-            quota.add(self._getQuotaForVolumeType(
+            quota.add(self._constructQuotaForVolumeType(
                 label.volume_type,
                 storage=label.volume_size,
                 iops=label.iops))
         return quota
+
+    def refreshQuotaForLabel(self, label, flavor, update):
+        if flavor.dedicated_host:
+            key = f'host-{flavor.instance_type}'
+            if update or not self.quota_cache.hasResource(key):
+                quota = self._getQuotaForHostType(flavor.instance_type)
+                if quota is not None:
+                    self.quota_cache.setResource(key, quota)
+        else:
+            instance_types = []
+            if flavor.instance_type:
+                instance_types.append(flavor.instance_type)
+            if flavor.fleet:
+                instance_types.extend(flavor.fleet.get('instance-types', []))
+            for instance_type in instance_types:
+                if flavor.market_type == 'spot':
+                    key = f'spot-instance-{instance_type}'
+                else:
+                    key = f'market-instance-{instance_type}'
+                if update or not self.quota_cache.hasResource(key):
+                    quota = self._getQuotaForInstanceType(
+                        instance_type,
+                        SPOT if flavor.market_type == 'spot' else ON_DEMAND)
+                    if quota is not None:
+                        self.quota_cache.setResource(key, quota)
 
     def _getBucketRegion(self, bucket_name):
         data = self.s3_client.get_bucket_location(Bucket=bucket_name)
@@ -1238,14 +1268,10 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             ram = itype['InstanceTypes'][0]['MemoryInfo']['SizeInMiB']
             code = self._getQuotaCodeForInstanceType(instance_type,
                                                      market_type_option)
-        except botocore.exceptions.ClientError as error:
-            if error.response['Error']['Code'] == 'InvalidInstanceType':
-                self.log.exception("Error querying instance type: %s",
-                                   instance_type)
-                # Re-raise as a configuration exception so that the
-                # statemachine driver resets quota.
-                raise exceptions.RuntimeConfigurationException(str(error))
-            raise
+        except botocore.exceptions.ClientError:
+            self.log.warning("Error querying instance type: %s",
+                             instance_type)
+            return None
         # We include cores to match the overall cores quota (which may
         # be set as a tenant resource limit), and include vCPUs for the
         # specific AWS quota code which in for a specific instance
@@ -1290,7 +1316,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             args[vquota_codes['storage']] = volume['Size']
         return QuotaInformation(**args)
 
-    def _getQuotaForVolumeType(self, volume_type, storage=None, iops=None):
+    def _constructQuotaForVolumeType(self, volume_type,
+                                     storage=None, iops=None):
+        # This doesn't need to consult the API
         vquota_codes = VOLUME_QUOTA_CODES.get(volume_type, {})
         args = {}
         if 'iops' in vquota_codes and iops is not None:

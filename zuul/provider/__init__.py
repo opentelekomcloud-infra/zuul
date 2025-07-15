@@ -21,6 +21,7 @@ import urllib.parse
 from zuul.lib.voluputil import Required, Optional, Nullable, assemble
 from zuul import model
 from zuul.zk import zkobject
+from zuul.zk.quotacache import QuotaCache
 import zuul.provider.schema as provider_schema
 
 import voluptuous as vs
@@ -134,6 +135,7 @@ class BaseProviderEndpoint(metaclass=abc.ABCMeta):
         self.start_lock = threading.Lock()
         self.started = False
         self.stopped = False
+        self.quota_cache = QuotaCache(zk_client, name)
 
     def start(self):
         with self.start_lock:
@@ -545,6 +547,30 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         """
         return model.QuotaInformation(instances=1)
 
+    def refreshQuotaLimits(self, update):
+        """Query the endpoint for quota limits and store them in the quota
+        cache
+
+        :param bool update: Whether an update should be performed even
+            if there are values present.
+
+        :return: Whether the cache was updated
+        :rtype: bool
+
+        """
+        raise NotImplementedError()
+
+    def refreshQuotaForLabel(self, label, update):
+        """Query the endpoint for quota used for a label and update
+        the quota cache
+
+        :param ProviderLabel label: A config object describing
+            a label for an instance.
+        :param bool update: Whether an update should be performed even
+            if there are values present.
+        """
+        raise NotImplementedError()
+
     def getAZs(self):
         """Return a list of availability zones for this provider
 
@@ -666,6 +692,20 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         :param ProviderNode node: The node of the server
         """
         pass
+
+    def postConfig(self, update=False):
+        """Perform any provider-global actions after reconfiguration
+
+        This will be called any time a tenant layout is updated, once
+        for each provider.  It may be called multiple times for the
+        same update, and it may be called even when nothing about the
+        provider changed.
+
+        """
+        updated = self.refreshQuotaLimits(update)
+        if updated or update:
+            for label in self.labels.values():
+                self.refreshQuotaForLabel(label, update)
 
 
 class EndpointCacheMixin:
