@@ -535,7 +535,7 @@ class GitlabConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         self.webhook_token = self.connection_config.get(
             'webhook_token', '')
         self.api_token_name = self.connection_config.get(
-            'api_token_name', '')
+            'api_token_name', 'zuul')
         self.api_token = self.connection_config.get(
             'api_token', '')
         self.keepalive = self.connection_config.get('keepalive', 60)
@@ -663,7 +663,7 @@ class GitlabConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         # https://gitlab.com/gitlab-org/gitlab/-/issues/212953
         # any login name can be used, but it's likely going to be reduce to
         # username/token-name
-        if (cloneurl.startswith('http') and self.api_token_name != '' and
+        if (cloneurl.startswith('http') and self.api_token != '' and
             not re.match("http?://.+:.+@.+", cloneurl)):
             cloneurl = '%s://%s:%s@%s/%s.git' % (
                 self.cloneurl.split('://')[0],
