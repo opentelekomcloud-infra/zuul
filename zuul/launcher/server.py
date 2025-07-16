@@ -1645,6 +1645,7 @@ class Launcher:
                 # node info from the instance.
                 if self._checkNodescanRequest(node, instance, log):
                     node.setState(node.State.READY)
+                    node.nodescan_request = None
                     self.wake_event.set()
                     log.debug("Marking node %s as %s", node, node.state)
                 else:
