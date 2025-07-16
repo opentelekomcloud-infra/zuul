@@ -535,7 +535,7 @@ class GitlabConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         self.webhook_token = self.connection_config.get(
             'webhook_token', '')
         self.api_token_name = self.connection_config.get(
-            'api_token_name', '')
+            'api_token_name', 'zuul')
         self.api_token = self.connection_config.get(
             'api_token', '')
         self.keepalive = self.connection_config.get('keepalive', 60)
