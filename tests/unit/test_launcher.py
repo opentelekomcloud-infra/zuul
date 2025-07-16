@@ -726,6 +726,17 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertReportedStat(
             'zuul.nodes.state.requested',
             kind='g')
+        for _ in iterate_timeout(60, "nodes to be deleted"):
+            if len(self.launcher.api.nodes_cache.getItems()) == 0:
+                break
+        znodes = self.zk_client.client.get_children('/zuul/nodeset/locks')
+        self.assertEqual([], list(znodes))
+        znodes = self.zk_client.client.get_children('/zuul/nodeset/requests')
+        self.assertEqual([], list(znodes))
+        znodes = self.zk_client.client.get_children('/zuul/nodes/locks')
+        self.assertEqual([], list(znodes))
+        znodes = self.zk_client.client.get_children('/zuul/nodes/nodes')
+        self.assertEqual([], list(znodes))
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_canceled_request(self):
@@ -746,6 +757,10 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertHistory([])
         reqs = self.launcher.api.getNodesetRequests()
         self.assertEqual(0, len(reqs))
+        znodes = self.zk_client.client.get_children('/zuul/nodeset/locks')
+        self.assertEqual([], list(znodes))
+        znodes = self.zk_client.client.get_children('/zuul/nodeset/requests')
+        self.assertEqual([], list(znodes))
 
     @simple_layout('layouts/nodepool-empty-nodeset.yaml', enable_nodepool=True)
     def test_empty_nodeset(self):

@@ -153,7 +153,6 @@ class ZKObject:
     _retry_interval = 5
     _zkobject_compressed_size = 0
     _zkobject_uncompressed_size = 0
-    _deleted = False
     io_reader_class = sharding.RawZKIO
     io_writer_class = sharding.RawZKIO
     truncate_on_create = False
@@ -307,7 +306,6 @@ class ZKObject:
             context.log.error(
                 "Exception deleting ZKObject %s at %s", self, path)
             raise
-        self._set(_deleted=True)
 
     def estimateDataSize(self, seen=None):
         """Attempt to find all ZKObjects below this one and sum their
@@ -520,6 +518,7 @@ class ShardedZKObject(ZKObject):
 
 class LockableZKObject(ZKObject):
     _lock = None
+    _deleted = False
 
     def __new__(klass, *args, **kwargs):
         zko = super().__new__(klass)
@@ -627,6 +626,18 @@ class LockableZKObject(ZKObject):
         if self._deleted:
             # If we are releasing the lock after deleting the object,
             # also cleanup the lock path.
+            try:
+                self._deleteLockPath(context.client)
+            except Exception:
+                context.log.error("Unable to delete lock path for %s", self)
+
+    def delete(self, context):
+        super().delete(context)
+        self._set(_deleted=True)
+        # Most lockable zkobjects are deleted while holding the lock,
+        # so we let releaseLock delete the lock path.  But for those
+        # that aren't, we should delete the lock path now.
+        if not self.hasLock():
             try:
                 self._deleteLockPath(context.client)
             except Exception:
