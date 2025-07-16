@@ -1086,6 +1086,19 @@ class TestGitlabDriver(ZuulTestCase):
         self.assertEqual("http://tokenname5:555@gitlabfivvve/org/project1.git",
                          project_git_url)
 
+    @simple_layout('layouts/crd-gitlab.yaml', driver='gitlab6')
+    def test_api_token_name_default_value(self):
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        _, project = tenant.getProject('org/project1')
+
+        project_git_url = self.fake_gitlab6.real_getGitUrl(project)
+        # cloneurl defines a url, without credentials. As token name is
+        # set, include token name and secret in cloneurl, 'server' is
+        # overwritten
+        self.assertEqual(
+            "http://zuul:default@gitlab-default-token/org/project1.git",
+            project_git_url)
+
     @simple_layout('layouts/files-gitlab.yaml', driver='gitlab')
     def test_changed_file_match_filter(self):
         path = os.path.join(self.upstream_root, 'org/project')

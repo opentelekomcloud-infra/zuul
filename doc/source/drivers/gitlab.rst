@@ -61,9 +61,13 @@ The supported options in ``zuul.conf`` connections are:
          The connection must set ``driver=gitlab`` for GitLab connections.
 
    .. attr:: api_token_name
+      :default: zuul
 
-      The user's personal access token name (Used if **cloneurl** is http(s))
-      Set this parameter if authentication to clone projects is required
+      The user's personal access token name (Used if **cloneurl** is http(s)).
+      As per https://gitlab.com/gitlab-org/gitlab/-/issues/212953 this value can be
+      set to anything; it may be handy to set this to a distinctive
+      value for auditing purposes, if some middleware or a proxy logs usernames
+      in BasicAuth-protected queries made to the GitLab server.
 
    .. attr:: api_token
 
