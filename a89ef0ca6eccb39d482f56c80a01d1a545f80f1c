@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e7fbe79a_1df48fdb",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1551,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-07-17T07:42:39Z",
+      "side": 1,
+      "message": "Why are we using a contextmanager, but only do a pass here? Is the contextmanager only used to initialize things, but we don\u0027t have to do anything within the context?",
+      "revId": "a89ef0ca6eccb39d482f56c80a01d1a545f80f1c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ad45bca_9f5d1378",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1761,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-07-17T07:42:39Z",
+      "side": 1,
+      "message": "The commit message mentions that those spans are closed. Where does this happen? Or does it happen automatically?",
+      "revId": "a89ef0ca6eccb39d482f56c80a01d1a545f80f1c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
