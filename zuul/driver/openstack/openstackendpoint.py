@@ -78,6 +78,21 @@ def quota_from_limits(compute, volume):
     return QuotaInformation(**args)
 
 
+def is_message_about_quota(msg):
+    msg = msg.lower()
+    if 'quota' in msg:
+        return True
+    if 'ports exceeded' in msg:
+        return True
+    if all(s in msg for s in ('insufficient', 'resources')):
+        # Exceeded maximum number of retries. Exceeded max scheduling
+        # attempts 6 for instance
+        # f9daa9f2-1181-4693-827f-ba84cd4b002c. Last exception:
+        # Insufficient compute resources: Free vcpu 0.00 VCPU <
+        # requested 8 VCPU.
+        return True
+
+
 class ZuulOpenstackServer(UserDict):
     # Most of OpenStackSDK is designed around a dictionary interface,
     # but due to the historic use of the Munch object, some code
@@ -270,7 +285,7 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
             fault = server.get('fault', {}).get('message')
             if fault:
                 self.log.error('Detailed node error: %s', fault)
-                if 'quota' in fault:
+                if is_message_about_quota(fault):
                     return True
         except Exception:
             self.log.exception(
@@ -321,10 +336,7 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
                             raise exceptions.QuotaException("Quota exceeded")
                         raise
             except Exception as e:
-                if 'quota exceeded' in str(e).lower():
-                    self.log.exception("Launch attempt failed:")
-                    raise exceptions.QuotaException("Quota exceeded")
-                if 'number of ports exceeded' in str(e).lower():
+                if is_message_about_quota(str(e)):
                     self.log.exception("Launch attempt failed:")
                     raise exceptions.QuotaException("Quota exceeded")
                 raise
@@ -348,12 +360,8 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
                         "Error in creating the server."
                         " Compute service reports fault: {reason}".format(
                             reason=self.server['fault']['message']))
-                    error_message = self.server['fault']['message'].lower()
-                    if all(s in error_message for s in ('exceeds', 'quota')):
-                        raise exceptions.QuotaException("Quota exceeded")
-                    if 'quota exceeded' in error_message:
-                        raise exceptions.QuotaException("Quota exceeded")
-                    if 'number of ports exceeded' in error_message:
+                    error_message = self.server['fault']['message']
+                    if is_message_about_quota(error_message):
                         raise exceptions.QuotaException("Quota exceeded")
                 raise exceptions.LaunchStatusException("Server in error state")
             else:
