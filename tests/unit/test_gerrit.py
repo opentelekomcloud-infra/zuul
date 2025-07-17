@@ -37,6 +37,7 @@ from zuul.driver.gerrit import GerritDriver
 from zuul.driver.gerrit.gerritconnection import (
     ChangeNetworkConflict,
     GerritConnection,
+    GerritEventProcessor,
     PeekQueue,
 )
 
@@ -1344,6 +1345,35 @@ class TestGerritConnection(ZuulTestCase):
         # Gerrit emits change-merged events after ref-updated events for the
         # change; make sure that job configuration changes take effect
         # for post pipelines that trigger off of ref-updated.
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: new-post-job
+                parent: project-post
+            - project:
+                post:
+                  jobs:
+                    - new-post-job
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+        A.setMerged()
+        self.fake_gerrit.addEvent(A.getRefUpdatedEvent())
+        self.fake_gerrit.addEvent(A.getChangeMergedEvent())
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-post', result='SUCCESS'),
+            dict(name='new-post-job', result='SUCCESS'),
+            dict(name='project-promote', result='SUCCESS'),
+        ], ordered=False)
+
+    def test_ref_updated_reconfig_with_delay(self):
+        # Gerrit emits change-merged events after ref-updated events for the
+        # change; make sure that job configuration changes take effect
+        # for post pipelines that trigger off of ref-updated.
+        GerritEventProcessor.delay = 10.0
         in_repo_conf = textwrap.dedent(
             """
             - job:

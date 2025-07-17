@@ -321,7 +321,7 @@ class PeekQueue:
     # we're waiting for, give up the wait.  This is a 10 second propogation
     # delay. Replication timeouts are handled separately and are operator
     # configurable.
-    timeout = 10
+    timeout = 20
 
     def __init__(self, handler, replication_timeout):
         self.queue = collections.deque()
@@ -512,6 +512,21 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
     def _getEventProcessor(self, event):
         return GerritEventProcessor(self, event).run
 
+    def _calculateDelay(self, connection_event):
+        timestamp = connection_event["timestamp"]
+        now = time.time()
+        delay = max((timestamp + GerritEventProcessor.delay) - now, 0.0)
+        # Gerrit can produce inconsistent data immediately after an
+        # event, So ensure that we do not deliver the event to Zuul
+        # until at least a certain amount of time has passed.  Note
+        # that if we receive several events in succession, we will
+        # only need to delay for the first event.  In essence, Zuul
+        # should always be a constant number of seconds behind Gerrit.
+
+        self.log.debug("Handling event received %ss ago, delaying %ss",
+                       now - timestamp, delay)
+        time.sleep(delay)
+
     def _dispatchEvents(self):
         # This is the first half of the event dispatcher.  It reads
         # events from the ssh stream event queue and passes them to a
@@ -531,6 +546,10 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
         for event in self.event_queue.iter(event_id_offset):
             if self._shouldStop():
                 break
+
+            delay = self._calculateDelay(event)
+            if delay:
+                return delay
 
             self._peek_queue.append(event)
             delay = self._peek_queue.run()
@@ -552,6 +571,7 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
 class GerritEventProcessor:
     tracer = trace.get_tracer("zuul")
+    delay = 10.0
 
     def __init__(self, connector, connection_event):
         self.connector = connector
