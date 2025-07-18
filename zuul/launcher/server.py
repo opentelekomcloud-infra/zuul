@@ -1795,9 +1795,12 @@ class Launcher:
                     # min-ready is satisfied based on the config hashes
                     tenant_labels[tenant_name][label.name].append(label)
 
+        self.log.debug("JEB tenant labels %s", tenant_labels)
         unassigned_hashes = self._getUnassignedNodeLabelHashes()
         for tenant_name, min_ready_labels in tenant_labels.items():
+            self.log.debug("JEB loop1 %s %s", tenant_name, min_ready_labels)
             for label_name, labels in min_ready_labels.items():
+                self.log.debug("JEB loop2 %s %s", label_name, labels)
                 valid_label_hashes = set(lbl.config_hash for lbl in labels)
                 tenant_min_ready = sum(
                     1 for h in unassigned_hashes[label_name]
@@ -1807,10 +1810,17 @@ class Launcher:
                     p for p in self.tenant_providers[tenant_name]
                     if p.hasLabel(label_name)
                 ]
+                self.log.debug("JEB valid_label_hashes %s", valid_label_hashes)
+                self.log.debug("JEB tenant_min_ready %s", tenant_min_ready)
+                self.log.debug("JEB label_providers %s", label_providers)
+                self.log.debug("JEB labels[0].min_ready %s", labels[0].min_ready)
                 for _ in range(tenant_min_ready, labels[0].min_ready):
                     provider = random.choice(label_providers)
                     label = provider.labels[label_name]
+                    self.log.debug("JEB yield %s %s", label, provider)
                     yield label, provider
+                    self.log.debug("JEB append %s %s",
+                                   label.name, label.config_hash)
                     unassigned_hashes[label.name].append(label.config_hash)
 
     def _hasHighestMinReadyScore(
