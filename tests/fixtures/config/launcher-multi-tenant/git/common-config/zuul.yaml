@@ -77,7 +77,7 @@
     name: debian-normal
     image: debian
     flavor: normal
-    min-ready: 2
+    min-ready: 0
 
 - label:
     name: debian-large
