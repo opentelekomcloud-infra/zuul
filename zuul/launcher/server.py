@@ -165,6 +165,11 @@ class UploadJob:
             self._run()
         except Exception:
             self.log.exception("Error in upload job")
+        try:
+            for upload in self.uploads:
+                self.launcher.upload_uuids_in_queue.discard(upload.uuid)
+        except Exception:
+            self.log.exception("Error in upload job")
 
     def _acquireUploadLocks(self, ctx, uploads):
         try:
@@ -1097,6 +1102,8 @@ class Launcher:
             target=self.run,
             name="Launcher",
         )
+        # Avoid submitting duplicate upload jobs
+        self.upload_uuids_in_queue = set()
         # Simultaneous image artifact processes (download+upload)
         self.upload_executor = ThreadPoolExecutor(
             max_workers=1,
@@ -2306,6 +2313,8 @@ class Launcher:
         uploads_by_artifact_id = collections.defaultdict(list)
         self.image_updated_event.clear()
         for upload in self.image_upload_registry.getItems():
+            if upload.uuid in self.upload_uuids_in_queue:
+                continue
             if upload.endpoint_name not in self.endpoints:
                 continue
             iba = self.image_build_registry.getItem(upload.artifact_uuid)
@@ -2337,6 +2346,8 @@ class Launcher:
 
         for artifact_uuid, uploads in uploads_by_artifact_id.items():
             iba = self.image_build_registry.getItem(artifact_uuid)
+            for upload in uploads:
+                self.upload_uuids_in_queue.add(upload.uuid)
             self.upload_executor.submit(UploadJob(self, iba, uploads).run)
 
     def _downloadArtifactChunk(self, url, start, end, path):

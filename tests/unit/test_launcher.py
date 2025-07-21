@@ -17,6 +17,7 @@ import math
 import os
 import re
 import textwrap
+import threading
 import time
 import uuid
 from collections import defaultdict
@@ -591,6 +592,73 @@ class TestLauncher(LauncherBaseTestCase):
                 with iba.activeContext(ctx):
                     iba.state = iba.State.READY
         self.waitUntilSettled()
+        pending_uploads = [
+            u for u in self.launcher.image_upload_registry.getItems()
+            if u.state == u.State.PENDING]
+        self.assertEqual(0, len(pending_uploads))
+
+    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                side_effect="test_external_id")
+    def test_launcher_no_multiple_uploads(self, mock_image_upload_run):
+        # Make sure that we don't enqueue multiple upload jobs for the
+        # same pending uploads
+        self.waitUntilSettled()
+        provider = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-main')
+        endpoint = provider.getEndpoint()
+        image = list(provider.images.values())[1]
+        self.assertEqual('debian-local', image.name)
+
+        upload_event = threading.Event()
+        upload_counter = 0
+        orig_upload_run = zuul.launcher.server.UploadJob.run
+
+        def fake_upload_run(*args, **kw):
+            nonlocal upload_counter
+            upload_counter += 1
+            upload_event.wait()
+            return orig_upload_run(*args, **kw)
+
+        self.useFixture(fixtures.MonkeyPatch(
+            'zuul.launcher.server.UploadJob.run',
+            fake_upload_run))
+
+        # create an IBA and an upload
+        with self.createZKContext(None) as ctx:
+            # This starts with an unknown state, then
+            # createImageUploads will set it to ready.
+            iba = model.ImageBuildArtifact.new(
+                ctx,
+                uuid='iba-uuid',
+                name=image.name,
+                canonical_name=image.canonical_name,
+                project_canonical_name=image.project_canonical_name,
+                url='http://example.com/image.raw.zst',
+                md5sum=ImageMocksFixture.raw_md5sum,
+                sha256=ImageMocksFixture.raw_sha256,
+                timestamp=time.time(),
+            )
+            with iba.locked(ctx):
+                model.ImageUpload.new(
+                    ctx,
+                    uuid='upload-uuid',
+                    artifact_uuid='iba-uuid',
+                    endpoint_name=endpoint.canonical_name,
+                    providers=[provider.canonical_name],
+                    canonical_name=image.canonical_name,
+                    timestamp=time.time(),
+                    _state=model.ImageUpload.State.UPLOADING,
+                    state_time=time.time(),
+                )
+                with iba.activeContext(ctx):
+                    iba.state = iba.State.READY
+        self.launcher.checkMissingUploads()
+        self.launcher.checkMissingUploads()
+        upload_event.set()
+        self.waitUntilSettled()
+        self.assertEqual(1, upload_counter)
+
         pending_uploads = [
             u for u in self.launcher.image_upload_registry.getItems()
             if u.state == u.State.PENDING]
