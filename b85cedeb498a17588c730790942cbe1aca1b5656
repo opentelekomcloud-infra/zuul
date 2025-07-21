@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c20c310b_8ac7ca69",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-21T06:13:11Z",
+      "side": 1,
+      "message": "I\u0027m not sure how you ended up with that error, but we use a string value in production and it works fine.\n\nLooking at https://opendev.org/zuul/zuul/src/branch/master/zuul/driver/github/githubtrigger.py#L199-L201 this also supports a string OR list of strings.",
+      "revId": "b85cedeb498a17588c730790942cbe1aca1b5656",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
