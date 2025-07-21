@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9793253a_d16c3504",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 610,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-21T17:23:38Z",
+      "side": 1,
+      "message": "For other reviewers `layouts/nodepool-image.yaml` has `debian, debian-local, and ubuntu-local` in that order within the provider images list.",
+      "revId": "1673e44a48fdb43d2839b9b416d0111e88556587",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "831042ee_3a99a884",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 655,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-21T17:23:38Z",
+      "side": 1,
+      "message": "Nit, should the image build artifact be set to ready before we create an imageupload for it? I suspect under actual operations image uploads won\u0027t occur until the image build is ready?",
+      "revId": "1673e44a48fdb43d2839b9b416d0111e88556587",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4eba3dc2_22efa56d",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-21T17:23:38Z",
+      "side": 1,
+      "message": "Nit distinguishing this error from the one on line 167 might be nice. I think that the traceback will make it clear to anyone debugging problems here so this isn\u0027t a -1.",
+      "range": {
+        "startLine": 172,
+        "startChar": 31,
+        "endLine": 172,
+        "endChar": 52
+      },
+      "revId": "1673e44a48fdb43d2839b9b416d0111e88556587",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
