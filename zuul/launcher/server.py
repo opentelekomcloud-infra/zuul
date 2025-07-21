@@ -35,6 +35,7 @@ import cachetools
 import mmh3
 import paramiko
 import requests
+from opentelemetry import trace
 
 from zuul import exceptions, model
 import zuul.lib.repl
@@ -983,6 +984,7 @@ class CleanupWorker:
 
 class Launcher:
     log = logging.getLogger("zuul.Launcher")
+    tracer = trace.get_tracer("zuul")
     # Max. time to wait for a cache to sync
     CACHE_SYNC_TIMEOUT = 10
     # Max. time the main event loop is allowed to sleep
@@ -1166,6 +1168,11 @@ class Launcher:
                         continue
                     request.refresh(ctx)
 
+                request_span = tracing.restoreSpan(request.span_info)
+                with trace.use_span(request_span):
+                    request._set(_span=self.tracer.start_span(
+                        "NodesetRequestProcessing"))
+
             if not self._cachesReadyForRequest(request):
                 self.log.debug("Caches are not up-to-date for %s", request)
                 continue
@@ -1188,6 +1195,8 @@ class Launcher:
             except Exception:
                 log.exception("Error processing request %s", request)
             if request.state in request.FINAL_STATES:
+                request._span.set_attributes(request.getSpanAttributes())
+                request._span.end()
                 with self.createZKContext(None, log) as ctx:
                     request.releaseLock(ctx)
 
