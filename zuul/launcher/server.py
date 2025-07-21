@@ -1319,9 +1319,13 @@ class Launcher:
         providers.sort(key=lambda p: self.getQuotaPercentage(p))
 
         # A list of providers that could work for all labels in the request
+        ideal_providers_for_all_labels = set(providers)
+        # The same, but omit providers with failures
         providers_for_all_labels = set(providers)
         # A list of providers for each label in the request, indexed
         # by label index number
+        ideal_providers_for_label = {}
+        # The same, but omit providers with failures
         providers_for_label = {}
         # Which providers are used by existing nodes in this request
         existing_provider_names = collections.Counter()
@@ -1343,12 +1347,10 @@ class Launcher:
                 and (provider_failure_names[p.canonical_name] <
                      p.launch_attempts)
             ]
+            ideal_providers_for_label[i] = []
             providers_for_label[i] = []
             for provider in providers:
                 if not (label := provider.labels.get(label_name)):
-                    continue
-                if (provider_failure_names[provider.canonical_name]
-                        >= provider.launch_attempts):
                     continue
                 image = provider.images[label.image]
                 if (request.image_upload_uuid
@@ -1379,8 +1381,19 @@ class Launcher:
                         "Error checking quota for label %s "
                         "in provider %s", label, provider)
                     continue
+                ideal_providers_for_label[i].append(provider)
+                if (provider_failure_names[provider.canonical_name]
+                        >= provider.launch_attempts):
+                    continue
                 providers_for_label[i].append(provider)
+            ideal_providers_for_all_labels &= set(ideal_providers_for_label[i])
             providers_for_all_labels &= set(providers_for_label[i])
+
+        # If there is at least one provider that can provide all the
+        # labels for this request, then we will ensure that we use the
+        # same provider for all.
+        if require_same_provider := bool(ideal_providers_for_all_labels):
+            log.debug("Requiring same provider for all labels")
 
         # Turn the reduced set union of providers that work for all
         # labels back into an ordered list.
@@ -1402,7 +1415,10 @@ class Launcher:
 
         label_providers = []
         for i, label_name in enumerate(request.labels):
-            candidate_providers = providers_for_label[i]
+            if require_same_provider:
+                candidate_providers = providers_for_all_labels
+            else:
+                candidate_providers = providers_for_label[i]
             if not candidate_providers:
                 raise NodesetRequestError(
                     f"No provider found for label {label_name}")
@@ -1462,32 +1478,37 @@ class Launcher:
         return node
 
     def _checkRequest(self, request, log):
-        requested_nodes = []
-        for i, node_id in enumerate(request.nodes):
-            node = self.api.getProviderNode(node_id)
-            if node.state in (node.State.FAILED, node.State.TEMPFAILED):
-                # In all cases, delete the old node
-                # if this was a tempfail, retry again as normal
-                # otherwise, add to the failed providers list in the request
-                label_providers = self._selectProviders(request, log)
+        requested_nodes = [self.api.getProviderNode(node_id) for
+                           node_id in request.nodes]
+        if any(n.state in n.FAILED_STATES for n in requested_nodes):
+            # If any nodes failed, see if we need to change providers
+            # for any or all of them.
+            label_providers = self._selectProviders(request, log)
+            for i, node in enumerate(requested_nodes):
                 label, provider = label_providers[i]
-                if node.state == node.State.FAILED:
-                    add_failed_provider = node.provider
-                else:
-                    add_failed_provider = None
-                log.info(
-                    "Retrying node for label %s index %s with provider %s",
-                    label, i, provider)
-                with self.createZKContext(request._lock, log) as ctx:
-                    node = self._requestNode(
-                        label, request, provider, log, ctx)
-                    with request.activeContext(ctx):
-                        request.updateProviderNode(
-                            i, node,
-                            add_failed_provider=add_failed_provider,
-                        )
-
-            requested_nodes.append(node)
+                if (node.state in node.FAILED_STATES or
+                    provider.name != node.provider):
+                    # We're either retrying this node or we're
+                    # changing providers.
+                    log.info(
+                        "Retrying node for label %s index %s with provider %s",
+                        label, i, provider)
+                    with self.createZKContext(request._lock, log) as ctx:
+                        if node.state == node.State.FAILED:
+                            add_failed_provider = node.provider
+                        else:
+                            add_failed_provider = None
+                        node = self._requestNode(
+                            label, request, provider, log, ctx)
+                        requested_nodes[i] = node
+                        # if this was a tempfail, retry again as
+                        # normal; otherwise, add to the failed
+                        # providers list in the request
+                        with request.activeContext(ctx):
+                            request.updateProviderNode(
+                                i, node,
+                                add_failed_provider=add_failed_provider,
+                            )
 
         if not all(n.state in n.FINAL_STATES for n in requested_nodes):
             return

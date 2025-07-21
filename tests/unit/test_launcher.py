@@ -1668,6 +1668,87 @@ class TestLauncherLocality(LauncherBaseTestCase):
         # assigned to the same one.
         self.assertEqual(nodes1[0].provider, nodes1[1].provider)
 
+    @okay_tracebacks('_checkNodescanRequest')
+    def test_provider_selection_locality_exhaustion(self):
+        # Test that we use the same provider for multiple nodes within
+        # a request if possible.  This exhausts the launch attempts on
+        # one provider and ensures that we shift both nodes to the
+        # second provider.
+
+        # This test requests a pair of nodes, and causes the first
+        # attempt of both nodes to fail; they will both be retried on
+        # the same provider.  The second attempt of the first node
+        # will also fail, causing it to be retried on the other
+        # provider.  The second attempt of the second node succeeds,
+        # but is nonetheless retried on the second provider in order
+        # to preserve locality.
+        self.waitUntilSettled()
+
+        orig_advance = zuul.launcher.server.NodescanRequest.advance
+        failed_count_by_node = {}
+
+        def my_advance(*args, **kw):
+            ns_request = args[0]
+            failed_nodes = len(failed_count_by_node.keys())
+            if failed_nodes > 2:
+                return orig_advance(*args, **kw)
+            failed_count = failed_count_by_node.get(
+                ns_request.node.uuid, 0)
+            failed_count_by_node[ns_request.node.uuid] = failed_count + 1
+            raise Exception("Test exception")
+
+        with mock.patch.object(
+            zuul.launcher.server.NodescanRequest, 'advance', my_advance
+        ):
+            request1 = self.requestNodes(["debian-normal", "debian-normal"],
+                                         tenant="tenant-two",
+                                         timeout=30)
+        nodes1 = self.getNodes(request1)
+        nodes1 = [n for n in nodes1 if n.state == n.State.READY]
+        nodes1 = [n for n in nodes1 if n.uuid in request1.nodes]
+        self.assertEqual(2, len(nodes1))
+
+        # These can be served from either provider; both should be
+        # assigned to the same one.
+        self.assertEqual(nodes1[0].provider, nodes1[1].provider)
+
+        # There should be 3 total ready nodes, one unattached, so wait
+        # for the failed nodes to be deleted to avoid test cleanup
+        # races.
+        for _ in iterate_timeout(60, "extra nodes to be deleted"):
+            if len(self.launcher.api.nodes_cache.getItems()) == 3:
+                break
+
+    @okay_tracebacks('_checkNodescanRequest')
+    def test_provider_selection_locality_exhaustion_failure(self):
+        # Test that we use the same provider for multiple nodes within
+        # a request if possible.  This exhausts the launch attempts on
+        # both providers and ensures that we fail the request.
+        self.waitUntilSettled()
+
+        def my_advance(*args, **kw):
+            raise Exception("Test exception")
+
+        with mock.patch.object(
+            zuul.launcher.server.NodescanRequest, 'advance', my_advance
+        ):
+            request1 = self.requestNodes(["debian-normal", "debian-normal"],
+                                         tenant="tenant-two",
+                                         timeout=30)
+        self.assertEqual(request1.state, model.NodesetRequest.State.FAILED)
+
+        # The last two nodes will still be referenced by the request,
+        # so delete the request to release them.
+        ctx = self.createZKContext(None)
+        request1.delete(ctx)
+        self.waitUntilSettled()
+
+        # All nodes failed, so all should be deleted; wait for that to
+        # happen to avoid test cleanup races.
+        for _ in iterate_timeout(60, "extra nodes to be deleted"):
+            if len(self.launcher.api.nodes_cache.getItems()) == 0:
+                break
+
 
 class TestLauncherUpload(LauncherBaseTestCase):
 
