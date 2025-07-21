@@ -35,6 +35,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b5b3f9e_69a6951a",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 655,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-21T17:28:23Z",
+      "side": 1,
+      "message": "The image artifact becomes ready immediately after uploads are created; this is an accurate simulation.",
+      "parentUuid": "831042ee_3a99a884",
+      "revId": "1673e44a48fdb43d2839b9b416d0111e88556587",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4eba3dc2_22efa56d",
@@ -54,6 +72,24 @@
         "endLine": 172,
         "endChar": 52
       },
+      "revId": "1673e44a48fdb43d2839b9b416d0111e88556587",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "377ee770_07bf2a14",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-21T17:28:23Z",
+      "side": 1,
+      "message": "I considered that, but these are both exceptions that should never happen (especially the second one!).  Meanwhile, all of the candidate strings I could come up with were ridiculous.",
+      "parentUuid": "4eba3dc2_22efa56d",
       "revId": "1673e44a48fdb43d2839b9b416d0111e88556587",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
