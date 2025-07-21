@@ -36,6 +36,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1aa23870_8bb18697",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1711,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-21T21:59:16Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "48358498_421390f6",
+      "revId": "39bcc653ca7b747bbfb930a71be326f14bf31057",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "79bf79a2_db5e9327",
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "I think it will be obvious: \"Requiring same provider for all labels\" followed by \"No provider found for label\".\n\nAlso, there will be further context based on what messages have been logged previously by the request.",
       "parentUuid": "79bf79a2_db5e9327",
+      "revId": "39bcc653ca7b747bbfb930a71be326f14bf31057",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ef9a8f15_579aad3e",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1419,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-21T21:59:16Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "a40becf8_3a4aca9c",
       "revId": "39bcc653ca7b747bbfb930a71be326f14bf31057",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
