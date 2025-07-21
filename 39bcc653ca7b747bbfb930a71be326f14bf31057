@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5954f277_23df79a9",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1711,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-21T21:41:18Z",
+      "side": 1,
+      "message": "Do we need both list comprehensions here? Seems like we\u0027re interested in knowing that there are 2 ready nodes at the end and further filtering by uuid isn\u0027t necessary?",
+      "revId": "39bcc653ca7b747bbfb930a71be326f14bf31057",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79bf79a2_db5e9327",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1419,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-21T21:41:18Z",
+      "side": 1,
+      "message": "I think it may be possible for `require_same_provider \u003d bool(ideal_providers_for_all_labels)` to evaluate to true but providers_for_all_labels may be an empty set due to errors with the ideal provider. We handle that case below on line 1422 but I wonder if we should log a specific error message for the case where limiting the providers due to the ideal is the source of the error?",
+      "revId": "39bcc653ca7b747bbfb930a71be326f14bf31057",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
