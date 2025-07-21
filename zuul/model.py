@@ -2630,6 +2630,11 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         State.FAILED,
     )
 
+    FAILED_STATES = (
+        State.TEMPFAILED,
+        State.FAILED,
+    )
+
     CREATE_STATES = (
         State.REQUESTED,
         State.BUILDING,
