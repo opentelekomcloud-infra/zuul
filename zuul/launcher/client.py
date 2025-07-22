@@ -79,6 +79,7 @@ class LauncherClient:
                 span_info=span_info,
                 image_names=image_names,
                 image_upload_uuid=image_upload_uuid,
+                preferred_provider=preferred_provider,
             )
             log.info("Submitted nodeset request %s", request)
         return request

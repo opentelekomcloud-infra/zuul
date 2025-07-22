@@ -1230,6 +1230,29 @@ class TestLauncher(LauncherBaseTestCase):
 
         self.assertNotEqual(nodes1[0].provider, nodes2[0].provider)
 
+    @simple_layout('layouts/nodepool-multi-provider.yaml',
+                   enable_nodepool=True)
+    @driver_config('test_launcher', quotas={
+        'instances': 2,
+    })
+    def test_preferred_provider(self):
+        # Test that we supply nodes from the requested provider if possible
+        self.waitUntilSettled()
+
+        request1 = self.requestNodes(["debian-normal"])
+        nodes1 = self.getNodes(request1)
+        self.assertEqual(1, len(nodes1))
+
+        # Normally we would expect a second node to come from the
+        # other provider (the test above this verifies that), but
+        # let's specifically request the same provider.
+        request2 = self.requestNodes(
+            ["debian-normal"], provider=nodes1[0].provider)
+        nodes2 = self.getNodes(request2)
+        self.assertEqual(1, len(nodes2))
+
+        self.assertEqual(nodes1[0].provider, nodes2[0].provider)
+
     @simple_layout('layouts/nodepool.yaml',
                    enable_nodepool=True)
     @driver_config('test_launcher', quotas={
