@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0878f7a0_91703591",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1700,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-22T22:42:51Z",
+      "side": 1,
+      "message": "Looking at the recent test failures I think this uuid attribute we\u0027re using to index means that we haev a separate counter for each node which resutls in more failuers than anticipated. Instead I think we want to index on the request_id so that we only have 3 failures (0,1,2) for the entire request.",
+      "range": {
+        "startLine": 1700,
+        "startChar": 49,
+        "endLine": 1700,
+        "endChar": 53
+      },
+      "revId": "9dc39fbb9ae1ad9e47725d88ab842955b241dddd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b9685210_c785e582",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1743,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-22T22:42:51Z",
+      "side": 1,
+      "message": "It seems like this timeout may not be long enough to get through all of the retries across all providers. Maybe we should reduce the total number of retries rather than increasing the timeout?",
+      "revId": "9dc39fbb9ae1ad9e47725d88ab842955b241dddd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
