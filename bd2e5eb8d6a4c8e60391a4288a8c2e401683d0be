@@ -16,6 +16,24 @@
       "message": "recheck unrelated fail",
       "revId": "bd2e5eb8d6a4c8e60391a4288a8c2e401683d0be",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aba2a16e_8b2217db",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13861
+      },
+      "writtenOn": "2025-07-22T05:01:37Z",
+      "side": 1,
+      "message": "ok new test test_provider_selection_locality_exhaustion_failure failed so could be related",
+      "parentUuid": "f9ac7636_4534223b",
+      "revId": "bd2e5eb8d6a4c8e60391a4288a8c2e401683d0be",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
