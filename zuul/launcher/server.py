@@ -178,6 +178,10 @@ class UploadJob:
                     if upload.acquireLock(ctx, blocking=False):
                         upload.refresh(ctx)
                         if upload.external_id:
+                            # Someone else finished it
+                            upload.releaseLock(ctx)
+                        elif upload.state != upload.State.PENDING:
+                            # Someone else failed it (or otherwise)
                             upload.releaseLock(ctx)
                         else:
                             uploads.append(upload)
