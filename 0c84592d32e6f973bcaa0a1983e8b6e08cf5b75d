@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd1fc098_06bf5a5f",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2553,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-22T23:42:37Z",
+      "side": 1,
+      "message": "We don\u0027t need to handle any special deserialization compatibility here because we initialize the value to None which is all we\u0027d do in a compatibility layer.",
+      "revId": "0c84592d32e6f973bcaa0a1983e8b6e08cf5b75d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
