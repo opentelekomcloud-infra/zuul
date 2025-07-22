@@ -51,6 +51,23 @@
       "message": "one of the new tests is failing in https://zuul.opendev.org/t/zuul/build/ef12903647a24b45aed3afafa659cabb so it seems to be somewhat unstable, maybe a timing issue?",
       "revId": "bd2e5eb8d6a4c8e60391a4288a8c2e401683d0be",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "70314290_c46b0ff2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13252
+      },
+      "writtenOn": "2025-07-22T05:13:06Z",
+      "side": 1,
+      "message": "let\u0027s not merge this until the failure is understood",
+      "revId": "bd2e5eb8d6a4c8e60391a4288a8c2e401683d0be",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
