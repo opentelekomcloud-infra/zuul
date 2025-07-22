@@ -1400,10 +1400,15 @@ class Launcher:
         providers_for_all_labels = [
             p for p in providers if p in providers_for_all_labels]
 
+        main_provider_name = None
         main_provider = None
         most_common = existing_provider_names.most_common(1)
         if most_common:
             main_provider_name = most_common[0][0]
+        elif request.preferred_provider:
+            main_provider_name = request.preferred_provider
+            log.debug("Using requested provider %s", main_provider_name)
+        if main_provider_name:
             for main_provider in providers:
                 if main_provider.canonical_name == main_provider_name:
                     break

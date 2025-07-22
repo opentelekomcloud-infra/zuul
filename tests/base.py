@@ -4008,7 +4008,7 @@ class ZuulTestCase(BaseTestCase):
                     return
 
     def requestNodes(self, labels, tenant="tenant-one", pipeline="check",
-                     timeout=10):
+                     provider=None, timeout=10):
         result_queue = PipelineResultEventQueue(
             self.zk_client, tenant, pipeline)
 
@@ -4028,6 +4028,7 @@ class ZuulTestCase(BaseTestCase):
                     request_time=time.time(),
                     zuul_event_id=uuid.uuid4().hex,
                     span_info=None,
+                    preferred_provider=provider,
                 )
                 if timeout:
                     for _ in iterate_timeout(
