@@ -24,6 +24,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "925faf50_fe1a860b",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1700,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-22T22:59:14Z",
+      "side": 1,
+      "message": "We only have one request.  The current code should cause exactly 3 failures, one for each of the first 3 nodes.",
+      "parentUuid": "0878f7a0_91703591",
+      "range": {
+        "startLine": 1700,
+        "startChar": 49,
+        "endLine": 1700,
+        "endChar": 53
+      },
+      "revId": "9dc39fbb9ae1ad9e47725d88ab842955b241dddd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b9685210_c785e582",
@@ -37,6 +61,24 @@
       "writtenOn": "2025-07-22T22:42:51Z",
       "side": 1,
       "message": "It seems like this timeout may not be long enough to get through all of the retries across all providers. Maybe we should reduce the total number of retries rather than increasing the timeout?",
+      "revId": "9dc39fbb9ae1ad9e47725d88ab842955b241dddd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a76fbcc_9c2361b7",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1743,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-22T22:59:14Z",
+      "side": 1,
+      "message": "Perhaps, but that\u0027s not what caused the timeout I saw, so let\u0027s wait before we change it.\n\nAlso, we already have the attempts lowered to 2.",
+      "parentUuid": "b9685210_c785e582",
       "revId": "9dc39fbb9ae1ad9e47725d88ab842955b241dddd",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
