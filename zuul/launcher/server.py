@@ -732,6 +732,7 @@ class NodescanWorker:
     # overload, we set a max value for concurrent requests.
     # Simultaneous requests higher than this value will be queued.
     MAX_REQUESTS = 100
+    TIMEOUT = 1
 
     def __init__(self):
         # Remember to close all pipes to prevent leaks in tests.
@@ -818,7 +819,7 @@ class NodescanWorker:
             # Set the poll timeout to 1 second so that we check all
             # requests for timeouts every second.  This could be
             # increased to a few seconds without significant impact.
-            timeout = 1
+            timeout = self.TIMEOUT
             while (self._pending_requests and
                    len(self._active_requests) < self.MAX_REQUESTS):
                 # If we have room for more requests, add them and set
@@ -837,7 +838,8 @@ class NodescanWorker:
                         os.read(self.wake_read, 1024)
                     except BlockingIOError:
                         break
-            process_unready = time.monotonic() - last_unready_check > 1.0
+            process_unready = (time.monotonic() - last_unready_check >
+                               self.TIMEOUT)
             for request in self._active_requests:
                 try:
                     socket_ready = (request.sock and
@@ -2241,6 +2243,7 @@ class Launcher:
         self.log.debug("Checking for old images")
         self.upload_deleted_event.clear()
         keep_uploads = set()
+        known_uploads = set()
         known_providers = set()
         for tenant_name, providers in self.tenant_providers.items():
             for provider in providers:
@@ -2248,7 +2251,7 @@ class Launcher:
                 for image in provider.images.values():
                     if image.type == 'zuul':
                         self.checkOldImage(tenant_name, provider, image,
-                                           keep_uploads)
+                                           keep_uploads, known_uploads)
 
         # Get the list of ibas for which we could consider uploads
         # first (to make sure that we don't race the creation of
@@ -2260,6 +2263,9 @@ class Launcher:
         uploads_by_artifact = collections.defaultdict(list)
         latest_upload_timestamp = 0
         for upload in self.image_upload_registry.getItems():
+            if upload not in known_uploads:
+                # New since we decided which ones to keep
+                continue
             if upload.timestamp > latest_upload_timestamp:
                 latest_upload_timestamp = upload.timestamp
             uploads_by_artifact[upload.artifact_uuid].append(upload)
@@ -2302,9 +2308,10 @@ class Launcher:
                         pass
 
     def checkOldImage(self, tenant_name, provider, image,
-                      keep_uploads):
+                      keep_uploads, known_uploads):
         image_cname = image.canonical_name
         uploads = self.image_upload_registry.getUploadsForImage(image_cname)
+        known_uploads.update(set(uploads))
         valid_uploads = [
             upload for upload in uploads
             if (provider.canonical_name in upload.providers and
