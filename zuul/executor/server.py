@@ -268,27 +268,34 @@ class DiskAccountant(object):
 
 
 class Watchdog(object):
-    def __init__(self, timeout, function, args):
+    def __init__(self, timeout, log, function, args):
         self.timeout = timeout
+        self.log = log
         self.function = function
         self.args = args
         self.thread = threading.Thread(target=self._run,
                                        name='watchdog')
         self.thread.daemon = True
         self.timed_out = None
-
         self.end = 0
-
         self._running = False
         self._stop_event = threading.Event()
 
     def _run(self):
+        try:
+            self._runInner()
+        except Exception:
+            self.log.exception("Error in watchdog %s:", hex(id(self)))
+
+    def _runInner(self):
         while self._running and time.time() < self.end:
             self._stop_event.wait(10)
         if self._running:
+            self.log.debug("Watchdog %s timed out", hex(id(self)))
             self.timed_out = True
             self.function(*self.args)
         else:
+            self.log.debug("Watchdog %s finished normally", hex(id(self)))
             # Only set timed_out to false if we aren't _running
             # anymore. This means that we stopped running not because
             # of a timeout but because normal execution ended.
@@ -297,6 +304,8 @@ class Watchdog(object):
     def start(self):
         self._running = True
         self.end = time.time() + self.timeout
+        self.log.debug("Starting watchdog %s with timeout in %s at %s",
+                       hex(id(self)), self.timeout, int(self.end))
         self.thread.start()
 
     def stop(self):
@@ -3333,7 +3342,7 @@ class AnsibleJob(object):
         syntax_buffer = collections.deque(maxlen=BUFFER_LINES_FOR_SYNTAX)
         ret = None
         if timeout:
-            watchdog = Watchdog(timeout, self._ansibleTimeout,
+            watchdog = Watchdog(timeout, self.log, self._ansibleTimeout,
                                 ("Ansible timeout exceeded: %s" % timeout,))
             watchdog.start()
         try:
@@ -3412,8 +3421,6 @@ class AnsibleJob(object):
         finally:
             if timeout:
                 watchdog.stop()
-                self.log.debug("Stopped watchdog")
-            self.log.debug("Stopped disk job killer")
 
         with self.proc_lock:
             self.proc.stdout.close()
