@@ -16,6 +16,24 @@
       "message": "I worry that the job_uuid will be confusing to people, and they might think it\u0027s the build uuid.  I\u0027m not sure we expose it anywhere else, so I also don\u0027t know if it\u0027s useful.\n\nIf there\u0027s no way to use it, maybe we should omit it for now?",
       "revId": "d7f26de2978c86569d06f629fc60100453c7e64e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d4635371_d7b8137e",
+        "filename": "zuul/provider/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-24T13:52:11Z",
+      "side": 1,
+      "message": "We use it for correlating cost information with builds (together with the buildset UUID). We do get the job UUID via the MQTT payload.\n\nBuildset UUID and job name might not be unique in case of circular dependencies (w/o deduplication).\n\nBut ack; we should probably make it clear in the documentation that this is not the build UUID.",
+      "parentUuid": "5865e14f_76e6fe4a",
+      "revId": "d7f26de2978c86569d06f629fc60100453c7e64e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
