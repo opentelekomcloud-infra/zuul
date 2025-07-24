@@ -406,11 +406,21 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         """
         tags = dict()
 
-        # TODO: add other potentially useful attrs from nodepool
-        attributes = model.Attributes(
-            request_id=request.uuid if request else None,
-            tenant_name=provider.tenant_name if provider else None,
+        attrs = dict(
+            request_id=getattr(request, "uuid", None),
         )
+        request_attrs = (
+            "pipeline_name",
+            "buildset_uuid",
+            "job_uuid",
+            "job_name",
+            "labels",
+            "zuul_event_id",
+            "tenant_name",
+        )
+        attrs.update({a: getattr(request, a, None) for a in request_attrs})
+
+        attributes = model.Attributes(**attrs)
         for k, v in label.tags.items():
             try:
                 tags[k] = v.format(**attributes)
