@@ -2447,6 +2447,7 @@ class NodesetRequest(zkobject.LockableZKObject):
             span_info=None,
             image_names=None,
             image_upload_uuid=None,
+            preferred_provider=None,
             # Revisable attributes
             _relative_priority=0,
             # A dict of info about the node we have assigned to each label
@@ -2543,6 +2544,7 @@ class NodesetRequest(zkobject.LockableZKObject):
             span_info=self.span_info,
             image_names=self.image_names,
             image_upload_uuid=self.image_upload_uuid,
+            preferred_provider=self.preferred_provider,
             provider_node_data=self.provider_node_data,
             _relative_priority=self.relative_priority,
         )
