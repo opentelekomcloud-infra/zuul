@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "485be67f_5bdbc949",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-24T13:26:40Z",
+      "side": 1,
+      "message": "Welcome!  The Opendev Collaboratory has a project where you can submit changes to learn about gerrit and zuul workflow without impacting ongoing development.  You can learn about that here:\n\nhttps://docs.opendev.org/opendev/infra-manual/latest/sandbox.html",
+      "revId": "fc1914dc69880e25a580d83419c778fd8fa95d51",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
