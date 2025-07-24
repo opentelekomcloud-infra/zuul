@@ -1915,7 +1915,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
     def _getBatch(the_queue):
         records = []
         try:
-            record = the_queue.get(block=True, timeout=10)
+            record = the_queue.get(block=True, timeout=0.1)
             if record is None:
                 return records
             records.append(record)

@@ -21,7 +21,6 @@ import fixtures
 
 from zuul.driver.openstack import OpenstackDriver
 from zuul.driver.openstack.openstackmodel import OpenstackProviderNode
-import zuul.driver.openstack.openstackendpoint
 
 from tests.fake_openstack import (
     FakeOpenstackCloud,
@@ -97,8 +96,6 @@ class BaseOpenstackDriverTest(ZuulTestCase):
                    FakeOpenstackProviderEndpoint)
         self.patch(FakeOpenstackProviderEndpoint,
                    '_fake_cloud', self.fake_cloud)
-        self.patch(zuul.driver.openstack.openstackendpoint,
-                   'CACHE_TTL', 1)
         super().setUp()
 
     @contextlib.contextmanager

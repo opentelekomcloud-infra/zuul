@@ -2503,9 +2503,14 @@ class ZuulTestCase(BaseTestCase):
         self.config.set('zookeeper', 'tls_ca',
                         self.zk_chroot_fixture.zookeeper_ca)
 
+        # Speed up operations in tests
         gerritsource.GerritSource.replication_timeout = 1.5
         gerritsource.GerritSource.replication_retry_interval = 0.5
         gerritconnection.GerritEventProcessor.delay = 0.0
+        zuul.driver.aws.awsendpoint.CACHE_TTL = 0.1
+        zuul.driver.openstack.openstackendpoint.CACHE_TTL = 0.1
+        zuul.launcher.server.NodescanWorker.TIMEOUT = 0.1
+        zuul.launcher.server.Launcher.MAX_SLEEP = 0.1
 
         if self.load_change_db:
             self.loadChangeDB()

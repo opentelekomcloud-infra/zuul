@@ -200,7 +200,6 @@ class LauncherBaseTestCase(ZuulTestCase):
         self.s3 = boto3.resource('s3', region_name='us-east-1')
         self.s3.create_bucket(Bucket='zuul')
         self.addCleanup(self.mock_aws.stop)
-        self.patch(zuul.driver.aws.awsendpoint, 'CACHE_TTL', 1)
 
         quotas = {}
         quotas.update(self.test_config.driver.test_launcher.get(
@@ -358,6 +357,9 @@ class TestLauncher(LauncherBaseTestCase):
             self.assertTrue(uploads[0].validated)
 
         image_cname = 'review.example.com%2Forg%2Fcommon-config/ubuntu-local'
+        artifacts1 = self._waitForArtifacts(image_cname, 1)
+        artifacts1_uuids = set([x.uuid for x in artifacts1])
+
         # Run another build event manually
         driver = self.launcher.connections.drivers['zuul']
         event = driver.getImageBuildEvent(
@@ -371,7 +373,9 @@ class TestLauncher(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
-        self._waitForArtifacts(image_cname, 2)
+        artifacts2 = self._waitForArtifacts(image_cname, 2)
+        artifacts2_uuids = set([x.uuid for x in artifacts2])
+        self.assertTrue(artifacts1_uuids < artifacts2_uuids)
 
         # Run another build event manually
         driver = self.launcher.connections.drivers['zuul']
@@ -387,12 +391,10 @@ class TestLauncher(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
-        self._waitForArtifacts(image_cname, 3)
-
-        # Trigger a deletion run
-        self.launcher.upload_deleted_event.set()
-        self.launcher.wake_event.set()
-        self._waitForArtifacts(image_cname, 2)
+        artifacts3 = self._waitForArtifacts(image_cname, 2)
+        artifacts3_uuids = set([x.uuid for x in artifacts3])
+        self.assertFalse(artifacts3_uuids.isdisjoint(artifacts2_uuids))
+        self.assertTrue(artifacts3_uuids.isdisjoint(artifacts1_uuids))
 
     @simple_layout('layouts/nodepool-image-no-validate.yaml',
                    enable_nodepool=True)
@@ -653,8 +655,9 @@ class TestLauncher(LauncherBaseTestCase):
                 )
                 with iba.activeContext(ctx):
                     iba.state = iba.State.READY
-        self.launcher.checkMissingUploads()
-        self.launcher.checkMissingUploads()
+        with self.launcher._test_lock:
+            self.launcher.checkMissingUploads()
+            self.launcher.checkMissingUploads()
         upload_event.set()
         self.waitUntilSettled()
         self.assertEqual(1, upload_counter)
@@ -773,6 +776,7 @@ class TestLauncher(LauncherBaseTestCase):
             'tenant-one', 'aws-us-east-1-main')
         used = self.launcher.getUnmanagedQuotaUsed(provider)
         self.assertEqual(0, used.getResources().get('instances', 0))
+        self.launcher._runStats()
 
         self.executor_server.hold_jobs_in_build = False
         self.executor_server.release()
@@ -786,13 +790,13 @@ class TestLauncher(LauncherBaseTestCase):
                          'debian-normal')
         pname = 'review_example_com%2Forg%2Fcommon-config/aws-us-east-1-main'
         self.assertReportedStat(
-            f'zuul.provider.{pname}.nodes.state.requested',
+            f'zuul.provider.{pname}.nodes.state.in-use',
             kind='g')
         self.assertReportedStat(
-            f'zuul.provider.{pname}.label.debian-normal.nodes.state.requested',
+            f'zuul.provider.{pname}.label.debian-normal.nodes.state.in-use',
             kind='g')
         self.assertReportedStat(
-            'zuul.nodes.state.requested',
+            'zuul.nodes.state.in-use',
             kind='g')
         for _ in iterate_timeout(60, "nodes to be deleted"):
             if len(self.launcher.api.nodes_cache.getItems()) == 0:
@@ -1875,7 +1879,7 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
-        self._waitForArtifacts(image_cname, 2)
+        self._waitForArtifacts(image_cname, 1)
 
         # Run another build event manually
         driver = self.launcher.connections.drivers['zuul']
@@ -2006,8 +2010,9 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
         nodes_by_label = self._nodes_by_label()
         self.assertEqual(1, len(nodes_by_label['debian-emea']))
         node = nodes_by_label['debian-emea'][0]
-
         ctx = self.createZKContext(None)
+        # Make a new copy so we can obtain our own lock
+        node = model.ProviderNode.fromZK(ctx, path=node.getPath())
         try:
             node.acquireLock(ctx)
             node.updateAttributes(ctx, state_time=0)
