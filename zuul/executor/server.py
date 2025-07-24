@@ -2069,11 +2069,9 @@ class AnsibleJob(object):
              self.cpu_times['children_system']))
 
         if not pre_failed:
-            if self.job.pre_timeout:
-                # Update job_timeout to reset for longer timeout value if
-                # pre-timeout is set
-                job_timeout = self.getAnsibleTimeout(
-                    time_started, self.job.timeout)
+            # Update job_timeout to reset for longer timeout value if
+            # pre-timeout is set
+            job_timeout = self.job.timeout
             # At this point, we have gone all the way down.
             nesting_level_achieved = None
             for index, playbook in enumerate(self.jobdir.playbooks):

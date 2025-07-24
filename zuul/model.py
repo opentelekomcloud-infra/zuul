@@ -47,6 +47,7 @@ from zuul.exceptions import (
     MaxTimeoutError,
     LabelNotFoundError,
     NodesetNotFoundError,
+    PreTimeoutExceedsTimeoutError,
     ProjectNotFoundError,
     ProjectNotPermittedError,
     UnknownConnection,
@@ -4077,6 +4078,17 @@ class Job(ConfigObject):
                   redact_secrets_and_keys):
         buildset = item.current_build_set
         kw = {}
+
+        # It is an error to have a pre-timeout that is larger than
+        # timeout, because pre-timeout is counted as part of timeout.
+        # We detect this situation and report the error if it occurs
+        # on a single job definition, but if it happens due to
+        # inheritance, we let the timeout value take priority and
+        # simply cap the pre-timeout as timeout.
+        if (self.pre_timeout and self.timeout and
+            self.pre_timeout > self.timeout):
+            self.pre_timeout = self.timeout
+
         attributes = (set(FrozenJob.attributes) |
                       set(FrozenJob.job_data_attributes))
         # De-duplicate the secrets across all playbooks, store them in
@@ -9677,7 +9689,7 @@ class Layout(object):
         # timeout
         if (job.pre_timeout and job.timeout and
             job.pre_timeout > job.timeout):
-            raise MaxTimeoutError(job, self.tenant)
+            raise PreTimeoutExceedsTimeoutError(job)
 
         if (job.timeout and
             self.tenant.max_job_timeout != -1 and

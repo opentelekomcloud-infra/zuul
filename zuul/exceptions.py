@@ -248,6 +248,18 @@ class MaxTimeoutError(ConfigurationSyntaxError):
         super(MaxTimeoutError, self).__init__(message)
 
 
+class PreTimeoutExceedsTimeoutError(ConfigurationSyntaxError):
+    zuul_error_name = 'Pre-Timeout Exceeds Timeout'
+
+    def __init__(self, job):
+        message = textwrap.dedent("""\
+        The job "{job}" has a pre-timeout of {pre_timeout}
+        that exceeds its timeout of {timeout}.""")
+        message = textwrap.fill(message.format(
+            job=job.name, pre_timeout=job.pre_timeout, timeout=job.timeout))
+        super(PreTimeoutExceedsTimeoutError, self).__init__(message)
+
+
 class MaxOIDCTTLError(ConfigurationSyntaxError):
     zuul_error_name = 'Max OIDC TTL Exceeded'
 
