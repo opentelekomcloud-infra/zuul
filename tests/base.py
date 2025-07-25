@@ -4017,6 +4017,12 @@ class ZuulTestCase(BaseTestCase):
         result_queue = PipelineResultEventQueue(
             self.zk_client, tenant, pipeline)
 
+        # Don't allow node request cleanup (since these requests
+        # will not appear in a pipeline):
+        if not hasattr(self, '_node_request_cleanup_lock'):
+            self._node_request_cleanup_lock =\
+                self.scheds.first.sched.node_request_cleanup_lock.acquire()
+
         with self.createZKContext(None) as ctx:
             # Lock the pipeline, so we can grab the result event
             with (self.scheds.first.sched.run_handler_lock,
