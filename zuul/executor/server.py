@@ -1030,6 +1030,7 @@ class AnsibleJob(object):
     RESULT_UNREACHABLE = 3
     RESULT_ABORTED = 4
     RESULT_DISK_FULL = 5
+    RESULT_HOST_FAILED = 6
 
     RESULT_MAP = {
         RESULT_NORMAL: 'RESULT_NORMAL',
@@ -1037,6 +1038,7 @@ class AnsibleJob(object):
         RESULT_UNREACHABLE: 'RESULT_UNREACHABLE',
         RESULT_ABORTED: 'RESULT_ABORTED',
         RESULT_DISK_FULL: 'RESULT_DISK_FULL',
+        RESULT_HOST_FAILED: 'RESULT_HOST_FAILED',
     }
 
     semaphore_sleep_time = 30
@@ -2000,6 +2002,8 @@ class AnsibleJob(object):
                 error_detail = "Ansible setup timeout"
             elif setup_status == self.RESULT_UNREACHABLE:
                 error_detail = "Host unreachable"
+            elif setup_code == self.RESULT_HOST_FAILED:
+                error_detail = "Host failed"
             return result, error_detail
 
         # Freeze the variables so that we have a copy of them without
@@ -3429,6 +3433,8 @@ class AnsibleJob(object):
             # our zuul-worker.
             self.updateUnreachableHosts()
             return (self.RESULT_UNREACHABLE, None)
+        elif ret == 2:
+            return (self.RESULT_HOST_FAILED, None)
         elif ret == -9:
             # Received abort request.
             return (self.RESULT_ABORTED, None)
