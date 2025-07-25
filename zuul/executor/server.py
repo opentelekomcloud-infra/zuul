@@ -3424,15 +3424,8 @@ class AnsibleJob(object):
 
         if timeout and watchdog.timed_out:
             return (self.RESULT_TIMED_OUT, None)
-        # Note: Unlike documented ansible currently wrongly returns 4 on
-        # unreachable so we have the zuul_unreachable callback module that
-        # creates the file nodes.unreachable in case there were
-        # unreachable nodes. This can be removed once ansible returns a
-        # distinct value for unreachable.
-        # TODO: Investigate whether the unreachable callback can be
-        # removed in favor of the ansible result log stream (see above
-        # in pre-fail)
-        if ret == 3 or os.path.exists(self.jobdir.job_unreachable_file):
+
+        if ret == 4 or os.path.exists(self.jobdir.job_unreachable_file):
             # AnsibleHostUnreachable: We had a network issue connecting to
             # our zuul-worker.
             self.updateUnreachableHosts()
