@@ -682,3 +682,4 @@ class TestAwsDriver(BaseCloudDriverTest):
         dc = images['debian-cloud']
         self.assertEqual('ebs-direct', dl.import_method)
         self.assertFalse(hasattr(dc, 'import_method'))
+        self.waitUntilSettled()
