@@ -50,6 +50,7 @@ from zuul.driver.util import (
 )
 from zuul.model import QuotaInformation
 from zuul.provider import (
+    BaseImageImportJob,
     BaseImageUploadJob,
     BaseProviderEndpoint,
     statemachine
@@ -264,7 +265,7 @@ class AwsCreateStateMachine(statemachine.StateMachine):
                                self.host, self.node.quota)
 
 
-class AwsImageImportJob(BaseImageUploadJob):
+class AwsImageImportJob(BaseImageImportJob):
     def __init__(self, endpoint,
                  provider_image, image_name,
                  image_format, metadata,
@@ -302,19 +303,19 @@ class AwsImageImportJob(BaseImageUploadJob):
 
 class AwsImageUploadJob(BaseImageUploadJob):
     def __init__(self, endpoint,
-                 provider_image, image_name, filename,
+                 provider_image, image_name,
                  image_format, metadata,
                  bucket_name, timeout):
+        super().__init__()
         self.endpoint = endpoint
         self.provider_image = provider_image
         self.image_name = image_name
-        self.filename = filename
         self.image_format = image_format
         self.metadata = metadata
         self.bucket_name = bucket_name
         self.timeout = timeout
 
-    def run(self):
+    def run(self, filename):
         self.endpoint.log.debug(f"Uploading image {self.image_name} "
                                 f"via {self.provider_image.import_method}")
 
@@ -322,7 +323,7 @@ class AwsImageUploadJob(BaseImageUploadJob):
         if self.provider_image.import_method != 'ebs-direct':
             # Upload image to S3
             object_filename = self.endpoint._uploadImageToS3(
-                self.image_name, self.filename, self.image_format,
+                self.image_name, filename, self.image_format,
                 self.metadata, self.bucket_name)
         if self.provider_image.import_method == 'image':
             image_id = self.endpoint._uploadImageImage(
@@ -338,7 +339,7 @@ class AwsImageUploadJob(BaseImageUploadJob):
                 delete_object)
         elif self.provider_image.import_method == 'ebs-direct':
             image_id = self.endpoint._uploadImageSnapshotEBS(
-                self.provider_image, self.image_name, self.filename,
+                self.provider_image, self.image_name, filename,
                 self.image_format, self.metadata, self.timeout)
         else:
             raise Exception("Unknown image import method")
@@ -747,7 +748,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self.s3_client.download_file(bucket_name, object_filename, path)
         return path
 
-    def getImageImportJob(self, provider_image, image_name, url,
+    def getImageImportJob(self, url, provider_image, image_name,
                           image_format, metadata, md5, sha256):
         if not url.startswith('s3://'):
             return None
@@ -777,7 +778,11 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             image_format, metadata,
             bucket_name, object_filename, timeout)
 
-    def getImageUploadJob(self, provider_image, image_name, filename,
+    def getImageCopyJob(self, source_provider, provider_image, image_name,
+                        image_format, metadata, md5, sha256):
+        return None
+
+    def getImageUploadJob(self, provider_image, image_name,
                           image_format, metadata, md5, sha256, bucket_name):
 
         # There is no IMDS support option for the import_image call
@@ -793,7 +798,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
         return AwsImageUploadJob(
             self,
-            provider_image, image_name, filename,
+            provider_image, image_name,
             image_format, metadata,
             bucket_name, timeout)
 

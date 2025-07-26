@@ -394,25 +394,24 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
 
 
 class OpenstackImageUploadJob(BaseImageUploadJob):
-    def __init__(self, endpoint,
-                 provider_image, image_name, filename,
-                 image_format, metadata,
-                 md5, sha256):
+    def __init__(self, endpoint, provider_image, image_name,
+                 image_format, metadata, md5, sha256):
+        super().__init__()
         self.endpoint = endpoint
         self.provider_image = provider_image
         self.image_name = image_name
-        self.filename = filename
         self.image_format = image_format
         self.metadata = metadata
         self.md5 = md5
         self.sha256 = sha256
 
-    def run(self):
+    def run(self, filename):
         self.endpoint.log.debug(f"Uploading image {self.image_name}")
 
         image_id = self.endpoint._uploadImage(
+            filename,
             self.provider_image, self.image_name,
-            self.filename, self.image_format, self.metadata,
+            self.image_format, self.metadata,
             self.md5, self.sha256)
         return image_id
 
@@ -583,7 +582,7 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
             provider_image, image_name, filename,
             image_format, metadata, md5, sha256)
 
-    def _uploadImage(self, provider_image, image_name, filename,
+    def _uploadImage(self, filename, provider_image, image_name,
                      image_format, metadata, md5, sha256):
         # configure glance and upload image.  Note the meta flags
         # are provided as custom glance properties
