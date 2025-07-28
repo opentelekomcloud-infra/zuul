@@ -16,6 +16,24 @@
       "message": "Re. the test failures: I think we need to check the endpoint here as well. Otherwise we might consider the upload even when it\u0027s a completely different endpoint. It looks like this is currently causing the wrong images to be cleaned up.",
       "revId": "d8cbbf6594e369c720d45124ef24eb87f8907d23",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "98425b21_c76e3c4e",
+        "filename": "zuul/model.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1587,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-28T10:16:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "858a14c8_e4e0989e",
+      "revId": "d8cbbf6594e369c720d45124ef24eb87f8907d23",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
