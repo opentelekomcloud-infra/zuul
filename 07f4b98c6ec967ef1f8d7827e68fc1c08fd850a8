@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5d8ebe70_34993742",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1353,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-29T23:12:14Z",
+      "side": 1,
+      "message": "Yes, our input to this method is that request_ready_nodes is a list of nodes which can be used by at least one provider.\n\nHere we need to know which provider so we can get the count.\n\nIf we had a more complex data structure, we could do this in the earlier check and keep the data.  But these checks shouldn\u0027t be that expensive, so in the interest of keeping things simple for now, I\u0027m repeating it.\n\nIt\u0027s probably worth moving it in a future change.",
+      "parentUuid": "e6b04e3f_8d7d67da",
+      "revId": "07f4b98c6ec967ef1f8d7827e68fc1c08fd850a8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0669ed8b_cf892097",
         "filename": "zuul/model.py",
         "patchSetId": 1
@@ -31,6 +49,24 @@
       "writtenOn": "2025-07-29T23:05:14Z",
       "side": 1,
       "message": "Should this check come before the return True on line 2834 to prevent using a node booted on an old config as long as the provider names have stayed the same? I think this is a decision that may not have a correct answer for all deployments and it may vary depending on what config updatse are made?",
+      "revId": "07f4b98c6ec967ef1f8d7827e68fc1c08fd850a8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d60b62c2_9c27d637",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2844,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-29T23:12:14Z",
+      "side": 1,
+      "message": "The only time a node has a provider assigned (the first check you refer to) is if it\u0027s actually assigned to a request.  We don\u0027t want to yank nodes out of requests once they\u0027ve been assigned, so that takes priority.\n\n(This isn\u0027t very relevant to ready nodes, but this method may end up being used in other places.)",
+      "parentUuid": "0669ed8b_cf892097",
       "revId": "07f4b98c6ec967ef1f8d7827e68fc1c08fd850a8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
