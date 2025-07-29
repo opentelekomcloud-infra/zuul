@@ -1229,8 +1229,9 @@ class TestLauncher(LauncherBaseTestCase):
         # launcher caused by request processing attempting to relaunch the
         # node during launcher shutdown. The clean no exceptions in logs
         # check for unittests fails otherwise.
-        request.delete(ctx)
-        self.waitUntilSettled()
+        with self.launcher._run_lock:
+            request.delete(ctx)
+            self.waitUntilSettled()
 
     @simple_layout('layouts/nodepool-multi-provider.yaml',
                    enable_nodepool=True)
