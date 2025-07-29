@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e6b04e3f_8d7d67da",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1353,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-29T23:05:14Z",
+      "side": 1,
+      "message": "We already checked this case in _filterReadyNodes() do we need to do it again here? I assume that we don\u0027t actually carry enough state about the provider on the node object and have to double check as a result?",
+      "revId": "07f4b98c6ec967ef1f8d7827e68fc1c08fd850a8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0669ed8b_cf892097",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2844,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-29T23:05:14Z",
+      "side": 1,
+      "message": "Should this check come before the return True on line 2834 to prevent using a node booted on an old config as long as the provider names have stayed the same? I think this is a decision that may not have a correct answer for all deployments and it may vary depending on what config updatse are made?",
+      "revId": "07f4b98c6ec967ef1f8d7827e68fc1c08fd850a8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
