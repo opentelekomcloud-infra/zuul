@@ -2829,6 +2829,22 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             zuul_event_id=self.zuul_event_id,
         )
 
+    def isPermittedForProvider(self, provider):
+        if provider.canonical_name == self.provider:
+            return True
+
+        if (provider.connection_name !=
+            self.connection_name):
+            return False
+
+        if not (plabel := provider.labels.get(self.label)):
+            return False
+
+        if self.label_config_hash != plabel.config_hash:
+            return False
+
+        return True
+
 
 class Secret(ConfigObject):
     """A collection of private data.

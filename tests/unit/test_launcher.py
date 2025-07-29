@@ -2069,6 +2069,14 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
         self.assertGreaterEqual(len(nodes), 3)
         self.assertLessEqual(len(nodes), 5)
 
+        # Make sure the ready nodes show up in stats, even though they
+        # are not on a provider.
+        self.launcher._runStats()
+        pname = 'review_example_com%2Fcommon-config/aws-us-east-1-main'
+        self.assertReportedStat(
+            f'zuul.provider.{pname}.label.debian-normal.nodes.state.ready',
+            value='2',
+            kind='g')
         self.executor_server.hold_jobs_in_build = True
         A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
         A.addApproval('Code-Review', 2)
