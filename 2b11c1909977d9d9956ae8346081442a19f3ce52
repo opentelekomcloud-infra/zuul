@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "41b61bd1_4979ee95",
+        "filename": "zuul/zk/quotacache.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-29T13:22:07Z",
+      "side": 1,
+      "message": "Seeing the test failures in https://review.opendev.org/c/zuul/zuul/+/955107 I\u0027m wondering if we want to re-raise the exception here or just swallow it.",
+      "revId": "2b11c1909977d9d9956ae8346081442a19f3ce52",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
