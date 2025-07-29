@@ -36,6 +36,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0bd6d2eb_d883b0f6",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1353,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-29T23:13:37Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "5d8ebe70_34993742",
+      "revId": "07f4b98c6ec967ef1f8d7827e68fc1c08fd850a8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0669ed8b_cf892097",
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "The only time a node has a provider assigned (the first check you refer to) is if it\u0027s actually assigned to a request.  We don\u0027t want to yank nodes out of requests once they\u0027ve been assigned, so that takes priority.\n\n(This isn\u0027t very relevant to ready nodes, but this method may end up being used in other places.)",
       "parentUuid": "0669ed8b_cf892097",
+      "revId": "07f4b98c6ec967ef1f8d7827e68fc1c08fd850a8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf401043_297cd141",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2844,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-29T23:13:37Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "d60b62c2_9c27d637",
       "revId": "07f4b98c6ec967ef1f8d7827e68fc1c08fd850a8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
