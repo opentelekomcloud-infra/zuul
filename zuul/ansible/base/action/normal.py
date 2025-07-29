@@ -17,24 +17,41 @@ from zuul.ansible import paths, stream_setup
 
 normal = paths._import_ansible_action_plugin("normal")
 
+# Map the various names to our custom module
+module_map = {
+    'win_shell': 'zuul_win_shell',
+    'win_command': 'zuul_win_command',
+    'ansible.legacy.win_shell': 'zuul_win_shell',
+    'ansible.legacy.win_command': 'zuul_win_command',
+    'ansible.windows.win_shell': 'zuul_win_shell',
+    'ansible.windows.win_command': 'zuul_win_command',
+}
+
+# Never let users specify these directly
+module_blocklist = [
+    'zuul_win_shell',
+    'zuul_win_command',
+]
+
 
 class ActionModule(normal.ActionModule):
 
     def run(self, tmp=None, task_vars=None):
         module_name = self._task.action
-        if module_name in (
-                'ansible.windows.win_shell',
-                'ansible.windows.win_command',
-        ):
-            stream_setup.stream_setup_run(self, task_vars)
+        if module_name in module_blocklist:
+            raise Exception(f"Module {module_name} may not be used directly")
+        if module_name in module_map:
+            if not stream_setup.zuul_console_disabled(self):
+                stream_setup.stream_setup_run(self, task_vars)
         return super(ActionModule, self).run(tmp, task_vars)
 
-    def _execute_module(self, module_name=None, **kw):
+    def _execute_module(self, module_name=None, *args, **kw):
         if module_name is None:
             module_name = self._task.action
-        if module_name == 'ansible.windows.win_shell':
-            module_name = 'win_shell'
-        elif module_name == 'ansible.windows.win_command':
-            module_name = 'win_command'
+        # If the user has not disabled the zuul console, then switch
+        # to our custom module.
+        if module_name in module_map:
+            if not stream_setup.zuul_console_disabled(self):
+                module_name = module_map.get(module_name)
         return super(ActionModule, self)._execute_module(
-            module_name=module_name, **kw)
+            module_name=module_name, *args, **kw)

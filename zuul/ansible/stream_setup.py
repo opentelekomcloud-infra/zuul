@@ -21,19 +21,23 @@ from zuul.ansible import paths
 from ansible.module_utils.parsing.convert_bool import boolean
 
 
-def stream_setup_run(self, task_vars):
+def zuul_console_disabled(module):
+    return boolean(
+        module._templar.template(
+            "{{zuul_console_disabled|default(false)}}"))
+
+
+def stream_setup_run(module, task_vars):
     # Overloading the UUID is a bit lame, but it stops us
     # having to modify the library command.py too much.  Both
     # of these below stop the creation of the files on disk
     # for situations where they won't be read and cleaned-up.
-    skip = boolean(
-        self._templar.template(
-            "{{zuul_console_disabled|default(false)}}"))
+    skip = zuul_console_disabled(module)
     if skip:
-        self._task.args['zuul_log_id'] = 'skip'
+        module._task.args['zuul_log_id'] = 'skip'
     elif 'ansible_loop_var' in task_vars:
         # we do not log loops in the zuul_stream.py callback.
-        self._task.args['zuul_log_id'] = 'in-loop-ignore'
+        module._task.args['zuul_log_id'] = 'in-loop-ignore'
     else:
         # Get a unique key for ZUUL_LOG_ID_MAP.  ZUUL_LOG_ID_MAP
         # is read-only since we are forked.  Use it to add a
@@ -42,9 +46,9 @@ def stream_setup_run(self, task_vars):
         # in paths.py for details.
         log_host = paths._sanitize_filename(
             task_vars.get('inventory_hostname'))
-        key = "%s-%s" % (self._task._uuid, log_host)
+        key = "%s-%s" % (module._task._uuid, log_host)
         count = paths.ZUUL_LOG_ID_MAP.get(key, 0)
-        self._task.args['zuul_log_id'] = "%s-%s-%s" % (
-            self._task._uuid, count, log_host)
-    self._task.args["zuul_output_max_bytes"] = int(
+        module._task.args['zuul_log_id'] = "%s-%s-%s" % (
+            module._task._uuid, count, log_host)
+    module._task.args["zuul_output_max_bytes"] = int(
         os.environ["ZUUL_OUTPUT_MAX_BYTES"])
