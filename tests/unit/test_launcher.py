@@ -1676,7 +1676,7 @@ class TestLauncherLocality(LauncherBaseTestCase):
 
         def my_advance(*args, **kw):
             nonlocal failed_count
-            if failed_count > 1:
+            if failed_count > 0:
                 return orig_advance(*args, **kw)
             failed_count += 1
             raise Exception("Test exception")
@@ -1694,6 +1694,9 @@ class TestLauncherLocality(LauncherBaseTestCase):
         # These can be served from either provider; both should be
         # assigned to the same one.
         self.assertEqual(nodes1[0].provider, nodes1[1].provider)
+
+        # Ensure that we didn't leave an extra ready node
+        self.assertEqual(2, len(self.launcher.api.nodes_cache.getItems()))
 
     @okay_tracebacks('_checkNodescanRequest')
     def test_provider_selection_locality_exhaustion(self):
