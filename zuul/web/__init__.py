@@ -2462,6 +2462,10 @@ class ZuulWebAPI(object):
                 if node.provider in provider_cnames:
                     if node.tenant_name == tenant.name:
                         ret.append(ProviderNodeConverter.toDict(node))
+                elif node.provider is None:
+                    for provider in providers:
+                        if node.isPermittedForProvider(provider):
+                            ret.append(ProviderNodeConverter.toDict(node))
         return ret
 
     @cherrypy.expose

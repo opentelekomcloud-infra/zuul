@@ -14,6 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import collections
 import os
 import urllib.parse
 import socket
@@ -1902,7 +1903,7 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         ]
         self.assertEqual(expected, data)
 
-    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    @simple_layout('layouts/nodepool-min-ready.yaml', enable_nodepool=True)
     def test_web_nodes_list_niz(self):
         self.waitUntilSettled()
         self.startWebServer()
@@ -1911,11 +1912,16 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
         self.waitUntilSettled()
         data = self.get_url('api/tenant/tenant-one/nodes').json()
-        self.assertEqual(len(data), 1)
-        self.assertEqual(
-            'review.example.com%2Forg%2Fcommon-config/aws-us-east-1-main',
-            data[0]["provider"])
-        self.assertEqual("debian-normal", data[0]["label"])
+        self.assertEqual(len(data), 2)
+        pname = 'review.example.com%2Forg%2Fcommon-config/aws-us-east-1-main'
+        for node in data:
+            if node['label'] == 'debian-normal':
+                self.assertEqual(pname, node["provider"])
+            else:
+                self.assertIsNone(node["provider"])
+        labels = collections.Counter(x['label'] for x in data)
+        self.assertEqual({'debian-normal': 1, 'debian-large': 1},
+                         labels)
         self.executor_server.hold_jobs_in_build = False
         self.executor_server.release()
         self.waitUntilSettled()
