@@ -1497,7 +1497,7 @@ class Launcher:
             for i, node in enumerate(requested_nodes):
                 label, provider = label_providers[i]
                 if (node.state in node.FAILED_STATES or
-                    provider.name != node.provider):
+                    provider.canonical_name != node.provider):
                     # We're either retrying this node or we're
                     # changing providers.
                     log.info(
