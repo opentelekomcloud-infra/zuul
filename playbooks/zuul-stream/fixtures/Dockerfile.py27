@@ -1,4 +1,6 @@
-FROM python:2.7.18-buster AS buster-2.7-ssh
+# This is a mirror of:
+# FROM docker.io/library/python:2.7.18-buster AS buster-2.7-ssh
+FROM quay.io/opendevmirror/python:2.7.18-buster AS buster-2.7-ssh
 
 ENV DEBIAN_FRONTEND noninteractive
 
