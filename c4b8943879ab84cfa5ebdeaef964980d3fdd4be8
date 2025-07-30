@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "56975b15_0f941e07",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 2165,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-30T12:57:26Z",
+      "side": 1,
+      "message": "Do we need to update quota based on the provider or rather the endpoint? In our case we\u0027ll probably have a lot of unique providers but all for a handful of endpoints.",
+      "revId": "c4b8943879ab84cfa5ebdeaef964980d3fdd4be8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
