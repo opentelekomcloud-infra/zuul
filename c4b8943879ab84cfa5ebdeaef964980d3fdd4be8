@@ -16,6 +16,24 @@
       "message": "Do we need to update quota based on the provider or rather the endpoint? In our case we\u0027ll probably have a lot of unique providers but all for a handful of endpoints.",
       "revId": "c4b8943879ab84cfa5ebdeaef964980d3fdd4be8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "98e1a9ff_935296a8",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 2165,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-30T18:37:58Z",
+      "side": 1,
+      "message": "It\u0027s *mostly* on the endpoint, and to that end, the endpoint is what holds the quota cache.  Unfortunately, one of the things we need to do is cache the quota used by instance types, so that a launcher can calculate how much quota is used by a label.  And we don\u0027t know which instance types are used at the endpoint level, we need providers for that.\n\nSo what we\u0027re really doing here is telling the provider to tell its endpoint to cache the quota information needed for all of the instance types the provider might use.\n\nWe will do this once for every provider (but at least, we won\u0027t do it providers*launchers times -- the rendesvouz hash takes care of that).\n\nLet\u0027s consider what action we\u0027ll actually perform within the postConfig call:\n\n* Fetch endpoint quota limits: these still have a lazy executor ttl cache with a 5 minute timeout, so we won\u0027t hit those api endpoints more than once per launcher every 5 minutes, no matter how many providers.\n* Fetch instance type information: these have an unbounded LRU cache, meaning that a given launcher will only ever fetch info about an instance type once, no matter how many labels/providers reference it.  In general, that means this part will only trigger an API call once for each instance type during the lifetime of a launcher.\n\nI think the second one is as optimized as we can or should make it (allowing the values to reset by restarting all the launchers seems like a useful escape valve in case a cloud ever sends us incorrect values).\n\nSince these are relatively separate actions, we could split them so that we only perform the first one once for each endpoint.  Let\u0027s say you have 100 providers and 10 launchers.  As written, you would probably end up performing 10 api calls to fetch the limits, once for each launcher.  If we do it per-endpoint, we can probably get that down to one.\n\nI don\u0027t think this is a critical optimization, but I think it could work and be a good one, so I\u0027ll implement it in a followup at the end of the stack.",
+      "parentUuid": "56975b15_0f941e07",
+      "revId": "c4b8943879ab84cfa5ebdeaef964980d3fdd4be8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
