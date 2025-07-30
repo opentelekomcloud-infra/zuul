@@ -1220,35 +1220,53 @@ class Launcher:
             for n in request.nodes
         )
 
+    def _filterReadyNodes(self, ready_nodes, request):
+        # This returns a nested defaultdict like:
+        # {label_name: {node: [node_providers]}}
+        request_ready_nodes = collections.defaultdict(
+            lambda: collections.defaultdict(list))
+        if request.image_upload_uuid:
+            # This is a request for an image validation job.
+            # Don't use any ready nodes for that.
+            return request_ready_nodes
+        providers = self.tenant_providers.get(request.tenant_name)
+        if not providers:
+            return request_ready_nodes
+        label_names = set(request.labels)
+        for label_name in label_names:
+            ready_for_label = list(ready_nodes.get(label_name, []))
+            if not ready_for_label:
+                continue
+            # TODO: sort by age? use old nodes first? random to reduce
+            # chance of thundering herd?
+            for node in ready_for_label:
+                if node.is_locked:
+                    continue
+                if node.hasExpired():
+                    continue
+                # Check to see if this node is valid in this tenant
+                for provider in providers:
+                    if node.isPermittedForProvider(provider):
+                        # This node is usable with this provider
+                        request_ready_nodes[label_name][node].append(provider)
+                        # We don't need to check the rest of the
+                        # providers in this tenant.
+                        break
+        return request_ready_nodes
+
     def _acceptRequest(self, request, log, ready_nodes):
         log.debug("Considering request %s", request)
+        request_ready_nodes = self._filterReadyNodes(ready_nodes, request)
         # Create provider nodes for the requested labels
-        label_providers = self._selectProviders(request, log)
+        label_providers = self._selectProviders(
+            request, request_ready_nodes, log)
         with (self.createZKContext(request._lock, log) as ctx,
               request.activeContext(ctx)):
             for i, (label, provider) in enumerate(label_providers):
-                ready_for_label = list(ready_nodes.get(label.name, []))
-                if request.image_upload_uuid:
-                    # This is a request for an image validation job.
-                    # Don't use any ready nodes for that.
-                    ready_for_label = []
+                ready_for_label = request_ready_nodes[label.name]
                 # TODO: sort by age? use old nodes first? random to reduce
                 # chance of thundering herd?
-                for node in ready_for_label:
-                    if node.is_locked:
-                        continue
-                    if node.hasExpired():
-                        continue
-                    # Check to see if this node is valid in this tenant
-                    if (provider.connection_name !=
-                        node.connection_name):
-                        continue
-                    if not (plabel :=
-                            provider.labels.get(label.name)):
-                        continue
-                    if node.label_config_hash != plabel.config_hash:
-                        continue
-
+                for node, providers in ready_for_label.items():
                     if not node.acquireLock(ctx, blocking=False):
                         log.debug("Failed to lock matching ready node %s",
                                   node)
@@ -1258,6 +1276,7 @@ class Launcher:
                         # Double check if it's still available
                         if (node.request_id or
                             node.state != node.State.READY):
+                            request_ready_nodes[label.name].pop(node)
                             ready_nodes[label.name].remove(node)
                             continue
                         tags = provider.getNodeTags(
@@ -1271,6 +1290,7 @@ class Launcher:
                                 tenant_name=request.tenant_name,
                                 tags=tags,
                             )
+                        request_ready_nodes[label.name].pop(node)
                         ready_nodes[label.name].remove(node)
                         log.debug("Assigned ready node %s", node.uuid)
                         break
@@ -1311,7 +1331,7 @@ class Launcher:
                 log.debug("Accepting request %s", request)
                 request.state = model.NodesetRequest.State.ACCEPTED
 
-    def _selectProviders(self, request, log):
+    def _selectProviders(self, request, request_ready_nodes, log):
         providers = self.tenant_providers.get(request.tenant_name)
         if not providers:
             raise NodesetRequestError(
@@ -1323,6 +1343,22 @@ class Launcher:
 
         # Sort that list by quota
         providers.sort(key=lambda p: self.getQuotaPercentage(p))
+
+        # Then if there are ready nodes, sort so that we can use the
+        # most ready nodes.
+        if request_ready_nodes:
+            # provider -> total ready nodes
+            usable_provider_ready_nodes = collections.Counter()
+            for label_name in set(request.labels):
+                for node, node_providers in request_ready_nodes[
+                        label_name].items():
+                    for node_provider in node_providers:
+                        usable_provider_ready_nodes[
+                            node_provider.canonical_name] += 1
+            providers.sort(
+                key=lambda p: usable_provider_ready_nodes[p.canonical_name],
+                reverse=True
+            )
 
         # A list of providers that could work for all labels in the request
         ideal_providers_for_all_labels = set(providers)
@@ -1493,7 +1529,7 @@ class Launcher:
         if any(n.state in n.FAILED_STATES for n in requested_nodes):
             # If any nodes failed, see if we need to change providers
             # for any or all of them.
-            label_providers = self._selectProviders(request, log)
+            label_providers = self._selectProviders(request, None, log)
             for i, node in enumerate(requested_nodes):
                 label, provider = label_providers[i]
                 if (node.state in node.FAILED_STATES or
@@ -1997,9 +2033,24 @@ class Launcher:
             f"Unable to find {provider_name} in tenant {tenant_name}")
 
     def _getProviders(self):
+        # The same provider can behave differently in different
+        # tenants because, for example, different image definitions
+        # may appear in the different tenants.  This method will
+        # return all of the providers.
         for providers in self.tenant_providers.values():
             for provider in providers:
                 yield provider
+
+    def _getUniqueProviders(self):
+        # Sometimes (eg, when generating stats) we may not care about
+        # the differences between the same provider in different
+        # tenants.  This returns unique providers.
+        seen = set()
+        for providers in self.tenant_providers.values():
+            for provider in providers:
+                if provider.canonical_name not in seen:
+                    yield provider
+                    seen.add(provider.canonical_name)
 
     def _hasProvider(self, node):
         try:
@@ -2612,8 +2663,18 @@ class Launcher:
 
         for node in self.api.nodes_cache.getItems():
             nodes[node.state] += 1
-            provider_nodes[node.provider][node.state] += 1
-            provider_label_nodes[node.provider][node.label][node.state] += 1
+            if node.provider:
+                provider_nodes[node.provider][node.state] += 1
+                provider_label_nodes[node.provider][node.label][
+                    node.state] += 1
+            else:
+                for provider in self._getUniqueProviders():
+                    if node.isPermittedForProvider(provider):
+                        provider_nodes[provider.canonical_name][
+                            node.state] += 1
+                        provider_label_nodes[
+                            provider.canonical_name][node.label][
+                                node.state] += 1
 
         requests = {}
         for state in model.NodesetRequest.State:
