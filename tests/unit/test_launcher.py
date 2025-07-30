@@ -214,7 +214,7 @@ class LauncherBaseTestCase(ZuulTestCase):
 
         def refreshQuotaLimits(self, *args, **kw):
             return False
-        self.patch(zuul.driver.aws.awsprovider.AwsProvider,
+        self.patch(zuul.driver.aws.awsendpoint.AwsProviderEndpoint,
                    'refreshQuotaLimits',
                    refreshQuotaLimits)
         super().setUp()

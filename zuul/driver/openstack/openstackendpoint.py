@@ -530,6 +530,13 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
             volume = None
         return quota_from_limits(compute, volume)
 
+    def refreshQuotaLimits(self, update):
+        if self.quota_cache.hasLimits() and not update:
+            return False
+        limits = self.getQuotaLimits()
+        self.quota_cache.setLimits(limits)
+        return True
+
     def getQuotaForLabel(self, label, flavor):
         # This should not rely on the client connection, only the
         # quota cache.

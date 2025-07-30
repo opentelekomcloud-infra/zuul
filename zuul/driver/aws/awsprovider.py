@@ -379,18 +379,6 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
         cloud.min(zuul)
         return cloud
 
-    def refreshQuotaLimits(self, update):
-        if self.endpoint.quota_cache.hasLimits() and not update:
-            return False
-        ec2_quotas = self.endpoint._listEC2Quotas()
-        ebs_quotas = self.endpoint._listEBSQuotas()
-        args = dict()
-        args.update(ec2_quotas)
-        args.update(ebs_quotas)
-        limits = QuotaInformation(**args)
-        self.endpoint.quota_cache.setLimits(limits)
-        return True
-
     def getQuotaForLabel(self, label):
         flavor = self.flavors[label.flavor]
         return self.endpoint.getQuotaForLabel(label, flavor)

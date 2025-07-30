@@ -2121,13 +2121,13 @@ class Launcher:
         return ZKContext(self.zk_client, lock, self.join_event, log,
                          default_lock_identifier=self.component_info.hostname)
 
-    def _chooseLauncherForProvider(self, provider):
+    def _chooseLauncherForEndpoint(self, endpoint):
         all_launchers = {
             c.hostname: c for c in COMPONENT_REGISTRY.registry.all("launcher")}
         candidate_launchers = {
             n: c for n, c in all_launchers.items()
             if not c.connection_filter
-            or provider.connection_name in c.connection_filter}
+            or endpoint.connection_name in c.connection_filter}
         candidate_names = set(candidate_launchers)
         lscores = {mmh3.hash(n, signed=False): n
                    for n in candidate_names}
@@ -2147,6 +2147,7 @@ class Launcher:
             if self._updateTenantProviders(tenant_name):
                 updated = True
 
+        seen_endpoint_names = set()
         seen_provider_names = set()
         if updated:
             for providers in self.tenant_providers.values():
@@ -2155,14 +2156,19 @@ class Launcher:
                         provider.connection_name not in
                         self.connection_filter):
                         continue
-                    designated_launcher = self._chooseLauncherForProvider(
-                        provider)
-                    force = bool(designated_launcher ==
-                                 self.component_info.hostname)
                     endpoint = provider.getEndpoint()
                     endpoints[endpoint.canonical_name] = endpoint
+
+                    designated_launcher = self._chooseLauncherForEndpoint(
+                        endpoint)
+                    force = bool(designated_launcher ==
+                                 self.component_info.hostname)
                     endpoint.start()
                     endpoint.postConfig(provider)
+                    if endpoint.canonical_name not in seen_endpoint_names:
+                        quota_updated = endpoint.refreshQuotaLimits(force)
+                        seen_endpoint_names.add(provider.canonical_name)
+                        force = quota_updated or force
                     if provider.canonical_name not in seen_provider_names:
                         provider.postConfig(force)
                         seen_provider_names.add(provider.canonical_name)
