@@ -27,11 +27,31 @@ import StatusPage from './pages/Status'
 import ZuulAuthProvider from './ZuulAuthProvider'
 import * as api from './api'
 
-api.fetchInfo = jest.fn()
-api.fetchTenants = jest.fn()
-api.fetchStatus = jest.fn()
-api.fetchConfigErrors = jest.fn()
-api.fetchConfigErrors.mockImplementation(() => Promise.resolve({data: []}))
+jest.mock('./api', () => ({
+  fetchInfo: jest.fn(() => Promise.resolve({data: {}})),
+  fetchTenants: jest.fn(() => Promise.resolve({data: []})),
+  fetchStatus: jest.fn(() => Promise.resolve({data: {}})),
+  fetchConfigErrors: jest.fn(() => Promise.resolve({data: []})),
+  fetchTenantStatus: jest.fn(() => Promise.resolve({data: {}})),
+  getHomepageUrl: jest.fn(() => 'http://localhost/'),
+  // Add other api functions that might be called
+  fetchTenantInfo: jest.fn(() => Promise.resolve({data: {}})),
+  fetchPipelines: jest.fn(() => Promise.resolve({data: []})),
+  fetchProjects: jest.fn(() => Promise.resolve({data: []})),
+  fetchJobs: jest.fn(() => Promise.resolve({data: []})),
+  fetchBuilds: jest.fn(() => Promise.resolve({data: []})),
+  fetchBuildsets: jest.fn(() => Promise.resolve({data: []})),
+  fetchNodes: jest.fn(() => Promise.resolve({data: []})),
+  fetchLabels: jest.fn(() => Promise.resolve({data: []}))
+}))
+
+jest.mock('@patternfly/react-charts', () => ({
+  Chart: 'div',
+  ChartBar: 'div',
+  ChartAxis: 'div',
+  ChartLegend: 'div',
+  ChartTooltip: 'div'
+}))
 
 it('renders without crashing', async () => {
   const store = configureStore()
@@ -119,17 +139,25 @@ it('renders single tenant', async () => {
   api.fetchStatus.mockImplementation(
     () => Promise.resolve({data: {pipelines: []}})
   )
-
-  const application = create(
-    <Provider store={store}>
-      <ZuulAuthProvider channel={channel} election={auth_election}>
-        <Router><App /></Router>
-      </ZuulAuthProvider>
-    </Provider>
+  api.fetchTenantStatus.mockImplementation(
+    () => Promise.resolve({data: {config_error_count: 0}})
   )
 
+  let application
+  
   await act(async () => {
+    application = create(
+      <Provider store={store}>
+        <ZuulAuthProvider channel={channel} election={auth_election}>
+          <Router><App /></Router>
+        </ZuulAuthProvider>
+      </Provider>
+    )
+
     await store.dispatch(fetchInfoIfNeeded())
+    
+    // Give some time for all async operations to complete
+    await new Promise(resolve => setTimeout(resolve, 100))
   })
 
   // Link should be white-label scoped
