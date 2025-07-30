@@ -400,10 +400,12 @@
         - nodejs-run-lint:
             vars:
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
+              node_version: 22
             nodeset: ubuntu-jammy
         - nodejs-run-test:
             vars:
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
+              node_version: 22
             files:
               - web/.*
             nodeset: ubuntu-jammy
@@ -433,10 +435,12 @@
         - nodejs-run-lint:
             vars:
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
+              node_version: 22
             nodeset: ubuntu-jammy
         - nodejs-run-test:
             vars:
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
+              node_version: 22
             files:
               - web/.*
             nodeset: ubuntu-jammy
