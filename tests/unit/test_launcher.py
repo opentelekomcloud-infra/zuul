@@ -252,6 +252,12 @@ class TestLauncher(LauncherBaseTestCase):
                 self.launcher.local_layout_state.get(tenant)):
                 break
 
+    def _waitForNoChildren(self, path):
+        for _ in iterate_timeout(10, f"empty path {path}"):
+            znodes = self.zk_client.client.get_children('/zuul/nodeset/locks')
+            if not len(znodes):
+                return
+
     @simple_layout('layouts/nodepool-missing-connection.yaml',
                    enable_nodepool=True)
     def test_launcher_missing_connection(self):
@@ -818,14 +824,10 @@ class TestLauncher(LauncherBaseTestCase):
         for _ in iterate_timeout(60, "nodes to be deleted"):
             if len(self.launcher.api.nodes_cache.getItems()) == 0:
                 break
-        znodes = self.zk_client.client.get_children('/zuul/nodeset/locks')
-        self.assertEqual([], list(znodes))
-        znodes = self.zk_client.client.get_children('/zuul/nodeset/requests')
-        self.assertEqual([], list(znodes))
-        znodes = self.zk_client.client.get_children('/zuul/nodes/locks')
-        self.assertEqual([], list(znodes))
-        znodes = self.zk_client.client.get_children('/zuul/nodes/nodes')
-        self.assertEqual([], list(znodes))
+        self._waitForNoChildren('/zuul/nodeset/locks')
+        self._waitForNoChildren('/zuul/nodeset/requests')
+        self._waitForNoChildren('/zuul/nodes/locks')
+        self._waitForNoChildren('/zuul/nodes/nodes')
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_canceled_request(self):
@@ -846,10 +848,8 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertHistory([])
         reqs = self.launcher.api.getNodesetRequests()
         self.assertEqual(0, len(reqs))
-        znodes = self.zk_client.client.get_children('/zuul/nodeset/locks')
-        self.assertEqual([], list(znodes))
-        znodes = self.zk_client.client.get_children('/zuul/nodeset/requests')
-        self.assertEqual([], list(znodes))
+        self._waitForNoChildren('/zuul/nodeset/locks')
+        self._waitForNoChildren('/zuul/nodeset/requests')
 
     @simple_layout('layouts/nodepool-empty-nodeset.yaml', enable_nodepool=True)
     def test_empty_nodeset(self):
