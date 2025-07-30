@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c08b346a_a8d05cbf",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1250,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-30T12:41:31Z",
+      "side": 1,
+      "message": "Shouldn\u0027t we break only if we\u0027ve found a provider that can process the node rather than to stop after the first provider?",
+      "revId": "83d430728d65295088e65e29e9227abef0329df8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "60e469fb_edc7a649",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1252,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-30T12:41:31Z",
+      "side": 1,
+      "message": "nit: I think we could get rid of the flag and directly append the node in the if-cond instead of setting the flag to true.",
+      "revId": "83d430728d65295088e65e29e9227abef0329df8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8992383b_0f721c2e",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1352,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-07-30T12:41:31Z",
+      "side": 1,
+      "message": "Just wondering if we want to track the permitted provider as part of the `request_ready_nodes`, since we already check the providers there.",
+      "revId": "83d430728d65295088e65e29e9227abef0329df8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
