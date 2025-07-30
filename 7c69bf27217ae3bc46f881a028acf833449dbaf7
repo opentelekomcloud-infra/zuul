@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1155270f_1edd9956",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 36342
+      },
+      "writtenOn": "2025-07-30T13:01:28Z",
+      "side": 1,
+      "message": "I\u0027m struggling with webpack 4 tied to react-scripts 3.4.1 from 2020. We need to upgrade it first before trying to update problematic dependencies",
+      "revId": "7c69bf27217ae3bc46f881a028acf833449dbaf7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
