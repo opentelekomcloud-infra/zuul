@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c85af6c6_1544d54b",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1250,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-30T17:04:45Z",
+      "side": 1,
+      "message": "Yes, this is an indentation error.  Love that about python.",
+      "parentUuid": "c08b346a_a8d05cbf",
+      "revId": "83d430728d65295088e65e29e9227abef0329df8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "60e469fb_edc7a649",
@@ -35,6 +53,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "dbe8450b_9840d753",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1252,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-30T17:04:45Z",
+      "side": 1,
+      "message": "Good point.  I think when I wrote this, there was briefly another level of looping, or I thought there would be.",
+      "parentUuid": "60e469fb_edc7a649",
+      "revId": "83d430728d65295088e65e29e9227abef0329df8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8992383b_0f721c2e",
@@ -48,6 +84,24 @@
       "writtenOn": "2025-07-30T12:41:31Z",
       "side": 1,
       "message": "Just wondering if we want to track the permitted provider as part of the `request_ready_nodes`, since we already check the providers there.",
+      "revId": "83d430728d65295088e65e29e9227abef0329df8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f17ce96_2073a073",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1352,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-07-30T17:04:45Z",
+      "side": 1,
+      "message": "Yeah, that\u0027s related to the conversation I had with Clark.  I wanted to avoid it because it would make the data structure more complicated, but since we all agree it\u0027s a good idea, maybe I should bite the bullet and do that.",
+      "parentUuid": "8992383b_0f721c2e",
       "revId": "83d430728d65295088e65e29e9227abef0329df8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
