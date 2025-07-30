@@ -238,7 +238,11 @@ function getNodeStyle(node) {
 }
 
 function formatProviderName(providerName) {
-  return providerName.split('/', 2)[1]
+  if (providerName !== null) {
+    return providerName.split('/', 2)[1]
+  } else {
+    return providerName
+  }
 }
 
 export {
