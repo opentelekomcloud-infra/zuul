@@ -27,11 +27,12 @@ import StatusPage from './pages/Status'
 import ZuulAuthProvider from './ZuulAuthProvider'
 import * as api from './api'
 
-api.fetchInfo = jest.fn()
-api.fetchTenants = jest.fn()
-api.fetchStatus = jest.fn()
-api.fetchConfigErrors = jest.fn()
-api.fetchConfigErrors.mockImplementation(() => Promise.resolve({data: []}))
+jest.mock('./api', () => ({
+  fetchInfo: jest.fn(),
+  fetchTenants: jest.fn(),
+  fetchStatus: jest.fn(),
+  fetchConfigErrors: jest.fn(() => Promise.resolve({data: []}))
+}))
 
 it('renders without crashing', async () => {
   const store = configureStore()
