@@ -21,7 +21,7 @@ import * as moment from 'moment'
 import * as moment_tz from 'moment-timezone'
 import 'moment-duration-format'
 
-import { Chart, ChartBar, ChartAxis, ChartLegend, ChartTooltip } from '@patternfly/react-charts'
+import { Chart, ChartBar, ChartAxis, ChartLegend, ChartTooltip } from '@patternfly/react-charts/victory'
 
 import { buildResultLegendData, buildsBarStyle } from './Misc'
 import { describeRef } from '../../Misc'

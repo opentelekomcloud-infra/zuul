@@ -28,10 +28,9 @@ import {
   ChartAxis,
   ChartScatter,
   ChartThemeColor,
-  ChartThemeVariant,
   ChartVoronoiContainer,
   getCustomTheme,
-} from '@patternfly/react-charts'
+} from '@patternfly/react-charts/victory'
 import * as moment from 'moment'
 import * as moment_tz from 'moment-timezone'
 
@@ -96,7 +95,7 @@ function toTime(x, tz) {
 }
 
 function TestChart(builds, preferences, timezone) {
-  const myTheme = getCustomTheme(ChartThemeColor.blue, ChartThemeVariant.light,
+  const myTheme = getCustomTheme(ChartThemeColor.blue,
                                  preferences.darkMode ? DarkTheme : LightTheme)
   let results = {SUCCESS: [], FAILURE: []}
   builds.forEach(build => {
