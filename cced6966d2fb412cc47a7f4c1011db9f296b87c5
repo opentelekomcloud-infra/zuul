@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3b8d96c7_1a28c3ab",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 36342
+      },
+      "writtenOn": "2025-07-30T11:58:40Z",
+      "side": 1,
+      "message": "New swagger-ui version is incomaptible with the current webpack config which can\u0027t parse the ES modules",
+      "revId": "cced6966d2fb412cc47a7f4c1011db9f296b87c5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
