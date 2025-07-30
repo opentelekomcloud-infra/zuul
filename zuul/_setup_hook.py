@@ -18,7 +18,13 @@ import subprocess
 
 import pbr.packaging
 
-_old_from_git = pbr.packaging._from_git
+# In newer pbr versions the private attribute _from_git was removed/renamed.
+# We only need to trigger the javascript build before version calculation; if
+# the original helper is not present we degrade gracefully instead of failing.
+try:  # backward compatibility with pbr<6
+    _old_from_git = pbr.packaging._from_git  # type: ignore[attr-defined]
+except AttributeError:  # pbr>=6 (internal API removed)
+    _old_from_git = None  # noqa: N816 (preserve existing variable name pattern)
 
 
 def _build_javascript():
@@ -38,10 +44,26 @@ def _build_javascript():
             raise RuntimeError("Yarn build failed")
 
 
-def _from_git(distribution):
+def _from_git(distribution):  # noqa: D401 - internal hook wrapper
+    """Wrapper which ensures the JS bundle exists before versioning.
+
+    If the legacy pbr.packaging._from_git is available we delegate to it;
+    otherwise (newer pbr) we simply return and let pbr continue with its
+    normal version resolution path (which no longer uses this symbol).
+    """
     _build_javascript()
-    return _old_from_git(distribution)
+    if _old_from_git is not None:
+        return _old_from_git(distribution)
+    # Newer pbr: nothing further required. Returning None keeps behavior
+    # consistent with a no-op hook.
+    return None
 
 
-def setup_hook(config):
-    pbr.packaging._from_git = _from_git
+def setup_hook(config):  # noqa: D401 - pbr entry point
+    # Only monkeypatch if the legacy attribute exists; on newer pbr this would
+    # raise AttributeError and break editable installs.
+    if _old_from_git is not None:
+        pbr.packaging._from_git = _from_git  # type: ignore[attr-defined]
+    else:
+        # Still run JS build eagerly so sdist/wheel have assets.
+        _build_javascript()
