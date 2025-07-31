@@ -1,0 +1,112 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b049402_20b41f61",
+        "filename": "tests/unit/test_select_providers.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-31T19:04:53Z",
+      "side": 1,
+      "message": "We\u0027re logging label_providers info and not expected info. We should probably enumerate over label_providers instead expected in case they get different lengths? Also, its a bit confusing to iterate over one data structure and only use index values from it.",
+      "range": {
+        "startLine": 104,
+        "startChar": 33,
+        "endLine": 104,
+        "endChar": 52
+      },
+      "revId": "0dc687b04bc6b290addffaec40f4b4c623e795cd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c2c48b0_f5d6ba87",
+        "filename": "tests/unit/test_select_providers.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-31T19:04:53Z",
+      "side": 1,
+      "message": "Should we shuffle in the non ordered case? Basically call the original code? That way we can test that codepath works as well.",
+      "revId": "0dc687b04bc6b290addffaec40f4b4c623e795cd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "636dea5e_f13696c3",
+        "filename": "tests/unit/test_select_providers.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-31T19:04:53Z",
+      "side": 1,
+      "message": "Should we assert here that request_ready_nodes is empty? We\u0027re passing filterReadyNodes an empty list so expect the output to be empty as well.",
+      "revId": "0dc687b04bc6b290addffaec40f4b4c623e795cd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1665359f_bb6c43e5",
+        "filename": "tests/unit/test_select_providers.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-31T19:04:53Z",
+      "side": 1,
+      "message": "Do we need to call updateProviderNode against the same node twice here?",
+      "revId": "0dc687b04bc6b290addffaec40f4b4c623e795cd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de024e8e_d690b190",
+        "filename": "tests/unit/test_select_providers.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-31T19:04:53Z",
+      "side": 1,
+      "message": "Does it make sense to order west after east here to ensure we\u0027re going down the order? Or do we only change providers if the \"random\" shuffle comes back with a different provider first?",
+      "revId": "0dc687b04bc6b290addffaec40f4b4c623e795cd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d4495b79_245b6960",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2760,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-07-31T19:04:53Z",
+      "side": 1,
+      "message": "Do we need to add the endpoint name here to get it serialized in the first place?",
+      "revId": "0dc687b04bc6b290addffaec40f4b4c623e795cd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
