@@ -332,12 +332,12 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
                     if e.resource_id:
                         self.node.openstack_server_id = e.resource_id
                         if self._handleServerFault():
-                            self.log.exception("Launch attempt failed:")
+                            self.log.error("Launch attempt failed: %s", str(e))
                             raise exceptions.QuotaException("Quota exceeded")
                         raise
             except Exception as e:
                 if is_message_about_quota(str(e)):
-                    self.log.exception("Launch attempt failed:")
+                    self.log.error("Launch attempt failed: %s", str(e))
                     raise exceptions.QuotaException("Quota exceeded")
                 raise
 
