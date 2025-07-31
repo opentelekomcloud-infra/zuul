@@ -13,7 +13,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from zuul.model import Change, TriggerEvent, EventFilter, RefFilter
+from zuul.model import Change
+from zuul.model import EventFilter
+from zuul.model import FalseWithReason
+from zuul.model import RefFilter
+from zuul.model import TriggerEvent
 
 EMPTY_GIT_REF = '0' * 40  # git sha of all zeros, used during creates/deletes
 
@@ -293,3 +297,49 @@ class GitlabRefFilter(RefFilter):
                 return False
 
         return True
+
+
+# The RejectFilter is the negative version of RefFilter/RequireFilter
+# – if the defined conditions are met, the change will not trigger jobs
+class GitlabRejectFilter(RefFilter):
+    def __init__(self, connection_name, open=None, merged=None, approved=None,
+                 labels=None):
+        RefFilter.__init__(self, connection_name)
+        self.open = open
+        self.merged = merged
+        self.approved = approved
+        self.labels = labels or []
+
+    def __repr__(self):
+        ret = '<GitlabRejectFilter connection_name: {self.connection_name}'
+        if self.open is not None:
+            ret += f' open: {self.open}'
+        if self.merged is not None:
+            ret += f' merged: {self.merged}'
+        if self.approved is not None:
+            ret += f' approved: {self.approved}'
+        if self.labels:
+            ret += f' labels: {",".join(self.labels)}'
+        ret += '>'
+        return ret
+
+    def matches(self, change):
+        # Check if any of the defined rejection conditions is not met...
+        if self.open is not None:
+            if change.open != self.open:
+                return True  # Do not reject the change
+
+        if self.merged is not None:
+            if change.is_merged != self.merged:
+                return True  # Do not reject the change
+
+        if self.approved is not None:
+            if change.approved != self.approved:
+                return True  # Do not reject the change
+
+        if self.labels:
+            if set(self.labels).isdisjoint(set(change.labels)):
+                return True  # Do not reject the change
+
+        # Otherwise reject the change, as all the defined conditions did match
+        return FalseWithReason('All defined rejection criteria were met')

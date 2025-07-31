@@ -706,6 +706,184 @@ class TestGitlabDriver(ZuulTestCase):
         self.waitUntilSettled()
         self.assertEqual(1, len(self.history))
 
+    @simple_layout('layouts/requirements-gitlab.yaml', driver='gitlab')
+    def test_state_reject(self):
+
+        fake_mr = self.fake_gitlab.openFakeMergeRequest(project='org/project4',
+                                                        branch='master',
+                                                        title='Example MR')
+
+        # The job should be triggered for new change
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+        fake_mr.closeMergeRequest()
+
+        # A recheck should still trigger the job (as change was not yet merged)
+        self.fake_gitlab.emitEvent(
+            fake_mr.getMergeRequestCommentedEvent('recheck')
+        )
+        self.waitUntilSettled()
+        self.assertEqual(2, len(self.history))
+
+        fake_mr.mergeMergeRequest()
+
+        # A recheck should not trigger the job anymore
+        self.fake_gitlab.emitEvent(
+            fake_mr.getMergeRequestCommentedEvent('recheck')
+        )
+        self.waitUntilSettled()
+        self.assertEqual(2, len(self.history))
+
+    @simple_layout('layouts/requirements-gitlab.yaml', driver='gitlab')
+    def test_reject_unapproved(self):
+
+        fake_mr = self.fake_gitlab.openFakeMergeRequest(project='org/project5',
+                                                        branch='master',
+                                                        title='Example MR')
+
+        # The job should not be triggered for new and unapproved change
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        fake_mr.approved = False
+
+        # The job still should not be triggered for unapproved change
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        fake_mr.approved = True
+
+        # The job now should be triggered for approved change
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+        fake_mr.approved = False
+
+        # The job again should not be triggered for unapproved change
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+    @simple_layout('layouts/requirements-gitlab.yaml', driver='gitlab')
+    def test_label_reject(self):
+
+        fake_mr = self.fake_gitlab.openFakeMergeRequest(project='org/project6',
+                                                        branch='master',
+                                                        title='Example MR')
+
+        # The job should not be triggered when not all required labels are set
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        fake_mr.labels = ['gateit', 'ignored']
+
+        # The job still should not be triggered due to missing verified label
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        fake_mr.labels = ['gateit', 'ignored', 'do-not-merge']
+
+        # The job still should not be triggered (now also due to do-not-merge)
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        fake_mr.labels = ['gateit', 'ignored', 'do-not-merge', 'verified']
+
+        # The job still should not be triggered due to reject condition met
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        fake_mr.labels = ['gateit', 'ignored', 'do-not-merge',
+                          'do-not-test', 'verified']
+
+        # The job still should not be triggered due to reject condition met
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        fake_mr.labels = ['gateit', 'ignored', 'verified']
+
+        # The job now should be triggered
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+    @simple_layout('layouts/requirements-gitlab.yaml', driver='gitlab')
+    def test_require_reject_comprehensive(self):
+
+        fake_mr = self.fake_gitlab.openFakeMergeRequest(project='org/project7',
+                                                        branch='master',
+                                                        title='Example MR')
+        fake_mr.approved = False
+
+        # The job should not be triggered for new change without gateit label
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        fake_mr.approved = True
+
+        # The job still should not be triggered even though it is approved now
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        fake_mr.approved = False
+        fake_mr.labels = ['gateit']
+
+        # The job now should be triggered with required label
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+        fake_mr.labels = ['gateit', 'do-not-merge']
+
+        # The job should not be triggered due to rejected label
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+        fake_mr.labels = ['gateit']
+
+        # The job again should be triggered when rejected label is gone
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(2, len(self.history))
+
+        fake_mr.closeMergeRequest()
+
+        # The job should not be triggered for closed change
+        self.fake_gitlab.emitEvent(
+            fake_mr.getMergeRequestCommentedEvent('recheck')
+        )
+        self.waitUntilSettled()
+        self.assertEqual(2, len(self.history))
+
+        fake_mr.reopenMergeRequest()
+
+        # The job again should be triggered after reopening the change
+        self.fake_gitlab.emitEvent(fake_mr.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(3, len(self.history))
+
+        fake_mr.mergeMergeRequest()
+
+        # The job no longer should be triggered after the change was merged
+        self.fake_gitlab.emitEvent(
+            fake_mr.getMergeRequestCommentedEvent('recheck')
+        )
+        self.waitUntilSettled()
+        self.assertEqual(3, len(self.history))
+
     @simple_layout('layouts/gitlab-label-add-remove.yaml', driver='gitlab')
     def test_label_add_remove(self):
 
