@@ -2142,7 +2142,7 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
             if all(n.state == n.State.READY for n in nodes):
                 break
 
-        self.waitUntilSettled()
+        self.waitUntilSettled('start')
         nodes = self.launcher.api.nodes_cache.getItems()
         self.assertGreaterEqual(len(nodes), 3)
         self.assertLessEqual(len(nodes), 5)
@@ -2159,7 +2159,14 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
         finally:
             node.releaseLock(ctx)
 
-        for _ in iterate_timeout(60, "node to be cleaned up"):
+        for _ in iterate_timeout(60, "node to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
+                break
+
+        self.waitUntilSettled('deleted')
+        for _ in iterate_timeout(60, "node to be replaced"):
             nodes = self.launcher.api.nodes_cache.getItems()
             if node in nodes:
                 continue
@@ -2168,7 +2175,7 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
             if all(n.state == n.State.READY for n in nodes):
                 break
 
-        self.waitUntilSettled()
+        self.waitUntilSettled('replaced')
         nodes_by_label = self._nodes_by_label()
         self.assertEqual(1, len(nodes_by_label['debian-emea']))
 
