@@ -293,3 +293,26 @@ class GitlabRefFilter(RefFilter):
                 return False
 
         return True
+
+
+# The RejectFilter is the opposite of RequireFilter
+class GitlabRejectFilter(GitlabRefFilter):
+    def __init__(self, connection_name, open=None, merged=None, approved=None,
+                 labels=None):
+        super().__init__(connection_name, open, merged, approved, labels)
+
+    def __repr__(self):
+        ret = '<GitlabRejectFilter connection_name: %s ' % self.connection_name
+        if self.open is not None:
+            ret += ' open: %s' % self.open
+        if self.merged is not None:
+            ret += ' merged: %s' % self.merged
+        if self.approved is not None:
+            ret += ' approved: %s' % self.approved
+        if self.labels:
+            ret += ' labels: %s' % ', '.join(self.labels)
+        ret += '>'
+        return ret
+
+    def maches(self, change):
+        return not super().matches(change)
