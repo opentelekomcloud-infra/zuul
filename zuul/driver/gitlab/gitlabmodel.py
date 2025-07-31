@@ -13,7 +13,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from zuul.model import Change, TriggerEvent, EventFilter, RefFilter
+from zuul.model import Change
+from zuul.model import EventFilter
+from zuul.model import FalseWithReason
+from zuul.model import RefFilter
+from zuul.model import TriggerEvent
 
 EMPTY_GIT_REF = '0' * 40  # git sha of all zeros, used during creates/deletes
 
@@ -293,3 +297,47 @@ class GitlabRefFilter(RefFilter):
                 return False
 
         return True
+
+
+# The RejectFilter is the negative version of RefFilter/RequireFilter
+# – if any of the defined conditions is met, the change will not trigger jobs
+class GitlabRejectFilter(RefFilter):
+    def __init__(self, connection_name, open=None, merged=None, approved=None,
+                 labels=None):
+        RefFilter.__init__(self, connection_name)
+        self.open = open
+        self.merged = merged
+        self.approved = approved
+        self.labels = labels or []
+
+    def __repr__(self):
+        ret = f'<GitlabRejectFilter connection_name: {self.connection_name}'
+        if self.open is not None:
+            ret += f' open: {self.open}'
+        if self.merged is not None:
+            ret += f' merged: {self.merged}'
+        if self.approved is not None:
+            ret += f' approved: {self.approved}'
+        if self.labels:
+            ret += f' labels: {",".join(self.labels)}'
+        ret += '>'
+        return ret
+
+    def matches(self, change):
+        if self.open is not None:
+            if change.open == self.open:
+                return FalseWithReason('Matched the open attribute')
+
+        if self.merged is not None:
+            if change.is_merged == self.merged:
+                return FalseWithReason('Matched the merged attribute')
+
+        if self.approved is not None:
+            if change.approved == self.approved:
+                return FalseWithReason('Matched the approved attribute')
+
+        if self.labels:
+            if set(self.labels).intersection(set(change.labels)):
+                return FalseWithReason('Matched one or more labels')
+
+        return True  # By default, do not reject the change
