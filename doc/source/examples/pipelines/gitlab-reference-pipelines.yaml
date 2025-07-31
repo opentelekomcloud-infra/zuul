@@ -30,6 +30,10 @@
         open: true
         labels:
           - gateit
+    reject:
+      gitlab.com:
+        labels:
+          - do-not-merge
     trigger:
       gitlab.com:
         - event: gl_merge_request
