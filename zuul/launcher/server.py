@@ -1249,9 +1249,6 @@ class Launcher:
                     if node.isPermittedForProvider(provider):
                         # This node is usable with this provider
                         request_ready_nodes[label_name][node].append(provider)
-                        # We don't need to check the rest of the
-                        # providers in this tenant.
-                        break
         return request_ready_nodes
 
     def _acceptRequest(self, request, log, ready_nodes):
@@ -1331,6 +1328,12 @@ class Launcher:
                 log.debug("Accepting request %s", request)
                 request.state = model.NodesetRequest.State.ACCEPTED
 
+    def _shuffleProviders(self, providers):
+        # This is to allow unit test control of this process.
+        providers = providers[:]
+        random.shuffle(providers)
+        return providers
+
     def _selectProviders(self, request, request_ready_nodes, log):
         providers = self.tenant_providers.get(request.tenant_name)
         if not providers:
@@ -1339,8 +1342,7 @@ class Launcher:
 
         # Start with a randomized list of providers so that different
         # requests may have different behavior.
-        providers = providers[:]
-        random.shuffle(providers)
+        providers = self._shuffleProviders(providers)
 
         # Sort that list by quota
         providers.sort(key=lambda p: self.getQuotaPercentage(p))

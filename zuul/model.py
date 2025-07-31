@@ -2678,6 +2678,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             label_config_hash=None,
             tags={},
             connection_name="",
+            endpoint_name=None,
             create_state={},
             delete_state={},
             host_key_checking=None,
@@ -2836,6 +2837,13 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         if (provider.connection_name !=
             self.connection_name):
             return False
+
+        # TODO: Remove this after opendev has written nodes with
+        # endpoint_name
+        if self.endpoint_name is not None:
+            if (provider.endpoint.canonical_name !=
+                self.endpoint_name):
+                return False
 
         if not (plabel := provider.labels.get(self.label)):
             return False
