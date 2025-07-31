@@ -706,6 +706,156 @@ class TestGitlabDriver(ZuulTestCase):
         self.waitUntilSettled()
         self.assertEqual(1, len(self.history))
 
+    @simple_layout('layouts/requirements-gitlab.yaml', driver='gitlab')
+    def test_state_reject(self):
+
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project4', 'master', 'A')
+
+        # The job should be triggered for new change
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+        # Close the MR
+        A.closeMergeRequest()
+
+        # A recheck should trigger the job (as change was not yet merged)
+        self.fake_gitlab.emitEvent(
+            A.getMergeRequestCommentedEvent('recheck'))
+        self.waitUntilSettled()
+        self.assertEqual(2, len(self.history))
+
+        # Merge the MR
+        A.mergeMergeRequest()
+
+        # A recheck should not trigger the job
+        self.fake_gitlab.emitEvent(
+            A.getMergeRequestCommentedEvent('recheck'))
+        self.waitUntilSettled()
+        self.assertEqual(2, len(self.history))
+
+    @simple_layout('layouts/requirements-gitlab.yaml', driver='gitlab')
+    def test_reject_unapproved(self):
+
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project5', 'master', 'A')
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        A.approved = False
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        A.approved = True
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+        A.approved = False
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+    @simple_layout('layouts/requirements-gitlab.yaml', driver='gitlab')
+    def test_label_reject(self):
+
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project6', 'master', 'A')
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        A.labels = ['gateit', 'prio:low']
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        A.labels = ['gateit', 'prio:low', 'do-not-merge']
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        A.labels = ['gateit', 'prio:low', 'do-not-merge', 'another_label']
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        A.labels = ['gateit', 'prio:low', 'another_label']
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+    @simple_layout('layouts/requirements-gitlab.yaml', driver='gitlab')
+    def test_require_reject_comprehensive(self):
+
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project7', 'master', 'A')
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        A.approved = False
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestCommentedEvent('recheck'))
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        A.approved = True
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        A.approved = False
+        A.labels = ['gateit']
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+        A.labels = ['gateit', 'do-not-merge']
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+
+        A.labels = ['gateit']
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(2, len(self.history))
+
+        A.closeMergeRequest()
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestCommentedEvent('recheck'))
+        self.waitUntilSettled()
+        self.assertEqual(2, len(self.history))
+
+        A.reopenMergeRequest()
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual(3, len(self.history))
+
+        A.mergeMergeRequest()
+
+        self.fake_gitlab.emitEvent(A.getMergeRequestCommentedEvent('recheck'))
+        self.waitUntilSettled()
+        self.assertEqual(3, len(self.history))
+
     @simple_layout('layouts/gitlab-label-add-remove.yaml', driver='gitlab')
     def test_label_add_remove(self):
 

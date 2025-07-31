@@ -274,19 +274,26 @@ is taken from the pipeline.
 Requirements Configuration
 --------------------------
 
-As described in :attr:`pipeline.require` pipelines may specify that items meet
-certain conditions in order to be enqueued into the pipeline.  These conditions
-vary according to the source of the project in question.
+As described in :attr:`pipeline.require` and :attr:`pipeline.reject`,
+pipelines may specify that items meet certain conditions in order to be
+enqueued into the pipeline.  These conditions vary according to the source
+of the project in question.  To supply requirements for changes
+from a GitLab source named ``my-gitlub``, create a configuration
+such as the following::
 
 .. code-block:: yaml
 
    pipeline:
      require:
-       gitlab:
+       my-gitlab:
          open: true
+     reject:
+       my-gitlab:
+         labels:
+           - do-not-merge
 
-This indicates that changes originating from the GitLab connection must be
-in the *opened* state (not merged yet).
+This indicates that changes originating from the GitLab connection must be in
+the *opened* state (not merged yet) and must not contain `do-not-merge` label.
 
 .. attr:: pipeline.require.<gitlab source>
 
@@ -311,6 +318,32 @@ in the *opened* state (not merged yet).
    .. attr:: labels
 
       A list of labels a Merge Request must have in order to be enqueued.
+
+.. attr:: pipeline.reject.<gitlab source>
+
+   The `reject` attribute is the mirror of the `require` attribute and
+   is used to specify pull requests which should not be enqueued into
+   a pipeline.  It accepts a dictionary under the connection name and
+   with the following attributes:
+
+   .. attr:: open
+
+      A boolean value (``true`` or ``false``) that indicates whether
+      the Merge Request must be open in order to be rejected.
+
+   .. attr:: merged
+
+      A boolean value (``true`` or ``false``) that indicates whether
+      the Merge Request must be merged or not in order to be rejected.
+
+   .. attr:: approved
+
+      A boolean value (``true`` or ``false``) that indicates whether
+      the Merge Request must be approved or not in order to be rejected.
+
+   .. attr:: labels
+
+      A list of labels a Merge Request must have in order to be rejected.
 
 
 Reference pipelines configuration
