@@ -1976,12 +1976,6 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
 
-        for _ in iterate_timeout(
-                30, ""):
-            if (self.scheds.first.sched.local_layout_state.get("tenant-one") ==
-                self.launcher.local_layout_state.get("tenant-one")):
-                break
-
         for name in [
                 'review.example.com%2Forg%2Fcommon-config/debian-local',
                 'review.example.com%2Forg%2Fcommon-config/ubuntu-local',
@@ -2011,7 +2005,8 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
-        self._waitForArtifacts(image_cname, 1)
+        artifacts = self._waitForArtifacts(image_cname, 2)
+        oldest_artifact_uuid = artifacts[0].uuid
 
         # Run another build event manually
         driver = self.launcher.connections.drivers['zuul']
@@ -2030,7 +2025,10 @@ class TestLauncherUpload(LauncherBaseTestCase):
         # Trigger a run of the deletion check.
         self.launcher.upload_deleted_event.set()
         self.launcher.wake_event.set()
-        self._waitForArtifacts(image_cname, 2)
+        self.waitUntilSettled()
+        artifacts = self._waitForArtifacts(image_cname, 2)
+        artifact_uuids = [x.uuid for x in artifacts]
+        self.assertNotIn(oldest_artifact_uuid, artifact_uuids)
 
 
 class TestMinReadyLauncher(LauncherBaseTestCase):
