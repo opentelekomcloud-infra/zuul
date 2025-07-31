@@ -1811,11 +1811,17 @@ class Launcher:
                     node.delete_state_machine.complete = True
 
                 if not node.delete_state_machine.complete:
-                    node.delete_state_machine.advance()
-                    new_state = node.delete_state_machine.state
-                    if old_state != new_state:
-                        log.debug("Node %s advanced from %s to %s",
-                                  node, old_state, new_state)
+                    try:
+                        node.delete_state_machine.advance()
+                        new_state = node.delete_state_machine.state
+                        if old_state != new_state:
+                            log.debug("Node %s advanced from %s to %s",
+                                      node, old_state, new_state)
+                    except Exception:
+                        log.exception("Error in delete state machine:")
+                        node.delete_state_machine.state =\
+                            node.delete_state_machine.COMPLETE
+                        node.delete_state_machine.complete = True
 
             if not node.delete_state_machine.complete:
                 self.wake_event.set()
