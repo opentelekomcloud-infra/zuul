@@ -19,6 +19,7 @@ import urllib
 from zuul.model import Project
 from zuul.source import BaseSource
 from zuul.driver.gitlab.gitlabmodel import GitlabRefFilter
+from zuul.driver.gitlab.gitlabmodel import GitlabRejectFilter
 from zuul.driver.util import scalar_or_list, to_list
 from zuul.zk.change_cache import ChangeKey
 
@@ -154,7 +155,14 @@ class GitlabSource(BaseSource):
         return [f]
 
     def getRejectFilters(self, config, parse_context):
-        raise NotImplementedError()
+        f = GitlabRejectFilter(
+            connection_name=self.connection.connection_name,
+            open=config.get('open'),
+            merged=config.get('merged'),
+            approved=config.get('approved'),
+            labels=to_list(config.get('labels')),
+        )
+        return [f]
 
     def getRefForChange(self, change):
         return "refs/merge-requests/%s/head" % change
@@ -175,5 +183,10 @@ def getRequireSchema():
 
 
 def getRejectSchema():
-    reject = {}
+    reject = {
+        'open': bool,
+        'merged': bool,
+        'approved': bool,
+        'labels': scalar_or_list(str)
+    }
     return reject
