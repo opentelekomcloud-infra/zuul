@@ -1915,10 +1915,12 @@ class TestLauncherUpload(LauncherBaseTestCase):
             self._upload_run))
         super().setUp()
 
-    def _waitForArtifacts(self, image_name, count):
+    def _waitForArtifacts(self, image_name, count, format=None):
         for _ in iterate_timeout(30, "artifacts to settle"):
             artifacts = self.launcher.image_build_registry.\
                 getArtifactsForImage(image_name)
+            if format:
+                artifacts = [a for a in artifacts if a.format == format]
             if len(artifacts) == count:
                 return artifacts
 
@@ -1976,17 +1978,12 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
 
-        for _ in iterate_timeout(
-                30, ""):
-            if (self.scheds.first.sched.local_layout_state.get("tenant-one") ==
-                self.launcher.local_layout_state.get("tenant-one")):
-                break
-
         for name in [
                 'review.example.com%2Forg%2Fcommon-config/debian-local',
                 'review.example.com%2Forg%2Fcommon-config/ubuntu-local',
         ]:
-            artifacts = self._waitForArtifacts(name, 1)
+            artifacts = self._waitForArtifacts(name, 1, format='raw')
+            self._waitForArtifacts(name, 0, format='qcow2')
             self.assertEqual('raw', artifacts[0].format)
             self.assertTrue(artifacts[0].validated)
             uploads = self._waitForUploads(name, 1)
@@ -2011,7 +2008,8 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
-        self._waitForArtifacts(image_cname, 1)
+        artifacts = self._waitForArtifacts(image_cname, 2, format='raw')
+        oldest_artifact_uuid = artifacts[0].uuid
 
         # Run another build event manually
         driver = self.launcher.connections.drivers['zuul']
@@ -2030,7 +2028,10 @@ class TestLauncherUpload(LauncherBaseTestCase):
         # Trigger a run of the deletion check.
         self.launcher.upload_deleted_event.set()
         self.launcher.wake_event.set()
-        self._waitForArtifacts(image_cname, 2)
+        self.waitUntilSettled()
+        artifacts = self._waitForArtifacts(image_cname, 2, format='raw')
+        artifact_uuids = [x.uuid for x in artifacts]
+        self.assertNotIn(oldest_artifact_uuid, artifact_uuids)
 
 
 class TestMinReadyLauncher(LauncherBaseTestCase):
