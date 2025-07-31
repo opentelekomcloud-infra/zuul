@@ -293,3 +293,41 @@ class GitlabRefFilter(RefFilter):
                 return False
 
         return True
+
+
+# The RejectFilter is the negative version of RequireFilter
+# – if the defined conditions are met, the change will not trigger jobs
+class GitlabRejectFilter(GitlabRefFilter):
+    def __init__(self, connection_name, open=None, merged=None, approved=None,
+                 labels=None):
+        super().__init__(connection_name, open, merged, approved, labels)
+
+    def __repr__(self):
+        return super().__repr__().replace('<GitlabRefFilter',
+                                          '<GitlabRejectFilter', 1)
+
+    def matches(self, change):
+        # TODO Pass the filter if no conditions are defined? (If needed...)
+
+        # return super().matches(change)
+        # return not super().matches(change)
+
+        # Check/break if any of the defined rejection conditions is not met...
+        if self.open is not None:
+            if change.open != self.open:
+                return True
+
+        if self.merged is not None:
+            if change.is_merged != self.merged:
+                return True
+
+        if self.approved is not None:
+            if change.approved != self.approved:
+                return True
+
+        if self.labels:
+            if not set(self.labels).issubset(set(change.labels)):
+                return True
+
+        # Reject the change, as all the defined conditions did match
+        return False
