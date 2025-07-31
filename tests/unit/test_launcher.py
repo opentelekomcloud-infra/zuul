@@ -174,6 +174,13 @@ class LauncherBaseTestCase(ZuulTestCase):
         }
     }
 
+    def _waitForLauncherLayoutSync(self, tenant='tenant-one'):
+        for _ in iterate_timeout(
+                30, "scheduler and launcher to have the same layout"):
+            if (self.scheds.first.sched.local_layout_state.get(tenant) ==
+                self.launcher.local_layout_state.get(tenant)):
+                break
+
     def setUp(self):
         self.initTestConfig()
 
@@ -244,13 +251,6 @@ class TestLauncher(LauncherBaseTestCase):
             if not pending:
                 if count is None or count == len(uploads):
                     return uploads
-
-    def _waitForLauncherLayoutSync(self, tenant='tenant-one'):
-        for _ in iterate_timeout(
-                30, "scheduler and launcher to have the same layout"):
-            if (self.scheds.first.sched.local_layout_state.get(tenant) ==
-                self.launcher.local_layout_state.get(tenant)):
-                break
 
     def _waitForNoChildren(self, path):
         for _ in iterate_timeout(10, f"empty path {path}"):
@@ -2131,6 +2131,20 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
         self.assertGreaterEqual(len(nodes), 3)
         self.assertLessEqual(len(nodes), 5)
 
+        # Reset the configuration so that we'll stop trying to boot a
+        # semi random count of additional nodes during test shutdown as
+        # this may fail.
+        self.commitConfigUpdate(
+            'org/project1',
+            'layouts/launcher-project-unset-min-ready.yaml')
+        self.commitConfigUpdate(
+            'common-config',
+            'layouts/launcher-config-unset-min-ready.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self._waitForLauncherLayoutSync(tenant='tenant-one')
+        self._waitForLauncherLayoutSync(tenant='tenant-two')
+        self.waitUntilSettled()
+
     def test_max_ready_age(self):
         for _ in iterate_timeout(60, "nodes to be ready"):
             nodes = self.launcher.api.nodes_cache.getItems()
@@ -2171,6 +2185,20 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
         self.waitUntilSettled()
         nodes_by_label = self._nodes_by_label()
         self.assertEqual(1, len(nodes_by_label['debian-emea']))
+
+        # Reset the configuration so that we'll stop trying to boot a
+        # semi random count of additional nodes during test shutdown as
+        # this may fail.
+        self.commitConfigUpdate(
+            'org/project1',
+            'layouts/launcher-project-unset-min-ready.yaml')
+        self.commitConfigUpdate(
+            'common-config',
+            'layouts/launcher-config-unset-min-ready.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self._waitForLauncherLayoutSync(tenant='tenant-one')
+        self._waitForLauncherLayoutSync(tenant='tenant-two')
+        self.waitUntilSettled()
 
 
 class TestMinReadyTenantVariant(LauncherBaseTestCase):
