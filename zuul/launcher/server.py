@@ -1339,6 +1339,7 @@ class Launcher:
 
         # Start with a randomized list of providers so that different
         # requests may have different behavior.
+        providers = providers[:]
         random.shuffle(providers)
 
         # Sort that list by quota
@@ -1382,7 +1383,8 @@ class Launcher:
                     # Special case for the current node just failed
                     if existing_node.state == existing_node.State.FAILED:
                         provider_failure_names[existing_node.provider] += 1
-                    existing_provider_names[existing_node.provider] += 1
+                    if existing_node.state not in existing_node.FAILED_STATES:
+                        existing_provider_names[existing_node.provider] += 1
             candidate_providers = [
                 p for p in providers
                 if p.hasLabel(label_name)
