@@ -2171,6 +2171,13 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
         self.waitUntilSettled()
         nodes_by_label = self._nodes_by_label()
         self.assertEqual(1, len(nodes_by_label['debian-emea']))
+        # Stop the launcher to prevent any future processing that can
+        # raise an exception during test shutdown. This can occur because
+        # we allow for 3-5 nodes in the loop above. If we pop out when 3
+        # are ready but we're going to boot 5 then additional nodes may
+        # be processed during shutdown.
+        self.launcher.stop()
+        self.launcher.join()
 
 
 class TestMinReadyTenantVariant(LauncherBaseTestCase):
