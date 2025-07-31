@@ -1445,9 +1445,11 @@ class Launcher:
 
         main_provider_name = None
         main_provider = None
-        most_common = existing_provider_names.most_common(1)
+        most_common = existing_provider_names.most_common()
         if most_common:
             main_provider_name = most_common[0][0]
+            log.debug("Using most common provider %s from %s",
+                      main_provider_name, most_common)
         elif request.preferred_provider:
             main_provider_name = request.preferred_provider
             log.debug("Using requested provider %s", main_provider_name)
@@ -1460,6 +1462,8 @@ class Launcher:
                     f"Unable to find provider {main_provider_name}")
         elif providers_for_all_labels:
             main_provider = providers_for_all_labels[0]
+            log.debug("Using first provider for all labels %s from %s",
+                      main_provider.canonical_name, providers_for_all_labels)
 
         label_providers = []
         for i, label_name in enumerate(request.labels):
