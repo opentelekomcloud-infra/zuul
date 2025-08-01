@@ -329,7 +329,7 @@ class ZKObject:
                 compressed, uncompressed = obj.estimateDataSize(seen)
             elif (isinstance(obj, dict) or
                   isinstance(obj, types.MappingProxyType)):
-                for sub in obj.values():
+                for sub in list(obj.values()):
                     c, u = walk(sub)
                     compressed += c
                     uncompressed += u
