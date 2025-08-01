@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd076c03_001544c4",
+        "filename": ".zuul.yaml",
+        "patchSetId": 9
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 13252
+      },
+      "writtenOn": "2025-08-01T05:53:49Z",
+      "side": 1,
+      "message": "we could run on debian-trixie now, which has py3.13 natively?",
+      "revId": "267fa6d179c7345b541d0b9b4dd00ad6eb37a0c5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
