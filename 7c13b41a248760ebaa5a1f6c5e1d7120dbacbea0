@@ -16,6 +16,23 @@
       "message": "recheck unrelated failure",
       "revId": "7c13b41a248760ebaa5a1f6c5e1d7120dbacbea0",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0268eb0e_18ccddd7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-08-03T14:54:09Z",
+      "side": 1,
+      "message": "recheck (different random error ~ Exception: Timeout waiting for artifacts to settle)",
+      "revId": "7c13b41a248760ebaa5a1f6c5e1d7120dbacbea0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
