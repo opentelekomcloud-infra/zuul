@@ -33,6 +33,23 @@
       "message": "@fungi@yuggoth.org well... I am aware, normally, yet I was running out of better ideas; always something worth to try instead of just rechecking until it eventually works ;-) Anyway, now a different test failed in zuul-nox-py311 job...",
       "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "48d83779_e01cecbd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-08-03T18:40:07Z",
+      "side": 1,
+      "message": "recheck one more time 🔥",
+      "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
