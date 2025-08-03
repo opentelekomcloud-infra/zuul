@@ -50,6 +50,23 @@
       "message": "recheck one more time 🔥",
       "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b29e643c_e7d4c9ef",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-08-03T19:48:26Z",
+      "side": 1,
+      "message": "Ok... the current run is about to fail (on different test again), but now I see in recent results of https://review.opendev.org/c/zuul/zuul/+/945521 (e.g. https://zuul.opendev.org/t/zuul/buildset/da61ae285da0477a89af78b664672292) that I should have about 50% chance for passing\n\nSo, with two jobs (py311 and py312) we can expect overall success in about 4 rechecks ;-)",
+      "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
