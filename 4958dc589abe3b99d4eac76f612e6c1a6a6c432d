@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "28a1c21a_6085cfd2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-08-03T16:49:14Z",
+      "side": 1,
+      "message": "Rebased, as https://review.opendev.org/c/zuul/zuul/+/956309 should have fixed the randomly failing test.\nAlso added one missing f-string in gitlabmodel.py (Thanks Adrian!)",
+      "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
