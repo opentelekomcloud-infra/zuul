@@ -118,6 +118,23 @@
       "message": "Looks good to me, perhaps this could use a release note (use reno to make one). Thanks!",
       "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2266f280_91df2eb4",
+        "filename": "zuul/driver/gitlab/gitlabmodel.py",
+        "patchSetId": 17
+      },
+      "lineNbr": 345,
+      "author": {
+        "id": 9311
+      },
+      "writtenOn": "2025-08-04T09:04:10Z",
+      "side": 1,
+      "message": "This logic should be inverted: return \"FalseWithReason\" if any of the filter match, then return True only if all the reject conditions didn\u0027t match the change.\n\nAlso, it might be safer to verify that the change attributes exists, e.g.\n\n```\n  if self.open is not None:\n    if hasattr(change, \u0027open\u0027):\n      if self.open \u003d\u003d self.open:\n        return FalseWithReason(\"Change does not match open requirement\")\n    else:\n      return FalseWithReason(\"Change does not have open attribute\")\n    \n    ...\n    \n  # Otherwise accept the change\n  return True\n```",
+      "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
