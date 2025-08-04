@@ -135,6 +135,24 @@
       "message": "This logic should be inverted: return \"FalseWithReason\" if any of the filter match, then return True only if all the reject conditions didn\u0027t match the change.\n\nAlso, it might be safer to verify that the change attributes exists, e.g.\n\n```\n  if self.open is not None:\n    if hasattr(change, \u0027open\u0027):\n      if self.open \u003d\u003d self.open:\n        return FalseWithReason(\"Change does not match open requirement\")\n    else:\n      return FalseWithReason(\"Change does not have open attribute\")\n    \n    ...\n    \n  # Otherwise accept the change\n  return True\n```",
       "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "73a7bd6f_67631219",
+        "filename": "zuul/driver/gitlab/gitlabmodel.py",
+        "patchSetId": 17
+      },
+      "lineNbr": 345,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-08-04T13:57:03Z",
+      "side": 1,
+      "message": "So, I was originally basing here on the definition of matches() from original RequireFilter (see line 282 in this file).\n\nI was not sure initially how it should be – in RequireFilter we need all defined conditions to met in order to enqueue; so in RejectFilter I also assumed that all defined conditions must be met to reject. If I can make it that to match any of the defined conditions it would be much easier to implement – I will do that.",
+      "parentUuid": "2266f280_91df2eb4",
+      "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
