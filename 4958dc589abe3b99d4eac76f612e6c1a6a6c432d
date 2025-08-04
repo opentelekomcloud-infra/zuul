@@ -120,6 +120,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "52cf4668_81dabab5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-08-04T21:46:28Z",
+      "side": 1,
+      "message": "@tdecacqu@redhat.com Release note added in patchset 20 ~ it was my first time using reno, I followed https://zuul-ci.org/docs/zuul/latest/developer/releasenotes.html but it was my first time so please verify if this is what you expected 🙏",
+      "parentUuid": "7f1529a4_69a878cd",
+      "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2266f280_91df2eb4",
