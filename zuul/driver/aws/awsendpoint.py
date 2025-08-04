@@ -50,6 +50,7 @@ from zuul.driver.util import (
 )
 from zuul.model import QuotaInformation
 from zuul.provider import (
+    BaseImageCopyJob,
     BaseImageImportJob,
     BaseImageUploadJob,
     BaseProviderEndpoint,
@@ -263,6 +264,93 @@ class AwsCreateStateMachine(statemachine.StateMachine):
                 self.label, self.flavor, self.instance['InstanceType'])
             return AwsInstance(self.endpoint.region, self.instance,
                                self.host, self.node.quota)
+
+
+class AwsSnapshotStateMachine(statemachine.StateMachine):
+    SNAPSHOT_PENDING = 'snapshot pending'
+    COMPLETE = 'complete'
+
+    def __init__(self, endpoint, node, log):
+        self.log = log
+        self.endpoint = endpoint
+        self.node = node
+        initial_state = node.snapshot.snapshot_state
+        super().__init__(initial_state)
+        self.snapshot_id = initial_state.get('snapshot_id', None)
+        self.tags = node.snapshot.tags
+        # Restore local variables
+        self.account_id = self.endpoint._getAccountId()
+
+        self.instance = None
+        if node.aws_instance_id:
+            instance = dict(InstanceId=node.aws_instance_id)
+            self.instance = self.endpoint._refresh(instance)
+
+        self.volume_id = None
+        if self.instance:
+            for attachment in self.instance['BlockDeviceMappings']:
+                if attachment['DeviceName'] == self.instance['RootDeviceName']:
+                    self.volume_id = attachment['Ebs']['VolumeId']
+                    break
+
+        if self.snapshot_id:
+            snapshot = dict(SnapshotId=self.snapshot_id)
+            self.snapshot = self.endpoint._refresh(snapshot)
+
+    def toDict(self):
+        data = super().toDict()
+        data.update(
+            snapshot_id=self.snapshot_id,
+        )
+        return data
+
+    def advance(self):
+        if self.state == self.START:
+            self.snapshot = self.endpoint._createSnapshot(
+                self.volume_id, self.tags)
+            self.snapshot_id = self.snapshot['SnapshotId']
+            self.state = self.SNAPSHOT_PENDING
+
+        if self.state == self.SNAPSHOT_PENDING:
+            self.snapshot = self.endpoint._refresh(self.snapshot)
+
+            state = self.snapshot['State'].lower()
+            if state == "completed":
+                self.state = self.COMPLETE
+            elif state == "pending":
+                return
+            else:
+                raise Exception(f"Snapshot in {state} state")
+
+        if self.state == self.COMPLETE:
+            arn = (f'arn:aws:ec2:{self.endpoint.region}:{self.account_id}:'
+                   f'snapshot/{self.snapshot_id}')
+            self.complete = True
+            return arn
+
+
+class AwsImageCopyJob(BaseImageCopyJob):
+    def __init__(self, endpoint,
+                 provider_image, image_name,
+                 image_format, metadata,
+                 source_region):
+        super().__init__()
+        self.endpoint = endpoint
+        self.provider_image = provider_image
+        self.image_name = image_name
+        self.image_format = image_format
+        self.metadata = metadata
+        self.source_region = source_region
+
+    def run(self, external_id):
+        self.endpoint.log.debug(f"Copying image {self.image_name} "
+                                f"from {external_id} in {self.source_region}")
+
+        image_id = self.endpoint._copyImage(
+            self.provider_image, self.image_name,
+            self.image_format, self.metadata,
+            self.source_region, external_id)
+        return image_id
 
 
 class AwsImageImportJob(BaseImageImportJob):
@@ -781,7 +869,17 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
     def getImageCopyJob(self, source_provider, provider_image, image_name,
                         image_format, metadata, md5, sha256):
-        return None
+        source_endpoint = source_provider.endpoint
+        if not isinstance(source_endpoint, AwsProviderEndpoint):
+            return None
+        source_region = source_endpoint.region
+        if source_region == self.region:
+            return None
+        return AwsImageCopyJob(
+            self,
+            provider_image, image_name,
+            image_format, metadata,
+            source_region)
 
     def getImageUploadJob(self, provider_image, image_name,
                           image_format, metadata, md5, sha256, bucket_name):
@@ -1031,6 +1129,35 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self.log.debug(f"Upload of {image_name} complete as {task['ImageId']}")
         # Last task returned from paginator above
         return task['ImageId']
+
+    def _copyImage(self, provider_image, image_name,
+                   image_format, metadata,
+                   source_region, source_ami):
+        with self.rate_limiter:
+            resp = self.ec2_client.copy_image(
+                Name=image_name,
+                SourceImageId=source_ami,
+                SourceRegion=source_region,
+                CopyImageTags=False,
+                TagSpecifications=[
+                    {
+                        'ResourceType': 'image',
+                        'Tags': tag_dict_to_list(metadata),
+                    },
+                ]
+            )
+        image_id = resp['ImageId']
+        while True:
+            time.sleep(self.IMAGE_UPLOAD_SLEEP)
+            for ami in self._listAmis():
+                if ami['ImageId'] == image_id:
+                    state = ami['State'].lower()
+                    if state == "available":
+                        return image_id
+                    if state == "failed":
+                        reason = ami['StateReason']
+                        raise Exception(f"Image copy failed: {reason}")
+                    break
 
     def deleteImage(self, external_id):
         snaps = set()
