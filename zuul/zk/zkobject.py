@@ -544,6 +544,10 @@ class LockableZKObject(ZKObject):
         obj._save(context, data, create=True)
         return obj
 
+    def internalCreate(self, context):
+        self._createLockPath(context)
+        super().internalCreate(context)
+
     def _createLockPath(self, context):
         if isinstance(context, LocalZKContext):
             return
