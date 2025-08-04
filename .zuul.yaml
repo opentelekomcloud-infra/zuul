@@ -380,7 +380,6 @@
 - project:
     queue: zuul
     vars:
-      node_version: 22
       release_python: python3
       ensure_tox_version: "<4"
     check:
@@ -399,11 +398,13 @@
         - zuul-build-dashboard-opendev
         - nodejs-run-lint:
             vars:
+              node_version: 22
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
             nodeset: ubuntu-jammy
         - nodejs-run-test:
             vars:
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
+              node_version: 22
             files:
               - web/.*
             nodeset: ubuntu-jammy
