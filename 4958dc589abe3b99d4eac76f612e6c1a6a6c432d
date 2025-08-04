@@ -153,6 +153,24 @@
       "parentUuid": "2266f280_91df2eb4",
       "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8bd53925_2dc0a251",
+        "filename": "zuul/driver/gitlab/gitlabmodel.py",
+        "patchSetId": 17
+      },
+      "lineNbr": 345,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-08-04T20:50:23Z",
+      "side": 1,
+      "message": "@tdecacqu@redhat.com Done ~ please check again.\n\nI skipped the part of checking the attributes of change variable, as the original code of GitlabRefFilter is apparently working fine without it. If you think it is worth it, I will propose it as a separate change to both GitlabRefFilter and GitlabRejectFilter. I would also be happy to convert each `False` to `FalseWithReason` in GitlabRefFilter, but again – in a separate change, for cleaner history in git tree.",
+      "parentUuid": "73a7bd6f_67631219",
+      "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
