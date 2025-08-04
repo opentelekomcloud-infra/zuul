@@ -179,7 +179,7 @@ class BaseCloudDriverTest(ZuulTestCase):
             if len(list(endpoint.listInstances())) == 0:
                 break
 
-    def _test_diskimage(self):
+    def _test_diskimage(self, expected_uploads=1):
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
@@ -193,10 +193,11 @@ class BaseCloudDriverTest(ZuulTestCase):
         self.assertTrue(artifacts[0].validated)
         uploads = self.launcher.image_upload_registry.getUploadsForImage(
             name)
-        self.assertEqual(1, len(uploads))
-        self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
-        self.assertIsNotNone(uploads[0].external_id)
-        self.assertTrue(uploads[0].validated)
+        self.assertEqual(expected_uploads, len(uploads))
+        for x in range(expected_uploads):
+            self.assertEqual(artifacts[0].uuid, uploads[x].artifact_uuid)
+            self.assertIsNotNone(uploads[x].external_id)
+            self.assertTrue(uploads[x].validated)
 
     def _drive_state_machine(self, ctx, node, future_names, provider, create):
         executed_future_names = set()
