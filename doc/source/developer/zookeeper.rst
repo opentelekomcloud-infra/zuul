@@ -523,6 +523,17 @@ This is a reference for object layout in Zookeeper.
    about the node (mostly supplied by the provider).  It also holds
    enough information to get the endpoint responsible for the node.
 
+.. path:: zuul/nodes/nodes/<node uuid>/snapshot
+   :type: ProviderNodeSnapshot
+
+   Information about a provider node snapshot.  The launcher locks the
+   companion snapshot-lock znode and updates this znode while the
+   executor continues to hold the lock on the main node's znode.
+
+.. path:: zuul/nodes/nodes/<node uuid>/snapshot-lock
+
+   The lock for the snapshot child znode.
+
 .. path:: zuul/nodes/locks/<node uuid>
 
    A lock for the new-style node.  Launchers or executors will hold
