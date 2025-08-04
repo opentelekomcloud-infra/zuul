@@ -20,7 +20,12 @@ import threading
 import mmh3
 from kazoo.exceptions import NoNodeError
 
-from zuul.model import NodesetRequest, ProviderNode, QuotaInformation
+from zuul.model import (
+    NodesetRequest,
+    ProviderNode,
+    ProviderNodeSnapshot,
+    QuotaInformation,
+)
 from zuul.zk.cache import ZuulTreeCache
 from zuul.zk.zkobject import ZKContext
 
@@ -184,6 +189,23 @@ class NodeCache(LockableZKObjectCache):
         self._provider_quota = collections.defaultdict(
             lambda: QuotaInformation())
         super().__init__(*args, **kw)
+
+    def preCacheHook(self, event, exists, data=None, stat=None):
+        parts = self._parsePath(event.path)
+        if parts is None:
+            return
+
+        # (<self.locks_path>, <uuid>, <lock>,)
+        # (<self.items_path>, <uuid>,)
+        # (<self.items_path>, <uuid>, snapshot,)
+        # (<self.items_path>, <uuid>, snapshot-lock,)
+        if len(parts) >= 3:
+            # Ignore anything related to snapshots
+            if (parts[0] == ProviderNode.NODES_PATH and
+                parts[2] in (ProviderNodeSnapshot.SNAPSHOT_PATH,
+                             ProviderNodeSnapshot.SNAPSHOT_LOCK_PATH)):
+                return self.STOP_OBJECT_UPDATE
+        return super().preCacheHook(event, exists, data, stat)
 
     def postCacheHook(self, event, data, stat, key, obj):
         # Have we previously added quota for this object?

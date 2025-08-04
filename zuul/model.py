@@ -2672,6 +2672,8 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
 
     def __init__(self):
         super().__init__()
+        snapshot = ProviderNodeSnapshot()
+        snapshot._set(node=self)
         self._set(
             uuid=uuid4().hex,
             request_id=None,
@@ -2721,6 +2723,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             create_state_machine=None,
             delete_state_machine=None,
             nodescan_request=None,
+            snapshot=snapshot,
             # Attributes set by the launcher
             _lscores=None,
         )
@@ -2860,6 +2863,39 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             return False
 
         return True
+
+    def createSnapshot(self, context):
+        self.snapshot.internalCreate(context)
+
+
+class ProviderNodeSnapshot(zkobject.LockableZKObject):
+    # We don't want to re-create the node in case it was deleted
+    makepath = False
+    SNAPSHOT_PATH = 'snapshot'
+    SNAPSHOT_LOCK_PATH = 'snapshot-lock'
+
+    def __init__(self):
+        super().__init__()
+        self._set(
+            complete=None,
+            external_id=None,
+            # Not serialized
+            node=None,
+            state_machine=None,
+        )
+
+    def getPath(self):
+        return f"{self.node.getPath()}/{self.SNAPSHOT_PATH}"
+
+    def getLockPath(self):
+        return f"{self.node.getPath()}/{self.SNAPSHOT_LOCK_PATH}"
+
+    def serialize(self, context):
+        data = dict(
+            complete=self.complete,
+            external_id=self.external_id,
+        )
+        return json.dumps(data, sort_keys=True).encode("utf-8")
 
 
 class Secret(ConfigObject):

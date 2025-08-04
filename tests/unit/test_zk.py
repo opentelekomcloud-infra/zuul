@@ -2978,6 +2978,36 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
             if used.quota.get('instances') == 0:
                 break
 
+    def test_node_snapshot(self):
+        context = ZKContext(self.zk_client, None, None, self.log)
+        node = DummyAProviderNode.new(
+            context, request_id=uuid.uuid4().hex, uuid=uuid.uuid4().hex,
+            label='foo')
+        with node.locked(context):
+            # The executor copy
+            node.createSnapshot(context)
+
+            # Wait for the nodes to show up in the cache
+            for _ in iterate_timeout(10, "nodes to show up"):
+                provider_nodes = self.api.getProviderNodes()
+                if len(provider_nodes) == 1:
+                    break
+            snapshot2 = provider_nodes[0].snapshot
+            with snapshot2.locked(context):
+                snapshot2.updateAttributes(
+                    context,
+                    complete=True,
+                    external_id="image_id",
+                )
+
+            node.snapshot.refresh(context)
+            self.assertTrue(node.snapshot.complete)
+            self.assertEqual("image_id", node.snapshot.external_id)
+            node.delete(context)
+
+        self.assertFalse(self.zk_client.client.exists(node.getPath()))
+        self.assertFalse(self.zk_client.client.exists(node.getLockPath()))
+
 
 class DummyLockable(LockableZKObject):
     ROOT = "/test/dummy"
