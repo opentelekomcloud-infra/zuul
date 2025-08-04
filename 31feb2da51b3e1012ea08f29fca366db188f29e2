@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "98f64af5_9c14233c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 36342
+      },
+      "writtenOn": "2025-08-04T14:29:53Z",
+      "side": 1,
+      "message": "corvus\ni think we should fix zuul-jobs so that the configuration in zuul\u0027s zuul.yaml works as currently written\ncorvus\nwe\u0027ve stopped putting version defaults in zuul-jobs at all for new things, we may need to remove the old ones",
+      "revId": "31feb2da51b3e1012ea08f29fca366db188f29e2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
