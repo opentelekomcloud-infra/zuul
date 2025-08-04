@@ -50,6 +50,23 @@
       "message": "recheck",
       "revId": "909b65d2e9f188cbbe6a05c13f0ac7b0a61a2fc3",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0478226f_e3058ca2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 36342
+      },
+      "writtenOn": "2025-08-04T11:00:14Z",
+      "side": 1,
+      "message": "All my test errors are related to some kind of race condition, i\u0027m reverting changes with upping them to higher node version now",
+      "revId": "909b65d2e9f188cbbe6a05c13f0ac7b0a61a2fc3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
