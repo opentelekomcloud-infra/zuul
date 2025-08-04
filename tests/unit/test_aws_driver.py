@@ -135,6 +135,7 @@ class TestAwsDriver(BaseCloudDriverTest):
         self.create_fleet_exception = None
         self.allocate_hosts_exception = None
         self.register_image_calls = []
+        self.copy_image_calls = []
 
         # TEST-NET-3
         self.subnet_ids = []
@@ -398,6 +399,22 @@ class TestAwsDriver(BaseCloudDriverTest):
         bucket.put_object(Body=ImageMocksFixture.raw_body.encode('utf8'),
                           Key='image.raw')
         self._test_diskimage()
+
+    @simple_layout('layouts/aws/nodepool-image-copy.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        s3_debian_return_data,
+    )
+    def test_aws_diskimage_copy(self):
+        # The image should be imported from s3 in one region and
+        # copied to another.
+        bucket = self.s3.Bucket('zuul')
+        bucket.put_object(Body=ImageMocksFixture.raw_body.encode('utf8'),
+                          Key='image.raw')
+        self._test_diskimage(expected_uploads=2)
+        self.assertEqual(1, len(self.copy_image_calls))
 
     @simple_layout('layouts/nodepool-multi-provider.yaml',
                    enable_nodepool=True)
