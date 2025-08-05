@@ -1742,15 +1742,62 @@ class AnsibleJob(object):
         warnings = []
         self.mapLines(args, data, item_commit, warnings)
         warnings.extend(get_warnings_from_result_data(data, logger=self.log))
+
+        # If we need to snapshot any nodes, do that here
+        if result == 'SUCCESS':
+            self.handleSnapshots(data)
+
         result_data = dict(result=result,
                            error_detail=error_detail,
                            warnings=warnings,
                            unreachable=unreachable,
                            data=data,
                            secret_data=secret_data)
+
         # TODO do we want to log the secret data here?
         self.log.debug("Sending result: %s", result_data)
         self.executor_server.completeBuild(self.build_request, result_data)
+
+    def handleSnapshots(self, result_data):
+        # Return a data structure like:
+        # zuul:
+        #   snapshot_nodes:
+        #     - node: <node uuid>
+        #       image_name: debian-local
+        if ((not self.arguments.get('pipeline_builds_images', False)) or
+            (not self.nodeset_request)):
+            return
+
+        zuul_data = result_data.get('zuul')
+        if not (snapshot_nodes := zuul_data.get('snapshot_nodes', [])):
+            return
+
+        node_ids = [x['node'] for x in snapshot_nodes]
+        self.executor_server.launcher.snapshotNodeset(
+            self.nodeset, node_ids, self.zuul_event_id)
+
+        artifacts = zuul_data.setdefault('artifacts', [])
+        for snapshot_info in snapshot_nodes:
+            for node in self.nodeset.getNodes():
+                provider_node = getattr(node, "_provider_node", None)
+                if provider_node.uuid == snapshot_info['node']:
+                    break
+            else:
+                # Did not find the corresponding node
+                continue
+            external_id = provider_node.snapshot.external_id
+            if external_id is None:
+                continue
+            artifact = dict(
+                name="Snapshot image",
+                url=external_id,
+                metadata=dict(
+                    type='zuul_image',
+                    image_name=snapshot_info['image_name'],
+                    format='snapshot',
+                )
+            )
+            artifacts.append(artifact)
 
     def writeRepoStateFile(self, repos):
         # Write out the git operation performed up to this point
