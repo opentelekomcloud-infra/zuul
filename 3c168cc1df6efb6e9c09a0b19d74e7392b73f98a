@@ -16,6 +16,23 @@
       "message": "@fungi@yuggoth.org I\u0027d really appreciate it if you could take another look into this in order to meet the requirement for 2 CR+2 votes and merge it. Thanks in advance!",
       "revId": "3c168cc1df6efb6e9c09a0b19d74e7392b73f98a",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "145d3598_ab1bb2db",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-08-05T20:10:43Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "3c168cc1df6efb6e9c09a0b19d74e7392b73f98a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
