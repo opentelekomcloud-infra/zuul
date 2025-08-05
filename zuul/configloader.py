@@ -1577,6 +1577,9 @@ class PipelineParser(object):
                     reporter.setAction(conf_key)
                     reporter_set.append(reporter)
                     seen_connections.add(reporter_name)
+                    if (reporter_name == 'zuul' and
+                        getattr(reporter, 'image_built', False)):
+                        pipeline.builds_images = True
             setattr(pipeline, action, reporter_set)
 
         # If merge-conflict actions aren't explicit, use the failure actions

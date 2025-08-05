@@ -13,6 +13,7 @@
 # under the License.
 
 import logging
+import threading
 import time
 
 from collections import defaultdict
@@ -27,6 +28,7 @@ from zuul.model import (
 )
 from zuul.lib import tracing
 from zuul.lib.logutil import get_annotated_logger
+from zuul.zk.vendor.watchers import ExistingDataWatch
 from zuul.zk.zkobject import ZKContext
 
 from kazoo.exceptions import NoNodeError
@@ -193,6 +195,52 @@ class LauncherClient:
                         provider_node.releaseLock(ctx)
                     except Exception:
                         log.exception("Error unlocking node %s", provider_node)
+
+    def snapshotNodeset(self, nodeset, node_ids, zuul_event_id=None):
+        log = get_annotated_logger(self.log, zuul_event_id)
+        log.debug("Snapshotting nodes %s in nodeset %s", node_ids, nodeset)
+
+        wait_event = threading.Event()
+        wait_snapshots = []
+
+        def node_watcher(self, data, zstat, event=None):
+            wait_event.set()
+
+        for node in nodeset.getNodes():
+            provider_node = getattr(node, "_provider_node", None)
+            if not provider_node:
+                continue
+            if provider_node.uuid not in node_ids:
+                continue
+            with self.createZKContext(provider_node._lock, log) as ctx:
+                try:
+                    if provider_node.state == provider_node.State.IN_USE:
+                        with provider_node.activeContext(ctx):
+                            provider_node.createSnapshot(ctx)
+                            provider_node.setState(ProviderNode.State.SNAPSHOT)
+                        ExistingDataWatch(self.zk_client.client,
+                                          provider_node.snapshot.getPath(),
+                                          node_watcher)
+                        wait_snapshots.append(provider_node.snapshot)
+                        log.debug("Set %s to snapshot", provider_node)
+                except Exception:
+                    log.exception("Unable to snapshot node %s", provider_node)
+
+        if not wait_snapshots:
+            log.debug("Nothing to snapshot in nodeset %s", nodeset)
+            return
+        done = False
+        log.debug("Waiting for snapshots in nodeset %s", nodeset)
+        while not done:
+            wait_event.wait()
+            wait_event.clear()
+            done = True
+            with self.createZKContext(provider_node._lock, log) as ctx:
+                for snapshot in wait_snapshots:
+                    snapshot.refresh(ctx)
+                    if not snapshot.complete:
+                        done = False
+        log.debug("Finished snapshots in nodeset %s", nodeset)
 
     def addResources(self, target, source):
         for key, value in source.items():
