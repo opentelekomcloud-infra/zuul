@@ -34,6 +34,7 @@ from tests.base import (
     simple_layout,
     return_data,
     driver_config,
+    AnsibleZuulTestCase,
 )
 from tests.unit.test_launcher import ImageMocksFixture
 from tests.unit.test_cloud_driver import BaseCloudDriverTest
@@ -45,7 +46,7 @@ def _make_ipv6_subnets(cidr_block):
     return [str(sn) for sn in network.subnets(new_prefix=64)]
 
 
-class TestAwsDriver(BaseCloudDriverTest):
+class AwsBaseTest(BaseCloudDriverTest):
     config_file = 'zuul-connections-nodepool.conf'
     cloud_test_image_format = 'raw'
     cloud_test_provider_name = 'aws-us-east-1-main'
@@ -203,12 +204,18 @@ class TestAwsDriver(BaseCloudDriverTest):
                    '_FakeAwsProviderEndpoint__ec2_quotas', ec2_quotas)
         self.patch(FakeAwsProviderEndpoint,
                    '_FakeAwsProviderEndpoint__ebs_quotas', ebs_quotas)
-
+        self.lateSetUp()
         super().setUp()
+
+    def lateSetUp(self):
+        pass
 
     def shutdown(self):
         super().shutdown()
         self.mock_aws.stop()
+
+
+class TestAwsDriver(AwsBaseTest):
 
     def _assertProviderNodeAttributes(self, pnode):
         super()._assertProviderNodeAttributes(pnode)
@@ -325,7 +332,7 @@ class TestAwsDriver(BaseCloudDriverTest):
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
-        debian_return_data,
+        AwsBaseTest.debian_return_data,
     )
     def test_aws_diskimage_snapshot(self):
         self._test_diskimage()
@@ -335,7 +342,7 @@ class TestAwsDriver(BaseCloudDriverTest):
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
-        debian_return_data,
+        AwsBaseTest.debian_return_data,
     )
     def test_aws_diskimage_image(self):
         self._test_diskimage()
@@ -345,7 +352,7 @@ class TestAwsDriver(BaseCloudDriverTest):
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
-        debian_return_data,
+        AwsBaseTest.debian_return_data,
     )
     def test_aws_diskimage_ebs_direct(self):
         self._test_diskimage()
@@ -355,7 +362,7 @@ class TestAwsDriver(BaseCloudDriverTest):
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
-        s3_debian_return_data,
+        AwsBaseTest.s3_debian_return_data,
     )
     def test_aws_diskimage_snapshot_import(self):
         self._test_diskimage()
@@ -365,7 +372,7 @@ class TestAwsDriver(BaseCloudDriverTest):
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
-        s3_debian_return_data,
+        AwsBaseTest.s3_debian_return_data,
     )
     def test_aws_diskimage_image_import(self):
         self._test_diskimage()
@@ -375,7 +382,7 @@ class TestAwsDriver(BaseCloudDriverTest):
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
-        s3_debian_return_data,
+        AwsBaseTest.s3_debian_return_data,
     )
     def test_aws_diskimage_s3_download(self):
         # The ebs-direct method doesn't support an import from s3,
@@ -390,7 +397,7 @@ class TestAwsDriver(BaseCloudDriverTest):
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
-        s3_region_debian_return_data,
+        AwsBaseTest.s3_region_debian_return_data,
     )
     def test_aws_diskimage_s3_region_download(self):
         # The image in a bucket in a different region should be
@@ -405,7 +412,7 @@ class TestAwsDriver(BaseCloudDriverTest):
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
-        s3_debian_return_data,
+        AwsBaseTest.s3_debian_return_data,
     )
     def test_aws_diskimage_copy(self):
         # The image should be imported from s3 in one region and
@@ -700,3 +707,59 @@ class TestAwsDriver(BaseCloudDriverTest):
         self.assertEqual('ebs-direct', dl.import_method)
         self.assertFalse(hasattr(dc, 'import_method'))
         self.waitUntilSettled()
+
+
+class TestAwsSnapshot(AnsibleZuulTestCase, AwsBaseTest):
+    tenant_config_file = 'config/snapshot/main.yaml'
+
+    def lateSetUp(self):
+        orig_getInstanceConfiguration = zuul.driver.aws.awsendpoint.\
+            AwsProviderEndpoint._getInstanceConfiguration
+
+        def getInstanceConfiguration(self, *args, **kw):
+            args = orig_getInstanceConfiguration(self, *args, **kw)
+            args['NetworkInterfaces'][0]['PrivateIpAddress'] = '127.0.0.1'
+            return args
+        self.patch(zuul.driver.aws.awsendpoint.AwsProviderEndpoint,
+                   '_getInstanceConfiguration',
+                   getInstanceConfiguration)
+
+    def _waitForArtifacts(self, image_name, count):
+        for _ in iterate_timeout(30, "artifacts to settle"):
+            artifacts = self.launcher.image_build_registry.\
+                getArtifactsForImage(image_name)
+            if len(artifacts) == count:
+                return artifacts
+
+    def _waitForUploads(self, image_cname, count=None):
+        for _ in iterate_timeout(60, "upload to complete"):
+            uploads = self.launcher.image_upload_registry.getUploadsForImage(
+                image_cname)
+            pending = [u for u in uploads if u.external_id is None]
+            if not pending:
+                if count is None or count == len(uploads):
+                    return uploads
+
+    def test_snapshot_e2e(self):
+        self.waitUntilSettled()
+        image_cname = 'review.example.com%2Fcommon-config/debian-local'
+        # We have an image, that's good enough for this test.
+        artifacts = self._waitForArtifacts(image_cname, 1)
+        self.assertTrue(artifacts[0].url.startswith(
+            'arn:aws:ec2:us-east-1:123456789012:snapshot/snap-'))
+        self._waitForUploads(image_cname, 1)
+
+        paginator = self.ec2_client.get_paginator('describe_snapshots')
+        snapshots = []
+        for page in paginator.paginate(OwnerIds=['self']):
+            snapshots.extend(page['Snapshots'])
+        # Find out snapshot
+        for snapshot in snapshots:
+            tags = zuul.driver.aws.awsendpoint.tag_list_to_dict(
+                snapshot['Tags'])
+            if 'zuul_system_id' in tags:
+                break
+        # Assert that it has been re-tagged
+        self.assertIn('zuul_system_id', tags)
+        self.assertIn('zuul_upload_uuid', tags)
+        self.assertNotIn('zuul_snapshot_exp', tags)
