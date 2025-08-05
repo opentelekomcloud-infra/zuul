@@ -57,6 +57,7 @@ class FakeProvider:
         image = Dummy()
         image.name = 'image-name'
         image.canonical_name = 'image-canonical-name'
+        image.upload_methods = ['copy', 'import', 'upload']
         self.images = {
             image.name: image,
         }

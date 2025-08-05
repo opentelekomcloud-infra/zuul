@@ -69,6 +69,12 @@ cloud_image = vs.Schema({
     Optional('userdata'): Nullable(str),
 })
 
+# Same as above, but only for zuul images.
+zuul_image = vs.Schema({
+    Optional('upload-methods', default=['copy', 'import', 'upload']):
+    vs.Any(['copy', 'import', 'upload']),
+})
+
 # The image attributes that, in addition to those above, can appear in
 # a section/provider image or a standalone image (but not in the
 # section body).

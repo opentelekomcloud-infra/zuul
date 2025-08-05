@@ -75,6 +75,7 @@
         instance-type: t3.medium
     images:
       - name: debian-local
+        upload-methods: ['upload']
 
 - section:
     name: aws-us-east-1

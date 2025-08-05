@@ -79,6 +79,8 @@ class UploadPlanner:
     def _handleImports(self, pending_uploads):
         for upload in pending_uploads[:]:
             args = self.upload_args[upload.uuid]
+            if 'import' not in args['provider_image'].upload_methods:
+                continue
             job = args['provider'].getImageImportJob(
                 args['url'],
                 args['provider_image'],
@@ -119,6 +121,8 @@ class UploadPlanner:
                 if source_upload is upload:
                     continue
                 args = self.upload_args[upload.uuid]
+                if 'copy' not in args['provider_image'].upload_methods:
+                    continue
                 source_provider_cname = source_upload.providers[0]
                 source_provider = self.launcher._getProviderByCanonicalName(
                     source_provider_cname)
@@ -170,6 +174,8 @@ class UploadPlanner:
             if not source_job:
                 # We need an upload job for this
                 args = self.upload_args[source_upload.uuid]
+                if 'upload' not in args['provider_image'].upload_methods:
+                    continue
                 source_job = args['provider'].getImageUploadJob(
                     args['provider_image'],
                     args['image_name'],
