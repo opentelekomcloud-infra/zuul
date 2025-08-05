@@ -928,6 +928,7 @@ class CleanupWorker:
             p for p in self.launcher._getProviders()
             if p.getEndpoint().canonical_name == endpoint.canonical_name
         ]
+        now = int(time.time())
 
         # First update quota; we get different classes back from
         # listInstances and listResources, so we can't use the same
@@ -950,6 +951,7 @@ class CleanupWorker:
                 continue
             node_id = resource.metadata.get('zuul_node_uuid')
             upload_id = resource.metadata.get('zuul_upload_uuid')
+            expiration = resource.metadata.get('zuul_expiration')
             if node_id and self.launcher.api.getProviderNode(node_id) is None:
                 newly_leaked_nodes[node_id] = resource
                 if node_id in possibly_leaked_nodes:
@@ -983,6 +985,21 @@ class CleanupWorker:
                         self.log.exception(
                             "Unable to delete leaked "
                             f"resource for upload {upload_id}")
+            if expiration:
+                expiration = int(expiration)
+                if now > expiration:
+                    # We can delete this immediately, we don't need to
+                    # wait for another cycle.
+                    try:
+                        endpoint.deleteResource(resource)
+                        # if self._statsd:
+                        #     key = ('nodepool.provider.%s.leaked.%s'
+                        #            % (self.provider.name,
+                        #               resource.plural_metric_name))
+                        #     self._statsd.incr(key, 1)
+                    except Exception:
+                        self.log.exception(
+                            "Unable to delete leaked resource")
         self.possibly_leaked_nodes[endpoint.canonical_name] =\
             newly_leaked_nodes
         self.possibly_leaked_uploads[endpoint.canonical_name] =\
@@ -1544,6 +1561,7 @@ class Launcher:
             host_key_checking=label.host_key_checking,
             boot_timeout=label.boot_timeout,
             snapshot_timeout=label.snapshot_timeout,
+            snapshot_expiration=label.snapshot_expiration,
             executor_zone=label.executor_zone,
             request_id=request.uuid,
             zuul_event_id=request.zuul_event_id,
@@ -1863,10 +1881,8 @@ class Launcher:
                 if not snapshot.state_machine:
                     tags = copy.deepcopy(node.tags)
                     tags.pop('zuul_node_uuid', None)
-                    # TODO: allow configurable snapshot expiration
-                    lifetime = 3600 * 24 * 7
-                    exp = int(time.time() + lifetime)
-                    tags['zuul_snapshot_exp'] = str(exp)
+                    exp = int(time.time() + node.snapshot_expiration)
+                    tags['zuul_expiration'] = str(exp)
                     snapshot.tags = tags
                     log.debug("Snapshotting node %s", node)
                     snapshot.state_machine = provider.getSnapshotStateMachine(
@@ -1993,6 +2009,7 @@ class Launcher:
                     host_key_checking=label.host_key_checking,
                     boot_timeout=label.boot_timeout,
                     snapshot_timeout=label.snapshot_timeout,
+                    snapshot_expiration=label.snapshot_expiration,
                     executor_zone=label.executor_zone,
                     request_id=None,
                     connection_name=provider.connection_name,

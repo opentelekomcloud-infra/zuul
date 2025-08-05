@@ -35,6 +35,10 @@ common_label = vs.Schema({
         doc="""The time (in seconds) to wait for a snapshot to complete."""
     ): int,
     Optional(
+        'snapshot-expiration', default=3600 * 24 * 7,
+        doc="""The time (in seconds) until a snapshot expires."""
+    ): int,
+    Optional(
         'executor-zone',
         doc="""\
         Specify that a Zuul executor in the specified zone is
