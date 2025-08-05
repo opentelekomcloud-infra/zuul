@@ -3330,8 +3330,8 @@ class Scheduler(threading.Thread):
                                    build=build.uuid)
         art_uuid = uuid.uuid4().hex
         image_format = metadata['format']
-        image_md5sum = metadata['md5sum']
-        image_sha256 = metadata['sha256']
+        image_md5sum = metadata.get('md5sum')
+        image_sha256 = metadata.get('sha256')
         log.info(
             "Storing image build artifact metadata: "
             "uuid: %s name: %s format: %s build: %s url: %s",

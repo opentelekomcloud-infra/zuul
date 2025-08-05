@@ -41,6 +41,7 @@ import boto3
 
 from tests.base import (
     ResponsesFixture,
+    AnsibleZuulTestCase,
     ZuulTestCase,
     driver_config,
     iterate_timeout,
@@ -210,7 +211,12 @@ class LauncherBaseTestCase(ZuulTestCase):
         self.patch(zuul.driver.aws.awsprovider.AwsProvider,
                    'getQuotaLimits',
                    getQuotaLimits)
+
+        self.lateSetUp()
         super().setUp()
+
+    def lateSetUp(self):
+        pass
 
     def getNodes(self, request):
         nodes = []
@@ -2638,3 +2644,46 @@ class TestNodepoolAbsent(LauncherBaseTestCase):
         self.assertIn('The label "debian-missing" was not found',
                       A.messages[0],
                       "A should have failed the check pipeline")
+
+
+class TestSnapshot(AnsibleZuulTestCase, LauncherBaseTestCase):
+    tenant_config_file = 'config/snapshot/main.yaml'
+
+    def lateSetUp(self):
+        orig_getInstanceConfiguration = zuul.driver.aws.awsendpoint.\
+            AwsProviderEndpoint._getInstanceConfiguration
+
+        def getInstanceConfiguration(self, *args, **kw):
+            args = orig_getInstanceConfiguration(self, *args, **kw)
+            args['NetworkInterfaces'][0]['PrivateIpAddress'] = '127.0.0.1'
+            return args
+        self.patch(zuul.driver.aws.awsendpoint.AwsProviderEndpoint,
+                   '_getInstanceConfiguration',
+                   getInstanceConfiguration)
+
+        def advance(self):
+            self.complete = True
+            # This isn't what the URL will really look like, but it's
+            # enough to trigger an import which is what we will
+            # eventually want and have stubbed out in the test below.
+            return "s3://zuul/doesnotexist"
+        self.patch(zuul.driver.aws.awsendpoint.AwsSnapshotStateMachine,
+                   'advance',
+                   advance)
+
+    def _waitForUploads(self, image_cname, count=None):
+        for _ in iterate_timeout(60, "upload to complete"):
+            uploads = self.launcher.image_upload_registry.getUploadsForImage(
+                image_cname)
+            pending = [u for u in uploads if u.external_id is None]
+            if not pending:
+                if count is None or count == len(uploads):
+                    return uploads
+
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageImportJob.run',
+                return_value="test_external_id")
+    def test_snapshot_e2e(self, import_mock):
+        self.waitUntilSettled()
+        image_cname = 'review.example.com%2Fcommon-config/debian-local'
+        # We have an image, that's good enough for this test.
+        self._waitForUploads(image_cname, 1)

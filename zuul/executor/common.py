@@ -128,6 +128,7 @@ def construct_build_params(uuid, connections, job, item, pipeline,
             params['ssh_keys'].append(dict(
                 connection_name=change.project.connection_name,
                 project_name=change.project.name))
+    params['pipeline_builds_images'] = pipeline.builds_images
     params['zuul'] = zuul_params
     projects = set()
     required_projects = set()
