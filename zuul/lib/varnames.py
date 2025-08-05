@@ -29,6 +29,7 @@ def check_varnames(var):
         # We block these in configloader, but block it here too to make
         # sure that a job doesn't pass variables named zuul or nodepool.
         'zuul',
+        'zuul_node',
         'nodepool',
         'unsafe_vars',
         # Block some connection related variables so they cannot be
