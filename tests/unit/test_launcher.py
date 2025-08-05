@@ -1622,6 +1622,47 @@ class TestLauncher(LauncherBaseTestCase):
 
     @simple_layout('layouts/nodepool.yaml',
                    enable_nodepool=True)
+    def test_snapshot(self):
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(['debian-normal'])
+
+        def advance(self):
+            self.complete = True
+            return "test-external-id"
+        self.patch(zuul.driver.aws.awsendpoint.AwsSnapshotStateMachine,
+                   'advance',
+                   advance)
+
+        # This is the executor's copy of the node
+        node = model.ProviderNode.fromZK(
+            ctx, path=model.ProviderNode._getPath(request.nodes[0]))
+
+        with node.locked(ctx):
+            request.delete(ctx)
+            node.createSnapshot(ctx)
+            with node.activeContext(ctx):
+                self.log.debug("Set node to snapshot")
+                node.setState(node.State.SNAPSHOT)
+
+            for _ in iterate_timeout(60, "snapshot"):
+                if node.snapshot.complete:
+                    break
+                node.snapshot.refresh(ctx)
+
+            self.assertTrue(node.snapshot.complete)
+            self.assertEqual("test-external-id", node.snapshot.external_id)
+            with node.activeContext(ctx):
+                self.log.debug("Set node to used")
+                node.setState(node.State.USED)
+
+        for _ in iterate_timeout(60, "node to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
+                break
+
+    @simple_layout('layouts/nodepool.yaml',
+                   enable_nodepool=True)
     @driver_config('test_launcher', quotas={
         'instances': 1,
     })

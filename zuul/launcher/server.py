@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 import collections
 from contextlib import nullcontext
+import copy
 import errno
 import fcntl
 import hashlib
@@ -1613,6 +1614,10 @@ class Launcher:
     def _processNodes(self):
         for node in self.api.getMatchingProviderNodes():
             log = get_annotated_logger(self.log, node, request=node.request_id)
+            try:
+                self._processNodeSnapshot(node, log)
+            except Exception:
+                log.exception("Error processing node %s snapshot", node)
             if not node.hasLock():
                 if not self._isNodeActionable(node):
                     continue
@@ -1821,6 +1826,75 @@ class Launcher:
         if keys:
             node.host_keys = keys
         return True
+
+    def _processNodeSnapshot(self, node, log):
+        if node.state != node.State.SNAPSHOT:
+            return
+        snapshot = node.snapshot
+        if snapshot.complete:
+            return
+        # This is similar to processNode
+        if not snapshot.hasLock():
+            with self.createZKContext(None, log) as ctx:
+                if not snapshot.acquireLock(ctx, blocking=False):
+                    log.debug("Failed to lock node %s for snapshot", node)
+                    return
+                node.refresh(ctx)
+
+        try:
+            self._checkNodeSnapshot(node, log)
+        except Exception:
+            log.exception("Error processing node %s snapshot", node)
+            with self.createZKContext(snapshot._lock, self.log) as ctx:
+                with snapshot.activeContext(ctx):
+                    snapshot.complete = True
+                    self.wake_event.set()
+
+        if snapshot.complete:
+            with self.createZKContext(None, self.log) as ctx:
+                snapshot.releaseLock(ctx)
+
+    def _checkNodeSnapshot(self, node, log):
+        snapshot = node.snapshot
+        with self.createZKContext(snapshot._lock, self.log) as ctx:
+            with snapshot.activeContext(ctx):
+                provider = self._getProviderForNode(node)
+                if not snapshot.state_machine:
+                    tags = copy.deepcopy(node.tags)
+                    tags.pop('zuul_node_uuid', None)
+                    # TODO: allow configurable snapshot expiration
+                    lifetime = 3600 * 24 * 7
+                    exp = int(time.time() + lifetime)
+                    tags['zuul_snapshot_exp'] = str(exp)
+                    snapshot.tags = tags
+                    log.debug("Snapshotting node %s", node)
+                    snapshot.state_machine = provider.getSnapshotStateMachine(
+                        node, log)
+
+                old_state = snapshot.state_machine.state
+                if old_state == snapshot.state_machine.START:
+                    snapshot.state_machine.start_time = time.time()
+                external_id = snapshot.state_machine.advance()
+                new_state = snapshot.state_machine.state
+                if old_state != new_state:
+                    log.debug("Snapshot for %s advanced from %s to %s",
+                              node, old_state, new_state)
+
+                if not snapshot.state_machine.complete:
+                    # TODO: add a snapshot-timeout provider attribute
+                    snapshot_timeout = 3600  # 1h
+                    if snapshot_timeout:
+                        now = time.time()
+                        if (now - snapshot.state_machine.start_time >
+                            snapshot_timeout):
+                            log.error("Timeout snapshotting node %s", node)
+                            raise Exception("Timeout snapshotting node")
+                    self.wake_event.set()
+                    return
+                # Snapshot is complete
+                snapshot.complete = True
+                snapshot.external_id = external_id
+                snapshot.releaseLock(ctx)
 
     def _cleanupNode(self, node, log):
         with self.createZKContext(node._lock, self.log) as ctx:

@@ -2644,6 +2644,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         USED = "used"
         OUTDATED = "outdated"
         HOLD = "hold"
+        SNAPSHOT = "snapshot"
 
     # States where quota counts
     ALLOCATED_STATES = (
@@ -2653,6 +2654,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         State.USED,
         State.OUTDATED,
         State.HOLD,
+        State.SNAPSHOT,
     )
 
     FINAL_STATES = (
@@ -2898,6 +2900,8 @@ class ProviderNodeSnapshot(zkobject.LockableZKObject):
         self._set(
             complete=None,
             external_id=None,
+            tags=None,
+            snapshot_state={},
             # Not serialized
             node=None,
             state_machine=None,
@@ -2910,9 +2914,15 @@ class ProviderNodeSnapshot(zkobject.LockableZKObject):
         return f"{self.node.getPath()}/{self.SNAPSHOT_LOCK_PATH}"
 
     def serialize(self, context):
+        if self.state_machine:
+            snapshot_state = self.state_machine.toDict()
+        else:
+            snapshot_state = {}
         data = dict(
+            snapshot_state=snapshot_state,
             complete=self.complete,
             external_id=self.external_id,
+            tags=self.tags,
         )
         return json.dumps(data, sort_keys=True).encode("utf-8")
 

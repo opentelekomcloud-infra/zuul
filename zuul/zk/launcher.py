@@ -341,7 +341,9 @@ class LauncherApi:
                 yield node
             if node.is_locked:
                 # Node is locked by someone else
-                continue
+                if node.state != node.State.SNAPSHOT:
+                    # But in snapshot state, we may have work to do
+                    continue
 
             candidate_launchers = {
                 n: c for n, c in all_launchers.items()

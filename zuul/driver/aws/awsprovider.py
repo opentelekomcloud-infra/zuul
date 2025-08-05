@@ -31,6 +31,7 @@ import voluptuous as vs
 from zuul.driver.aws.awsendpoint import (
     AwsCreateStateMachine,
     AwsDeleteStateMachine,
+    AwsSnapshotStateMachine,
 )
 from zuul.driver.aws.const import (
     SPOT,
@@ -307,6 +308,9 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
 
     def getDeleteStateMachine(self, node, log):
         return AwsDeleteStateMachine(self.endpoint, node, log)
+
+    def getSnapshotStateMachine(self, node, log):
+        return AwsSnapshotStateMachine(self.endpoint, node, log)
 
     def listInstances(self):
         return self.endpoint.listInstances()
