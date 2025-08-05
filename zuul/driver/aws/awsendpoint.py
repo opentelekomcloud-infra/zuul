@@ -357,7 +357,8 @@ class AwsImageImportJob(BaseImageImportJob):
     def __init__(self, endpoint,
                  provider_image, image_name,
                  image_format, metadata,
-                 bucket_name, object_filename, timeout):
+                 bucket_name, object_filename,
+                 snapshot_id, timeout):
         super().__init__()
         self.endpoint = endpoint
         self.provider_image = provider_image
@@ -366,25 +367,33 @@ class AwsImageImportJob(BaseImageImportJob):
         self.metadata = metadata
         self.bucket_name = bucket_name
         self.object_filename = object_filename
+        self.snapshot_id = snapshot_id
         self.timeout = timeout
 
     def run(self):
+        import_method = self.provider_image.import_method
+        if self.snapshot_id:
+            import_method = 'registration'
         self.endpoint.log.debug(f"Importing image {self.image_name} "
-                                f"via {self.provider_image.import_method}")
+                                f"via {import_method}")
 
         delete_object = False
-        if self.provider_image.import_method == 'image':
+        if import_method == 'image':
             image_id = self.endpoint._uploadImageImage(
                 self.provider_image, self.image_name,
                 self.image_format, self.metadata,
                 self.bucket_name, self.object_filename, self.timeout,
                 delete_object)
-        elif self.provider_image.import_method == 'snapshot':
+        elif import_method == 'snapshot':
             image_id = self.endpoint._uploadImageSnapshot(
                 self.provider_image, self.image_name,
                 self.image_format, self.metadata,
                 self.bucket_name, self.object_filename, self.timeout,
                 delete_object)
+        elif import_method == 'registration':
+            image_id = self.endpoint._importImageSnapshot(
+                self.provider_image, self.image_name,
+                self.snapshot_id, self.metadata)
         else:
             raise Exception("Unknown image import method")
         return image_id
@@ -566,6 +575,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             self._getInstanceType)
         self._getImage = functools.lru_cache(maxsize=None)(
             self._getImage)
+        self._getAccountId = functools.lru_cache(maxsize=None)(
+            self._getAccountId)
 
         self.image_id_by_filter_cache = cachetools.TTLCache(
             maxsize=8192, ttl=(5 * 60))
@@ -581,6 +592,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self.s3_client = self.aws.client('s3')
         self.aws_quotas = self.aws.client("service-quotas")
         self.ebs_client = self.aws.client('ebs')
+        self.sts_client = self.aws.client('sts')
         self.provider_label_template_names = {}
         # In listResources, we reconcile AMIs which appear to be
         # imports but have no nodepool tags, however it's possible
@@ -839,7 +851,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
     def getImageImportJob(self, url, provider_image, image_name,
                           image_format, metadata, md5, sha256):
-        if not url.startswith('s3://'):
+        if not (url.startswith('s3://') or url.startswith('arn:')):
             return None
 
         if provider_image.import_method == 'image':
@@ -854,18 +866,34 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             raise Exception("Unknown image import method")
 
         timeout = provider_image.import_timeout
-        url_parts = urllib.parse.urlparse(url)
-        bucket_name = url_parts.netloc
-        object_filename = url_parts.path.lstrip('/')
+        if url.startswith('s3://'):
+            url_parts = urllib.parse.urlparse(url)
+            bucket_name = url_parts.netloc
+            object_filename = url_parts.path.lstrip('/')
 
-        if self._getBucketRegion(bucket_name) != self.region:
-            return None
+            if self._getBucketRegion(bucket_name) != self.region:
+                return None
 
-        return AwsImageImportJob(
-            self,
-            provider_image, image_name,
-            image_format, metadata,
-            bucket_name, object_filename, timeout)
+            return AwsImageImportJob(
+                self,
+                provider_image, image_name,
+                image_format, metadata,
+                bucket_name, object_filename,
+                None, timeout)
+        elif url.startswith('arn:'):
+            url_parts = url.split(':')
+            region = url_parts[3]
+
+            if region != self.region:
+                return None
+
+            snapshot_id = url_parts[5].split('/')[1]
+            return AwsImageImportJob(
+                self,
+                provider_image, image_name,
+                image_format, metadata,
+                None, None,
+                snapshot_id, timeout)
 
     def getImageCopyJob(self, source_provider, provider_image, image_name,
                         image_format, metadata, md5, sha256):
@@ -1129,6 +1157,38 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self.log.debug(f"Upload of {image_name} complete as {task['ImageId']}")
         # Last task returned from paginator above
         return task['ImageId']
+
+    def _importImageSnapshot(self, provider_image, image_name,
+                             snapshot_id, metadata):
+        # Import from an existing snapshot
+        self.log.debug(f"Importing {image_name} as snapshot")
+
+        snapshot = dict(SnapshotId=snapshot_id)
+        snapshot = self._refresh(snapshot)
+
+        # Re-Tag the snapshot with the upload tags
+        try:
+            with self.rate_limiter:
+                self.ec2_client.delete_tags(
+                    Resources=[snapshot_id],
+                    Tags=snapshot['Tags'],
+                )
+            with self.rate_limiter:
+                self.ec2_client.create_tags(
+                    Resources=[snapshot_id],
+                    Tags=tag_dict_to_list(metadata),
+                )
+        except Exception:
+            self.log.exception("Error tagging snapshot:")
+
+        volume_size = provider_image.volume_size or snapshot['VolumeSize']
+        register_response = self._registerImage(
+            provider_image, image_name, metadata, volume_size, snapshot_id,
+        )
+
+        self.log.debug(f"Import of {image_name} complete as "
+                       f"{register_response['ImageId']}")
+        return register_response['ImageId']
 
     def _copyImage(self, provider_image, image_name,
                    image_format, metadata,
@@ -1449,6 +1509,10 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             for host in self._listHosts():
                 if host['HostId'] == obj['HostId']:
                     return host
+        elif 'SnapshotId' in obj:
+            for snapshot in self._listSnapshots():
+                if snapshot['SnapshotId'] == obj['SnapshotId']:
+                    return snapshot
         return obj
 
     def _refreshDelete(self, obj):
@@ -2193,3 +2257,21 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         with self.rate_limiter:
             self.log.debug("Deleting object %s", external_id)
             self.s3.Object(bucket_name, external_id).delete()
+
+    # This method is wrapped by a TTL cache in init
+    def _getAccountId(self):
+        with self.non_mutating_rate_limiter:
+            return self.sts_client.get_caller_identity()['Account']
+
+    def _createSnapshot(self, volume_id, tags):
+        with self.rate_limiter:
+            self.log.debug(f"Creating snapshot for volume {volume_id}")
+            return self.ec2_client.create_snapshot(
+                VolumeId=volume_id,
+                TagSpecifications=[
+                    {
+                        'ResourceType': 'snapshot',
+                        'Tags': tag_dict_to_list(tags),
+                    },
+                ],
+            )
