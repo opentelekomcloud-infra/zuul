@@ -1497,6 +1497,7 @@ class Launcher:
             max_ready_age=label.max_ready_age,
             host_key_checking=label.host_key_checking,
             boot_timeout=label.boot_timeout,
+            snapshot_timeout=label.snapshot_timeout,
             executor_zone=label.executor_zone,
             request_id=request.uuid,
             zuul_event_id=request.zuul_event_id,
@@ -1830,12 +1831,10 @@ class Launcher:
                               node, old_state, new_state)
 
                 if not snapshot.state_machine.complete:
-                    # TODO: add a snapshot-timeout provider attribute
-                    snapshot_timeout = 3600  # 1h
-                    if snapshot_timeout:
+                    if node.snapshot_timeout:
                         now = time.time()
                         if (now - snapshot.state_machine.start_time >
-                            snapshot_timeout):
+                            node.snapshot_timeout):
                             log.error("Timeout snapshotting node %s", node)
                             raise Exception("Timeout snapshotting node")
                     self.wake_event.set()
@@ -1942,6 +1941,7 @@ class Launcher:
                     max_ready_age=label.max_ready_age,
                     host_key_checking=label.host_key_checking,
                     boot_timeout=label.boot_timeout,
+                    snapshot_timeout=label.snapshot_timeout,
                     executor_zone=label.executor_zone,
                     request_id=None,
                     connection_name=provider.connection_name,

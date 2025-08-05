@@ -27,6 +27,7 @@ from zuul.lib.voluputil import Required, Optional, Nullable
 # label.
 common_label = vs.Schema({
     Optional('boot-timeout', default=300): int,
+    Optional('snapshot-timeout', default=3600): int,
     Optional('executor-zone'): Nullable(str),
 })
 
