@@ -23,7 +23,9 @@ import fixtures
 from moto import mock_aws
 import boto3
 import botocore.exceptions
+from kazoo.exceptions import NoNodeError
 
+from zuul import model
 from zuul.driver.aws import AwsDriver
 from zuul.driver.aws.awsmodel import AwsProviderNode
 import zuul.driver.aws.awsendpoint
@@ -664,6 +666,66 @@ class TestAwsDriver(AwsBaseTest):
                 break
             time.sleep(1)
 
+    @simple_layout('layouts/nodepool-snapshot-expiration.yaml',
+                   enable_nodepool=True)
+    def test_snapshot_leak(self):
+        # Ideally this would be in test_launcher, but it needs more of
+        # AWS mocked out than we do there (the missing describe_*
+        # paginators)
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(['debian-normal'])
+
+        # This is the executor's copy of the node
+        node = model.ProviderNode.fromZK(
+            ctx, path=model.ProviderNode._getPath(request.nodes[0]))
+
+        with node.locked(ctx):
+            request.delete(ctx)
+            node.createSnapshot(ctx)
+            with node.activeContext(ctx):
+                self.log.debug("Set node to snapshot")
+                node.setState(node.State.SNAPSHOT)
+
+            for _ in iterate_timeout(60, "snapshot"):
+                if node.snapshot.complete:
+                    break
+                node.snapshot.refresh(ctx)
+
+            self.assertTrue(node.snapshot.complete)
+            arn = node.snapshot.external_id
+            with node.activeContext(ctx):
+                self.log.debug("Set node to used")
+                node.setState(node.State.USED)
+
+        for _ in iterate_timeout(60, "node to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
+                break
+
+        ec2 = boto3.resource('ec2', region_name='us-east-1')
+        snapshot_id = arn.split('/')[1]
+        snapshot = ec2.Snapshot(snapshot_id)
+        tags = zuul.driver.aws.awsendpoint.tag_list_to_dict(
+            snapshot.tags)
+        # Assert that it has been re-tagged
+        self.assertIn('zuul_system_id', tags)
+        self.assertIn('zuul_expiration', tags)
+        self.assertNotIn('zuul_upload_uuid', tags)
+
+        self.launcher.cleanup_worker.INTERVAL = 1
+        self.log.debug("Start cleanup worker")
+        self.launcher.cleanup_worker.start()
+        for _ in iterate_timeout(30, 'snapshot deletion'):
+            snapshot = self.ec2.Snapshot(snapshot_id)
+            try:
+                if snapshot.state == 'deleted':
+                    break
+            except botocore.exceptions.ClientError:
+                # Probably not found
+                break
+            time.sleep(1)
+
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_state_machines_instance(self):
         label_name = "debian-normal"
@@ -753,7 +815,7 @@ class TestAwsSnapshot(AnsibleZuulTestCase, AwsBaseTest):
         snapshots = []
         for page in paginator.paginate(OwnerIds=['self']):
             snapshots.extend(page['Snapshots'])
-        # Find out snapshot
+        # Find our snapshot
         for snapshot in snapshots:
             tags = zuul.driver.aws.awsendpoint.tag_list_to_dict(
                 snapshot['Tags'])
@@ -762,4 +824,4 @@ class TestAwsSnapshot(AnsibleZuulTestCase, AwsBaseTest):
         # Assert that it has been re-tagged
         self.assertIn('zuul_system_id', tags)
         self.assertIn('zuul_upload_uuid', tags)
-        self.assertNotIn('zuul_snapshot_exp', tags)
+        self.assertNotIn('zuul_expiration', tags)
