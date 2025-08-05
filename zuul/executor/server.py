@@ -2256,23 +2256,22 @@ class AnsibleJob(object):
                         private_ipv6=node.private_ipv6,
                         node_properties=node.node_properties,
                     ),
-                    zuul=dict(
-                        node=dict(
-                            label=node.label,
-                            az=node.az,
-                            cloud=node.cloud,
-                            provider=node.provider,
-                            region=node.region,
-                            host_id=node.host_id,
-                            external_id=getattr(node, 'external_id', None),
-                            slot=node.slot,
-                            interface_ip=node.interface_ip,
-                            public_ipv4=node.public_ipv4,
-                            private_ipv4=node.private_ipv4,
-                            public_ipv6=node.public_ipv6,
-                            private_ipv6=node.private_ipv6,
-                            node_properties=node.node_properties,
-                        ),
+                    zuul_node=dict(
+                        uuid=getattr(node, 'uuid', None),
+                        label=node.label,
+                        az=node.az,
+                        cloud=node.cloud,
+                        provider=node.provider,
+                        region=node.region,
+                        host_id=node.host_id,
+                        external_id=getattr(node, 'external_id', None),
+                        slot=node.slot,
+                        interface_ip=node.interface_ip,
+                        public_ipv4=node.public_ipv4,
+                        private_ipv4=node.private_ipv4,
+                        public_ipv6=node.public_ipv6,
+                        private_ipv6=node.private_ipv6,
+                        node_properties=node.node_properties,
                     ),
                 ))
 
@@ -3057,6 +3056,8 @@ class AnsibleJob(object):
             if 'host_vars' in host:
                 self.frozen_hostvars[host['name']]['nodepool'] =\
                     host['host_vars']['nodepool']
+                self.frozen_hostvars[host['name']]['zuul_node'] =\
+                    host['host_vars']['zuul_node']
             with open(path, 'w') as f:
                 f.write(json.dumps(facts))
 

@@ -2752,7 +2752,6 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             self._set(delete_state=self.delete_state_machine.toDict())
 
         data = dict(
-            uuid=self.uuid,
             request_id=self.request_id,
             min_request_version=self.min_request_version,
             zuul_event_id=self.zuul_event_id,
@@ -2802,6 +2801,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         # This gets stored on the ProviderNode object, but also copied
         # to the Node object for use by the executor.
         return dict(
+            uuid=self.uuid,
             attributes=self.attributes,
             az=self.az,
             boot_timeout=self.boot_timeout,
