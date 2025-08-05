@@ -610,6 +610,18 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
     # The following methods must be implemented only if image
     # management is supported:
 
+    def getSnapshotStateMachine(self, node, log):
+        """Return a state machine suitable for snapshotting an instance
+
+        This method should return a new state machine object
+        initialized to snapshot the described instance.
+
+        :param node ProviderNode: The node that should be snapshotted.
+        :param log Logger: A logger instance for emitting annotated
+            logs related to the request.
+        """
+        return None
+
     def downloadUrl(self, url, path):
         """Attempt to download the given URL to the destination path
 
