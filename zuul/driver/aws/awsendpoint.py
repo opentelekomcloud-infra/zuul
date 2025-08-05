@@ -266,6 +266,24 @@ class AwsCreateStateMachine(statemachine.StateMachine):
                                self.host, self.node.quota)
 
 
+class AwsSnapshotStateMachine(statemachine.StateMachine):
+    COMPLETE = 'complete'
+
+    def __init__(self, endpoint, node, log):
+        self.log = log
+        self.endpoint = endpoint
+        self.node = node
+        initial_state = node.snapshot.snapshot_state
+        super().__init__(initial_state)
+
+    def advance(self):
+        if self.state == self.START:
+            self.state = self.COMPLETE
+
+        if self.state == self.COMPLETE:
+            self.complete = True
+
+
 class AwsImageCopyJob(BaseImageCopyJob):
     def __init__(self, endpoint,
                  provider_image, image_name,
