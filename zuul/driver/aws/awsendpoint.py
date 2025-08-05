@@ -1870,8 +1870,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             # eventual consistency
             return {'InstanceId': instance_id, 'State': {'Name': 'creating'}}
 
-    def _runInstance(self, label, flavor, image_id, tags, hostname,
-                     dedicated_host_id, log):
+    def _getInstanceConfiguration(self, label, flavor, image_id, tags,
+                                  dedicated_host_id):
         args = dict(
             ImageId=image_id,
             MinCount=1,
@@ -1977,6 +1977,13 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         if label.az:
             placement = args.setdefault('Placement', {})
             placement['AvailabilityZone'] = label.az
+        return args
+
+    def _runInstance(self, label, flavor, image_id, tags, hostname,
+                     dedicated_host_id, log):
+
+        args = self._getInstanceConfiguration(label, flavor, image_id, tags,
+                                              dedicated_host_id)
 
         with self.rate_limiter(log.debug, "Created instance"):
             log.debug("Creating VM %s", hostname)
