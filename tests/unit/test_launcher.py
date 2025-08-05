@@ -1916,9 +1916,11 @@ class TestLauncherUpload(LauncherBaseTestCase):
         super().setUp()
 
     def _waitForArtifacts(self, image_name, count, format=None):
-        for _ in iterate_timeout(30, "artifacts to settle"):
+        for i in iterate_timeout(30, "artifacts to settle"):
+            print('HERE: i=', i)
             artifacts = self.launcher.image_build_registry.\
                 getArtifactsForImage(image_name)
+            print(artifcats)
             if format:
                 artifacts = [a for a in artifacts if a.format == format]
             if len(artifacts) == count:
@@ -1978,6 +1980,11 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
 
+        # for _ in iterate_timeout(30, ""):
+        #     if (self.scheds.first.sched.local_layout_state.get("tenant-one") ==
+        #         self.launcher.local_layout_state.get("tenant-one")):
+        #         break
+
         for name in [
                 'review.example.com%2Forg%2Fcommon-config/debian-local',
                 'review.example.com%2Forg%2Fcommon-config/ubuntu-local',
@@ -2009,6 +2016,7 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
         artifacts = self._waitForArtifacts(image_cname, 2, format='raw')
+        # THIS ONE FAILS SOMETIMES ^
         oldest_artifact_uuid = artifacts[0].uuid
 
         # Run another build event manually
@@ -2032,6 +2040,8 @@ class TestLauncherUpload(LauncherBaseTestCase):
         artifacts = self._waitForArtifacts(image_cname, 2, format='raw')
         artifact_uuids = [x.uuid for x in artifacts]
         self.assertNotIn(oldest_artifact_uuid, artifact_uuids)
+
+        # self.assertTrue(False)  # Force failure ~ for easy outputs comparison
 
 
 class TestMinReadyLauncher(LauncherBaseTestCase):
