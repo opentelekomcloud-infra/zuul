@@ -603,6 +603,7 @@ class Pipeline(object):
         self.window_decrease_factor = None
         self.ref_filters = []
         self.event_filters = []
+        self.builds_images = False
 
     @property
     def actions(self):

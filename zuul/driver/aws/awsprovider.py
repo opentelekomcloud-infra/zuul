@@ -87,7 +87,7 @@ class AwsProviderImage(BaseProviderImage):
         Optional('import-method', default='snapshot'): vs.Any(
             'snapshot', 'image', 'ebs-direct'),
         Optional('image-format', default='raw'): vs.Any(
-            'ova', 'vhd', 'vhdx', 'vmdk', 'raw'),
+            'ova', 'vhd', 'vhdx', 'vmdk', 'raw', 'snapshot'),
         # None is an acceptable explicit value for imds-support
         Optional('imds-support', default=None): vs.Any('v2.0', None),
         Optional('architecture', default='x86_64'): str,
