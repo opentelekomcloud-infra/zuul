@@ -1925,9 +1925,13 @@ class TestLauncherUpload(LauncherBaseTestCase):
                 return artifacts
 
     def _waitForUploads(self, image_name, count):
+        # This method is unique for this test, checking for final
+        # states.
         for _ in iterate_timeout(30, "uploads to settle"):
             uploads = self.launcher.image_upload_registry.\
                 getUploadsForImage(image_name)
+            uploads = [u for u in uploads
+                       if u.state in (u.State.FAILED, u.State.READY)]
             if len(uploads) == count:
                 return uploads
 
@@ -1957,7 +1961,9 @@ class TestLauncherUpload(LauncherBaseTestCase):
     )
     @okay_tracebacks('Upload test failure')
     def test_launcher_image_expire_failed_upload(self):
-        self.waitUntilSettled()
+        # This tests that we correctly expire the uploads and artifact
+        # for an image artifact with no successful uploads.
+        self.waitUntilSettled("start")
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
@@ -1972,7 +1978,7 @@ class TestLauncherUpload(LauncherBaseTestCase):
 
         # The build should not run again because the image is no
         # longer missing
-        self.waitUntilSettled()
+        self.waitUntilSettled("reconfigure")
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
@@ -1990,25 +1996,39 @@ class TestLauncherUpload(LauncherBaseTestCase):
             self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
             if 'ubuntu' in name:
                 self.assertIsNone(uploads[0].external_id)
+                self.assertEqual('failed', uploads[0].state)
             else:
                 self.assertEqual("test_external_id", uploads[0].external_id)
+                self.assertEqual('ready', uploads[0].state)
             self.assertTrue(uploads[0].validated)
 
-        image_cname = 'review.example.com%2Forg%2Fcommon-config/ubuntu-local'
+        # At this point, we have:
+        # debian-local: 1 artifact, 1 ready upload
+        # ubuntu-local: 1 artifact, 1 failed upload
+        # Both are raw artifacts. The qcow2 artifacts will have been
+        # created and deleted since they have no uploads.
+
         # Run another build event manually
+        image_cname = 'review.example.com%2Forg%2Fcommon-config/ubuntu-local'
         driver = self.launcher.connections.drivers['zuul']
         event = driver.getImageBuildEvent(
             ['ubuntu-local'], 'review.example.com',
             'org/common-config', 'master')
         self.launcher.trigger_events['tenant-one'].put(
             event.trigger_name, event)
-        self.waitUntilSettled()
+        self.waitUntilSettled("manual build")
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
         artifacts = self._waitForArtifacts(image_cname, 2, format='raw')
+        uploads = self._waitForUploads(image_cname, 2)
+        # At this point, we have:
+        # debian-local: 1 artifact, 1 ready upload
+        # ubuntu-local: 2 artifacts, 1 failed upload, 1 ready upload
+        self.assertEqual('failed', uploads[0].state)
+        self.assertEqual('ready', uploads[1].state)
         oldest_artifact_uuid = artifacts[0].uuid
 
         # Run another build event manually
@@ -2018,7 +2038,7 @@ class TestLauncherUpload(LauncherBaseTestCase):
             'org/common-config', 'master')
         self.launcher.trigger_events['tenant-one'].put(
             event.trigger_name, event)
-        self.waitUntilSettled()
+        self.waitUntilSettled("second manual build")
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
@@ -2028,10 +2048,16 @@ class TestLauncherUpload(LauncherBaseTestCase):
         # Trigger a run of the deletion check.
         self.launcher.upload_deleted_event.set()
         self.launcher.wake_event.set()
-        self.waitUntilSettled()
+        self.waitUntilSettled("deletion check")
+        # At this point, we have:
+        # debian-local: 1 artifact, 1 ready upload
+        # ubuntu-local: 2 artifacts, 2 ready uploads
         artifacts = self._waitForArtifacts(image_cname, 2, format='raw')
         artifact_uuids = [x.uuid for x in artifacts]
         self.assertNotIn(oldest_artifact_uuid, artifact_uuids)
+        uploads = self._waitForUploads(image_cname, 2)
+        self.assertEqual('ready', uploads[0].state)
+        self.assertEqual('ready', uploads[1].state)
 
 
 class TestMinReadyLauncher(LauncherBaseTestCase):

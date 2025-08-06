@@ -1498,12 +1498,14 @@ class ImageUpload(zkobject.LockableZKObject):
         DELETING = "deleting"
         PENDING = "pending"
         UPLOADING = "uploading"
+        FAILED = "failed"
 
     STATES = set([
         State.READY,
         State.DELETING,
         State.PENDING,
         State.UPLOADING,
+        State.FAILED,
     ])
 
     def __init__(self):
@@ -1520,6 +1522,7 @@ class ImageUpload(zkobject.LockableZKObject):
             validated=None,
             _state=None,
             state_time=None,
+            attempt=0,
             # Attributes that are not serialized
             lock=None,
             is_locked=False,
@@ -1528,6 +1531,7 @@ class ImageUpload(zkobject.LockableZKObject):
 
     def copy(self, context):
         upload_uuid = uuid.uuid4().hex
+        attempt = self.attempt + 1
         return ImageUpload.new(
             context,
             uuid=upload_uuid,
@@ -1538,6 +1542,7 @@ class ImageUpload(zkobject.LockableZKObject):
             config_hash=self.config_hash,
             timestamp=self.timestamp,
             validated=self.validated,
+            attempt=attempt,
             _state=ImageUpload.State.PENDING,
             state_time=time.time(),
         )
@@ -1556,6 +1561,7 @@ class ImageUpload(zkobject.LockableZKObject):
     def __repr__(self):
         return (f"<ImageUpload {self.uuid} "
                 f"state: {self.state} "
+                f"attempt: {self.attempt} "
                 f"endpoint: {self.endpoint_name} "
                 f"artifact: {self.artifact_uuid} "
                 f"validated: {self.validated} "
@@ -1578,6 +1584,7 @@ class ImageUpload(zkobject.LockableZKObject):
             external_id=self.external_id,
             timestamp=self.timestamp,
             validated=self.validated,
+            attempt=self.attempt,
             _state=self._state,
             state_time=self.state_time,
         )

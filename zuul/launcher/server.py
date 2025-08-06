@@ -381,14 +381,20 @@ class UploadJob:
                                     "Marking upload %s ready", upload)
                                 upload.state = upload.State.READY
                             else:
-                                new_upload = upload.copy(ctx)
-                                self.log.debug(
-                                    "Replacing upload %s with %s",
-                                    upload, new_upload)
-                                self.log.debug(
-                                    "Marking upload %s deleting", upload)
-                                upload.state = upload.State.DELETING
-                                self.launcher.upload_deleted_event.set()
+                                # Retry 3 times
+                                if upload.attempt < 2:
+                                    new_upload = upload.copy(ctx)
+                                    self.log.debug(
+                                        "Replacing upload %s with %s",
+                                        upload, new_upload)
+                                    self.log.debug(
+                                        "Marking upload %s deleting", upload)
+                                    upload.state = upload.State.DELETING
+                                    self.launcher.upload_deleted_event.set()
+                                else:
+                                    self.log.debug(
+                                        "Marking upload %s failed", upload)
+                                    upload.state = upload.State.FAILED
                     except Exception:
                         self.log.exception("Unable to update state for %s",
                                            upload)
