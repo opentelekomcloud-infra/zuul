@@ -36,6 +36,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1c99e94a_6ccf9c9c",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-06T18:41:16Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "85146660_7ddaedc5",
+      "revId": "59d9a3214eb845bae709a1eee3d3f731323a2c1e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6af8a3b2_ddcc2a8b",
