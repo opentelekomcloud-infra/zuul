@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "85146660_7ddaedc5",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-06T18:37:55Z",
+      "side": 1,
+      "message": "I guess this is a comment bug: I was going for a total of 3 attempts.  Let\u0027s say the comment should say \"Try a total of 3 times.\"\n\nThis runs after an attempt has failed.  So with your method of analysis:\nThe first time through here, we have run once, and 0 \u003c 2 is true so we run again.\nSecond time we have run twice, 1 \u003c 2 is true so we run again.\nThird time we have run three times, 2 \u003c 2 is true so we don\u0027t run a fourth time.",
+      "parentUuid": "d8b0cfe1_7e7d4c4b",
+      "revId": "59d9a3214eb845bae709a1eee3d3f731323a2c1e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6af8a3b2_ddcc2a8b",
         "filename": "zuul/model.py",
         "patchSetId": 1
@@ -31,6 +49,24 @@
       "writtenOn": "2025-08-06T18:32:36Z",
       "side": 1,
       "message": "Is this initial value of 0 sufficient for deserializing old values in zk? I suspect it is but I\u0027m not positive and just wanted to call that out in case we need a model api version bump or an explicit deserialization step that sets it to 0 if unset.",
+      "revId": "59d9a3214eb845bae709a1eee3d3f731323a2c1e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "334303e1_835760da",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1525,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-06T18:37:55Z",
+      "side": 1,
+      "message": "This should be fine; this will be run before deserialization.",
+      "parentUuid": "6af8a3b2_ddcc2a8b",
       "revId": "59d9a3214eb845bae709a1eee3d3f731323a2c1e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
