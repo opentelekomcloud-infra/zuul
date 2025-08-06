@@ -46,13 +46,14 @@
     name: aws-base
     abstract: true
     connection: aws
-    host-key-checking: false
-    boot-timeout: 300
     launch-timeout: 600
     launch-attempts: 2
     object-storage:
       bucket-name: zuul
-    key-name: zuul
+    label-defaults:
+      host-key-checking: false
+      boot-timeout: 300
+      key-name: zuul
     flavors:
       - name: normal
         instance-type: t3.medium
@@ -66,13 +67,15 @@
     name: aws-us-east-1
     parent: aws-base
     region: us-east-1
-    az: us-east-1b
-    security-group-id: testgroup
-    subnet-ids: {subnet_ids}
-    public-ipv6: True
-    userdata: testuserdata
-    iam-instance-profile:
-      name: {iam_profile_name}
+    label-defaults:
+      az: us-east-1b
+      security-group-id: testgroup
+      subnet-ids: {subnet_ids}
+      iam-instance-profile:
+        name: {iam_profile_name}
+      userdata: testuserdata
+    flavor-defaults:
+      public-ipv6: True
 
 - provider:
     name: aws-us-east-1-main

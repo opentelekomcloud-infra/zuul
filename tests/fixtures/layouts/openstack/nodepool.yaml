@@ -100,21 +100,22 @@
     name: openstack-base
     abstract: true
     connection: openstack
-    host-key-checking: false
-    boot-timeout: 120
     launch-timeout: 600
     launch-attempts: 2
-    key-name: zuul
     floating-ip-cleanup: true
     port-cleanup-interval: 1
+    label-defaults:
+      host-key-checking: false
+      boot-timeout: 120
+      key-name: zuul
+      networks:
+        - fake-network
     flavors:
       - name: normal
         flavor-name: Fake Flavor
     images:
       - name: debian
         image-id: fake-image
-    networks:
-      - fake-network
 
 - section:
     name: openstack

@@ -124,13 +124,14 @@
     name: aws-base
     abstract: true
     connection: aws
-    host-key-checking: false
-    boot-timeout: 300
     launch-timeout: 600
     launch-attempts: 2
     object-storage:
       bucket-name: zuul
-    key-name: zuul
+    label-defaults:
+      host-key-checking: false
+      boot-timeout: 300
+      key-name: zuul
     flavors:
       - name: normal
         instance-type: t3.medium
@@ -157,7 +158,8 @@
 - provider:
     name: aws-us-east-1-main
     section: aws-us-east-1
-    executor-zone: us-east-1
+    label-defaults:
+      executor-zone: us-east-1
     labels:
       - name: debian-normal
         volume-type: gp3
