@@ -84,6 +84,24 @@
       "message": "The other driver docs use the driver name as the example connection name, so this isn\u0027t consistent. However, it makes sense in order to disambiguate drivers from the connections that use them. Should we consider adjusting the other examples in a similar fashion?",
       "revId": "e8e568b147efa7da9f4232d186a0c0afe187723b",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ad5b29a_8a8a3307",
+        "filename": "doc/source/drivers/gitlab.rst",
+        "patchSetId": 20
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-08-06T17:00:48Z",
+      "side": 1,
+      "message": "@fungi@yuggoth.org Actually, I took the inspiration from existing example here: https://opendev.org/zuul/zuul/src/branch/master/doc/source/drivers/github.rst?display\u003dsource#L601",
+      "parentUuid": "87bf610a_af425f54",
+      "revId": "e8e568b147efa7da9f4232d186a0c0afe187723b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ],
   "submitRequirementResults": [
