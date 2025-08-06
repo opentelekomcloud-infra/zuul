@@ -189,6 +189,24 @@
       "parentUuid": "73a7bd6f_67631219",
       "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e0503701_59595fb3",
+        "filename": "zuul/driver/gitlab/gitlabmodel.py",
+        "patchSetId": 17
+      },
+      "lineNbr": 345,
+      "author": {
+        "id": 9311
+      },
+      "writtenOn": "2025-08-06T06:35:37Z",
+      "side": 1,
+      "message": "Thanks, I think it\u0027s easier to follow a dedicated \u0027GitlabRejectFilter\u0027 that way.",
+      "parentUuid": "8bd53925_2dc0a251",
+      "revId": "4958dc589abe3b99d4eac76f612e6c1a6a6c432d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
