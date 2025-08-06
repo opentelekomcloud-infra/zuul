@@ -593,17 +593,17 @@ As described in :attr:`pipeline.require` and :attr:`pipeline.reject`,
 pipelines may specify that items meet certain conditions in order to
 be enqueued into the pipeline.  These conditions vary according to the
 source of the project in question.  To supply requirements for changes
-from a GitHub source named ``my-github``, create a configuration such
+from a GitHub source named ``github``, create a configuration such
 as the following::
 
   pipeline:
     require:
-      my-github:
+      github:
         review:
           - type: approved
 
 This indicates that changes originating from the GitHub connection
-named ``my-github`` must have an approved code review in order to be
+named ``github`` must have an approved code review in order to be
 enqueued into the pipeline.
 
 .. attr:: pipeline.require.<github source>
