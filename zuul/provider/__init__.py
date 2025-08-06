@@ -48,6 +48,10 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
         provider_schema.common_image,
         provider_schema.base_image,
     )
+    inheritable_schema = assemble(
+        inheritable_cloud_schema,
+        inheritable_zuul_schema,
+    )
 
     def __init__(self, image_config, provider_config):
         new_config = image_config.copy()
@@ -55,9 +59,12 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
             schema = self.inheritable_zuul_schema
         else:
             schema = self.inheritable_cloud_schema
+        defaults = provider_config.get('image-defaults', {})
         for k in schema.schema.keys():
             if k not in new_config and k in provider_config:
                 new_config[k] = provider_config[k]
+            if k not in new_config and k in defaults:
+                new_config[k] = defaults[k]
 
         self.__dict__.update(self.schema(new_config))
 
@@ -70,9 +77,12 @@ class BaseProviderFlavor(CNameMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, flavor_config, provider_config):
         new_config = flavor_config.copy()
+        defaults = provider_config.get('flavor-defaults', {})
         for k in self.inheritable_schema.schema.keys():
             if k not in new_config and k in provider_config:
                 new_config[k] = provider_config[k]
+            if k not in new_config and k in defaults:
+                new_config[k] = defaults[k]
 
         self.__dict__.update(self.schema(new_config))
 
@@ -89,9 +99,12 @@ class BaseProviderLabel(CNameMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, label_config, provider_config):
         new_config = label_config.copy()
+        defaults = provider_config.get('label-defaults', {})
         for k in self.inheritable_schema.schema.keys():
             if k not in new_config and k in provider_config:
                 new_config[k] = provider_config[k]
+            if k not in new_config and k in defaults:
+                new_config[k] = defaults[k]
 
         self.__dict__.update(self.schema(new_config))
 
@@ -192,6 +205,15 @@ class BaseProviderSchema(metaclass=abc.ABCMeta):
     def getFlavorSchema(self):
         return BaseProviderFlavor.schema
 
+    def getInheritableLabelSchema(self):
+        return BaseProviderLabel.inheritable_schema
+
+    def getInheritableImageSchema(self):
+        return BaseProviderImage.inheritable_schema
+
+    def getInheritableFlavorSchema(self):
+        return BaseProviderFlavor.inheritable_schema
+
     def getProviderSchema(self):
         schema = vs.Schema({
             '_source_context': model.SourceContext,
@@ -201,6 +223,12 @@ class BaseProviderSchema(metaclass=abc.ABCMeta):
             Required('labels'): [self.getLabelSchema()],
             Required('images'): [self.getImageSchema()],
             Required('flavors'): [self.getFlavorSchema()],
+            Optional('label-defaults', default={}):
+            self.getInheritableLabelSchema(),
+            Optional('image-defaults', default={}):
+            self.getInheritableImageSchema(),
+            Optional('flavor-defaults', default={}):
+            self.getInheritableFlavorSchema(),
             Optional('abstract', default=False): Nullable(bool),
             Optional('parent'): Nullable(str),
             Required('connection'): str,

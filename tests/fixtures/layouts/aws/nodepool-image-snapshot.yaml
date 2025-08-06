@@ -57,8 +57,9 @@
     name: aws-base
     abstract: true
     connection: aws
-    boot-timeout: 120
     launch-timeout: 600
+    label-defaults:
+      boot-timeout: 120
     object-storage:
       bucket-name: zuul
     flavors:

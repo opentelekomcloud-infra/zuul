@@ -57,7 +57,8 @@
     name: aws-base
     abstract: true
     connection: aws
-    boot-timeout: 120
+    label-defaults:
+      boot-timeout: 120
     launch-timeout: 600
 
 - section:

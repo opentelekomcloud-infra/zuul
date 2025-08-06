@@ -94,6 +94,10 @@ class OpenstackProviderImage(BaseProviderImage):
         cloud_schema, zuul_schema,
         discriminant=discriminate(
             lambda val, alt: val['type'] == alt['type']))
+    inheritable_schema = assemble(
+        inheritable_cloud_schema,
+        inheritable_zuul_schema,
+    )
 
     def __init__(self, image_config, provider_config, image_format):
         self.image_id = None
@@ -156,6 +160,15 @@ class OpenstackProviderSchema(BaseProviderSchema):
 
     def getFlavorSchema(self):
         return OpenstackProviderFlavor.schema
+
+    def getInheritableLabelSchema(self):
+        return OpenstackProviderLabel.inheritable_schema
+
+    def getInheritableImageSchema(self):
+        return OpenstackProviderImage.inheritable_schema
+
+    def getInheritableFlavorSchema(self):
+        return OpenstackProviderFlavor.inheritable_schema
 
     def getProviderSchema(self):
         schema = super().getProviderSchema()
