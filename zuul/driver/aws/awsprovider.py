@@ -243,10 +243,6 @@ class AwsProviderSchema(BaseProviderSchema):
         return assemble(
             schema,
             aws_provider_schema,
-            AwsProviderImage.inheritable_cloud_schema,
-            AwsProviderImage.inheritable_zuul_schema,
-            AwsProviderFlavor.inheritable_schema,
-            AwsProviderLabel.inheritable_schema,
         )
 
 

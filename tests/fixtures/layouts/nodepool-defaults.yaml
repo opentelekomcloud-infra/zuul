@@ -35,9 +35,8 @@
     launch-attempts: 2
     object-storage:
       bucket-name: zuul
-    # TODO: move this to label-defaults
-    host-key-checking: false
     label-defaults:
+      host-key-checking: false
       boot-timeout: 120
       key-name: zuul
       volume-type: gp3
