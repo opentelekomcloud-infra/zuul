@@ -191,10 +191,6 @@ class OpenstackProviderSchema(BaseProviderSchema):
         return assemble(
             schema,
             openstack_provider_schema,
-            OpenstackProviderImage.inheritable_cloud_schema,
-            OpenstackProviderImage.inheritable_zuul_schema,
-            OpenstackProviderFlavor.inheritable_schema,
-            OpenstackProviderLabel.inheritable_schema,
         )
 
 

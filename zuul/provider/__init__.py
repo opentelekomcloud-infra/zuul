@@ -64,8 +64,6 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
             schema = self.inheritable_cloud_schema
         defaults = provider_config.get('image-defaults', {})
         for k in schema.schema.keys():
-            if k not in new_config and k in provider_config:
-                new_config[k] = provider_config[k]
             if k not in new_config and k in defaults:
                 new_config[k] = defaults[k]
 
@@ -82,8 +80,6 @@ class BaseProviderFlavor(CNameMixin, metaclass=abc.ABCMeta):
         new_config = flavor_config.copy()
         defaults = provider_config.get('flavor-defaults', {})
         for k in self.inheritable_schema.schema.keys():
-            if k not in new_config and k in provider_config:
-                new_config[k] = provider_config[k]
             if k not in new_config and k in defaults:
                 new_config[k] = defaults[k]
 
@@ -104,8 +100,6 @@ class BaseProviderLabel(CNameMixin, metaclass=abc.ABCMeta):
         new_config = label_config.copy()
         defaults = provider_config.get('label-defaults', {})
         for k in self.inheritable_schema.schema.keys():
-            if k not in new_config and k in provider_config:
-                new_config[k] = provider_config[k]
             if k not in new_config and k in defaults:
                 new_config[k] = defaults[k]
 
