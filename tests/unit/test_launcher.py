@@ -1924,14 +1924,16 @@ class TestLauncherUpload(LauncherBaseTestCase):
             if len(artifacts) == count:
                 return artifacts
 
-    def _waitForUploads(self, image_name, count):
+    def _waitForUploads(self, image_name, count,
+                        states=(model.ImageUpload.State.FAILED,
+                                model.ImageUpload.State.READY)):
         # This method is unique for this test, checking for final
         # states.
         for _ in iterate_timeout(30, "uploads to settle"):
             uploads = self.launcher.image_upload_registry.\
                 getUploadsForImage(image_name)
             uploads = [u for u in uploads
-                       if u.state in (u.State.FAILED, u.State.READY)]
+                       if u.state in states]
             if len(uploads) == count:
                 return uploads
 
@@ -2023,12 +2025,15 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
         artifacts = self._waitForArtifacts(image_cname, 2, format='raw')
-        uploads = self._waitForUploads(image_cname, 2)
+        uploads = self._waitForUploads(
+            image_cname, 1,
+            states=(model.ImageUpload.State.READY,))
+        # delete the old failed upload now that it's older than a
+        # ready upload.
         # At this point, we have:
         # debian-local: 1 artifact, 1 ready upload
-        # ubuntu-local: 2 artifacts, 1 failed upload, 1 ready upload
-        self.assertEqual('failed', uploads[0].state)
-        self.assertEqual('ready', uploads[1].state)
+        # ubuntu-local: 1 artifacts, 1 ready upload
+        self.assertEqual('ready', uploads[0].state)
         oldest_artifact_uuid = artifacts[0].uuid
 
         # Run another build event manually
