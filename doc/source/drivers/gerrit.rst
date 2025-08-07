@@ -605,19 +605,19 @@ As described in :attr:`pipeline.require` and :attr:`pipeline.reject`,
 pipelines may specify that items meet certain conditions in order to
 be enqueued into the pipeline.  These conditions vary according to the
 source of the project in question.  To supply requirements for changes
-from a Gerrit source named ``my-gerrit``, create a configuration such
+from a Gerrit source named ``gerrit``, create a configuration such
 as the following:
 
 .. code-block:: yaml
 
    pipeline:
      require:
-       my-gerrit:
+       gerrit:
          approval:
            - Code-Review: 2
 
 This indicates that changes originating from the Gerrit connection
-named ``my-gerrit`` must have a ``Code-Review`` vote of ``+2`` in
+named ``gerrit`` must have a ``Code-Review`` vote of ``+2`` in
 order to be enqueued into the pipeline.
 
 .. attr:: pipeline.require.<gerrit source>
@@ -708,7 +708,7 @@ order to be enqueued into the pipeline.
       .. code-block:: yaml
 
          reject:
-           my-gerrit:
+           gerrit:
              approval:
                - Code-Review: [-1, -2]
 
