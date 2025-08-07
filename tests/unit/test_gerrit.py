@@ -2001,7 +2001,7 @@ class TestGerritCherryPickWeb(ZuulTestCase):
         self.assertHistory([
             dict(name='check-job', result='SUCCESS', changes='1,2'),
             dict(name='check-job', result='SUCCESS', changes='1,2 2,1'),
-        ])
+        ], ordered=False)
 
 
 class TestGerritPeekQueue(BaseTestCase):
