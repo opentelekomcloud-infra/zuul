@@ -954,6 +954,21 @@ class CleanupWorker:
             if p.getEndpoint().canonical_name == endpoint.canonical_name
         ]
 
+        # First update quota; we get different classes back from
+        # listInstances and listResources, so we can't use the same
+        # call for both.  Ideally the endpoint will cache the internal
+        # API call.
+        quota_used = model.QuotaInformation()
+        system_id = self.launcher.system.system_id
+        node_ids = [n.uuid for n in self.launcher.api.nodes_cache.getItems()]
+        for instance in endpoint.listInstances():
+            meta = instance.metadata
+            if (meta.get('zuul_system_id') == system_id and
+                meta.get('zuul_node_uuid') in node_ids):
+                continue
+            quota_used.add(instance.getQuotaInformation())
+        endpoint.quota_cache.setUnmanagedUsage(quota_used)
+
         for resource in endpoint.listResources(providers):
             if (resource.metadata.get('zuul_system_id') !=
                 self.launcher.system.system_id):
@@ -1060,6 +1075,8 @@ class Launcher:
         self.wake_event = threading.Event()
         self.stop_event = threading.Event()
         self.join_event = threading.Event()
+        # A lock when changing the providers, mostly for the stats thread
+        self.providers_update_lock = threading.Lock()
 
         COMPONENT_REGISTRY.registry.registerCallback(self.wake_event.set)
 
@@ -1158,7 +1175,9 @@ class Launcher:
     def _run(self):
         if self.layout_updated_event.is_set():
             self.layout_updated_event.clear()
-            if self.updateTenantProviders():
+            with self.providers_update_lock:
+                updated = self.updateTenantProviders()
+            if updated:
                 self.checkOldImages()
                 self.checkMissingImages()
                 self.checkMissingUploads()
@@ -2171,6 +2190,19 @@ class Launcher:
         return ZKContext(self.zk_client, lock, self.join_event, log,
                          default_lock_identifier=self.component_info.hostname)
 
+    def _chooseLauncherForProvider(self, provider):
+        all_launchers = {
+            c.hostname: c for c in COMPONENT_REGISTRY.registry.all("launcher")}
+        candidate_launchers = {
+            n: c for n, c in all_launchers.items()
+            if not c.connection_filter
+            or provider.connection_name in c.connection_filter}
+        candidate_names = set(candidate_launchers)
+        lscores = {mmh3.hash(n, signed=False): n
+                   for n in candidate_names}
+        launcher_scores = sorted(lscores.items())
+        return launcher_scores[0][1]
+
     def updateTenantProviders(self):
         # We need to handle new and deleted tenants, so we need to
         # process all tenants currently known and the new ones.
@@ -2184,6 +2216,7 @@ class Launcher:
             if self._updateTenantProviders(tenant_name):
                 updated = True
 
+        seen_provider_names = set()
         if updated:
             for providers in self.tenant_providers.values():
                 for provider in providers:
@@ -2191,10 +2224,17 @@ class Launcher:
                         provider.connection_name not in
                         self.connection_filter):
                         continue
+                    designated_launcher = self._chooseLauncherForProvider(
+                        provider)
+                    force = bool(designated_launcher ==
+                                 self.component_info.hostname)
                     endpoint = provider.getEndpoint()
                     endpoints[endpoint.canonical_name] = endpoint
                     endpoint.start()
                     endpoint.postConfig(provider)
+                    if provider.canonical_name not in seen_provider_names:
+                        provider.postConfig(force)
+                        seen_provider_names.add(provider.canonical_name)
             self.endpoints = endpoints
         return updated
 
@@ -2534,20 +2574,6 @@ class Launcher:
                 used.add(node.quota)
         return used
 
-    def getUnmanagedQuotaUsed(self, provider):
-        used = model.QuotaInformation()
-
-        node_ids = [n.uuid for n in self.api.nodes_cache.getItems()]
-        endpoint = provider.getEndpoint()
-        system_id = self.system.system_id
-        for instance in endpoint.listInstances():
-            meta = instance.metadata
-            if (meta.get('zuul_system_id') == system_id and
-                meta.get('zuul_node_uuid') in node_ids):
-                continue
-            used.add(instance.getQuotaInformation())
-        return used
-
     def getProviderQuota(self, provider):
         val = self._provider_quota_cache.get(provider.canonical_name)
         if val:
@@ -2570,7 +2596,7 @@ class Launcher:
         # This is initialized with the full tenant quota and later becomes
         # the quota available for nodepool.
         quota = self.getProviderQuota(provider).copy()
-        unmanaged = self.getUnmanagedQuotaUsed(provider)
+        unmanaged = provider.getEndpoint().quota_cache.getUnmanagedUsage()
         self.log.debug("Provider unmanaged quota used for %s: %s",
                        provider.name, unmanaged)
 
@@ -2662,7 +2688,8 @@ class Launcher:
                 self.log.debug("Stats election no longer valid")
                 return
             try:
-                self._runStats()
+                with self.providers_update_lock:
+                    self._runStats()
             except Exception:
                 self.log.exception("Error in periodic stats:")
 

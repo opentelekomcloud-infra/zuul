@@ -160,9 +160,11 @@ class TestOpenstackDriver(BaseOpenstackDriverTest, BaseCloudDriverTest):
             'zuul_system_id': system_id,
             'zuul_node_uuid': '0000000042',
         }
+        flavor = conn.list_flavors()[0]
         conn.create_server(
             name="test",
             meta=tags,
+            flavor=flavor,
         )
         self.assertEqual(1, len(conn.list_servers()))
 
