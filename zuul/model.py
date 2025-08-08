@@ -173,6 +173,9 @@ class QuotaInformation:
             self.quota[k] = v
         self.default = default
 
+    def __repr__(self):
+        return f'<QuotaInformation default={self.default} quota={self.quota}>'
+
     def __eq__(self, other):
         return (isinstance(other, QuotaInformation) and
                 self.default == other.default and
