@@ -3679,7 +3679,7 @@ class ZuulWeb(object):
                     layout_state.branch_cache_min_ltimes)
                 with self.createZKContext(tlock, self.log) as context:
                     providers = list(self.layout_providers_store.get(
-                        context, tenant_name))
+                        context, self.zk_client, tenant_name))
             else:
                 # Consider all project branch caches valid if
                 # we don't have a layout state.

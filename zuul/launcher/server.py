@@ -2211,7 +2211,7 @@ class Launcher:
             if layout_state:
                 with self.createZKContext(tlock, self.log) as context:
                     providers = list(self.layout_providers_store.get(
-                        context, tenant_name))
+                        context, self.zk_client, tenant_name))
                     self.tenant_providers[tenant_name] = providers
                     for provider in providers:
                         self.log.debug("Loaded provider %s", provider.name)
