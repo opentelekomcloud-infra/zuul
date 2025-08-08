@@ -24,7 +24,7 @@ from ws4py.server.cherrypyserver import WebSocketPlugin, WebSocketTool
 from ws4py.websocket import WebSocket
 import codecs
 import copy
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import jwt
 import logging
@@ -1791,7 +1791,8 @@ class ZuulWebAPI(object):
         if self.static_cache_expiry:
             resp.headers['Cache-Control'] = "public, max-age=%d" % \
                 self.static_cache_expiry
-        resp.last_modified = self.zuulweb.start_time
+        resp.headers['Last-Modified'] =\
+            self.zuulweb.start_time.strftime('%a, %d %b %Y %X GMT')
         # We don't wrap info methods with check_auth
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return ret
@@ -1948,7 +1949,7 @@ class ZuulWebAPI(object):
             self.status_cache_times[tenant.name]
         )
         last_modified_header = last_modified.strftime('%a, %d %b %Y %X GMT')
-        resp.headers["Last-modified"] = last_modified_header
+        resp.headers["Last-Modified"] = last_modified_header
         resp.headers['Content-Type'] = 'application/json; charset=utf-8'
         return payload
 
@@ -3301,7 +3302,7 @@ class ZuulWeb(object):
                  authenticators: AuthenticatorRegistry,
                  info: WebInfo = None):
         self._running = False
-        self.start_time = time.time()
+        self.start_time = datetime.now(timezone.utc)
         self.config = config
         self.tracing = tracing.Tracing(self.config)
         self.metrics = WebMetrics()

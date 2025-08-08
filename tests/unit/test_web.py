@@ -2347,12 +2347,38 @@ class TestInfo(BaseTestWeb):
         return ret
 
     def test_info(self):
-        info = self.get_url("api/info").json()
+        resp = self.get_url("api/info")
+        info = resp.json()
+
+        self.assertTrue("Cache-Control" in resp.headers)
+        self.assertEqual(
+            resp.headers["Cache-Control"],
+            f"public, max-age={self.web.web.static_cache_expiry}"
+        )
+        self.assertTrue("Last-Modified" in resp.headers)
+        self.assertEqual(
+            resp.headers["Last-Modified"],
+            self.web.web.start_time.strftime('%a, %d %b %Y %X GMT')
+        )
+
         self.assertEqual(
             info, self._expected_info())
 
     def test_tenant_info(self):
-        info = self.get_url("api/tenant/tenant-one/info").json()
+        resp = self.get_url("api/tenant/tenant-one/info")
+        info = resp.json()
+
+        self.assertTrue("Cache-Control" in resp.headers)
+        self.assertEqual(
+            resp.headers["Cache-Control"],
+            f"public, max-age={self.web.web.static_cache_expiry}"
+        )
+        self.assertTrue("Last-Modified" in resp.headers)
+        self.assertEqual(
+            resp.headers["Last-Modified"],
+            self.web.web.start_time.strftime('%a, %d %b %Y %X GMT')
+        )
+
         expected_info = self._expected_info(niz=False)
         expected_info['info']['tenant'] = 'tenant-one'
         self.assertEqual(
