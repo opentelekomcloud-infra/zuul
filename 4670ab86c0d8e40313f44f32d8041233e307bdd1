@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "27cc08cd_54d404a1",
+        "filename": "tests/unit/test_connection.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T21:18:49Z",
+      "side": 1,
+      "message": "Nit may want to add a multibyte utf8 character in this to ensure we\u0027re exercising the encode decode ignore errors truncation process across utf8.",
+      "revId": "4670ab86c0d8e40313f44f32d8041233e307bdd1",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
