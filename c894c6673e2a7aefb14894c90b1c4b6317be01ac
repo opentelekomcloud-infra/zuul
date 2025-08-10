@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fa0d0e43_043a44ef",
+        "filename": "zuul/scheduler.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 593,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T21:02:17Z",
+      "side": 1,
+      "message": "I realize we\u0027re already counting mergers and executors here within the scheduler but I half wonder if each component should count for itself as a later optimization. Its possible all schedulers go down and then we\u0027re left with a static value in statsd from the last counts that are not longer accurate leading to some confusion? If every subcomponent emits its own counts we should end up with fairly accurate numbers even if the scheduler is down.\n\nGranted if all mergers are down then we\u0027ll have a static number as well in that case but the scheduler would see it as zero. So I guess this is a tradeoff over which scenario we think would be worse to deal with.\n\nI think its fine to keep the status quo for now. Just wondering if we think this update might be useful.",
+      "revId": "c894c6673e2a7aefb14894c90b1c4b6317be01ac",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
