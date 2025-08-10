@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f758b073_2b130420",
+        "filename": "zuul/web/logutil.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T20:34:43Z",
+      "side": 1,
+      "message": "Nit: should we suffix the elapsed value with `ms` to indicate the scale here? (I believe this is nanoseconds as we\u0027re dividing nanoseconds by 1000000).",
+      "range": {
+        "startLine": 32,
+        "startChar": 26,
+        "endLine": 32,
+        "endChar": 28
+      },
+      "revId": "763c0dbb1d30ef4c644e339e4e6a7d938cb6677b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
