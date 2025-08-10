@@ -1,0 +1,78 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "35e25366_b51131df",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T21:11:01Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "ea6362832153d00b91efd17dac69aa4023145f05",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d2f648ce_23adc402",
+        "filename": "zuul/driver/sql/sqlreporter.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T21:11:01Z",
+      "side": 1,
+      "message": "Nit get_event handles the case where build_set is None. We may not need this conditional case. The exception would be builds sometimes don\u0027t have build_set attributes at all.",
+      "range": {
+        "startLine": 153,
+        "startChar": 17,
+        "endLine": 153,
+        "endChar": 36
+      },
+      "revId": "ea6362832153d00b91efd17dac69aa4023145f05",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4ecad3d_4a1e72a9",
+        "filename": "zuul/driver/sql/sqlreporter.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T21:11:01Z",
+      "side": 1,
+      "message": "I think we need to move the above `log \u003d self.log` line to within the loop. The reason is that as we iterate we\u0027ll set log to buildset specific annotated loggers. Then if on the next loop iteration getSession() throws an exception we will `log.error` below on line 196 with the annotated logger for the previous buildset which may be confusion for subsequent logging actions.",
+      "revId": "ea6362832153d00b91efd17dac69aa4023145f05",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2a8f3af6_822d1374",
+        "filename": "zuul/driver/sql/sqlreporter.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T21:11:01Z",
+      "side": 1,
+      "message": "See above nit on line 153 I think it may apply here as well.",
+      "revId": "ea6362832153d00b91efd17dac69aa4023145f05",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
