@@ -1,0 +1,95 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46da377e_191897b7",
+        "filename": "tests/unit/test_github_driver.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1741,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T20:57:27Z",
+      "side": 1,
+      "message": "See comment in the corresponding gitlab test.",
+      "revId": "1bd43bf49a338f5284b0fd204045f9c97c45fc7c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e8b7ac4d_fda9156c",
+        "filename": "tests/unit/test_gitlab_driver.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1179,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T20:57:27Z",
+      "side": 1,
+      "message": "Is there a race here with the scheduler eventually setting a layout state due to normal background processing of the test infrastructure? Presumably it will eventually load a tenant state in some cases. If that happens the value in old may be EMPTY_LAYOUT_STATE then the value we read here is that background state which is not EMPTY but also not set by the branch creation?\n\nSeems like we may need to wait for a non empty state then assert that the state doesn\u0027t differ after that point?",
+      "revId": "1bd43bf49a338f5284b0fd204045f9c97c45fc7c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bed9ea9f_d1fb860f",
+        "filename": "zuul/driver/gitlab/gitlabconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 266,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T20:57:27Z",
+      "side": 1,
+      "message": "Nit I think this portion of the comment is no longer fully accurate. We already know if the branch is protected we\u0027ll just take appropriate cache action depending on that?",
+      "range": {
+        "startLine": 265,
+        "startChar": 36,
+        "endLine": 266,
+        "endChar": 38
+      },
+      "revId": "1bd43bf49a338f5284b0fd204045f9c97c45fc7c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "582f971c_9022750a",
+        "filename": "zuul/driver/gitlab/gitlabconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 886,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T20:57:27Z",
+      "side": 1,
+      "message": "Should we still delete the local branch info if the branch is deleted upstream? The next time zuul is restarted we\u0027ll lose that data anyway so maybe this isn\u0027t critical. But thinking if workflows involve a lot of branch creation and deletion then we may grow larger than expected.\n\n(I checked if checkBranchCache handles deletions and I don\u0027t think it does, just updates).",
+      "revId": "1bd43bf49a338f5284b0fd204045f9c97c45fc7c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "73de26ca_15521613",
+        "filename": "zuul/driver/gitlab/gitlabmodel.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-10T20:57:27Z",
+      "side": 1,
+      "message": "Should branch_protected be included in toDict output? Similarly should updateFromDict read the data if present and set it as well?\n\nThis data type doesn\u0027t appear to get serialized to zookeeper (at least its parent type doesn\u0027t appear to be a zk object). But probably still a good idea for completeness.",
+      "revId": "1bd43bf49a338f5284b0fd204045f9c97c45fc7c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
