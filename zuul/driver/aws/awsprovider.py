@@ -66,7 +66,7 @@ class AwsProviderImage(BaseProviderImage):
     })
     cloud_schema = vs.All(
         assemble(
-            BaseProviderImage.schema,
+            BaseProviderImage.cloud_schema,
             aws_cloud_schema,
             inheritable_aws_image_schema,
         ),
@@ -86,10 +86,9 @@ class AwsProviderImage(BaseProviderImage):
     })
     aws_zuul_schema = vs.Schema({
         Required('type'): 'zuul',
-        Optional('tags', default=dict): {str: str},
     })
     zuul_schema = assemble(
-        BaseProviderImage.schema,
+        BaseProviderImage.zuul_schema,
         aws_zuul_schema,
         inheritable_aws_image_schema,
         inheritable_aws_zuul_schema,
