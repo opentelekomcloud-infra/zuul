@@ -58,7 +58,7 @@ class OpenstackProviderImage(BaseProviderImage):
     })
     cloud_schema = vs.All(
         assemble(
-            BaseProviderImage.schema,
+            BaseProviderImage.cloud_schema,
             openstack_cloud_schema,
             inheritable_openstack_image_schema,
         ),
@@ -72,10 +72,9 @@ class OpenstackProviderImage(BaseProviderImage):
     })
     openstack_zuul_schema = vs.Schema({
         Required('type'): 'zuul',
-        Optional('tags', default=dict): {str: str},
     })
     zuul_schema = assemble(
-        BaseProviderImage.schema,
+        BaseProviderImage.zuul_schema,
         openstack_zuul_schema,
         inheritable_openstack_image_schema,
         inheritable_openstack_zuul_schema,
