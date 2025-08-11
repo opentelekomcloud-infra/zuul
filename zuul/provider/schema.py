@@ -64,15 +64,16 @@ common_image = vs.Schema({
     Optional('import-timeout', default=300): int,
 })
 
-# Same as above, but only for cloud providers.
+# Same as above, but only for cloud drivers.
 cloud_image = vs.Schema({
     Optional('userdata'): Nullable(str),
 })
 
 # Same as above, but only for zuul images.
-zuul_image = vs.Schema({
+common_image_zuul = vs.Schema({
     Optional('upload-methods', default=['copy', 'import', 'upload']):
     vs.Any(['copy', 'import', 'upload']),
+    Optional('tags', default=dict): {str: str},
 })
 
 # The image attributes that, in addition to those above, can appear in

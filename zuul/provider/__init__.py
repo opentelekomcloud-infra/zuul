@@ -18,7 +18,13 @@ import math
 import threading
 import urllib.parse
 
-from zuul.lib.voluputil import Required, Optional, Nullable, assemble
+from zuul.lib.voluputil import (
+    Nullable,
+    Optional,
+    Required,
+    assemble,
+    discriminate,
+)
 from zuul import model
 from zuul.zk import zkobject
 from zuul.zk.quotacache import QuotaCache
@@ -44,12 +50,21 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
     )
     inheritable_zuul_schema = assemble(
         provider_schema.common_image,
-        provider_schema.zuul_image,
+        provider_schema.common_image_zuul,
     )
-    schema = assemble(
+    cloud_schema = assemble(
         provider_schema.common_image,
         provider_schema.base_image,
-        provider_schema.zuul_image,
+    )
+    zuul_schema = assemble(
+        provider_schema.common_image,
+        provider_schema.common_image_zuul,
+        provider_schema.base_image,
+    )
+    schema = vs.Union(
+        cloud_schema, zuul_schema,
+        discriminant=discriminate(
+            lambda val, alt: val['type'] == alt['type']),
     )
     inheritable_schema = assemble(
         inheritable_cloud_schema,
