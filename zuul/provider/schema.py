@@ -28,6 +28,7 @@ from zuul.lib.voluputil import Required, Optional, Nullable
 common_label = vs.Schema({
     Optional('boot-timeout', default=300): int,
     Optional('executor-zone'): Nullable(str),
+    Optional('tags', default=dict): {str: str},
 })
 
 # The label attributes that can appear in a section/provider label or
@@ -39,7 +40,6 @@ base_label = vs.Schema({
     Optional('description'): Nullable(str),
     Optional('image'): Nullable(str),
     Optional('flavor'): Nullable(str),
-    Optional('tags', default=dict): {str: str},
     Optional('min-ready', default=0): int,
     Optional('max-ready-age', default=0): int,
 })
