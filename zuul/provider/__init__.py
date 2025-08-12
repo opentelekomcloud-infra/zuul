@@ -44,10 +44,12 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
     )
     inheritable_zuul_schema = assemble(
         provider_schema.common_image,
+        provider_schema.zuul_image,
     )
     schema = assemble(
         provider_schema.common_image,
         provider_schema.base_image,
+        provider_schema.zuul_image,
     )
 
     def __init__(self, image_config, provider_config):
