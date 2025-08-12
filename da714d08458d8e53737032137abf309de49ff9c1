@@ -16,6 +16,24 @@
       "message": "I think your error is due to `request_changes` no longer being supported and not the state list vs. string.",
       "revId": "da714d08458d8e53737032137abf309de49ff9c1",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9e4974f5_4d14d5e9",
+        "filename": "doc/source/examples/pipelines/github-reference-pipelines.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 22629
+      },
+      "writtenOn": "2025-08-12T16:04:21Z",
+      "side": 0,
+      "message": "Seems it works without the list, but I\u0027m pretty sure I\u0027ve seen that on the config-errors page in the past.",
+      "parentUuid": "0eac1ab2_3713fd7a",
+      "revId": "da714d08458d8e53737032137abf309de49ff9c1",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
