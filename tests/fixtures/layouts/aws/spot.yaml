@@ -69,7 +69,7 @@
     region: us-east-1
     label-defaults:
       az: us-east-1b
-      security-group-id: testgroup
+      security-group-ids: testgroup
       subnet-ids: {subnet_ids}
       iam-instance-profile:
         name: {iam_profile_name}
