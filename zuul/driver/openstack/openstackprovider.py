@@ -17,7 +17,13 @@ import math
 
 import zuul.provider.schema as provider_schema
 from zuul.lib.voluputil import (
-    Required, Optional, Nullable, discriminate, assemble, RequiredExclusive,
+    AsList,
+    Nullable,
+    Optional,
+    Required,
+    RequiredExclusive,
+    assemble,
+    discriminate,
 )
 
 import voluptuous as vs
@@ -37,11 +43,6 @@ from zuul.provider import (
 
 
 class OpenstackProviderImage(BaseProviderImage):
-    openstack_image_filters = {
-        'name': str,
-        'values': [str],
-    }
-
     # This is used here and in flavors and labels
     inheritable_openstack_image_schema = assemble(
         vs.Schema({
@@ -50,9 +51,7 @@ class OpenstackProviderImage(BaseProviderImage):
         provider_schema.cloud_image,
     )
     openstack_cloud_schema = vs.Schema({
-        vs.Exclusive(Required('image-id'), 'spec'): str,
-        vs.Exclusive(Required('image-filters'), 'spec'): [
-            openstack_image_filters],
+        Required('image-id'): str,
         Optional('config-drive', default=True): bool,
         Required('type'): 'cloud',
     })
@@ -62,9 +61,6 @@ class OpenstackProviderImage(BaseProviderImage):
             openstack_cloud_schema,
             inheritable_openstack_image_schema,
         ),
-        RequiredExclusive('image_id', 'image_filters',
-                          msg=('Provide either '
-                               '"image-filters", or "image-id" keys'))
     )
     inheritable_openstack_zuul_schema = vs.Schema({
         # None is an acceptable explicit value for imds-support
@@ -100,7 +96,6 @@ class OpenstackProviderImage(BaseProviderImage):
 
     def __init__(self, image_config, provider_config, image_format):
         self.image_id = None
-        self.image_filters = None
         super().__init__(image_config, provider_config)
         self.format = image_format
         # Implement provider defaults
@@ -136,8 +131,8 @@ class OpenstackProviderLabel(BaseProviderLabel):
         Optional(
             'networks', default=[],
             doc="""The OpenStack networks to associate with the node."""
-        ): [str],  # TODO: as_list?
-        Optional('security-groups', default=[]): [str],  # TODO: as_list?
+        ): AsList(str),
+        Optional('security-groups', default=[]): AsList(str),
     })
     inheritable_schema = assemble(
         BaseProviderLabel.inheritable_schema,
