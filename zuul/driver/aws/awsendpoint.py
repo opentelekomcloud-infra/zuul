@@ -1640,9 +1640,6 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
             if label.security_group_ids:
                 template_data['SecurityGroupIds'] = label.security_group_ids
-            # TODO: remove backwards compat
-            elif label.security_group_id:
-                template_data['SecurityGroupIds'] = [label.security_group_id]
 
             if label.imds_http_tokens == 'required':
                 template_data['MetadataOptions'] = {
@@ -1861,11 +1858,6 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
         if label.security_group_ids:
             args['NetworkInterfaces'][0]['Groups'] = label.security_group_ids
-        # TODO: remove backwards compat
-        elif label.security_group_id:
-            args['NetworkInterfaces'][0]['Groups'] = [
-                label.security_group_id
-            ]
 
         if label.subnet_ids:
             args['NetworkInterfaces'][0]['SubnetId'] = random.choice(
