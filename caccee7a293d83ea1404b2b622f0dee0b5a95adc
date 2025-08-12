@@ -22,6 +22,24 @@
       },
       "revId": "caccee7a293d83ea1404b2b622f0dee0b5a95adc",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "172f5882_a1e6c158",
+        "filename": "zuul/provider/schema.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-12T15:38:08Z",
+      "side": 1,
+      "message": "Nope, that\u0027s why I changed it.  A cloud driver like openstack or aws, not, say, the static driver, where userdata would not be expected to work.\n\nAnd that\u0027s why I named it common_image_zuul below, so that leaves room for cloud_image_cloud if we need it.  (cloud driver, cloud image)",
+      "parentUuid": "a15c143a_b338dbf4",
+      "revId": "caccee7a293d83ea1404b2b622f0dee0b5a95adc",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
