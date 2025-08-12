@@ -394,6 +394,9 @@
       .. attr:: security-group-id
          :type: str
 
+      .. attr:: security-group-ids
+         :type: str
+
       .. attr:: subnet-ids
          :type: str
 
@@ -472,6 +475,9 @@
          :type: str
 
       .. attr:: security-group-id
+         :type: str
+
+      .. attr:: security-group-ids
          :type: str
 
       .. attr:: subnet-ids
