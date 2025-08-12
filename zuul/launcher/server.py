@@ -38,6 +38,7 @@ import requests
 from opentelemetry import trace
 
 from zuul import exceptions, model
+from zuul.launcher.uploadplanner import UploadPlanner
 import zuul.lib.repl
 from zuul.lib import commandsocket, tracing
 from zuul.lib.collections import DefaultKeyDict
@@ -155,10 +156,14 @@ class DeleteJob:
 class UploadJob:
     log = logging.getLogger("zuul.Launcher")
 
-    def __init__(self, launcher, image_build_artifact, uploads):
+    def __init__(self, launcher, image_build_artifact, uploads, all_uploads):
         self.launcher = launcher
         self.image_build_artifact = image_build_artifact
+        # All pending uploads for this artifact.  The uploads may have
+        # different configurations.
         self.uploads = uploads
+        # All uploads for this artifact, even completed ones
+        self.all_uploads = all_uploads
 
     def run(self):
         try:
@@ -194,78 +199,6 @@ class UploadJob:
             # We may have raced another launcher; set the
             # event to try again.
             self.launcher.image_updated_event.set()
-
-    def _getUploadArguments(self, uploads, upload_args):
-        for upload in uploads:
-            # The upload has a list of providers with identical
-            # configurations.  Pick one of them as a representative.
-            provider_cname = upload.providers[0]
-            provider = self.launcher._getProviderByCanonicalName(
-                provider_cname)
-            provider_image = None
-            for image in provider.images.values():
-                if image.canonical_name == upload.canonical_name:
-                    provider_image = image
-            if provider_image is None:
-                raise Exception(
-                    f"Unable to find image {upload.canonical_name}")
-            metadata = {
-                'zuul_system_id': self.launcher.system.system_id,
-                'zuul_upload_uuid': upload.uuid,
-            }
-            artifact = self.image_build_artifact
-            image_name = f'{provider_image.name}-{upload.uuid}'
-
-            upload_args[upload.uuid] = dict(
-                provider=provider,
-                provider_image=provider_image,
-                image_name=image_name,
-                url=artifact.url,
-                image_format=artifact.format,
-                metadata=metadata,
-                md5=artifact.md5sum,
-                sha256=artifact.sha256,
-            )
-
-    def _handleImports(self, uploads, upload_args, futures):
-        for upload in uploads[:]:
-            args = upload_args[upload.uuid]
-            job = args['provider'].getImageImportJob(
-                args['provider_image'],
-                args['image_name'],
-                args['url'],
-                args['image_format'],
-                args['metadata'],
-                args['md5'],
-                args['sha256'],
-            )
-            if job:
-                uploads.remove(upload)
-                self.log.debug("Scheduling import for %s", upload)
-                future = self.launcher.endpoint_upload_executor.submit(
-                    EndpointUploadJob(self.launcher, upload, job).run
-                )
-                futures.append((upload, future))
-
-    def _handleUploads(self, uploads, upload_args, futures, path):
-        for upload in uploads[:]:
-            args = upload_args[upload.uuid]
-            job = args['provider'].getImageUploadJob(
-                args['provider_image'],
-                args['image_name'],
-                path,
-                args['image_format'],
-                args['metadata'],
-                args['md5'],
-                args['sha256'],
-            )
-            if job:
-                uploads.remove(upload)
-                self.log.debug("Scheduling upload for %s", upload)
-                future = self.launcher.endpoint_upload_executor.submit(
-                    EndpointUploadJob(self.launcher, upload, job).run
-                )
-                futures.append((upload, future))
 
     def _handleDownload(self):
         url = self.image_build_artifact.url
@@ -341,30 +274,54 @@ class UploadJob:
                 if not uploads:
                     return
 
-                # Prepare the arguments for all the import/upload jobs
-                upload_args = {}
-                self._getUploadArguments(uploads, upload_args)
+                pending_uploads = uploads[:]
+                planner = UploadPlanner(
+                    self.launcher, self.image_build_artifact,
+                    pending_uploads, self.all_uploads)
+                planner.plan()
 
-                futures = []
-                remaining_uploads = uploads[:]
+                futures = collections.deque()
 
-                # Try a direct import if the provider supports it for
-                # this url.
-                self._handleImports(remaining_uploads, upload_args, futures)
+                for upload, job in planner.import_jobs:
+                    self.log.debug("Scheduling import for %s", upload)
+                    future = self.launcher.endpoint_import_executor.submit(
+                        EndpointUploadJob(
+                            self.launcher, upload, job, futures).run
+                    )
+                    futures.append((upload, future))
+
+                # Copy jobs for completed uploads can run now:
+                for upload, job, external_id in planner.copy_jobs:
+                    self.log.debug("Scheduling copy for %s", upload)
+                    future = self.launcher.endpoint_import_executor.submit(
+                        EndpointUploadJob(
+                            self.launcher, upload, job, futures,
+                            external_id).run
+                    )
+                    futures.append((upload, future))
 
                 # Any uploads remaining need to be handled by
                 # downloading the artifact and uploading.
-                if remaining_uploads:
+                if planner.upload_jobs:
                     path = self._handleDownload()
                     if not path:
                         raise Exception("Unable to download artifact %s" % (
                             self.image_build_artifact,))
                     path = self._handleCompression(path)
                     self._validateChecksum(path)
-                    self._handleUploads(
-                        remaining_uploads, upload_args, futures, path)
+                    for upload, job in planner.upload_jobs:
+                        self.log.debug("Scheduling upload for %s", upload)
+                        future = self.launcher.endpoint_upload_executor.submit(
+                            EndpointUploadJob(
+                                self.launcher, upload, job, futures, path).run
+                        )
+                        futures.append((upload, future))
 
-                for upload, future in futures:
+                while True:
+                    try:
+                        upload, future = futures.popleft()
+                    except IndexError:
+                        break
                     try:
                         self.log.debug("Waiting for upload %s", upload)
                         future.result()
@@ -417,10 +374,12 @@ class UploadJob:
 class EndpointUploadJob:
     log = logging.getLogger("zuul.Launcher")
 
-    def __init__(self, launcher, upload, job):
+    def __init__(self, launcher, upload, job, futures, *args):
         self.launcher = launcher
         self.upload = upload
         self.job = job
+        self.futures = futures
+        self.args = args
 
     def run(self):
         try:
@@ -432,12 +391,22 @@ class EndpointUploadJob:
         # The upload has a list of providers with identical
         # configurations.  Pick one of them as a representative.
         self.log.info("Starting upload %s", self.upload)
-        external_id = self.job.run()
+        external_id = self.job.run(*self.args)
         self.log.info("Finished upload %s", self.upload)
         with self.launcher.createZKContext(self.upload._lock, self.log) as ctx:
             self.upload.updateAttributes(
                 ctx,
                 external_id=external_id)
+
+        for (dep_upload, dep_job) in self.job.dependents:
+            # The only dependent jobs right now are copy jobs
+            self.log.debug("Scheduling copy for %s", dep_upload)
+            future = self.launcher.endpoint_import_executor.submit(
+                EndpointUploadJob(self.launcher, dep_upload, dep_job,
+                                  self.futures, external_id).run,
+            )
+            self.futures.append((dep_upload, future))
+
         if not self.upload.validated:
             self.launcher.addImageValidateEvent(self.upload)
 
@@ -1144,6 +1113,13 @@ class Launcher:
             # TODO: make configurable
             max_workers=10,
             thread_name_prefix="UploadWorker",
+        )
+        # Simultaneous imports/copies -- we can have more threads here
+        # since we aren't doing much work (but we may still poll, so
+        # don't go crazy)
+        self.endpoint_import_executor = ThreadPoolExecutor(
+            max_workers=20,
+            thread_name_prefix="ImportWorker",
         )
         self.cleanup_worker = CleanupWorker(self)
         self.stats_election = LauncherStatsElection(self.zk_client)
@@ -2146,6 +2122,7 @@ class Launcher:
         self.cleanup_worker.stop()
         self.cleanup_worker.join()
         self.upload_executor.shutdown()
+        self.endpoint_import_executor.shutdown()
         self.endpoint_upload_executor.shutdown()
         self.nodescan_worker.stop()
         self.connections.stop()
@@ -2460,11 +2437,10 @@ class Launcher:
 
     def checkMissingUploads(self):
         self.log.debug("Checking for missing uploads")
-        uploads_by_artifact_id = collections.defaultdict(list)
+        all_uploads_by_artifact_id = collections.defaultdict(list)
+        pending_uploads_by_artifact_id = collections.defaultdict(list)
         self.image_updated_event.clear()
         for upload in self.image_upload_registry.getItems():
-            if upload.uuid in self.upload_uuids_in_queue:
-                continue
             if upload.endpoint_name not in self.endpoints:
                 continue
             iba = self.image_build_registry.getItem(upload.artifact_uuid)
@@ -2489,16 +2465,22 @@ class Launcher:
                         except LockException:
                             # Upload locked again (lock / cache update race)
                             pass
+            upload_list = all_uploads_by_artifact_id[upload.artifact_uuid]
+            upload_list.append(upload)
+            if upload.uuid in self.upload_uuids_in_queue:
+                continue
             if upload.state != upload.State.PENDING:
                 continue
-            upload_list = uploads_by_artifact_id[upload.artifact_uuid]
+            upload_list = pending_uploads_by_artifact_id[upload.artifact_uuid]
             upload_list.append(upload)
 
-        for artifact_uuid, uploads in uploads_by_artifact_id.items():
+        for artifact_uuid, uploads in pending_uploads_by_artifact_id.items():
             iba = self.image_build_registry.getItem(artifact_uuid)
             for upload in uploads:
                 self.upload_uuids_in_queue.add(upload.uuid)
-            self.upload_executor.submit(UploadJob(self, iba, uploads).run)
+            all_uploads = all_uploads_by_artifact_id[artifact_uuid]
+            self.upload_executor.submit(UploadJob(self, iba, uploads,
+                                                  all_uploads).run)
 
     def _downloadArtifactChunk(self, url, start, end, path):
         headers = {'Range': f'bytes={start}-{end}'}

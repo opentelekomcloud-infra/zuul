@@ -390,20 +390,26 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
     def downloadUrl(self, url, path):
         return self.endpoint.downloadUrl(url, path)
 
-    def getImageImportJob(self, provider_image, image_name, url,
+    def getImageImportJob(self, url, provider_image, image_name,
                           image_format, metadata, md5, sha256):
         return self.endpoint.getImageImportJob(
-            provider_image, image_name, url,
+            url, provider_image, image_name,
+            image_format, metadata, md5, sha256)
+
+    def getImageCopyJob(self, source_provider, provider_image, image_name,
+                        image_format, metadata, md5, sha256):
+        return self.endpoint.getImageCopyJob(
+            source_provider, provider_image, image_name,
             image_format, metadata, md5, sha256)
 
     def getImageUploadJob(self, provider_image, image_name,
-                          filename, image_format, metadata, md5, sha256):
+                          image_format, metadata, md5, sha256):
         # TODO this needs to move to the section or connection config
         # since it's used by endpoints.
         bucket_name = self.object_storage.get('bucket-name')
         return self.endpoint.getImageUploadJob(
             provider_image, image_name,
-            filename, image_format, metadata, md5, sha256,
+            image_format, metadata, md5, sha256,
             bucket_name)
 
     def deleteImage(self, external_id):

@@ -226,17 +226,62 @@ class BaseProviderSchema(metaclass=abc.ABCMeta):
         return schema
 
 
-class BaseImageUploadJob:
-    """Abstract class to encapsulate an image import or upload
+class BaseImageJob:
+    """Abstract class to encapsulate an image creation"""
 
-    This class should contain all the information needed to perform
-    either an image import or image upload.  The run method will be
-    executed asynchronously in an executor.
+    def __init__(self):
+        self.dependents = []
+
+
+class BaseImageImportJob(BaseImageJob):
+    """Abstract class to encapsulate an image import
+
+    This class should contain all the information needed to perform an
+    image import.  The run method will be executed asynchronously in
+    an executor.
     """
 
     @abc.abstractmethod
     def run(self):
-        """Run the import or upload.
+        """Run the import.
+
+        :return: The external id of the image in the cloud
+        """
+        pass
+
+
+class BaseImageUploadJob(BaseImageJob):
+    """Abstract class to encapsulate an image upload
+
+    This class should contain all the information needed to perform an
+    image upload, except the filename.  The run method will be
+    executed asynchronously in an executor.
+    """
+
+    @abc.abstractmethod
+    def run(self, filename):
+        """Run the import.
+
+        :param filename str: Path to the local file to upload
+
+        :return: The external id of the image in the cloud
+        """
+        pass
+
+
+class BaseImageCopyJob(BaseImageJob):
+    """Abstract class to encapsulate an image copy
+
+    This class should contain all the information needed to perform an
+    image copy.  The run method will be executed asynchronously in
+    an executor.
+    """
+
+    @abc.abstractmethod
+    def run(self, external_id):
+        """Run the import.
+
+        :param external_id str: The external id of the image to copy
 
         :return: The external id of the image in the cloud
         """
@@ -604,29 +649,6 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
     # The following methods must be implemented only if image
     # management is supported:
 
-    def getImageImportJob(self, provider_image, image_name, url,
-                          image_format, metadata, md5, sha256):
-        """Get an image import job if able
-
-        If the provider can support a direct image import from the
-        supplied URL, then return a BaseImageUploadJob that will do so.
-
-        :param provider_image ProviderImageConfig:
-            The provider's config for this image
-        :param image_name str: The name of the image
-        :param url str: The URL of the image
-        :param image_format str: The format of the image (e.g., "qcow")
-        :param metadata dict: A dictionary of metadata that must be
-            stored on the image in the cloud.
-        :param md5 str: The md5 hash of the image file
-        :param sha256 str: The sha256 hash of the image file
-
-        :return: A BaseImageUploadJob that will import the image
-
-        """
-        # Most drivers probably won't implement this.
-        return None
-
     def downloadUrl(self, url, path):
         """Attempt to download the given URL to the destination path
 
@@ -646,17 +668,68 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         """
         return None
 
-    def getImageUploadJob(self, provider_image, image_name, filename,
+    def getImageImportJob(self, url, provider_image, image_name,
+                          image_format, metadata, md5, sha256):
+        """Get an image import job if able
+
+        If the provider can support a direct image import from the
+        supplied URL, then return a BaseImageUploadJob that will do so.
+
+        :param url str: The URL of the image
+        :param provider_image ProviderImageConfig:
+            The provider's config for this image
+        :param image_name str: The name of the image
+        :param image_format str: The format of the image (e.g., "qcow")
+        :param metadata dict: A dictionary of metadata that must be
+            stored on the image in the cloud.
+        :param md5 str: The md5 hash of the image file
+        :param sha256 str: The sha256 hash of the image file
+
+        :return: A BaseImageUploadJob that will import the image
+
+        """
+        # Most drivers probably won't implement this.
+        return None
+
+    def getImageCopyJob(self, source_provider, provider_image, image_name,
+                        image_format, metadata, md5, sha256):
+        """Get an image copy job if able
+
+        If the provider can support copying an existing image from the
+        supplied provider, then return a BaseImageUploadJob that will do so.
+
+        The external_id will be passed as an argument to the run
+        method of the resulting job.
+
+        :param source_provider Provider: The provider of the source image
+        :param provider_image ProviderImageConfig:
+            The provider's config for this image
+        :param image_name str: The name of the image
+        :param image_format str: The format of the image (e.g., "qcow")
+        :param metadata dict: A dictionary of metadata that must be
+            stored on the image in the cloud.
+        :param md5 str: The md5 hash of the image file
+        :param sha256 str: The sha256 hash of the image file
+
+        :return: A BaseImageUploadJob that will import the image
+
+        """
+        # Most drivers probably won't implement this.
+        return None
+
+    def getImageUploadJob(self, provider_image, image_name,
                           image_format, metadata, md5, sha256):
         """Get an image upload job
 
         Return a BaseImageUploadJob that will upload the local filename
         to the provider as an image.
 
+        The path to the local file to be uploaded will be passed as an
+        argument to the run method of the resulting job.
+
         :param provider_image ProviderImageConfig:
             The provider's config for this image
         :param image_name str: The name of the image
-        :param filename str: The path to the local file to be uploaded
         :param image_format str: The format of the image (e.g., "qcow")
         :param metadata dict: A dictionary of metadata that must be
             stored on the image in the cloud.
