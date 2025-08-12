@@ -391,9 +391,6 @@
       .. attr:: key-name
          :type: str
 
-      .. attr:: security-group-id
-         :type: str
-
       .. attr:: security-group-ids
          :type: str
 
@@ -472,9 +469,6 @@
          :type: int
 
       .. attr:: name
-         :type: str
-
-      .. attr:: security-group-id
          :type: str
 
       .. attr:: security-group-ids
