@@ -739,6 +739,18 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 iops=label.iops))
         return quota
 
+    def refreshQuotaLimits(self, update):
+        if self.quota_cache.hasLimits() and not update:
+            return False
+        ec2_quotas = self._listEC2Quotas()
+        ebs_quotas = self._listEBSQuotas()
+        args = dict()
+        args.update(ec2_quotas)
+        args.update(ebs_quotas)
+        limits = QuotaInformation(**args)
+        self.quota_cache.setLimits(limits)
+        return True
+
     def refreshQuotaForLabel(self, label, flavor, update):
         if flavor.dedicated_host:
             key = f'host-{flavor.instance_type}'

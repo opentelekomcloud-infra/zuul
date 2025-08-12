@@ -251,13 +251,6 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
         cloud.min(zuul)
         return cloud
 
-    def refreshQuotaLimits(self, update):
-        if self.endpoint.quota_cache.hasLimits() and not update:
-            return False
-        limits = self.endpoint.getQuotaLimits()
-        self.endpoint.quota_cache.setLimits(limits)
-        return True
-
     def getQuotaForLabel(self, label):
         flavor = self.flavors[label.flavor]
         return self.endpoint.getQuotaForLabel(label, flavor)

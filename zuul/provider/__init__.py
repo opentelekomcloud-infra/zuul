@@ -173,6 +173,19 @@ class BaseProviderEndpoint(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError()
 
+    def refreshQuotaLimits(self, update):
+        """Query the endpoint for quota limits and store them in the quota
+        cache
+
+        :param bool update: Whether an update should be performed even
+            if there are values present.
+
+        :return: Whether the cache was updated
+        :rtype: bool
+
+        """
+        raise NotImplementedError()
+
     def postConfig(self, provider):
         """Perform any endpoint-global actions after reconfiguration
 
@@ -547,19 +560,6 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         """
         return model.QuotaInformation(instances=1)
 
-    def refreshQuotaLimits(self, update):
-        """Query the endpoint for quota limits and store them in the quota
-        cache
-
-        :param bool update: Whether an update should be performed even
-            if there are values present.
-
-        :return: Whether the cache was updated
-        :rtype: bool
-
-        """
-        raise NotImplementedError()
-
     def refreshQuotaForLabel(self, label, update):
         """Query the endpoint for quota used for a label and update
         the quota cache
@@ -702,8 +702,7 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         provider changed.
 
         """
-        updated = self.refreshQuotaLimits(update)
-        if updated or update:
+        if update:
             for label in self.labels.values():
                 self.refreshQuotaForLabel(label, update)
 
