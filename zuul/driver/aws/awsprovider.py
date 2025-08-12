@@ -17,7 +17,13 @@ import math
 
 import zuul.provider.schema as provider_schema
 from zuul.lib.voluputil import (
-    Required, Optional, Nullable, discriminate, assemble, RequiredExclusive,
+    AsList,
+    Nullable,
+    Optional,
+    Required,
+    RequiredExclusive,
+    assemble,
+    discriminate,
 )
 
 import voluptuous as vs
@@ -45,7 +51,7 @@ from zuul.provider import (
 class AwsProviderImage(BaseProviderImage):
     aws_image_filters = {
         'name': str,
-        'values': [str],
+        'values': AsList(str),
     }
     # This is used here and in flavors and labels
     inheritable_aws_image_schema = assemble(
@@ -61,7 +67,9 @@ class AwsProviderImage(BaseProviderImage):
     )
     aws_cloud_schema = vs.Schema({
         vs.Exclusive(Required('image-id'), 'spec'): str,
-        vs.Exclusive(Required('image-filters'), 'spec'): [aws_image_filters],
+        vs.Exclusive(
+            Required('image-filters'), 'spec'
+        ): AsList(aws_image_filters),
         Required('type'): 'cloud',
     })
     cloud_schema = vs.All(
@@ -125,7 +133,7 @@ class AwsProviderImage(BaseProviderImage):
 
 class AwsProviderFlavor(BaseProviderFlavor):
     fleet_schema = vs.Schema({
-        vs.Required('instance-types'): [str],  # TODO: as_list?
+        vs.Required('instance-types'): AsList(str),
         vs.Required('allocation-strategy'): vs.Any(
             'prioritized', 'price-capacity-optimized',
             'capacity-optimized', 'diversified', 'lowest-price')
@@ -179,7 +187,7 @@ class AwsProviderLabel(BaseProviderLabel):
         # TODO: aws accepts a list everywhere we use this; should this
         # be as_list?
         Optional('security-group-id'): Nullable(str),
-        Optional('subnet-ids', default=[]): [str],  # TODO: as_list?
+        Optional('subnet-ids', default=[]): AsList(str),
         Optional('iam-instance-profile'): Nullable(aws_iam_schema),
     })
 

@@ -19,7 +19,7 @@ import textwrap
 
 from zuul.driver.openstack import openstackprovider
 from zuul.driver.aws import awsprovider
-from zuul.lib.voluputil import Nullable
+from zuul.lib.voluputil import AsList, Nullable
 
 import voluptuous as vs
 import yaml
@@ -53,6 +53,10 @@ class SchemaWalker:
             return w.toDict()
         if isinstance(self.schema, vs.Schema):
             w = SchemaWalker(self.schema.schema, self.doc)
+            return w.toDict()
+        if isinstance(self.schema, AsList):
+            # Use the first alt (the list); ignore the second.
+            w = SchemaWalker(self.schema.schema.validators[0], self.doc)
             return w.toDict()
         if isinstance(self.schema, vs.Any):
             ret = []
