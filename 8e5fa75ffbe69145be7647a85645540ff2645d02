@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "74f63620_a64ba62e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 36342
+      },
+      "writtenOn": "2025-08-13T18:24:36Z",
+      "side": 1,
+      "message": "This has to be removed once https://review.opendev.org/c/zuul/zuul-jobs/+/957219 is merged",
+      "revId": "8e5fa75ffbe69145be7647a85645540ff2645d02",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
