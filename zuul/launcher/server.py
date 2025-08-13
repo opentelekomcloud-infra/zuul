@@ -129,6 +129,11 @@ class DeleteJob:
             self._run()
         except Exception:
             self.log.exception("Error in delete job")
+        try:
+            self.launcher.upload_uuids_in_delete_queue.discard(
+                self.upload.uuid)
+        except Exception:
+            self.log.exception("Error in upload job")
 
     def _run(self):
         try:
@@ -1103,6 +1108,7 @@ class Launcher:
         )
         # Avoid submitting duplicate upload jobs
         self.upload_uuids_in_queue = set()
+        self.upload_uuids_in_delete_queue = set()
         # Simultaneous image artifact processes (download+upload)
         self.upload_executor = ThreadPoolExecutor(
             max_workers=1,
@@ -2394,7 +2400,10 @@ class Launcher:
             if (iba.state == iba.State.DELETING or
                 upload.state == upload.State.DELETING or
                 upload not in keep_uploads):
-                self.upload_executor.submit(DeleteJob(self, iba, upload).run)
+                if upload.uuid not in self.upload_uuids_in_delete_queue:
+                    self.upload_uuids_in_delete_queue.add(upload.uuid)
+                    self.upload_executor.submit(
+                        DeleteJob(self, iba, upload).run)
         for iba in active_ibas:
             if (iba.timestamp > latest_upload_timestamp or
                 not latest_upload_timestamp):
