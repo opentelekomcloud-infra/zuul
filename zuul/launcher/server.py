@@ -1353,7 +1353,7 @@ class Launcher:
         providers = self._shuffleProviders(providers)
 
         # Sort that list by quota
-        providers.sort(key=lambda p: self.getQuotaPercentage(p))
+        providers.sort(key=lambda p: self.getQuotaPercentage(p, log))
 
         # Then if there are ready nodes, sort so that we can use the
         # most ready nodes.
@@ -2607,18 +2607,22 @@ class Launcher:
         self._provider_available_cache[provider.canonical_name] = quota
         return quota
 
-    def getQuotaPercentage(self, provider):
+    def getQuotaPercentage(self, provider, log):
         try:
             # This is cached and updated every 5 minutes
             total = self.getProviderQuotaAvailable(provider).copy()
         except Exception:
-            self.log.exception("Unable to get provider quota")
+            log.exception("Unable to get provider quota")
             # If there is an error getting quota information, assume
             # the provider is having problems and report it as full.
             return 1.0
         # This is continuously updated in the background
         used = self.api.nodes_cache.getQuota(provider)
         pct = 0.0
+        log.debug("Provider %s quota available before Zuul: %s",
+                  provider, total)
+        log.debug("Provider %s quota claimed by Zuul: %s",
+                  provider, used)
         for resource in total.quota.keys():
             used_r = used.quota.get(resource, used.default)
             total_r = total.quota[resource]
@@ -2626,6 +2630,7 @@ class Launcher:
                 pct = max(1.0, pct)
             else:
                 pct = max(used_r / total_r, pct)
+        log.debug("Provider %s usage factor: %s", provider, pct)
         if pct < 1.0:
             # If we are below 100% usage, lose precision so that we only
             # consider 10% gradiations.  This may help us avoid
