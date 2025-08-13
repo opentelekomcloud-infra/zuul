@@ -20,6 +20,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "94f4c627_fdd5855c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-08-13T13:54:44Z",
+      "side": 1,
+      "message": "Aha, here: https://review.opendev.org/c/openstack/pbr/+/954048/10/pbr/_compat/commands.py#299",
+      "revId": "727fe8ac20214bd62575079ee7e44e414364ccf4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "1441df08_ec70c487",
         "filename": "zuul/_setup_hook.py",
         "patchSetId": 1
