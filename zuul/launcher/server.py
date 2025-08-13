@@ -1360,6 +1360,9 @@ class Launcher:
                     for node_provider in node_providers:
                         usable_provider_ready_nodes[
                             node_provider.canonical_name] += 1
+                        log.debug(
+                            "Found usable ready node %s in %s",
+                            node, node_provider)
             providers.sort(
                 key=lambda p: usable_provider_ready_nodes[p.canonical_name],
                 reverse=True
@@ -2596,8 +2599,8 @@ class Launcher:
         return quota
 
     def getQuotaPercentage(self, provider):
-        # This is cached and updated every 5 minutes
         try:
+            # This is cached and updated every 5 minutes
             total = self.getProviderQuotaAvailable(provider).copy()
         except Exception:
             self.log.exception("Unable to get provider quota")
@@ -2611,8 +2614,7 @@ class Launcher:
             used_r = used.quota.get(resource, used.default)
             total_r = total.quota[resource]
             if not total_r:
-                pct = 1.0
-                break
+                pct = max(1.0, pct)
             else:
                 pct = max(used_r / total_r, pct)
         if pct < 1.0:
