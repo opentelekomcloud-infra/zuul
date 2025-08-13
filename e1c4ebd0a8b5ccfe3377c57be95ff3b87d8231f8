@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "36c94b5c_4e904052",
+        "filename": "zuul/_setup_hook.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-13T15:57:21Z",
+      "side": 1,
+      "message": "For maximum compatibility with old and new versions of git we should probably try to import _from_git from both the old and new location (with a preference for the new location if present).",
+      "revId": "e1c4ebd0a8b5ccfe3377c57be95ff3b87d8231f8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "394ed82f_eb44b428",
+        "filename": "zuul/_setup_hook.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-13T15:57:21Z",
+      "side": 1,
+      "message": "I wonder if we can just call _build_javascript() from this setup_hook() and avoid the indirection to call it later via LocalSDist() within PBR.",
+      "revId": "e1c4ebd0a8b5ccfe3377c57be95ff3b87d8231f8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
