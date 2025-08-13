@@ -657,6 +657,7 @@ class ProviderNodeConverter:
             'quota': node.quota.getResources(),
             'is_locked': node.is_locked,
             'lock_holder': node.lock_holder,
+            'request_id': node.request_id,
         }
         return ret
 
@@ -689,6 +690,7 @@ class ProviderNodeConverter:
             'quota': dict,
             'is_locked': bool,
             'lock_holder': str,
+            'request_id': str,
         })
 
 
