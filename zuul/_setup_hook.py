@@ -15,10 +15,9 @@
 
 import os
 import subprocess
-
-import pbr.packaging
-
-_old_from_git = pbr.packaging._from_git
+from setuptools import setup
+from setuptools.command.sdist import sdist as _sdist
+from setuptools.command.build_py import build_py as _build_py
 
 
 def _build_javascript():
@@ -38,10 +37,23 @@ def _build_javascript():
             raise RuntimeError("Yarn build failed")
 
 
-def _from_git(distribution):
-    _build_javascript()
-    return _old_from_git(distribution)
+class sdist(_sdist):
+    def run(self):
+        _build_javascript()
+        super().run()
 
 
-def setup_hook(config):
-    pbr.packaging._from_git = _from_git
+class build_py(_build_py):
+    def run(self):
+        _build_javascript()
+        super().run()
+
+
+setup(
+    setup_requires=['pbr'],
+    pbr=True,
+    cmdclass={
+        'sdist': sdist,
+        'build_py': build_py,
+    }
+)
