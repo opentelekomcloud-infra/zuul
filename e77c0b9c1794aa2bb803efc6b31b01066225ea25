@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5fe94887_8cd02a86",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 5263
+      },
+      "writtenOn": "2025-08-13T17:44:16Z",
+      "side": 1,
+      "message": "Nit: this is no longer part of the rebased change.",
+      "revId": "e77c0b9c1794aa2bb803efc6b31b01066225ea25",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
