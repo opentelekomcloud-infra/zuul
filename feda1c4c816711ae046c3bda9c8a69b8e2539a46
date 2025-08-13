@@ -16,6 +16,24 @@
       "message": "We need to drop this import now that we\u0027re no longer using code within it.",
       "revId": "feda1c4c816711ae046c3bda9c8a69b8e2539a46",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9211f6a_e2fff8c4",
+        "filename": "zuul/_setup_hook.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-13T17:49:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3cdcbf44_60d0bba1",
+      "revId": "feda1c4c816711ae046c3bda9c8a69b8e2539a46",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
