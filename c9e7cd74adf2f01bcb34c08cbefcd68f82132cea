@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f3d4b076_3ca77989",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-13T20:38:27Z",
+      "side": 1,
+      "message": "+2\u0027ing as I\u0027ve completed the two additional checks we called out on Matrix. Specifically I fetched the container image for zuul-web built against this change and double checked that the js web content is present in the container image. I also fetched this change locally and tagged it `12.24.48` then ran `pyproject-build`. This reports `Successfully built zuul-12.24.48.tar.gz and zuul-12.24.48-py3-none-any.whl`. Both the sdist and wheel appear to contain the same js web content that i was able to see in the container image.",
+      "revId": "c9e7cd74adf2f01bcb34c08cbefcd68f82132cea",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
