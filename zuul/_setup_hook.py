@@ -17,8 +17,7 @@ import os
 import subprocess
 
 import pbr.packaging
-
-_old_from_git = pbr.packaging._from_git
+from pbr import git
 
 
 def _build_javascript():
@@ -40,7 +39,12 @@ def _build_javascript():
 
 def _from_git(distribution):
     _build_javascript()
-    return _old_from_git(distribution)
+    option_dict = distribution.get_option_dict('pbr')
+    changelog = git._iter_log_oneline()
+    if changelog:
+        changelog = git._iter_changelog(changelog)
+    git.write_git_changelog(option_dict=option_dict, changelog=changelog)
+    git.generate_authors(option_dict=option_dict)
 
 
 def setup_hook(config):
