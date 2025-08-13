@@ -82,7 +82,7 @@
           comment: (?i)^\s*regate\s*$
         - event: pull_request_review
           action: dismissed
-          state: request_changes
+          state: changes_requested
         - event: pull_request
           action: status
           status: ".*:success"
