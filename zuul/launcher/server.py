@@ -2619,6 +2619,10 @@ class Launcher:
         # This is continuously updated in the background
         used = self.api.nodes_cache.getQuota(provider)
         pct = 0.0
+        log.debug("Provider %s quota available before Zuul: %s",
+                  provider, total)
+        log.debug("Provider %s quota claimed by Zuul: %s",
+                  provider, used)
         for resource in total.quota.keys():
             used_r = used.quota.get(resource, used.default)
             total_r = total.quota[resource]
@@ -2626,6 +2630,7 @@ class Launcher:
                 pct = max(1.0, pct)
             else:
                 pct = max(used_r / total_r, pct)
+        log.debug("Provider %s usage factor: %s", provider, pct)
         if pct < 1.0:
             # If we are below 100% usage, lose precision so that we only
             # consider 10% gradiations.  This may help us avoid
