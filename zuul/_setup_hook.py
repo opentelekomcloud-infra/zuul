@@ -16,9 +16,15 @@
 import os
 import subprocess
 
-import pbr.packaging
 
-_old_from_git = pbr.packaging._from_git
+try:
+    # pbr 7.0.0 moved the private function here
+    import pbr._compat.commands
+    _old_from_git = pbr._compat.commands._from_git
+except ImportError:
+    # support older versions of pbr
+    import pbr.packaging
+    _old_from_git = pbr.packaging._from_git
 
 
 def _build_javascript():
