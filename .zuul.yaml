@@ -99,8 +99,6 @@
 - job:
     name: zuul-nox-upgrade
     parent: zuul-nox
-    # Temporarily make non-voting due to pbr 7.0.0 compatibility issues
-    voting: false
     run: playbooks/zuul-upgrade/run.yaml
     failure-output:
       # This matches stestr output when a test fails
