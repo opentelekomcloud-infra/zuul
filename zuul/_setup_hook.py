@@ -16,10 +16,6 @@
 import os
 import subprocess
 
-import pbr.packaging
-
-_old_from_git = pbr.packaging._from_git
-
 
 def _build_javascript():
     if subprocess.call(['which', 'yarn']) != 0:
@@ -38,10 +34,5 @@ def _build_javascript():
             raise RuntimeError("Yarn build failed")
 
 
-def _from_git(distribution):
-    _build_javascript()
-    return _old_from_git(distribution)
-
-
 def setup_hook(config):
-    pbr.packaging._from_git = _from_git
+    _build_javascript()
