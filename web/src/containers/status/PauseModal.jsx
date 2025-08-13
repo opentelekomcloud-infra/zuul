@@ -132,7 +132,7 @@ function PauseModal({isOpen, setOpen}) {
 
 PauseModal.propTypes = {
   isOpen: PropTypes.bool,
-  setOpen: PropTypes.object,
+  setOpen: PropTypes.func,
 }
 
 export default (PauseModal)

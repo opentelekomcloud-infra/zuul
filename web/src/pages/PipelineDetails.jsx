@@ -63,7 +63,7 @@ import {
   clearFilters,
 } from '../containers/status/Filters'
 
-const filterCategories = (pipeline) => [
+const getFilterCategories = (pipeline) => [
   {
     key: 'project',
     title: 'Project',
@@ -137,7 +137,7 @@ PipelineDetails.propTypes = {
 }
 
 function PipelineDetailsPage({
-  pipeline, isFetching, tenant, darkMode, autoReload, fetchStatusIfNeeded, isEmpty
+  pipeline, isFetching, tenant, darkMode, autoReload, fetchStatusIfNeeded, isEmpty, filterCategories, filters
 }) {
   const [isReloading, setIsReloading] = useState(false)
   const [isAllJobsExpanded, setIsAllJobsExpanded] = useState(
@@ -147,7 +147,6 @@ function PipelineDetailsPage({
 
   const location = useLocation()
   const history = useHistory()
-  const filters = getFiltersFromUrl(location, filterCategories(pipeline))
   const dispatch = useDispatch()
 
   const updateData = useCallback((tenant) => {
@@ -205,7 +204,7 @@ function PipelineDetailsPage({
         <Level>
           <LevelItem>
             <FilterToolbar
-              filterCategories={filterCategories(pipeline)}
+              filterCategories={filterCategories}
               onFilterChange={(newFilters) => { handleFilterChange(newFilters, filterCategories, location, history) }}
               filters={filters}
               filterInputValidation={filterInputValidation}
@@ -286,7 +285,7 @@ function PipelineDetailsPage({
             title="No items found"
             icon={StreamIcon}
             action="Clear all filters"
-            onAction={() => clearFilters(location, history, filterCategories(pipeline))}
+            onAction={() => clearFilters(location, history, filterCategories)}
           >
             No items match this filter criteria. Remove some filters or
             clear all to show results.
@@ -306,20 +305,25 @@ PipelineDetailsPage.propTypes = {
   autoReload: PropTypes.bool.isRequired,
   fetchStatusIfNeeded: PropTypes.func.isRequired,
   isEmpty: PropTypes.bool,
+  filterCategories: PropTypes.array,
+  filters: PropTypes.object
 }
 
 function mapStateToProps(state, ownProps) {
   let pipeline = null
+  let filterCategories = getFilterCategories(null)
+  let filters = null
   if (state.status.status) {
-    const filters = getFiltersFromUrl(ownProps.location, filterCategories(null))
+    filters = getFiltersFromUrl(ownProps.location, filterCategories)
     // we need to work on a copy of the state..pipelines, because when mutating
     // the original, we couldn't reset or change the filters without reloading
     // from the backend first.
     const pipelines = global.structuredClone(state.status.status.pipelines)
     // Filter the state for this specific pipeline
-    pipeline = filterPipelines(pipelines, filters, filterCategories(null), false)
+    pipeline = filterPipelines(pipelines, filters, filterCategories, false)
       .find((p) => p.name === ownProps.match.params.pipelineName) || null
     pipeline = countPipelineItems(pipeline)
+    filterCategories = getFilterCategories(pipeline)
   }
 
   const isEmpty = pipeline && isPipelineEmpty(pipeline)
@@ -331,6 +335,8 @@ function mapStateToProps(state, ownProps) {
     darkMode: state.preferences.darkMode,
     autoReload: state.preferences.autoReload,
     isEmpty,
+    filterCategories,
+    filters,
   }
 }
 
