@@ -16,9 +16,9 @@
 import os
 import subprocess
 
-import pbr.packaging
+import pbr._compat.commands
 
-_old_from_git = pbr.packaging._from_git
+_old_from_git = pbr._compat.commands._from_git
 
 
 def _build_javascript():

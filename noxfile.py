@@ -99,7 +99,7 @@ def tests(session):
 @nox.session(python='3')
 def upgrade(session):
     set_standard_env_vars(session)
-    session.install('-r', 'requirements.txt',
+    session.install('-r', 'upgrade-requirements.txt',
                     '-r', 'test-requirements.txt')
     session.install('-e', '.')
     session.run_always('zuul-manage-ansible', '-v')
