@@ -399,10 +399,12 @@
         - zuul-build-dashboard-opendev
         - nodejs-run-lint:
             vars:
+              node_version: 22
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
             nodeset: ubuntu-jammy
         - nodejs-run-test:
             vars:
+              node_version: 22
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
             files:
               - web/.*
@@ -432,10 +434,12 @@
         - zuul-build-dashboard
         - nodejs-run-lint:
             vars:
+              node_version: 22
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
             nodeset: ubuntu-jammy
         - nodejs-run-test:
             vars:
+              node_version: 22
               zuul_work_dir: "{{ zuul.project.src_dir }}/web"
             files:
               - web/.*
