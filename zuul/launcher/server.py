@@ -1159,7 +1159,11 @@ class Launcher:
         if self.layout_updated_event.is_set():
             self.layout_updated_event.clear()
             with self.providers_update_lock:
-                updated = self.updateTenantProviders()
+                try:
+                    updated = self.updateTenantProviders()
+                except Exception:
+                    self.layout_updated_event.set()
+                    raise
             if updated:
                 self.checkOldImages()
                 self.checkMissingImages()
@@ -2222,14 +2226,18 @@ class Launcher:
                     force = bool(designated_launcher ==
                                  self.component_info.hostname)
                     endpoint.start()
-                    endpoint.postConfig(provider)
-                    if endpoint.canonical_name not in seen_endpoint_names:
-                        quota_updated = endpoint.refreshQuotaLimits(force)
-                        seen_endpoint_names.add(provider.canonical_name)
-                        force = quota_updated or force
-                    if provider.canonical_name not in seen_provider_names:
-                        provider.postConfig(force)
-                        seen_provider_names.add(provider.canonical_name)
+                    try:
+                        endpoint.postConfig(provider)
+                        if endpoint.canonical_name not in seen_endpoint_names:
+                            quota_updated = endpoint.refreshQuotaLimits(force)
+                            seen_endpoint_names.add(provider.canonical_name)
+                            force = quota_updated or force
+                        if provider.canonical_name not in seen_provider_names:
+                            provider.postConfig(force)
+                            seen_provider_names.add(provider.canonical_name)
+                    except Exception:
+                        self.log.exception("Error in postconfig for %s:",
+                                           provider)
             self.endpoints = endpoints
         return updated
 
