@@ -39,7 +39,7 @@
     "redux-immutable-state-invariant": "^2.1.0",
     "redux-thunk": "^2.3.0",
     "sockette": "^2.0.0",
-    "swagger-ui": "^3.20.1",
+    "swagger-ui": "4.19.1",
     "victory-area": "^37.3.6",
     "victory-axis": "^37.3.6",
     "victory-bar": "^37.3.6",
@@ -67,7 +67,8 @@
     "nanoid": "2.1.11",
     "@babel/core": "^7.22.0",
     "@babel/preset-env": "^7.22.0",
-    "@babel/preset-react": "^7.22.0"
+    "@babel/preset-react": "^7.22.0",
+    "swagger-client":"3.18.5"
   },
   "devDependencies": {
     "@babel/core": "^7.22.0",
