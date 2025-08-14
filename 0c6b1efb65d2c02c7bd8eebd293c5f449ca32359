@@ -190,6 +190,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3a47616e_9a19d4dc",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 634,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-14T18:39:05Z",
+      "side": 1,
+      "message": "Oops, sorry I misparsed your comment, you are right.",
+      "parentUuid": "61600186_db49d924",
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "af6b46f4_d352331a",
