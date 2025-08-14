@@ -16,6 +16,24 @@
       "message": "If the launcher crashes at this point, we will never process this request again.  We should find a way to fix that, but given the severity of the problem we saw in opendev when the launchers were slow, I think this fix is better than the status quo.\n\nI think one way to fix it is to store whether the event has been sent separately from the success/failure bit.  Right now, the launcher uses the state to indicate whether it\u0027s work is done and also the result of the request.  But the scheduler also needs to know the state of the request.\n\nSo we could:\n1) Add an attribute \"event_sent\" to indicate whether the event has been sent.  If that hasn\u0027t been set, we still consider the request actionable by the launcher, so we\u0027ll send it again if it crashes.\n2) Add an attribute \"fulfilled\" to indicate whether the request succeeded.  The state continues to determine whether the request is actionable by the launcher.  We revert this change, so we have the original order, but we set the fulfilled state before sending the event, so the scheduler doesn\u0027t have to care about the state of the request.\n\nI want to like #2, but that would still leave us with the possibility of having confusing log messages in the scheduler about \"accepted\" requests.  If we want to have it more clear that everything about the request is up to date before the scheduler does anything with it, #1 may be the better one.",
       "revId": "c4cbb448a6e2f0eece8b15551572913d6b951ba1",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "564d1704_70d4c79c",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1597,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-08-14T06:09:46Z",
+      "side": 1,
+      "message": "Another option similar to #2 could be to send the request state via the `NodesProvisionedEvent`. Though that would require a model version bump as the Nodepool part would also be affected.\n\nI\u0027m leaning towards #1 at this point. Maybe instead of a bool we should make this a launcher-internal enum in case we have similar use-cases later (thinking about snapshots, though that would only affect the nodes)?\n\nI think with the change here we could also send the `NodesProvisionedEvent` right before we unlock the node at the end of `_processRequests()`. Instead of doing here AND in the exception handler in `_processRequests()`. This way we\u0027d always send the event before unlocking the node.\n\nI proposed that as a follow-up change here https://review.opendev.org/c/zuul/zuul/+/957304",
+      "parentUuid": "cdb09994_0345f5a4",
+      "revId": "c4cbb448a6e2f0eece8b15551572913d6b951ba1",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
