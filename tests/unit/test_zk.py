@@ -2952,10 +2952,22 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
 
         node1 = node_class.new(
             context, request_id='1', uuid='1', quota=quota, label='foo',
-            provider='provider', state=node_class.State.BUILDING)
+            provider='provider', state=node_class.State.REQUESTED)
         for _ in iterate_timeout(10, "cache to sync"):
             used = self.api.nodes_cache.getQuota(provider)
-            if used.quota.get('instances') == 1:
+            requested = self.api.nodes_cache.getQuota(
+                provider, include_requested=True)
+            if (used.quota.get('instances', 0) == 0 and
+                requested.quota.get('instances', 0) == 1):
+                break
+
+        node1.updateAttributes(context, state=node_class.State.BUILDING)
+        for _ in iterate_timeout(10, "cache to sync"):
+            used = self.api.nodes_cache.getQuota(provider)
+            requested = self.api.nodes_cache.getQuota(
+                provider, include_requested=True)
+            if (used.quota.get('instances', 0) == 1 and
+                requested.quota.get('instances', 0) == 1):
                 break
 
         node2 = node_class.new(
