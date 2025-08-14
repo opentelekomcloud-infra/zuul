@@ -27,7 +27,7 @@ import types
 import urllib.parse
 import uuid
 from collections import OrderedDict, defaultdict, namedtuple, UserDict
-from enum import StrEnum
+from enum import StrEnum, IntEnum
 from functools import partial, total_ordering
 from uuid import uuid4
 
@@ -2447,6 +2447,12 @@ class NodesetRequest(zkobject.LockableZKObject):
     REQUESTS_PATH = "requests"
     LOCKS_PATH = "locks"
 
+    # Tracks whether the request has emitted the completion event to
+    # notify the scheduler
+    class EventState(IntEnum):
+        PENDING = 0
+        COMPLETE = 1
+
     def __init__(self):
         super().__init__()
         revision = NodesetRequestRevision()
@@ -2454,6 +2460,7 @@ class NodesetRequest(zkobject.LockableZKObject):
         self._set(
             uuid=uuid4().hex,
             state=self.State.REQUESTED,
+            event_state=self.EventState.PENDING,
             tenant_name="",
             pipeline_name="",
             buildset_uuid="",
@@ -2551,6 +2558,7 @@ class NodesetRequest(zkobject.LockableZKObject):
         data = dict(
             uuid=self.uuid,
             state=self.state,
+            event_state=self.event_state,
             tenant_name=self.tenant_name,
             pipeline_name=self.pipeline_name,
             buildset_uuid=self.buildset_uuid,

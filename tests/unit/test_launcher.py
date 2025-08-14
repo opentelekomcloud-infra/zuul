@@ -29,6 +29,8 @@ from zuul import model
 import zuul.driver.aws.awsendpoint
 from zuul.launcher.client import LauncherClient
 import zuul.launcher.server
+from zuul.zk.event_queues import PipelineResultEventQueue
+from zuul.zk.locks import pipeline_lock
 
 import cachetools
 import fixtures
@@ -1788,6 +1790,50 @@ class TestLauncher(LauncherBaseTestCase):
         for _ in iterate_timeout(60, "node to be deleted"):
             if len(self.launcher.api.nodes_cache.getItems()) == 0:
                 break
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_request_completion_event(self):
+        # Test the event handling in request processing:
+        # if the launcher crashes before the completion event is sent,
+        # it should be sent by the next launcher to handle it.
+        self.waitUntilSettled()
+        tenant = 'tenant-one'
+        pipeline = 'check'
+        timeout = 10
+        result_queue = PipelineResultEventQueue(
+            self.zk_client, tenant, pipeline)
+
+        request = self.requestNodes(["debian-normal"])
+        self.assertEqual(request.State.FULFILLED, request.state)
+        self.assertEqual(request.EventState.COMPLETE, request.event_state)
+
+        # Hold the scheduler lock, reset the event state flag, and
+        # ensure the scheduler sees another event.
+        with (self.scheds.first.sched.run_handler_lock,
+              pipeline_lock(self.zk_client, tenant, pipeline)):
+            # First ensure the launcher doesn't send another event;
+            # send it through its processing loop.
+            self.launcher.wake_event.set()
+            for _ in iterate_timeout(timeout, "launcher to settle"):
+                if not self.launcher.wake_event.isSet():
+                    break
+            with self.launcher._test_lock:
+                pass
+            # The launcher should be back at the start of the loop now.
+            # Make sure our queue is still empty
+            result_events = list(result_queue)
+            self.assertEqual(0, len(result_events))
+            ctx = self.createZKContext(None)
+            request.updateAttributes(ctx, event_state=0)
+            result_events = list(result_queue)
+            for _ in iterate_timeout(
+                    timeout, "nodeset request to be fulfilled"):
+                result_events = list(result_queue)
+                if result_events:
+                    for event in result_events:
+                        # Remove event(s) from queue
+                        result_queue.ack(event)
+                    break
 
 
 class TestLauncherLocality(LauncherBaseTestCase):
