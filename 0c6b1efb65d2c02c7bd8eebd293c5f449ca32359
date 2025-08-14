@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "89e63764_ec20dfd9",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2625,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-14T18:31:51Z",
+      "side": 1,
+      "message": "We don\u0027t do it for NodesetRequest, and I don\u0027t think it\u0027s necessary for our use case, so I think it\u0027s okay to omit, and omitting it keeps parity with requests.",
+      "parentUuid": "35ed75df_7062bbc8",
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "7bdc7db5_b296a927",
         "filename": "zuul/model.py",
         "patchSetId": 1
@@ -43,6 +61,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "eee4dfdf_d484742b",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-14T18:31:51Z",
+      "side": 1,
+      "message": "I thought about that, but this is good protection against a programmer error causing a node to always sort at one or the other ends.  Seems safer that way.",
+      "parentUuid": "7bdc7db5_b296a927",
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ad2e3a92_bce3ca3d",
         "filename": "zuul/web/__init__.py",
         "patchSetId": 1
@@ -54,6 +90,24 @@
       "writtenOn": "2025-08-14T18:27:36Z",
       "side": 1,
       "message": "Should this use `node.request_time or 0` as the value may be None?",
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "61600186_db49d924",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 634,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-14T18:31:51Z",
+      "side": 1,
+      "message": "_datetimeToString handles it.",
+      "parentUuid": "ad2e3a92_bce3ca3d",
       "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -77,6 +131,24 @@
         "endLine": 697,
         "endChar": 31
       },
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6ff68bd2_41894514",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-14T18:31:51Z",
+      "side": 1,
+      "message": "Yep.",
+      "parentUuid": "af6b46f4_d352331a",
       "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
