@@ -42,7 +42,7 @@ class FakeItemCache:
     def getItems(self):
         return self._items.values()
 
-    def getQuota(self, provider):
+    def getQuota(self, provider, include_requested):
         return model.QuotaInformation()
 
     def waitForSync(self, timeout):

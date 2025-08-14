@@ -178,36 +178,63 @@ class RequestCache(LockableZKObjectCache):
 
 class NodeCache(LockableZKObjectCache):
     def __init__(self, *args, **kw):
+        # The states we're interested in
+        self._quota_states_used = ProviderNode.ALLOCATED_STATES
+        self._quota_states_requested = (
+            ProviderNode.ALLOCATED_STATES + (ProviderNode.State.REQUESTED,)
+        )
         # Key -> quota, for each cached object
-        self._cached_quota = {}
+        self._cached_quota_used = {}
+        self._cached_quota_requested = {}
         # Provider canonical name -> quota, for each provider
-        self._provider_quota = collections.defaultdict(
+        self._provider_quota_used = collections.defaultdict(
+            lambda: QuotaInformation())
+        self._provider_quota_requested = collections.defaultdict(
             lambda: QuotaInformation())
         super().__init__(*args, **kw)
 
-    def postCacheHook(self, event, data, stat, key, obj):
+    def _handleQuota(self, quota_states, quota_cache, provider_cache,
+                     event, data, stat, key, obj):
         # Have we previously added quota for this object?
-        old_quota = self._cached_quota.get(key)
+        old_quota = quota_cache.get(key)
         if key in self._cached_objects:
             new_quota = obj.quota
         else:
             new_quota = None
         # Now that we've established whether we should count the quota
         # based on object presence, take node state into account.
-        if obj is None or obj.state not in obj.ALLOCATED_STATES:
+        if obj is None or obj.state not in quota_states:
             new_quota = None
         if new_quota != old_quota:
             # Add the new value first so if another thread races these
             # two operations, it sees us go over quota and not under.
             if new_quota is not None:
-                self._provider_quota[obj.provider].add(new_quota)
+                provider_cache[obj.provider].add(new_quota)
             if old_quota is not None:
-                self._provider_quota[obj.provider].subtract(old_quota)
-            self._cached_quota[key] = new_quota
+                provider_cache[obj.provider].subtract(old_quota)
+            if new_quota is None:
+                quota_cache.pop(key, None)
+            else:
+                quota_cache[key] = new_quota
+
+    def postCacheHook(self, event, data, stat, key, obj):
+        self._handleQuota(
+            self._quota_states_used,
+            self._cached_quota_used,
+            self._provider_quota_used,
+            event, data, stat, key, obj)
+        self._handleQuota(
+            self._quota_states_requested,
+            self._cached_quota_requested,
+            self._provider_quota_requested,
+            event, data, stat, key, obj)
         super().postCacheHook(event, data, stat, key, obj)
 
-    def getQuota(self, provider):
-        return self._provider_quota[provider.canonical_name]
+    def getQuota(self, provider, include_requested=False):
+        if include_requested:
+            return self._provider_quota_requested[provider.canonical_name]
+        else:
+            return self._provider_quota_used[provider.canonical_name]
 
 
 class LauncherApi:

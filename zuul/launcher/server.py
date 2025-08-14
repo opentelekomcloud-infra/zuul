@@ -2617,7 +2617,7 @@ class Launcher:
             # the provider is having problems and report it as full.
             return 1.0
         # This is continuously updated in the background
-        used = self.api.nodes_cache.getQuota(provider)
+        used = self.api.nodes_cache.getQuota(provider, include_requested=True)
         pct = 0.0
         log.debug("Provider %s quota available before Zuul: %s",
                   provider, total)
