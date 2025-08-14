@@ -1209,6 +1209,9 @@ class Launcher:
                           request, state, str(err))
                 with self.createZKContext(request._lock, log) as ctx:
                     request.updateAttributes(ctx, state=state)
+            except Exception:
+                log.exception("Error processing request %s", request)
+            if request.state in request.FINAL_STATES:
                 # Note that we still hold the lock for a few more
                 # instructions, but the schedulers or executors should
                 # not care.
@@ -1216,9 +1219,6 @@ class Launcher:
                     request.uuid, request.buildset_uuid)
                 self.result_events[request.tenant_name][
                     request.pipeline_name].put(event)
-            except Exception:
-                log.exception("Error processing request %s", request)
-            if request.state in request.FINAL_STATES:
                 request._span.set_attributes(request.getSpanAttributes())
                 request._span.end()
                 with self.createZKContext(None, log) as ctx:
@@ -1593,13 +1593,6 @@ class Launcher:
         log.debug("Marking request %s as %s", request, state)
         with self.createZKContext(request._lock, log) as ctx:
             request.updateAttributes(ctx, state=state)
-        # Note that we still hold the lock for a few more
-        # instructions, but the schedulers or executors should not
-        # care.
-        event = model.NodesProvisionedEvent(
-            request.uuid, request.buildset_uuid)
-        self.result_events[request.tenant_name][request.pipeline_name].put(
-            event)
 
     def _processNodes(self):
         for node in self.api.getMatchingProviderNodes():
