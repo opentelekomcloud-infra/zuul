@@ -1532,6 +1532,7 @@ class Launcher:
             connection_name=provider.connection_name,
             tenant_name=request.tenant_name,
             provider=provider.canonical_name,
+            request_time=request.request_time,
             tags=tags,
             image_upload_uuid=request.image_upload_uuid,
             # Set any node attributes we already know here
@@ -1903,6 +1904,7 @@ class Launcher:
                     zuul_event_id=uuid.uuid4().hex,
                     tenant_name=None,
                     provider=None,
+                    request_time=time.time(),
                     tags=tags,
                     # Set any node attributes we already know here
                     connection_port=image.connection_port,
