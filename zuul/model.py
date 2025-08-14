@@ -2622,6 +2622,7 @@ class NodesetRequestRevision(zkobject.ZKObject):
         return json.dumps(data, sort_keys=True).encode("utf-8")
 
 
+@total_ordering
 class ProviderNode(zkobject.PolymorphicZKObjectMixin,
                    zkobject.LockableZKObject):
 
@@ -2683,6 +2684,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             span_info=None,
             max_ready_age=None,
             state=self.State.REQUESTED,
+            request_time=time.time(),
             state_time=time.time(),
             label="",
             label_config_hash=None,
@@ -2733,6 +2735,11 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
                 f" label={self.label}, state={self.state},"
                 f" provider={self.provider}>")
 
+    def __lt__(self, other):
+        return (
+            (self.request_time or 0) < (other.request_time or 0)
+        )
+
     def getPath(self):
         return self._getPath(self.uuid)
 
@@ -2762,6 +2769,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             zuul_event_id=self.zuul_event_id,
             span_info=self.span_info,
             max_ready_age=self.max_ready_age,
+            request_time=self.request_time,
             state=self.state,
             state_time=self.state_time,
             label=self.label,
