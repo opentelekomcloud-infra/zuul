@@ -1159,7 +1159,11 @@ class Launcher:
         if self.layout_updated_event.is_set():
             self.layout_updated_event.clear()
             with self.providers_update_lock:
-                updated = self.updateTenantProviders()
+                try:
+                    updated = self.updateTenantProviders()
+                except Exception:
+                    self.layout_updated_event.set()
+                    raise
             if updated:
                 self.checkOldImages()
                 self.checkMissingImages()
@@ -1178,7 +1182,8 @@ class Launcher:
         for request in self.api.getMatchingRequests():
             log = get_annotated_logger(self.log, request, request=request.uuid)
             if not request.hasLock():
-                if request.state in request.FINAL_STATES:
+                if ((request.state in request.FINAL_STATES) and
+                    (request.event_state == request.EventState.COMPLETE)):
                     # Nothing to do here
                     continue
                 log.debug("Got request %s", request)
@@ -1207,18 +1212,23 @@ class Launcher:
                 state = model.NodesetRequest.State.FAILED
                 log.error("Marking request %s as %s: %s",
                           request, state, str(err))
-                event = model.NodesProvisionedEvent(
-                    request.uuid, request.buildset_uuid)
-                self.result_events[request.tenant_name][
-                    request.pipeline_name].put(event)
                 with self.createZKContext(request._lock, log) as ctx:
                     request.updateAttributes(ctx, state=state)
             except Exception:
                 log.exception("Error processing request %s", request)
             if request.state in request.FINAL_STATES:
+                # Note that we still hold the lock for a few more
+                # instructions, but the schedulers or executors should
+                # not care.
+                event = model.NodesProvisionedEvent(
+                    request.uuid, request.buildset_uuid)
+                self.result_events[request.tenant_name][
+                    request.pipeline_name].put(event)
                 request._span.set_attributes(request.getSpanAttributes())
                 request._span.end()
                 with self.createZKContext(None, log) as ctx:
+                    request.updateAttributes(
+                        ctx, event_state=request.EventState.COMPLETE)
                     request.releaseLock(ctx)
 
     def _cachesReadyForRequest(self, request):
@@ -1532,6 +1542,7 @@ class Launcher:
             connection_name=provider.connection_name,
             tenant_name=request.tenant_name,
             provider=provider.canonical_name,
+            request_time=request.request_time,
             tags=tags,
             image_upload_uuid=request.image_upload_uuid,
             # Set any node attributes we already know here
@@ -1587,12 +1598,6 @@ class Launcher:
         state = (model.NodesetRequest.State.FAILED if failed
                  else model.NodesetRequest.State.FULFILLED)
         log.debug("Marking request %s as %s", request, state)
-
-        event = model.NodesProvisionedEvent(
-            request.uuid, request.buildset_uuid)
-        self.result_events[request.tenant_name][request.pipeline_name].put(
-            event)
-
         with self.createZKContext(request._lock, log) as ctx:
             request.updateAttributes(ctx, state=state)
 
@@ -1903,6 +1908,7 @@ class Launcher:
                     zuul_event_id=uuid.uuid4().hex,
                     tenant_name=None,
                     provider=None,
+                    request_time=time.time(),
                     tags=tags,
                     # Set any node attributes we already know here
                     connection_port=image.connection_port,
@@ -2220,14 +2226,18 @@ class Launcher:
                     force = bool(designated_launcher ==
                                  self.component_info.hostname)
                     endpoint.start()
-                    endpoint.postConfig(provider)
-                    if endpoint.canonical_name not in seen_endpoint_names:
-                        quota_updated = endpoint.refreshQuotaLimits(force)
-                        seen_endpoint_names.add(provider.canonical_name)
-                        force = quota_updated or force
-                    if provider.canonical_name not in seen_provider_names:
-                        provider.postConfig(force)
-                        seen_provider_names.add(provider.canonical_name)
+                    try:
+                        endpoint.postConfig(provider)
+                        if endpoint.canonical_name not in seen_endpoint_names:
+                            quota_updated = endpoint.refreshQuotaLimits(force)
+                            seen_endpoint_names.add(provider.canonical_name)
+                            force = quota_updated or force
+                        if provider.canonical_name not in seen_provider_names:
+                            provider.postConfig(force)
+                            seen_provider_names.add(provider.canonical_name)
+                    except Exception:
+                        self.log.exception("Error in postconfig for %s:",
+                                           provider)
             self.endpoints = endpoints
         return updated
 
@@ -2380,8 +2390,8 @@ class Launcher:
             uploads_by_artifact[upload.artifact_uuid].append(upload)
             iba = self.image_build_registry.getItem(upload.artifact_uuid)
             if not iba:
-                self.log.warning("Unable to find artifact for upload %s",
-                                 upload.artifact_uuid)
+                self.log.warning("Unable to find artifact %s for upload %s",
+                                 upload.artifact_uuid, upload.uuid)
                 continue
             if set(upload.providers).isdisjoint(known_providers):
                 # An orphaned upload means that either
@@ -2617,7 +2627,7 @@ class Launcher:
             # the provider is having problems and report it as full.
             return 1.0
         # This is continuously updated in the background
-        used = self.api.nodes_cache.getQuota(provider)
+        used = self.api.nodes_cache.getQuota(provider, include_requested=True)
         pct = 0.0
         log.debug("Provider %s quota available before Zuul: %s",
                   provider, total)

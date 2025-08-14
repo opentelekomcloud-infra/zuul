@@ -2803,7 +2803,7 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
             node_class = DummyAProviderNode if i % 2 else DummyBProviderNode
             node = node_class.new(
                 context, request_id=request.uuid, uuid=uuid.uuid4().hex,
-                label=label)
+                request_time=request.request_time, label=label)
 
         # Wait for the nodes to show up in the cache
         for _ in iterate_timeout(10, "nodes to show up"):
@@ -2952,10 +2952,22 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
 
         node1 = node_class.new(
             context, request_id='1', uuid='1', quota=quota, label='foo',
-            provider='provider', state=node_class.State.BUILDING)
+            provider='provider', state=node_class.State.REQUESTED)
         for _ in iterate_timeout(10, "cache to sync"):
             used = self.api.nodes_cache.getQuota(provider)
-            if used.quota.get('instances') == 1:
+            requested = self.api.nodes_cache.getQuota(
+                provider, include_requested=True)
+            if (used.quota.get('instances', 0) == 0 and
+                requested.quota.get('instances', 0) == 1):
+                break
+
+        node1.updateAttributes(context, state=node_class.State.BUILDING)
+        for _ in iterate_timeout(10, "cache to sync"):
+            used = self.api.nodes_cache.getQuota(provider)
+            requested = self.api.nodes_cache.getQuota(
+                provider, include_requested=True)
+            if (used.quota.get('instances', 0) == 1 and
+                requested.quota.get('instances', 0) == 1):
                 break
 
         node2 = node_class.new(
@@ -2977,6 +2989,28 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
             used = self.api.nodes_cache.getQuota(provider)
             if used.quota.get('instances') == 0:
                 break
+
+    def test_node_order(self):
+        context = ZKContext(self.zk_client, None, None, self.log)
+
+        node_class = DummyAProviderNode
+        quota = QuotaInformation(instances=1)
+        node_class.new(
+            context, request_id='1', uuid='1', quota=quota, label='foo',
+            provider='provider', state=node_class.State.REQUESTED,
+            request_time=20)
+        node_class.new(
+            context, request_id='2', uuid='2', quota=quota, label='foo',
+            provider='provider', state=node_class.State.REQUESTED,
+            request_time=10)
+        for _ in iterate_timeout(10, "cache to sync"):
+            items = self.api.nodes_cache.getItems()
+            if len(items) == 2:
+                break
+        # All natural sorting favors 1,2; we expect 2,1
+        items = sorted(items)
+        self.assertEqual('2', items[0].uuid)
+        self.assertEqual('1', items[1].uuid)
 
 
 class DummyLockable(LockableZKObject):

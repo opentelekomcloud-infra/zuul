@@ -27,7 +27,7 @@ import types
 import urllib.parse
 import uuid
 from collections import OrderedDict, defaultdict, namedtuple, UserDict
-from enum import StrEnum
+from enum import StrEnum, IntEnum
 from functools import partial, total_ordering
 from uuid import uuid4
 
@@ -2447,6 +2447,12 @@ class NodesetRequest(zkobject.LockableZKObject):
     REQUESTS_PATH = "requests"
     LOCKS_PATH = "locks"
 
+    # Tracks whether the request has emitted the completion event to
+    # notify the scheduler
+    class EventState(IntEnum):
+        PENDING = 0
+        COMPLETE = 1
+
     def __init__(self):
         super().__init__()
         revision = NodesetRequestRevision()
@@ -2454,6 +2460,7 @@ class NodesetRequest(zkobject.LockableZKObject):
         self._set(
             uuid=uuid4().hex,
             state=self.State.REQUESTED,
+            event_state=self.EventState.PENDING,
             tenant_name="",
             pipeline_name="",
             buildset_uuid="",
@@ -2551,6 +2558,7 @@ class NodesetRequest(zkobject.LockableZKObject):
         data = dict(
             uuid=self.uuid,
             state=self.state,
+            event_state=self.event_state,
             tenant_name=self.tenant_name,
             pipeline_name=self.pipeline_name,
             buildset_uuid=self.buildset_uuid,
@@ -2622,6 +2630,7 @@ class NodesetRequestRevision(zkobject.ZKObject):
         return json.dumps(data, sort_keys=True).encode("utf-8")
 
 
+@total_ordering
 class ProviderNode(zkobject.PolymorphicZKObjectMixin,
                    zkobject.LockableZKObject):
 
@@ -2683,6 +2692,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             span_info=None,
             max_ready_age=None,
             state=self.State.REQUESTED,
+            request_time=time.time(),
             state_time=time.time(),
             label="",
             label_config_hash=None,
@@ -2733,6 +2743,11 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
                 f" label={self.label}, state={self.state},"
                 f" provider={self.provider}>")
 
+    def __lt__(self, other):
+        return (
+            (self.request_time or 0) < (other.request_time or 0)
+        )
+
     def getPath(self):
         return self._getPath(self.uuid)
 
@@ -2762,6 +2777,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             zuul_event_id=self.zuul_event_id,
             span_info=self.span_info,
             max_ready_age=self.max_ready_age,
+            request_time=self.request_time,
             state=self.state,
             state_time=self.state_time,
             label=self.label,
