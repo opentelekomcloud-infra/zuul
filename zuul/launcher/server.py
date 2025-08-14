@@ -1178,7 +1178,8 @@ class Launcher:
         for request in self.api.getMatchingRequests():
             log = get_annotated_logger(self.log, request, request=request.uuid)
             if not request.hasLock():
-                if request.state in request.FINAL_STATES:
+                if ((request.state in request.FINAL_STATES) and
+                    (request.event_state == request.EventState.COMPLETE)):
                     # Nothing to do here
                     continue
                 log.debug("Got request %s", request)
@@ -1222,6 +1223,8 @@ class Launcher:
                 request._span.set_attributes(request.getSpanAttributes())
                 request._span.end()
                 with self.createZKContext(None, log) as ctx:
+                    request.updateAttributes(
+                        ctx, event_state=request.EventState.COMPLETE)
                     request.releaseLock(ctx)
 
     def _cachesReadyForRequest(self, request):
