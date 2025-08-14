@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a396dd44_336d205d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T21:47:10Z",
+      "side": 1,
+      "message": "The init method will set the value to PENDING (aka 0) but then won\u0027t we deserialize from zk and set the value to None as the default from dict.get()?",
+      "range": {
+        "startLine": 29,
+        "startChar": 29,
+        "endLine": 30,
+        "endChar": 14
+      },
+      "revId": "123e02c310947db33c3f8517c5faa79d786ba2a0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f8547acc_4d67bb26",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1835,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T21:47:10Z",
+      "side": 1,
+      "message": "Should we assert the event contents here are for completion? Seems like any events would allow this test to pass?",
+      "revId": "123e02c310947db33c3f8517c5faa79d786ba2a0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f6e7595b_9843269d",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1190,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T21:47:10Z",
+      "side": 1,
+      "message": "I think it may be worth noting that this continue if not able to lock the request is what prevents all of the launchers from racing to processing the request while it is fulfilled but not completed.",
+      "revId": "123e02c310947db33c3f8517c5faa79d786ba2a0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
