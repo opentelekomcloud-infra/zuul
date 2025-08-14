@@ -2037,6 +2037,10 @@ class PipelineManager(metaclass=ABCMeta):
         if (item.live and not dequeued
                 and self.sched.globals.use_relative_priority):
             for job, request_id in item.current_build_set.getNodeRequests():
+                nodeset = item.current_build_set.getJobNodeSetInfo(job)
+                if nodeset is not None:
+                    # No need to revise a completed request
+                    continue
                 if self.sched.nodepool.isNodeRequestID(request_id):
                     self._reviseNodeRequest(request_id, item, job)
                 else:
