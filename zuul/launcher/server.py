@@ -1159,7 +1159,11 @@ class Launcher:
         if self.layout_updated_event.is_set():
             self.layout_updated_event.clear()
             with self.providers_update_lock:
-                updated = self.updateTenantProviders()
+                try:
+                    updated = self.updateTenantProviders()
+                except Exception:
+                    self.layout_updated_event.set()
+                    raise
             if updated:
                 self.checkOldImages()
                 self.checkMissingImages()
