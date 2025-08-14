@@ -313,7 +313,7 @@ class LauncherApi:
         all_launchers = {
             c.hostname: c for c in self.component_registry.all("launcher")}
 
-        for node in self.nodes_cache.getItems():
+        for node in sorted(self.nodes_cache.getItems()):
             if node.hasLock():
                 # We are holding a lock, so short-circuit here.
                 yield node

@@ -630,6 +630,8 @@ class ProviderNodeConverter:
     def toDict(node):
         state_time = _datetimeToString(
             datetime.utcfromtimestamp(node.state_time))
+        request_time = _datetimeToString(
+            datetime.utcfromtimestamp(node.request_time))
         ret = {
             'id': node.uuid,
             'uuid': node.uuid,
@@ -658,6 +660,7 @@ class ProviderNodeConverter:
             'is_locked': node.is_locked,
             'lock_holder': node.lock_holder,
             'request_id': node.request_id,
+            'request_time': request_time,
         }
         return ret
 
@@ -691,6 +694,7 @@ class ProviderNodeConverter:
             'is_locked': bool,
             'lock_holder': str,
             'request_id': str,
+            'request_time': str,
         })
 
 
@@ -2464,7 +2468,7 @@ class ZuulWebAPI(object):
         providers = self.zuulweb.tenant_providers.get(tenant.name)
         if providers:
             provider_cnames = [p.canonical_name for p in providers]
-            for node in self.zuulweb.nodes_cache.getItems():
+            for node in sorted(self.zuulweb.nodes_cache.getItems()):
                 if node.provider in provider_cnames:
                     if node.tenant_name == tenant.name:
                         ret.append(ProviderNodeConverter.toDict(node))
