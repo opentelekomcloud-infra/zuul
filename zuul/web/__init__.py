@@ -1027,6 +1027,9 @@ class StatsTool(cherrypy.Tool):
                                self.emitStats)
 
     def emitStats(self):
+        if not cherrypy.server.httpserver:
+            # Server may not have started yet (if we're called from apsched)
+            return
         idle = cherrypy.server.httpserver.requests.idle
         qsize = cherrypy.server.httpserver.requests.qsize
         self.metrics.threadpool_idle.set(idle)
