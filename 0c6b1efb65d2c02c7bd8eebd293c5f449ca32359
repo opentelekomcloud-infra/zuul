@@ -36,6 +36,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d2be5265_cd957623",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2625,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T18:35:25Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "89e63764_ec20dfd9",
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7bdc7db5_b296a927",
@@ -77,6 +95,48 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "acf6614a_560b3e8b",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T18:35:25Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "7bdc7db5_b296a927",
+      "range": {
+        "startLine": 2687,
+        "startChar": 25,
+        "endLine": 2687,
+        "endChar": 36
+      },
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "82310794_7c72ee79",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T18:35:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eee4dfdf_d484742b",
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ad2e3a92_bce3ca3d",
@@ -108,6 +168,24 @@
       "side": 1,
       "message": "_datetimeToString handles it.",
       "parentUuid": "ad2e3a92_bce3ca3d",
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5388a35_401ef7fb",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 634,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T18:35:25Z",
+      "side": 1,
+      "message": "I get this in a local test:\n\n```\n\u003e\u003e\u003e datetime.datetime.utcfromtimestamp(None)\nTraceback (most recent call last):\n  File \"\u003cpython-input-4\u003e\", line 1, in \u003cmodule\u003e\n    datetime.datetime.utcfromtimestamp(None)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\nTypeError: \u0027NoneType\u0027 object cannot be interpreted as an integer\n\n```\n\nWhich I think will raise before _datetimeToString() processes it and there is no try except within _datetimeToString()",
+      "parentUuid": "61600186_db49d924",
       "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -149,6 +227,48 @@
       "side": 1,
       "message": "Yep.",
       "parentUuid": "af6b46f4_d352331a",
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3645565d_3cdfe63e",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T18:35:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "af6b46f4_d352331a",
+      "range": {
+        "startLine": 697,
+        "startChar": 28,
+        "endLine": 697,
+        "endChar": 31
+      },
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "862d4113_b31abc0f",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T18:35:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6ff68bd2_41894514",
       "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
