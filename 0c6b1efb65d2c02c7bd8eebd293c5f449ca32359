@@ -1,0 +1,84 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35ed75df_7062bbc8",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2625,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T18:27:36Z",
+      "side": 1,
+      "message": "The functiontools documentation for total_ordering says that we should also implement `__eq__`: https://docs.python.org/3/library/functools.html#functools.total_ordering\n\nI\u0027m not sure how critical that is but it doesn\u0027t look like this class or its parents implement `__eq__` unless I\u0027m overlooking it in the class hierarchy.",
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7bdc7db5_b296a927",
+        "filename": "zuul/model.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T18:27:36Z",
+      "side": 1,
+      "message": "Why do we set `request_time` here to the current time if we\u0027re going to manually set the time value again when running `node_class.new()`? Seems like this value would simply get overwritten? Maybe we should initialize to 0 in that case or None to match the backward compatibility path?",
+      "range": {
+        "startLine": 2687,
+        "startChar": 25,
+        "endLine": 2687,
+        "endChar": 36
+      },
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad2e3a92_bce3ca3d",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 634,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T18:27:36Z",
+      "side": 1,
+      "message": "Should this use `node.request_time or 0` as the value may be None?",
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af6b46f4_d352331a",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-14T18:27:36Z",
+      "side": 1,
+      "message": "Just to confirm this schema is for the API output data types not the inputs to the API from the service? Double checking because the input is integer/float and the output is str.",
+      "range": {
+        "startLine": 697,
+        "startChar": 28,
+        "endLine": 697,
+        "endChar": 31
+      },
+      "revId": "0c6b1efb65d2c02c7bd8eebd293c5f449ca32359",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
