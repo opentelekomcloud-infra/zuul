@@ -2384,8 +2384,8 @@ class Launcher:
             uploads_by_artifact[upload.artifact_uuid].append(upload)
             iba = self.image_build_registry.getItem(upload.artifact_uuid)
             if not iba:
-                self.log.warning("Unable to find artifact for upload %s",
-                                 upload.artifact_uuid)
+                self.log.warning("Unable to find artifact %s for upload %s",
+                                 upload.artifact_uuid, upload.uuid)
                 continue
             if set(upload.providers).isdisjoint(known_providers):
                 # An orphaned upload means that either
