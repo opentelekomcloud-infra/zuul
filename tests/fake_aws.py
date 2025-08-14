@@ -276,6 +276,11 @@ class FakeAwsProviderEndpoint(AwsProviderEndpoint):
             self.__testcase.register_image_calls.append(kwargs)
             return self.ec2_client.register_image_orig(*args, **kwargs)
 
+        # Just so we can count how many times it's called
+        def _fake_copy_image(*args, **kwargs):
+            self.__testcase.copy_image_calls.append(kwargs)
+            return self.ec2_client.copy_image_orig(*args, **kwargs)
+
         def _fake_get_paginator(*args, **kwargs):
             try:
                 return self.__testcase.fake_aws.get_paginator(*args, **kwargs)
@@ -290,6 +295,8 @@ class FakeAwsProviderEndpoint(AwsProviderEndpoint):
         self.ec2_client.allocate_hosts = _fake_allocate_hosts
         self.ec2_client.register_image_orig = self.ec2_client.register_image
         self.ec2_client.register_image = _fake_register_image
+        self.ec2_client.copy_image_orig = self.ec2_client.copy_image
+        self.ec2_client.copy_image = _fake_copy_image
         self.ec2_client.import_snapshot = \
             self.__testcase.fake_aws.import_snapshot
         self.ec2_client.import_image = \

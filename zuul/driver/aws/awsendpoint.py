@@ -50,6 +50,7 @@ from zuul.driver.util import (
 )
 from zuul.model import QuotaInformation
 from zuul.provider import (
+    BaseImageCopyJob,
     BaseImageImportJob,
     BaseImageUploadJob,
     BaseProviderEndpoint,
@@ -263,6 +264,30 @@ class AwsCreateStateMachine(statemachine.StateMachine):
                 self.label, self.flavor, self.instance['InstanceType'])
             return AwsInstance(self.endpoint.region, self.instance,
                                self.host, self.node.quota)
+
+
+class AwsImageCopyJob(BaseImageCopyJob):
+    def __init__(self, endpoint,
+                 provider_image, image_name,
+                 image_format, metadata,
+                 source_region):
+        super().__init__()
+        self.endpoint = endpoint
+        self.provider_image = provider_image
+        self.image_name = image_name
+        self.image_format = image_format
+        self.metadata = metadata
+        self.source_region = source_region
+
+    def run(self, external_id):
+        self.endpoint.log.debug(f"Copying image {self.image_name} "
+                                f"from {external_id} in {self.source_region}")
+
+        image_id = self.endpoint._copyImage(
+            self.provider_image, self.image_name,
+            self.image_format, self.metadata,
+            self.source_region, external_id)
+        return image_id
 
 
 class AwsImageImportJob(BaseImageImportJob):
@@ -827,7 +852,17 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
     def getImageCopyJob(self, source_provider, provider_image, image_name,
                         image_format, metadata, md5, sha256):
-        return None
+        source_endpoint = source_provider.endpoint
+        if not isinstance(source_endpoint, AwsProviderEndpoint):
+            return None
+        source_region = source_endpoint.region
+        if source_region == self.region:
+            return None
+        return AwsImageCopyJob(
+            self,
+            provider_image, image_name,
+            image_format, metadata,
+            source_region)
 
     def getImageUploadJob(self, provider_image, image_name,
                           image_format, metadata, md5, sha256, bucket_name):
@@ -1077,6 +1112,35 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self.log.debug(f"Upload of {image_name} complete as {task['ImageId']}")
         # Last task returned from paginator above
         return task['ImageId']
+
+    def _copyImage(self, provider_image, image_name,
+                   image_format, metadata,
+                   source_region, source_ami):
+        with self.rate_limiter:
+            resp = self.ec2_client.copy_image(
+                Name=image_name,
+                SourceImageId=source_ami,
+                SourceRegion=source_region,
+                CopyImageTags=False,
+                TagSpecifications=[
+                    {
+                        'ResourceType': 'image',
+                        'Tags': tag_dict_to_list(metadata),
+                    },
+                ]
+            )
+        image_id = resp['ImageId']
+        while True:
+            time.sleep(self.IMAGE_UPLOAD_SLEEP)
+            for ami in self._listAmis():
+                if ami['ImageId'] == image_id:
+                    state = ami['State'].lower()
+                    if state == "available":
+                        return image_id
+                    if state == "failed":
+                        reason = ami['StateReason']
+                        raise Exception(f"Image copy failed: {reason}")
+                    break
 
     def deleteImage(self, external_id):
         snaps = set()
