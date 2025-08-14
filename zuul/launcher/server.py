@@ -1207,12 +1207,15 @@ class Launcher:
                 state = model.NodesetRequest.State.FAILED
                 log.error("Marking request %s as %s: %s",
                           request, state, str(err))
+                with self.createZKContext(request._lock, log) as ctx:
+                    request.updateAttributes(ctx, state=state)
+                # Note that we still hold the lock for a few more
+                # instructions, but the schedulers or executors should
+                # not care.
                 event = model.NodesProvisionedEvent(
                     request.uuid, request.buildset_uuid)
                 self.result_events[request.tenant_name][
                     request.pipeline_name].put(event)
-                with self.createZKContext(request._lock, log) as ctx:
-                    request.updateAttributes(ctx, state=state)
             except Exception:
                 log.exception("Error processing request %s", request)
             if request.state in request.FINAL_STATES:
@@ -1587,14 +1590,15 @@ class Launcher:
         state = (model.NodesetRequest.State.FAILED if failed
                  else model.NodesetRequest.State.FULFILLED)
         log.debug("Marking request %s as %s", request, state)
-
+        with self.createZKContext(request._lock, log) as ctx:
+            request.updateAttributes(ctx, state=state)
+        # Note that we still hold the lock for a few more
+        # instructions, but the schedulers or executors should not
+        # care.
         event = model.NodesProvisionedEvent(
             request.uuid, request.buildset_uuid)
         self.result_events[request.tenant_name][request.pipeline_name].put(
             event)
-
-        with self.createZKContext(request._lock, log) as ctx:
-            request.updateAttributes(ctx, state=state)
 
     def _processNodes(self):
         for node in self.api.getMatchingProviderNodes():
