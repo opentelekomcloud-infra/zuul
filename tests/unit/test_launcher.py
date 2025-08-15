@@ -933,10 +933,19 @@ class TestLauncher(LauncherBaseTestCase):
         launcher2 = self.createLauncher(instance_id=1,
                                         connection_filter="nope")
         self.waitUntilSettled()
+
+        # Ensure the first launcher is able to updateTenantProviders after
+        # the new launcher has registered its connection filter.
+        self.launcher.layout_updated_event.set()
+        self.launcher.wake_event.set()
+        time.sleep(1)
+        self.waitUntilSettled()
+
         self.launcher.log = logging.getLogger("zuul.Launcher-0")
         launcher2.log = logging.getLogger("zuul.Launcher-1")
 
-        self.requestNodes(['debian-normal'])
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.State.FULFILLED, request.state)
 
         launcher2.stop()
         launcher2.join()
