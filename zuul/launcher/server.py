@@ -2574,17 +2574,6 @@ class Launcher:
         image_upload = valid_uploads[-1]
         return image_upload.external_id
 
-    def getQuotaUsed(self, provider, include_requested):
-        used = model.QuotaInformation()
-        states = model.ProviderNode.ALLOCATED_STATES
-        if include_requested:
-            states = states + (model.ProviderNode.State.REQUESTED,)
-        for node in self.api.getProviderNodes():
-            if (provider.canonical_name == node.provider and
-                node.state in states):
-                used.add(node.quota)
-        return used
-
     def getProviderQuota(self, provider):
         val = self._provider_quota_cache.get(provider.canonical_name)
         if val:
@@ -2662,7 +2651,9 @@ class Launcher:
             # to decide whether to add a new request to the provider,
             # so we should include other nodes we've already allocated
             # to this provider in the decision.
-            total.subtract(self.getQuotaUsed(provider, include_requested=True))
+            used = self.api.nodes_cache.getQuota(
+                provider, include_requested=True)
+            total.subtract(used)
             log.debug("Provider %s quota available including Zuul: %s",
                       provider, total)
         else:
@@ -2681,7 +2672,8 @@ class Launcher:
         # called to decide whether to issue the create API call for a
         # node already allocated to the provider.  We only want to
         # "pause" the provider if it really is at quota.
-        total.subtract(self.getQuotaUsed(provider, include_requested=False))
+        used = self.api.nodes_cache.getQuota(provider, include_requested=False)
+        total.subtract(used)
         log.debug("Provider %s quota including Zuul: %s", provider, total)
         total.subtract(node.quota)
         log.debug("Node %s required quota: %s", node, node.quota)
