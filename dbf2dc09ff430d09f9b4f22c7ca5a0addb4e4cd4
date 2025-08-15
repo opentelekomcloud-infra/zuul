@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bdc2ac82_4b96fa65",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-15T21:59:15Z",
+      "side": 1,
+      "message": "The traceback in the commit message was originally seen in this test failure: https://zuul.opendev.org/t/zuul/build/da75b459d7654f7e929bf532b1cfc351/logs. The failure logs for that may be easier to see in the html output instead: https://storage.gra.cloud.ovh.net/v1/AUTH_dcaab5e32b234d56b626f72581e3644c/zuul_opendev_logs_da7/zuul/da75b459d7654f7e929bf532b1cfc351/testr_results.html",
+      "revId": "dbf2dc09ff430d09f9b4f22c7ca5a0addb4e4cd4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
