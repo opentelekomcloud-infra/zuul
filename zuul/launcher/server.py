@@ -1271,10 +1271,11 @@ class Launcher:
 
     def _acceptRequest(self, request, log, ready_nodes):
         log.debug("Considering request %s", request)
+        messages = []
         request_ready_nodes = self._filterReadyNodes(ready_nodes, request)
         # Create provider nodes for the requested labels
         label_providers = self._selectProviders(
-            request, request_ready_nodes, log)
+            request, request_ready_nodes, messages)
         with (self.createZKContext(request._lock, log) as ctx,
               request.activeContext(ctx)):
             for i, (label, provider) in enumerate(label_providers):
@@ -1321,7 +1322,7 @@ class Launcher:
                     if not bool(request.provider_node_data):
                         try:
                             has_quota = self.doesProviderHaveQuotaForLabel(
-                                provider, label, log)
+                                provider, label, messages)
                         except Exception:
                             self.log.exception(
                                 "Error checking quota for label %s "
@@ -1338,6 +1339,7 @@ class Launcher:
                             # happen only if we can fulfill the first
                             # label immediately.
                             return
+                    self._emitMessages(log, messages)
                     node = self._requestNode(
                         label, request, provider, log, ctx)
                     log.debug("Requested node %s", node.uuid)
@@ -1352,7 +1354,7 @@ class Launcher:
         random.shuffle(providers)
         return providers
 
-    def _selectProviders(self, request, request_ready_nodes, log):
+    def _selectProviders(self, request, request_ready_nodes, messages):
         providers = self.tenant_providers.get(request.tenant_name)
         if not providers:
             raise NodesetRequestError(
@@ -1363,7 +1365,7 @@ class Launcher:
         providers = self._shuffleProviders(providers)
 
         # Sort that list by quota
-        providers.sort(key=lambda p: self.getQuotaPercentage(p, log))
+        providers.sort(key=lambda p: self.getQuotaPercentage(p, messages))
 
         # Then if there are ready nodes, sort so that we can use the
         # most ready nodes.
@@ -1376,9 +1378,9 @@ class Launcher:
                     for node_provider in node_providers:
                         usable_provider_ready_nodes[
                             node_provider.canonical_name] += 1
-                        log.debug(
-                            "Found usable ready node %s in %s",
-                            node, node_provider)
+                        messages.append(
+                            f"Found usable ready node {node} "
+                            f"in {node_provider}")
             providers.sort(
                 key=lambda p: usable_provider_ready_nodes[p.canonical_name],
                 reverse=True
@@ -1440,7 +1442,7 @@ class Launcher:
                 # larger than the capacity.
                 try:
                     if not self.doesProviderHaveQuotaForLabel(
-                            provider, label, log, include_usage=False):
+                            provider, label, messages, include_usage=False):
                         continue
                 except Exception:
                     self.log.exception(
@@ -1459,7 +1461,7 @@ class Launcher:
         # labels for this request, then we will ensure that we use the
         # same provider for all.
         if require_same_provider := bool(ideal_providers_for_all_labels):
-            log.debug("Requiring same provider for all labels")
+            messages.append("Requiring same provider for all labels")
 
         # Turn the reduced set union of providers that work for all
         # labels back into an ordered list.
@@ -1471,11 +1473,13 @@ class Launcher:
         most_common = existing_provider_names.most_common()
         if most_common:
             main_provider_name = most_common[0][0]
-            log.debug("Using most common provider %s from %s",
-                      main_provider_name, most_common)
+            messages.append(
+                f"Using most common provider {main_provider_name} "
+                f"from {most_common}")
         elif request.preferred_provider:
             main_provider_name = request.preferred_provider
-            log.debug("Using requested provider %s", main_provider_name)
+            messages.append(
+                f"Using requested provider {main_provider_name}")
         if main_provider_name:
             for main_provider in providers:
                 if main_provider.canonical_name == main_provider_name:
@@ -1485,8 +1489,10 @@ class Launcher:
                     f"Unable to find provider {main_provider_name}")
         elif providers_for_all_labels:
             main_provider = providers_for_all_labels[0]
-            log.debug("Using first provider for all labels %s from %s",
-                      main_provider.canonical_name, providers_for_all_labels)
+            messages.append(
+                "Using first provider "
+                f"for all labels {main_provider.canonical_name} "
+                f"from {providers_for_all_labels}")
 
         label_providers = []
         for i, label_name in enumerate(request.labels):
@@ -1499,16 +1505,16 @@ class Launcher:
                     f"No provider found for label {label_name}")
             if main_provider in candidate_providers:
                 provider = main_provider
-                log.debug(
-                    "Selected request main provider %s "
-                    "for label %s index %s from candidate providers: %s",
-                    provider, label_name, i, candidate_providers)
+                messages.append(
+                    f"Selected request main provider {provider} "
+                    f"for label {label_name} index {i} from "
+                    f"candidate providers: {candidate_providers}")
             else:
                 provider = candidate_providers[0]
-                log.debug(
-                    "Selected provider %s "
-                    "for label %s index %s from candidate providers: %s",
-                    provider, label_name, i, candidate_providers)
+                messages.append(
+                    f"Selected provider {provider} "
+                    f"for label {label_name} index {i} from "
+                    f"candidate providers: {candidate_providers}")
             label = provider.labels[label_name]
             label_providers.append((label, provider))
 
@@ -1554,18 +1560,20 @@ class Launcher:
         return node
 
     def _checkRequest(self, request, log):
+        messages = []
         requested_nodes = [self.api.getProviderNode(node_id) for
                            node_id in request.nodes]
         if any(n.state in n.FAILED_STATES for n in requested_nodes):
             # If any nodes failed, see if we need to change providers
             # for any or all of them.
-            label_providers = self._selectProviders(request, None, log)
+            label_providers = self._selectProviders(request, None, messages)
             for i, node in enumerate(requested_nodes):
                 label, provider = label_providers[i]
                 if (node.state in node.FAILED_STATES or
                     provider.canonical_name != node.provider):
                     # We're either retrying this node or we're
                     # changing providers.
+                    self._emitMessages(log, messages)
                     log.info(
                         "Retrying node for label %s index %s with provider %s",
                         label, i, provider)
@@ -1724,7 +1732,14 @@ class Launcher:
 
         return False
 
+    def _emitMessages(self, log, messages):
+        for m in messages:
+            log.debug(m)
+        messages.clear()
+
     def _checkNode(self, node, log):
+        # Log messages that we will only emit if they are interesting
+        messages = []
         with self.createZKContext(node._lock, self.log) as ctx:
             with node.activeContext(ctx):
                 provider = self._getProviderForNode(node)
@@ -1739,13 +1754,14 @@ class Launcher:
                 old_state = node.create_state_machine.state
                 if old_state == node.create_state_machine.START:
                     if not self.doesProviderHaveQuotaForNode(
-                            provider, node, log):
+                            provider, node, messages):
                         # Consider this provider paused, don't attempt
                         # to create the node until we think we have
                         # quota.
                         self.wake_event.set()
                         return
                     # Start the clock for launch-timeout from this point.
+                    self._emitMessages(log, messages)
                     node.create_state_machine.start_time = time.time()
                 instance = node.create_state_machine.advance()
                 new_state = node.create_state_machine.state
@@ -2606,22 +2622,24 @@ class Launcher:
         self._provider_available_cache[provider.canonical_name] = quota
         return quota
 
-    def getQuotaPercentage(self, provider, log):
+    def getQuotaPercentage(self, provider, messages):
         try:
             # This is cached and updated every 5 minutes
             total = self.getProviderQuotaAvailable(provider).copy()
         except Exception:
-            log.exception("Unable to get provider quota")
+            # This will emit an annotated log message, but no traceback
+            messages.append("Unable to get provider quota")
+            self.log.exception("Unable to get provider quota")
             # If there is an error getting quota information, assume
             # the provider is having problems and report it as full.
             return 1.0
         # This is continuously updated in the background
         used = self.api.nodes_cache.getQuota(provider, include_requested=True)
         pct = 0.0
-        log.debug("Provider %s quota available before Zuul: %s",
-                  provider, total)
-        log.debug("Provider %s quota claimed by Zuul: %s",
-                  provider, used)
+        messages.append(
+            f"Provider {provider} quota available before Zuul: {total}")
+        messages.append(
+            f"Provider {provider} quota claimed by Zuul: {used}")
         for resource in total.quota.keys():
             used_r = used.quota.get(resource, used.default)
             total_r = total.quota[resource]
@@ -2629,7 +2647,8 @@ class Launcher:
                 pct = max(1.0, pct)
             else:
                 pct = max(used_r / total_r, pct)
-        log.debug("Provider %s usage factor: %s", provider, pct)
+        messages.append(
+            f"Provider {provider} usage factor: {pct}")
         if pct < 1.0:
             # If we are below 100% usage, lose precision so that we only
             # consider 10% gradiations.  This may help us avoid
@@ -2641,12 +2660,12 @@ class Launcher:
             pct = round(pct, 1)
         return pct
 
-    def doesProviderHaveQuotaForLabel(self, provider, label, log,
+    def doesProviderHaveQuotaForLabel(self, provider, label, messages,
                                       include_usage=True):
         if include_usage:
             total = self.getProviderQuotaAvailable(provider).copy()
-            log.debug("Provider %s quota available before Zuul: %s",
-                      provider, total)
+            messages.append(
+                f"Provider {provider} quota available before Zuul: {total}")
             # We include requested nodes here because this is called
             # to decide whether to add a new request to the provider,
             # so we should include other nodes we've already allocated
@@ -2654,29 +2673,31 @@ class Launcher:
             used = self.api.nodes_cache.getQuota(
                 provider, include_requested=True)
             total.subtract(used)
-            log.debug("Provider %s quota available including Zuul: %s",
-                      provider, total)
+            messages.append(
+                f"Provider {provider} quota available including Zuul: {total}")
         else:
             total = self.getProviderQuota(provider).copy()
-            log.debug("Provider %s quota before Zuul: %s", provider, total)
+            messages.append(
+                f"Provider {provider} quota before Zuul: {total}")
 
         label_quota = provider.getQuotaForLabel(label)
         total.subtract(label_quota)
-        log.debug("Label %s required quota: %s", label, label_quota)
+        messages.append(
+            f"Label {label} required quota: {label_quota}")
         return total.nonNegative()
 
-    def doesProviderHaveQuotaForNode(self, provider, node, log):
+    def doesProviderHaveQuotaForNode(self, provider, node, messages):
         total = self.getProviderQuotaAvailable(provider).copy()
-        log.debug("Provider %s quota before Zuul: %s", provider, total)
+        messages.append(f"Provider {provider} quota before Zuul: {total}")
         # We do not include requested nodes here because this is
         # called to decide whether to issue the create API call for a
         # node already allocated to the provider.  We only want to
         # "pause" the provider if it really is at quota.
         used = self.api.nodes_cache.getQuota(provider, include_requested=False)
         total.subtract(used)
-        log.debug("Provider %s quota including Zuul: %s", provider, total)
+        messages.append(f"Provider {provider} quota including Zuul: {total}")
         total.subtract(node.quota)
-        log.debug("Node %s required quota: %s", node, node.quota)
+        messages.append(f"Node {node} required quota: {node.quota}")
         return total.nonNegative()
 
     def runStatsElection(self):

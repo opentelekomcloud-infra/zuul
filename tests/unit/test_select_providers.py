@@ -156,8 +156,10 @@ class TestSelectProviders(LauncherBaseTestCase):
         ready_nodes = collections.defaultdict(list)
         request_ready_nodes = self.launcher._filterReadyNodes(
             ready_nodes, request)
+        messages = []
         label_providers = self.launcher._selectProviders(
-            request, request_ready_nodes, self.log)
+            request, request_ready_nodes, messages)
+        self.launcher._emitMessages(self.log, messages)
         self._assertProviders([
             ('debian-normal', 'east'),
         ], label_providers)
@@ -169,8 +171,10 @@ class TestSelectProviders(LauncherBaseTestCase):
         ready_nodes = collections.defaultdict(list)
         request_ready_nodes = self.launcher._filterReadyNodes(
             ready_nodes, request)
+        messages = []
         label_providers = self.launcher._selectProviders(
-            request, request_ready_nodes, self.log)
+            request, request_ready_nodes, messages)
+        self.launcher._emitMessages(self.log, messages)
         self._assertProviders([
             ('debian-normal', 'east'),
             ('debian-normal', 'east'),
@@ -188,8 +192,10 @@ class TestSelectProviders(LauncherBaseTestCase):
         ready_nodes = collections.defaultdict(list)
         request_ready_nodes = self.launcher._filterReadyNodes(
             ready_nodes, request)
+        messages = []
         label_providers = self.launcher._selectProviders(
-            request, request_ready_nodes, self.log)
+            request, request_ready_nodes, messages)
+        self.launcher._emitMessages(self.log, messages)
         self._assertProviders([
             ('debian-small', 'east'),
             ('debian-large', 'west'),
@@ -214,8 +220,10 @@ class TestSelectProviders(LauncherBaseTestCase):
         ready_nodes = collections.defaultdict(list)
         request_ready_nodes = self.launcher._filterReadyNodes(
             ready_nodes, request)
+        messages = []
         label_providers = self.launcher._selectProviders(
-            request, request_ready_nodes, self.log)
+            request, request_ready_nodes, messages)
+        self.launcher._emitMessages(self.log, messages)
         self._assertProviders([
             ('debian-normal', 'west'),
             ('debian-normal', 'west'),
@@ -233,8 +241,10 @@ class TestSelectProviders(LauncherBaseTestCase):
         ready_nodes = collections.defaultdict(list)
         request_ready_nodes = self.launcher._filterReadyNodes(
             ready_nodes, request)
+        messages = []
         label_providers = self.launcher._selectProviders(
-            request, request_ready_nodes, self.log)
+            request, request_ready_nodes, messages)
+        self.launcher._emitMessages(self.log, messages)
         self._assertProviders([
             ('debian-normal', 'west'),
         ], label_providers)
@@ -256,8 +266,10 @@ class TestSelectProviders(LauncherBaseTestCase):
         ready_nodes = collections.defaultdict(list)
         request_ready_nodes = self.launcher._filterReadyNodes(
             ready_nodes, request)
+        messages = []
         label_providers = self.launcher._selectProviders(
-            request, request_ready_nodes, self.log)
+            request, request_ready_nodes, messages)
+        self.launcher._emitMessages(self.log, messages)
         self._assertProviders([
             ('debian-normal', 'east'),
             ('debian-normal', 'east'),
@@ -284,8 +296,10 @@ class TestSelectProviders(LauncherBaseTestCase):
         # This could be used with either west or unused since they
         # have the same endpoint and this label.
         self.assertEqual(2, len(request_ready_nodes['debian-normal'][node1]))
+        messages = []
         label_providers = self.launcher._selectProviders(
-            request, request_ready_nodes, self.log)
+            request, request_ready_nodes, messages)
+        self.launcher._emitMessages(self.log, messages)
         self._assertProviders([
             ('debian-normal', 'west'),
         ], label_providers)
