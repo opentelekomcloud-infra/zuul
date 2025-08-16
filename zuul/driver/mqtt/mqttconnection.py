@@ -1,4 +1,5 @@
 # Copyright 2017 Red Hat, Inc.
+# Copyright 2025 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -13,6 +14,7 @@
 # under the License.
 
 import logging
+import threading
 import json
 
 import paho.mqtt.client as mqtt
@@ -55,12 +57,40 @@ class MQTTConnection(BaseConnection):
         self.connected = False
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
+        self.client.on_message = self._on_message
+        self.subscribed_topics = set()
+        self.subscribe_lock = threading.Lock()
+        self.response_lock = threading.Lock()
+        self.item_events = {}
+        self.item_results = {}
 
     def _on_connect(self, client, userdata, flags, rc):
-        self.connected = True
+        with self.subscribe_lock:
+            self.connected = True
+            for topic in self.subscribed_topics:
+                self.log.debug("Subscribing to %s", topic)
+                client.subscribe(topic)
 
     def _on_disconnect(self, client, userdata, rc):
         self.connected = False
+
+    def _on_message(self, client, userdata, msg):
+        self.log.debug("Received %s %s", msg.topic, msg.payload)
+        data = json.loads(msg.payload)
+        item_uuid = data.get('uuid', None)
+        if item_uuid is None:
+            return
+        result = data.get('merge_response', None)
+        if result is None:
+            return
+        result = bool(result)
+        with self.response_lock:
+            event = self.item_events.get(item_uuid)
+            if event is None:
+                return
+            self.item_results[item_uuid] = result
+            event.set()
+            self.log.debug("Set result for %s to %s", item_uuid, result)
 
     def onLoad(self, zk_client, component_registry):
         self.log.debug("Starting MQTT Connection")
@@ -98,3 +128,12 @@ class MQTTConnection(BaseConnection):
         except Exception:
             log.exception(
                 "Could not publish message to topic '%s' via mqtt", topic)
+
+    def subscribe(self, topic):
+        if topic in self.subscribed_topics:
+            return
+        with self.subscribe_lock:
+            if self.connected:
+                self.log.debug("Subscribing to %s", topic)
+                self.client.subscribe(topic)
+            self.subscribed_topics.add(topic)

@@ -2660,10 +2660,13 @@ class ZuulTestCase(BaseTestCase):
         # Set up mqtt related fakes
         self.mqtt_messages = []
 
+        orig = zuul.driver.mqtt.mqttconnection.MQTTConnection.publish
+
         def fakeMQTTPublish(_, topic, msg, qos, zuul_event_id):
             log = logging.getLogger('zuul.FakeMQTTPubish')
             log.info('Publishing message via mqtt')
             self.mqtt_messages.append({'topic': topic, 'msg': msg, 'qos': qos})
+            orig(_, topic, msg, qos, zuul_event_id)
         self.useFixture(fixtures.MonkeyPatch(
             'zuul.driver.mqtt.mqttconnection.MQTTConnection.publish',
             fakeMQTTPublish))

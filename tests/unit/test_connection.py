@@ -13,12 +13,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 import configparser
+import json
 import os
 import re
+import threading
 import textwrap
 import time
 import types
 
+import paho.mqtt.client as mqtt
 import sqlalchemy as sa
 
 import zuul
@@ -33,6 +36,7 @@ from tests.base import (
     ZuulTestCase,
     iterate_timeout,
     okay_tracebacks,
+    simple_layout,
 )
 
 
@@ -936,6 +940,108 @@ class TestMQTTConnection(ZuulTestCase):
         success_event = self.mqtt_messages.pop()
         self.assertEqual(success_event['topic'],
                          'tenant-one/zuul_buildset/check/org/project/weird__')
+
+    @simple_layout('layouts/mqtt-phase2.yaml')
+    def test_mqtt_phase2(self):
+        # Test the MQTT phase 2 reporter
+        messages = []
+        event = threading.Event()
+
+        def on_message(client, userdata, msg):
+            messages.append(msg)
+            event.set()
+
+        def on_connect(client, userdata, flags, rc):
+            client.subscribe('#')
+
+        client = mqtt.Client(client_id='test')
+        client.connect('localhost', port=1883, keepalive=60)
+
+        client._on_message = on_message
+        client._on_connect = on_connect
+        client.loop_start()
+        self.addCleanup(client.loop_stop)
+
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+
+        event.wait(60)
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(1, len(messages))
+        self.assertEqual('zuul/gate', messages[0].topic)
+        msg = json.loads(messages[0].payload)
+        self.assertEqual('success', msg['action'])
+        messages.clear()
+
+        item_uuid = msg['uuid']
+        data = json.dumps({
+            'uuid': item_uuid,
+            'merge_response': True,
+        })
+        client.publish('zuul/gate', data)
+        self.waitUntilSettled()
+        buildsets = self.scheds.first.connections.connections[
+            'database'].getBuildsets()
+        self.assertEqual(len(buildsets), 1)
+        self.assertEqual(buildsets[0].result, 'SUCCESS')
+
+    @simple_layout('layouts/mqtt-phase2.yaml')
+    def test_mqtt_phase2_fail(self):
+        # Test the MQTT phase 2 reporter with a failure result
+        messages = []
+        event = threading.Event()
+
+        def on_message(client, userdata, msg):
+            messages.append(msg)
+            event.set()
+
+        def on_connect(client, userdata, flags, rc):
+            client.subscribe('#')
+
+        client = mqtt.Client(client_id='test')
+        client.connect('localhost', port=1883, keepalive=60)
+
+        client._on_message = on_message
+        client._on_connect = on_connect
+        client.loop_start()
+        self.addCleanup(client.loop_stop)
+
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+
+        event.wait(60)
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(1, len(messages))
+        self.assertEqual('zuul/gate', messages[0].topic)
+        msg = json.loads(messages[0].payload)
+        self.assertEqual('success', msg['action'])
+        messages.clear()
+
+        item_uuid = msg['uuid']
+        data = json.dumps({
+            'uuid': item_uuid,
+            'merge_response': False,
+        })
+        client.publish('zuul/gate', data)
+        self.waitUntilSettled()
+        buildsets = self.scheds.first.connections.connections[
+            'database'].getBuildsets()
+        self.assertEqual(len(buildsets), 1)
+        self.assertEqual(buildsets[0].result, 'MERGE_FAILURE')
+
+    @simple_layout('layouts/mqtt-phase2-timeout.yaml')
+    def test_mqtt_phase2_timeout(self):
+        # Test the MQTT phase 2 reporter timeout
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        buildsets = self.scheds.first.connections.connections[
+            'database'].getBuildsets()
+        self.assertEqual(len(buildsets), 1)
+        self.assertEqual(buildsets[0].result, 'MERGE_FAILURE')
 
 
 class TestElasticsearchConnection(AnsibleZuulTestCase):

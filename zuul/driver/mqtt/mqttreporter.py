@@ -1,5 +1,5 @@
 # Copyright 2017 Red Hat, Inc.
-# Copyright 2024 Acme Gating, LLC
+# Copyright 2024-2025 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -14,7 +14,9 @@
 # under the License.
 
 import logging
+import threading
 import time
+
 import voluptuous as v
 
 from zuul.lib.logutil import get_annotated_logger
@@ -32,14 +34,22 @@ class MQTTReporter(BaseReporter):
         '#': '_',
     })
 
+    def __init__(self, driver, connection, config):
+        super().__init__(driver, connection, config)
+        merge_topic = self.config.get('merge-topic')
+        if merge_topic:
+            self.connection.subscribe(merge_topic)
+        # TODO: unsubscribe when topics are no longer relevant
+
     def report(self, item, phase1=True, phase2=True):
-        if not phase1:
-            return
-        include_returned_data = self.config.get('include-returned-data')
-        log = get_annotated_logger(self.log, item.event)
-        log.debug("Report %s, params %s", item, self.config)
-        buildset = item.current_build_set
-        changes = [
+        if phase1:
+            self.reportPhase1(item)
+        if phase2:
+            return self.reportPhase2(item)
+        return None
+
+    def _getChanges(self, item):
+        return [
             {
                 'project': change.project.name,
                 'branch': getattr(change, 'branch', ''),
@@ -53,6 +63,36 @@ class MQTTReporter(BaseReporter):
             }
             for change in item.changes
         ]
+
+    def reportPhase1(self, item):
+        log = get_annotated_logger(self.log, item.event)
+        topic = None
+        try:
+            topic = self.config.get('topic')
+            if not topic:
+                return
+            topic = topic.format(
+                tenant=item.manager.tenant.name,
+                pipeline=item.manager.pipeline.name,
+                changes=self._getChanges(item),
+                project=item.changes[0].project.name,
+                branch=getattr(item.changes[0], 'branch', None),
+                change=getattr(item.changes[0], 'number', None),
+                patchset=getattr(item.changes[0], 'patchset', None),
+                ref=getattr(item.changes[0], 'ref', None))
+            topic = topic.translate(self.invalid_topic_chars)
+        except Exception:
+            log.exception("Error while formatting MQTT topic %s:",
+                          self.config['topic'])
+        if topic:
+            self.reportMessage(topic, item)
+
+    def reportMessage(self, topic, item):
+        include_returned_data = self.config.get('include-returned-data')
+        log = get_annotated_logger(self.log, item.event)
+        log.debug("Report %s, params %s", item, self.config)
+        buildset = item.current_build_set
+        changes = self._getChanges(item)
         message = {
             'timestamp': time.time(),
             'action': self._action,
@@ -153,24 +193,35 @@ class MQTTReporter(BaseReporter):
                         retry_build_information)
 
             message['buildset']['builds'].append(job_informations)
-        topic = None
-        try:
-            topic = self.config['topic'].format(
-                tenant=item.manager.tenant.name,
-                pipeline=item.manager.pipeline.name,
-                changes=changes,
-                project=item.changes[0].project.name,
-                branch=getattr(item.changes[0], 'branch', None),
-                change=getattr(item.changes[0], 'number', None),
-                patchset=getattr(item.changes[0], 'patchset', None),
-                ref=getattr(item.changes[0], 'ref', None))
-            topic = topic.translate(self.invalid_topic_chars)
-        except Exception:
-            log.exception("Error while formatting MQTT topic %s:",
-                          self.config['topic'])
-        if topic is not None:
-            self.connection.publish(
-                topic, message, self.config.get('qos', 0), item.event)
+        self.connection.publish(
+            topic, message, self.config.get('qos', 0), item.event)
+
+    def reportPhase2(self, item):
+        merge_topic = self.config.get('merge-topic')
+        if not merge_topic:
+            return []
+        with self.connection.response_lock:
+            self.connection.item_events[item.uuid] = threading.Event()
+            self.connection.item_results[item.uuid] = None
+
+        merge_timeout = self.config.get('merge-timeout', 60)
+        log = get_annotated_logger(self.log, item.event)
+
+        self.reportMessage(merge_topic, item)
+
+        log.debug("Wait for response %s, timeout %s", item, merge_timeout)
+        result = self.connection.item_results.get(item.uuid)
+        if result is None:
+            self.connection.item_events[item.uuid].wait(timeout=merge_timeout)
+            result = self.connection.item_results[item.uuid]
+        with self.connection.response_lock:
+            self.connection.item_results.pop(item.uuid, None)
+            self.connection.item_events.pop(item.uuid, None)
+        if result is not None:
+            if bool(result):
+                return []
+            return [f'Received MQTT result {result}']
+        return ['Timeout waiting for MQTT result']
 
 
 def topicValue(value):
@@ -200,7 +251,9 @@ def qosValue(value):
 
 def getSchema():
     return v.Schema({
-        v.Required('topic'): topicValue,
+        'topic': topicValue,
         'qos': qosValue,
         'include-returned-data': bool,
+        'merge-topic': str,
+        'merge-timeout': int,
     })

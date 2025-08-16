@@ -322,3 +322,41 @@ reporter. Each pipeline must provide a topic name. For example:
 
       If set to ``true``, Zuul will include any data returned from the
       job via :ref:`return_values`.
+
+   .. attr:: merge-topic
+
+      If this value is set, the reporter will publish a message during
+      the merge phase of a pipeline that is configured to merge
+      changes.  Unlike the `topic` attribute, this must be a plain
+      string with no substitutions.  If `topic` is also configured,
+      then two messages will be sent, the first will be sent during
+      the phase when votes are being cast by reporters, and the second
+      during the phase when merge commands are sent.
+
+      Reporters are processed in the order listed in the pipeline
+      configuration, so if the MQTT reporter should run last, it
+      should be listed last.
+
+      If this value is set, the reporter will expect a response on the
+      same topic.  The response should consist of the following JSON
+      message::
+
+         {
+           "uuid": the item uuid as a string,
+           "success": whether the reporter should succeed as a bool
+         }
+
+      The item UUID is contained in the message that is sent by Zuul.
+
+      The reporter will pause until it receives the response message
+      or the timeout is reached.  If the ``success`` key is true, then
+      the reporter will be considered successful.  If it is false,
+      then the status of the buildset will be changed to
+      ``MERGE_FAILURE``.
+
+   .. attr:: merge-timeout
+      :default: 60
+
+      If `merge-topic` is set, this determines how long the reporter
+      will wait for a response before timing out and assuming a
+      failure result.
