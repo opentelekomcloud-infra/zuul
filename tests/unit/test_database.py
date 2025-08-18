@@ -16,6 +16,7 @@ import difflib
 import os
 import re
 import subprocess
+import uuid
 
 from zuul.driver.sql import SQLDriver
 from zuul.zk import ZooKeeperClient
@@ -468,8 +469,12 @@ class TestPostgresqlDatabase(DBBaseTestCase):
         # Test that SQLAlchemy create_all produces the same output as
         # a full migration run.
         pg_dump = os.environ.get("ZUUL_TEST_PG_DUMP", "pg_dump")
+        # Force a restrict key so we can compare the output
+        # of the dump before and after the migration.
+        restrict_key = uuid.uuid4().hex
         sqlalchemy_out = subprocess.check_output(
-            f"{pg_dump} -h {self.db.host} -U {self.db.name} -s {self.db.name}",
+            f"{pg_dump} -h {self.db.host} -U {self.db.name} -s {self.db.name}"
+            " --restrict-key={restrict_key}",
             shell=True,
             env={'PGPASSWORD': self.db.passwd}
         )
@@ -488,7 +493,8 @@ class TestPostgresqlDatabase(DBBaseTestCase):
         self.connection.onLoad(self.zk_client)
 
         alembic_out = subprocess.check_output(
-            f"{pg_dump} -h {self.db.host} -U {self.db.name} -s {self.db.name}",
+            f"{pg_dump} -h {self.db.host} -U {self.db.name} -s {self.db.name}"
+            " --restrict-key={restrict_key}",
             shell=True,
             env={'PGPASSWORD': self.db.passwd}
         )
