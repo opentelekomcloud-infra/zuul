@@ -39,7 +39,7 @@
     "redux-immutable-state-invariant": "^2.1.0",
     "redux-thunk": "^2.3.0",
     "sockette": "^2.0.0",
-    "swagger-ui": "^3.20.1",
+    "swagger-ui": "^4.19.1",
     "victory-area": "^37.3.6",
     "victory-axis": "^37.3.6",
     "victory-bar": "^37.3.6",
@@ -64,10 +64,12 @@
   },
   "resolutions": {
     "formdata-node": "4.0.0",
-    "nanoid": "2.1.11",
     "@babel/core": "^7.22.0",
     "@babel/preset-env": "^7.22.0",
-    "@babel/preset-react": "^7.22.0"
+    "@babel/preset-react": "^7.22.0",
+    "react": "17.0.2",
+    "react-dom": "17.0.2",
+    "eslint": "^7.32.0"
   },
   "devDependencies": {
     "@babel/core": "^7.22.0",
@@ -79,13 +81,17 @@
     "@babel/plugin-transform-optional-chaining": "^7.27.1",
     "@babel/preset-env": "^7.22.0",
     "@babel/preset-react": "^7.22.0",
+    "@types/node": "^18.0.0",
+    "@types/react": "^17.0.0",
     "babel-plugin-dynamic-import-node": "^2.3.3",
     "customize-cra": "^1.0.0",
+    "eslint": "^7.32.0",
     "eslint-plugin-jest": "^23.8.2",
     "eslint-plugin-react": "^7.19.0",
     "eslint-plugin-standard": "^4.0.1",
     "react-app-rewired": "^2.2.1",
     "react-app-rewired-esbuild": "^0.0.11",
+    "typescript": "^4.9.0",
     "yarn": "^1.16.0"
   },
   "//": [
@@ -110,5 +116,12 @@
     "not dead",
     "not ie <= 11",
     "not op_mini all"
-  ]
+  ],
+  "jest": {
+    "moduleNameMapper": {
+      "^swagger-client/es/(.*)": "swagger-client/lib/$1",
+      "^@swagger-api/apidom-reference/configuration/empty$": "@swagger-api/apidom-reference/src/configuration/empty.cjs",
+      "^@swagger-api/apidom-reference/(.*)": "@swagger-api/apidom-reference/src/$1.cjs"
+    }
+  }
 }
