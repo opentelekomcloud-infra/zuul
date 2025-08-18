@@ -1270,7 +1270,6 @@ class Launcher:
         return request_ready_nodes
 
     def _acceptRequest(self, request, log, ready_nodes):
-        log.debug("Considering request %s", request)
         messages = []
         request_ready_nodes = self._filterReadyNodes(ready_nodes, request)
         # Create provider nodes for the requested labels
@@ -1330,8 +1329,6 @@ class Launcher:
                             raise NodesetRequestError(
                                 "Unable to determine quota")
                         if not has_quota:
-                            log.debug("Deferring request %s "
-                                      "due to insufficient quota", request)
                             # TODO: We may want to consider all the
                             # labels at once so that if we can
                             # fulfilly any label immediately, we
