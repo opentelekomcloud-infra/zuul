@@ -39,7 +39,7 @@
     "redux-immutable-state-invariant": "^2.1.0",
     "redux-thunk": "^2.3.0",
     "sockette": "^2.0.0",
-    "swagger-ui": "^3.20.1",
+    "swagger-ui": "^4.19.1",
     "victory-area": "^37.3.6",
     "victory-axis": "^37.3.6",
     "victory-bar": "^37.3.6",
@@ -116,5 +116,12 @@
     "not dead",
     "not ie <= 11",
     "not op_mini all"
-  ]
+  ],
+  "jest": {
+    "moduleNameMapper": {
+      "^swagger-client/es/(.*)": "swagger-client/lib/$1",
+      "^@swagger-api/apidom-reference/configuration/empty$": "@swagger-api/apidom-reference/src/configuration/empty.cjs",
+      "^@swagger-api/apidom-reference/(.*)": "@swagger-api/apidom-reference/src/$1.cjs"
+    }
+  }
 }
