@@ -1459,6 +1459,87 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.assertEqual('debian-large', labels[2])
         self.assertEqual('debian-normal', labels[3])
 
+    @simple_layout('layouts/nodepool-defaults.yaml', enable_nodepool=True)
+    def test_nodepool_config_defaults(self):
+        # Some notes about the current inheritance scheme:
+        # 1) Providers inherit attributes from sections (and so on)
+        #   A) Dictionaries are merged
+        #   B) But flavors, images, labels lists are appended
+        #   C) That means we can't override a label config in a section
+        #   D) And we can add more than one label config with the same name
+        #   E) But in the end, the launcher will only see the last one
+        #   F) TODO: consider correcting D, and possibly C
+        # 2) Labels inherit some attributes from their images and flavors
+        #   A) Labels override flavors override images
+        layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
+
+        self.assertEqual(2, len(layout.images))
+        image = layout.images['debian']
+        self.assertEqual('debian', image.name)
+        self.assertEqual('cloud', image.type)
+        image = layout.images['debian-local']
+        self.assertEqual('debian-local', image.name)
+        self.assertEqual('zuul', image.type)
+
+        self.assertEqual(2, len(layout.flavors))
+        flavor = layout.flavors['normal']
+        self.assertEqual('normal', flavor.name)
+        flavor = layout.flavors['large']
+        self.assertEqual('large', flavor.name)
+
+        self.assertEqual(3, len(layout.labels))
+        label = layout.labels['debian-normal']
+        self.assertEqual('debian-normal', label.name)
+        self.assertEqual('debian', label.image)
+        self.assertEqual('normal', label.flavor)
+        label = layout.labels['debian-large']
+        self.assertEqual('debian-large', label.name)
+        self.assertEqual('debian', label.image)
+        self.assertEqual('large', label.flavor)
+        label = layout.labels['debian-local-normal']
+        self.assertEqual('debian-local-normal', label.name)
+        self.assertEqual('debian-local', label.image)
+        self.assertEqual('normal', label.flavor)
+
+        section = layout.sections['aws-base']
+        self.assertEqual('aws-base', section.name)
+        self.assertEqual(True, section.abstract)
+        self.assertTrue('launch-timeout' in section.config)
+        provider_config = layout.provider_configs['aws-us-east-1-main']
+        self.assertEqual('aws-us-east-1-main', provider_config.name)
+        self.assertEqual('aws-us-east-1', provider_config.section)
+        provider = layout.providers['aws-us-east-1-main']
+        self.assertEqual(3, len(provider.labels))
+        labels = sorted([x for x in provider.labels.keys()])
+        self.assertEqual('debian-large', labels[0])
+        self.assertEqual('debian-local-normal', labels[1])
+        self.assertEqual('debian-normal', labels[2])
+
+        # Check the inherited values
+        label = provider.labels['debian-normal']
+        self.assertEqual('gp2', label.volume_type)
+        self.assertEqual(10, label.volume_size)
+        self.assertEqual(40, label.iops)
+        self.assertEqual(20, label.throughput)
+        self.assertEqual('required', label.imds_http_tokens)
+        self.assertFalse(label.host_key_checking)
+
+        label = provider.labels['debian-large']
+        self.assertEqual('gp3', label.volume_type)
+        self.assertEqual(10, label.volume_size)
+        self.assertEqual(70, label.iops)
+        self.assertEqual(20, label.throughput)
+        self.assertEqual('required', label.imds_http_tokens)
+        self.assertFalse(label.host_key_checking)
+
+        label = provider.labels['debian-local-normal']
+        self.assertEqual('gp3', label.volume_type)
+        self.assertEqual(10, label.volume_size)
+        self.assertEqual(40, label.iops)
+        self.assertEqual(60, label.throughput)
+        self.assertEqual('required', label.imds_http_tokens)
+        self.assertFalse(label.host_key_checking)
+
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_section_inheritance(self):
         # Verify that a section may not inherit from a section in a

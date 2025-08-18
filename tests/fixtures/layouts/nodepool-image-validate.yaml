@@ -64,12 +64,13 @@
     name: aws-base
     abstract: true
     connection: aws
-    host-key-checking: false
-    boot-timeout: 120
     launch-timeout: 600
-    key-name: zuul
     object-storage:
       bucket-name: zuul
+    label-defaults:
+      host-key-checking: false
+      boot-timeout: 120
+      key-name: zuul
     flavors:
       - name: normal
         instance-type: t3.medium

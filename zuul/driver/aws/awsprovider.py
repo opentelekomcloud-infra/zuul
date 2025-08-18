@@ -107,6 +107,10 @@ class AwsProviderImage(BaseProviderImage):
         cloud_schema, zuul_schema,
         discriminant=discriminate(
             lambda val, alt: val['type'] == alt['type']))
+    inheritable_schema = assemble(
+        inheritable_cloud_schema,
+        inheritable_zuul_schema,
+    )
 
     def __init__(self, image_config, provider_config):
         self.image_id = None
@@ -209,6 +213,15 @@ class AwsProviderSchema(BaseProviderSchema):
 
     def getFlavorSchema(self):
         return AwsProviderFlavor.schema
+
+    def getInheritableLabelSchema(self):
+        return AwsProviderLabel.inheritable_schema
+
+    def getInheritableImageSchema(self):
+        return AwsProviderImage.inheritable_schema
+
+    def getInheritableFlavorSchema(self):
+        return AwsProviderFlavor.inheritable_schema
 
     def getProviderSchema(self):
         schema = super().getProviderSchema()

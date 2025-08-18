@@ -978,7 +978,8 @@ class TestLauncher(LauncherBaseTestCase):
                 name: aws-us-east-1
                 connection: aws
                 region: us-east-1
-                boot-timeout: 120
+                label-defaults:
+                  boot-timeout: 120
                 launch-timeout: 600
                 object-storage:
                   bucket-name: zuul
