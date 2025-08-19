@@ -2202,7 +2202,7 @@ class Launcher:
         candidate_launchers = {
             n: c for n, c in all_launchers.items()
             if not c.connection_filter
-            or endpoint.connection_name in c.connection_filter}
+            or endpoint.connection.connection_name in c.connection_filter}
         candidate_names = set(candidate_launchers)
         lscores = {mmh3.hash(n, signed=False): n
                    for n in candidate_names}
