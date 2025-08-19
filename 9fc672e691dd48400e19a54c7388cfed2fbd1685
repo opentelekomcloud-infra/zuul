@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ee1da736_e7fd30bd",
+        "filename": "doc/source/drivers/mqtt.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 37112
+      },
+      "writtenOn": "2025-08-19T05:48:00Z",
+      "side": 1,
+      "message": "This attribute was renamed to merge_response.",
+      "revId": "9fc672e691dd48400e19a54c7388cfed2fbd1685",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
