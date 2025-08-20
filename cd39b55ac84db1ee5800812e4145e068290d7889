@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "21218387_131f07b3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2475
+      },
+      "writtenOn": "2025-08-20T08:36:24Z",
+      "side": 1,
+      "message": "Please disregards my comment: I am posting draft comments I wrote five years ago 😮",
+      "revId": "cd39b55ac84db1ee5800812e4145e068290d7889",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3fa7e38b_cca73509",
+        "filename": "tests/unit/test_merger_repo.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 2475
+      },
+      "writtenOn": "2025-08-20T08:36:24Z",
+      "side": 1,
+      "message": "Since that hostname is not reachable, that takes 60 seconds to timeout.\n\nhttps://review.opendev.org/#/c/703698/ removes the test entirely.",
+      "range": {
+        "startLine": 276,
+        "startChar": 20,
+        "endLine": 276,
+        "endChar": 28
+      },
+      "revId": "cd39b55ac84db1ee5800812e4145e068290d7889",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
