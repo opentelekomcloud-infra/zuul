@@ -1214,6 +1214,28 @@ class TestLauncher(LauncherBaseTestCase):
                 except NoNodeError:
                     break
 
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_accept_failure(self):
+        # Test that we can resume accepting a request after an
+        # interruption
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.state, model.NodesetRequest.State.FULFILLED)
+        self.assertEqual(len(request.nodes), 1)
+        # Simulate an exception in _acceptRequest by reverting the
+        # state to requested and running it again to see if we resume
+        # without error.
+        self.log.debug("Resetting request state")
+        ctx = self.createZKContext(None)
+        request.updateAttributes(
+            ctx, state=model.NodesetRequest.State.REQUESTED)
+        self.launcher.wake_event.set()
+        self.log.debug("Waiting for request")
+        for _ in iterate_timeout(60, "request to be accepted"):
+            request.refresh(ctx)
+            if request.state == model.NodesetRequest.State.FULFILLED:
+                break
+        self.assertEqual(len(request.nodes), 1)
+
     @simple_layout('layouts/launcher-nodeset-fallback.yaml',
                    enable_nodepool=True)
     @okay_tracebacks('getResource')

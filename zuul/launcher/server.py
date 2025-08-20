@@ -1278,6 +1278,10 @@ class Launcher:
         with (self.createZKContext(request._lock, log) as ctx,
               request.activeContext(ctx)):
             for i, (label, provider) in enumerate(label_providers):
+                # If we crashed and are resuming, we may already have
+                # a node for this slot.
+                if i < len(request.provider_node_data):
+                    continue
                 ready_for_label = request_ready_nodes[label.name]
                 # TODO: sort by age? use old nodes first? random to reduce
                 # chance of thundering herd?
