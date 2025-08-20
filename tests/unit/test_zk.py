@@ -1320,6 +1320,7 @@ class TestMergerApi(ZooKeeperBaseTestCase):
         # Simulate the server side
         server = MergerApi(self.zk_client,
                            merge_request_callback=rq_put)
+        request_queue.get(timeout=30)
         server_a = list(server.next())[0]
 
         client.remove(client_a)
@@ -1376,6 +1377,7 @@ class TestMergerApi(ZooKeeperBaseTestCase):
         # Simulate the server side
         server = MergerApi(self.zk_client,
                            merge_request_callback=rq_put)
+        request_queue.get(timeout=30)
 
         count = 0
         for merge_request in server.next():
