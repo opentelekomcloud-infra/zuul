@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "14a86d63_d031b324",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37112
+      },
+      "writtenOn": "2025-08-20T05:55:06Z",
+      "side": 1,
+      "message": "We could extend this a bit in future and allow a message to be passed back to Zuul. Then display this as part of the message in the buildset result page This would give users some trace of the action performed (e.g. to inspect logs).",
+      "revId": "9fc672e691dd48400e19a54c7388cfed2fbd1685",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ee1da736_e7fd30bd",
