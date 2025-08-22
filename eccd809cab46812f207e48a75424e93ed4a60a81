@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "076c411c_4110ddb5",
+        "filename": "zuul/driver/aws/awsendpoint.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-22T13:11:08Z",
+      "side": 1,
+      "message": "Sounds like a good idea; I\u0027ll look into that as a followup.",
+      "parentUuid": "05be6bc6_fc297e0f",
+      "revId": "eccd809cab46812f207e48a75424e93ed4a60a81",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cfd7928a_ff187abb",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-08-22T11:19:20Z",
       "side": 1,
       "message": "Do we have to deal with nodes that are in state SNAPSHOT, but are not locked anymore (e.g. executor crashed)?",
+      "revId": "eccd809cab46812f207e48a75424e93ed4a60a81",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bd160ef9_9846b521",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1781,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-22T13:11:08Z",
+      "side": 1,
+      "message": "I don\u0027t think so; I think we\u0027re going to run this code whether the node is still locked or not.  So we\u0027ll keep it alive as long as we\u0027re snapshotting it, and only resume the deletion path when we\u0027re done.",
+      "parentUuid": "cfd7928a_ff187abb",
       "revId": "eccd809cab46812f207e48a75424e93ed4a60a81",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
