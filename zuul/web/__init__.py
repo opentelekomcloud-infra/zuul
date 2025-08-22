@@ -825,6 +825,8 @@ def handle_options(allowed_methods=None):
         # discard decorated handler
         request = cherrypy.serving.request
         request.handler = None
+        # Set Permissions-Policy headers
+        set_permissions_policy()
         # Set CORS response headers
         resp = cherrypy.response
         resp.headers['Access-Control-Allow-Origin'] = '*'
@@ -840,6 +842,62 @@ def handle_options(allowed_methods=None):
 cherrypy.tools.handle_options = cherrypy.Tool('on_start_resource',
                                               handle_options,
                                               priority=50)
+
+
+def set_permissions_policy():
+    """Set Permissions-Policy header to restrict browser features"""
+    # our policy_directives is a deny all list
+    policy_directives = [
+        'accelerometer=()',
+        'ambient-light-sensor=()',
+        'autoplay=()',
+        'battery=()',
+        'camera=()',
+        'cross-origin-isolated=()',
+        'display-capture=()',
+        'document-domain=()',
+        'encrypted-media=()',
+        'execution-while-not-rendered=()',
+        'execution-while-out-of-viewport=()',
+        'fullscreen=()',
+        'geolocation=()',
+        'gyroscope=()',
+        'keyboard-map=()',
+        'magnetometer=()',
+        'microphone=()',
+        'midi=()',
+        'navigation-override=()',
+        'payment=()',
+        'picture-in-picture=()',
+        'publickey-credentials-get=()',
+        'screen-wake-lock=()',
+        'sync-xhr=()',
+        'usb=()',
+        'web-share=()',
+        'xr-spatial-tracking=()',
+        'clipboard-read=()',
+        'clipboard-write=()',
+        'gamepad=()',
+        'speaker-selection=()',
+        'conversion-measurement=()',
+        'focus-without-user-activation=()',
+        'hid=()',
+        'idle-detection=()',
+        'interest-cohort=()',
+        'serial=()',
+        'sync-script=()',
+        'trust-token-redemption=()',
+        'unload=()',
+        'window-placement=()',
+        'vertical-scroll=()'
+    ]
+
+    permissions_policy = ', '.join(policy_directives)
+    cherrypy.response.headers['Permissions-Policy'] = permissions_policy
+
+cherrypy.tools.set_permissions_policy = cherrypy.Tool('on_start_resource',
+                                                     set_permissions_policy,
+                                                     priority=60)
 
 
 def openapi_response(
@@ -991,6 +1049,7 @@ class AuthContext:
 def check_root_auth(**kw):
     """Use this for root-level (non-tenant) methods"""
     cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
+    set_permissions_policy()
     request = cherrypy.serving.request
     if request.handler is None:
         # handle_options has already aborted the request.
@@ -1002,6 +1061,7 @@ def check_root_auth(**kw):
 def check_tenant_auth(**kw):
     """Use this for tenant-scoped methods"""
     cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
+    set_permissions_policy()
     request = cherrypy.serving.request
     zuulweb = request.app.root
     if request.handler is None:
