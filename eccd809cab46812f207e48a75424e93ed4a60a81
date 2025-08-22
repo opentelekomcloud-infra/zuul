@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "05be6bc6_fc297e0f",
+        "filename": "zuul/driver/aws/awsendpoint.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-08-22T10:59:05Z",
+      "side": 1,
+      "message": "Just wondering if we should also add a state-machine test as for the other drivers to make sure we can recover from intermediate states.",
+      "revId": "eccd809cab46812f207e48a75424e93ed4a60a81",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
