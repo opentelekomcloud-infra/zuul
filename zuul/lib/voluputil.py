@@ -21,14 +21,20 @@ import voluptuous as vs
 UNDEFINED = object()
 
 
-def assemble(*schemas):
+def assemble(*schemas, doc=None):
     """Merge any number of voluptuous schemas into a single schema.  The
     input schemas must all be dictionary-based.
 
     """
     ret = vs.Schema({})
+    old_doc = None
     for x in schemas:
         ret = ret.extend(x.schema)
+        if schema_doc := getattr(x, 'doc', None):
+            old_doc = schema_doc
+    doc = doc or old_doc
+    if doc:
+        ret.doc = doc
     return ret
 
 
@@ -70,7 +76,7 @@ class RequiredExclusive:
         RequiredExclusive(...)
     )
     """
-    def __init__(self, *attributes, msg=None):
+    def __init__(self, *attributes, msg=None, doc=None):
         self.schema = vs.Schema({
             # Use the mutated names for the requirements
             vs.Required(
@@ -79,6 +85,7 @@ class RequiredExclusive:
             ): object,
             object: object,
         })
+        self.doc = doc
 
     def __call__(self, v):
         return self.schema(v)
@@ -92,13 +99,14 @@ class Required(vs.Required):
     validator to be used directly in setting python object attributes.
 
     """
-    def __init__(self, schema, default=UNDEFINED, output=None):
+    def __init__(self, schema, default=UNDEFINED, output=None, doc=None):
         if not isinstance(schema, str):
             raise Exception("Only strings are supported")
         super().__init__(schema, default=default)
         if output is None:
             output = str(schema).replace('-', '_').lower()
         self.output = output
+        self.doc = doc
 
     def __call__(self, data):
         # Superclass ensures that data==schema
@@ -116,13 +124,14 @@ class Optional(vs.Optional):
 
     This works in conjuction with Nullable.
     """
-    def __init__(self, schema, default=UNDEFINED, output=None):
+    def __init__(self, schema, default=UNDEFINED, output=None, doc=None):
         if not isinstance(schema, str):
             raise Exception("Only strings are supported")
         super().__init__(schema, default=default)
         if output is None:
             output = str(schema).replace('-', '_').lower()
         self.output = output
+        self.doc = doc
 
     def __call__(self, data):
         # Superclass ensures that data==schema
