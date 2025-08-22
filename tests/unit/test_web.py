@@ -178,6 +178,7 @@ class TestWeb(BaseTestWeb):
         self.assertEqual(
             'application/json; charset=utf-8', resp.headers['Content-Type'])
         self.assertIn('Access-Control-Allow-Origin', resp.headers)
+        self.assertIn('Permissions-Policy', resp.headers)
         self.assertIn('Cache-Control', resp.headers)
         self.assertIn('Last-Modified', resp.headers)
         self.assertTrue(resp.headers['Last-Modified'].endswith(' GMT'))
@@ -3516,6 +3517,10 @@ class TestTenantScopedWebApi(BaseTestWeb):
                 '*',
                 preflight.headers.get('Access-Control-Allow-Origin'),
                 "%s failed: %s" % (endpoint['action'], preflight.headers))
+            self.assertIn(
+                'Permissions-Policy',
+                preflight.headers,
+                "%s failed: %s" % (endpoint['action'], preflight.headers))
             self.assertEqual(
                 'Authorization, Content-Type',
                 preflight.headers.get('Access-Control-Allow-Headers'),
@@ -4894,3 +4899,21 @@ class TestWebOIDCEndpoints(BaseTestWeb):
         self.assertEqual(jwk.key_id, expected_kid)
         self.assertEqual(jwk.public_key_use, 'sig')
         self.assertIsInstance(jwk.Algorithm, jwt.algorithms.RSAAlgorithm)
+
+    def test_permissions_policy_header(self):
+        """Test that PP header is present and somewhat configured"""
+        req = self.get_url('/api/tenant/tenant-one/status')
+        self.assertEqual(200, req.status_code)
+        self.assertIn('Permissions-Policy', req.headers)
+        permissions_policy = req.headers['Permissions-Policy']
+
+        # Test if some selected permission policy features exist
+        permissions_policy_features = [
+            'camera=()', 'microphone=()', 'geolocation=()',
+            'payment=()', 'usb=()', 'serial=()', 'magnetometer=()',
+            'accelerometer=()', 'gyroscope=()'
+        ]
+
+        for feature in permissions_policy_features:
+            self.assertIn(feature, permissions_policy,
+                          f"Expected {feature} in PP header")
