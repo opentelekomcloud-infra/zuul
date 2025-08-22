@@ -1281,7 +1281,7 @@ class Launcher:
                 ready_for_label = request_ready_nodes[label.name]
                 # TODO: sort by age? use old nodes first? random to reduce
                 # chance of thundering herd?
-                for node, providers in ready_for_label.items():
+                for node, providers in list(ready_for_label.items()):
                     if not node.acquireLock(ctx, blocking=False):
                         log.debug("Failed to lock matching ready node %s",
                                   node)
