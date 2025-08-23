@@ -41,10 +41,22 @@ class GerritKafkaEventListener:
             'kafka_client_id', 'zuul')
         kafka_config['group.id'] = connection_config.get(
             'kafka_group_id', 'zuul')
+        # Prefer SASL Auth details if set to match kafka listener behavior.
+        security_protocol = connection_config.get(
+            'kafka_security_protocol', None)
+        sasl_username = connection_config.get('kafka_sasl_username', None)
+        sasl_password = connection_config.get('kafka_sasl_password', None)
+        sasl_mechanism = connection_config.get('kafka_sasl_mechanism', 'PLAIN')
         tls_key = connection_config.get('kafka_tls_key', None)
         tls_cert = connection_config.get('kafka_tls_cert', None)
         tls_ca = connection_config.get('kafka_tls_ca', None)
-        if tls_key:
+        if sasl_username and sasl_password:
+            kafka_config['security.protocol'] = security_protocol or 'SASL_SSL'
+            kafka_config['sasl.mechanism'] = sasl_mechanism
+            kafka_config['sasl.username'] = sasl_username
+            kafka_config['sasl.password'] = sasl_password
+        elif tls_key:
+            # TODO what should security.protocol be for mTLS?
             kafka_config['ssl.key.location'] = tls_key
             kafka_config['ssl.certificate.location'] = tls_cert
             kafka_config['ssl.ca.location'] = tls_ca

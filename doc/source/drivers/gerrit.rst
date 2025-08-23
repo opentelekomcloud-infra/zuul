@@ -290,6 +290,32 @@ are some implications for event delivery:
 
       The Kafka group ID.
 
+   .. attr:: kafka_security_protocol
+
+      The security protocol to use for connecting to Kafka. When using
+      SASL auth the default is ``SASL_SSL`` but can be set to
+      ``SASL_PLAINTEXT`` if not using TLS for connectivity to the Kafka
+      service.
+
+   .. attr: kafka_sasl_username
+
+      The username to authenticate with when using SASL auth. If both
+      kafka_sasl_username and kafka_sasl_password are set then the
+      kafla_tls variables are ignored. This matches Kafka listener
+      behavior in preferring SASL.
+
+   .. attr: kafka_sasl_password
+
+      The password to authenticate with when using SASL auth. If both
+      kafka_sasl_username and kafka_sasl_password are set then the
+      kafla_tls variables are ignored. This matches Kafka listener
+      behavior in preferring SASL.
+
+   .. attr: kafka_sasl_mechanism
+      :default: PLAIN
+
+      The SASL mechanism to use when authenticating to Kafka.
+
    .. attr:: kafka_tls_cert
 
       Path to TLS certificate to use when connecting to a Kafka broker.

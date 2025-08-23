@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add support for Kafka SASL authentication in the Gerrit Kafka Event
+    stream source. Previously this source only supported mTLS
+    authentication; now you can use SASL authentication.
