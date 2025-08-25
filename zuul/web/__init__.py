@@ -835,6 +835,8 @@ def handle_options(allowed_methods=None):
             "script-src 'self'; "
             "style-src 'self'; "
         )
+        # Set X-Frame-Options header
+        resp.headers['X-Frame-Options'] = 'DENY'
         # Set CORS response headers
         resp.headers['Access-Control-Allow-Origin'] = '*'
         resp.headers['Access-Control-Allow-Headers'] =\
@@ -1000,6 +1002,7 @@ class AuthContext:
 def check_root_auth(**kw):
     """Use this for root-level (non-tenant) methods"""
     cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
+    cherrypy.response.headers['X-Frame-Options'] = 'DENY'
     cherrypy.response.headers['Content-Security-Policy'] = (
         "default-src 'none'; "
         "font-src 'self'; "
@@ -1019,6 +1022,7 @@ def check_root_auth(**kw):
 def check_tenant_auth(**kw):
     """Use this for tenant-scoped methods"""
     cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
+    cherrypy.response.headers['X-Frame-Options'] = 'DENY'
     cherrypy.response.headers['Content-Security-Policy'] = (
         "default-src 'none'; "
         "font-src 'self'; "
@@ -1831,6 +1835,7 @@ class ZuulWebAPI(object):
             self.zuulweb.start_time.strftime('%a, %d %b %Y %X GMT')
         # We don't wrap info methods with check_auth
         resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['X-Frame-Options'] = 'DENY'
         resp.headers['Content-Security-Policy'] = (
             "default-src 'none'; "
             "font-src 'self'; "

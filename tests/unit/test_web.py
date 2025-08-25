@@ -179,6 +179,7 @@ class TestWeb(BaseTestWeb):
             'application/json; charset=utf-8', resp.headers['Content-Type'])
         self.assertIn('Access-Control-Allow-Origin', resp.headers)
         self.assertIn('Content-Security-Policy', resp.headers)
+        self.assertIn('X-Frame-Options', resp.headers)
         self.assertIn('Cache-Control', resp.headers)
         self.assertIn('Last-Modified', resp.headers)
         self.assertTrue(resp.headers['Last-Modified'].endswith(' GMT'))
@@ -3521,6 +3522,10 @@ class TestTenantScopedWebApi(BaseTestWeb):
                 'Content-Security-Policy',
                 preflight.headers,
                 "%s failed: %s" % (endpoint['action'], preflight.headers))
+            self.assertIn(
+                'X-Frame-Options',
+                preflight.headers,
+                "%s failed: %s" % (endpoint['action'], preflight.headers))
             self.assertEqual(
                 'Authorization, Content-Type',
                 preflight.headers.get('Access-Control-Allow-Headers'),
@@ -4916,3 +4921,10 @@ class TestWebOIDCEndpoints(BaseTestWeb):
         for directive in expected_directives:
             self.assertIn(directive, csp_header,
                           f"Expected '{directive}' to be in CSP header")
+
+    def test_x_frame_options_header(self):
+        """Test that X-Frame-Options header is present and configured"""
+        req = self.get_url('/api/tenant/tenant-one/status')
+        self.assertEqual(200, req.status_code)
+        self.assertIn('X-Frame-Options', req.headers)
+        self.assertEqual('DENY', req.headers['X-Frame-Options'])
