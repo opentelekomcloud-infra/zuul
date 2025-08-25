@@ -178,6 +178,7 @@ class TestWeb(BaseTestWeb):
         self.assertEqual(
             'application/json; charset=utf-8', resp.headers['Content-Type'])
         self.assertIn('Access-Control-Allow-Origin', resp.headers)
+        self.assertIn('Content-Security-Policy', resp.headers)
         self.assertIn('Cache-Control', resp.headers)
         self.assertIn('Last-Modified', resp.headers)
         self.assertTrue(resp.headers['Last-Modified'].endswith(' GMT'))
@@ -3516,6 +3517,10 @@ class TestTenantScopedWebApi(BaseTestWeb):
                 '*',
                 preflight.headers.get('Access-Control-Allow-Origin'),
                 "%s failed: %s" % (endpoint['action'], preflight.headers))
+            self.assertIn(
+                'Content-Security-Policy',
+                preflight.headers,
+                "%s failed: %s" % (endpoint['action'], preflight.headers))
             self.assertEqual(
                 'Authorization, Content-Type',
                 preflight.headers.get('Access-Control-Allow-Headers'),
@@ -4894,3 +4899,20 @@ class TestWebOIDCEndpoints(BaseTestWeb):
         self.assertEqual(jwk.key_id, expected_kid)
         self.assertEqual(jwk.public_key_use, 'sig')
         self.assertIsInstance(jwk.Algorithm, jwt.algorithms.RSAAlgorithm)
+
+    def test_content_security_policy_header(self):
+        """Test that CSP header is present and somewhat configured"""
+        req = self.get_url('/api/tenant/tenant-one/status')
+        self.assertEqual(200, req.status_code)
+        self.assertIn('Content-Security-Policy', req.headers)
+        csp_header = req.headers['Content-Security-Policy']
+
+        # Test few security directives
+        expected_directives = [
+            "default-src 'none'", "img-src 'self'",
+            "script-src 'self'", "style-src 'self'"
+        ]
+
+        for directive in expected_directives:
+            self.assertIn(directive, csp_header,
+                         f"Expected '{directive}' to be in CSP header")
