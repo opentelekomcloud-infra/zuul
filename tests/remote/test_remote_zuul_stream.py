@@ -241,7 +241,7 @@ class FunctionalZuulStreamMixIn:
             self.assertLogLine('PLAY RECAP', text)
             self.assertLogLine(
                 r'controller \| ok: \d+ changed: \d+ unreachable: 0 failed: 0 '
-                'skipped: 2 rescued: 1 ignored: 0', text)
+                'skipped: 2 rescued: 2 ignored: 0', text)
             self.assertLogLine(
                 r'RUN END RESULT_NORMAL: \[untrusted : review.example.com/'
                 r'org/project/playbooks/command.yaml@master]', text)
@@ -266,6 +266,22 @@ class FunctionalZuulStreamMixIn:
             self.assertLogLine(
                 r'fake \| skipping: Conditional result was False', text)
             self.assertLogLine(r'compute1 \| Testing raw', text)
+            self.assertLogLine(
+                r'compute1 \| FAILED - RETRYING: '
+                r'Retry test \(2 retries left\)',
+                text)
+            self.assertLogLine(
+                r'controller \| FAILED - RETRYING: '
+                r'Retry test \(2 retries left\)',
+                text)
+            self.assertLogLine(
+                r'compute1 \| FAILED - RETRYING: '
+                r'Retry test \(1 retries left\)',
+                text)
+            self.assertLogLine(
+                r'controller \| FAILED - RETRYING: '
+                r'Retry test \(1 retries left\)',
+                text)
 
     def test_command_split_streams(self):
         job = self._run_job('command', split=True)
@@ -366,7 +382,7 @@ class FunctionalZuulStreamMixIn:
             self.assertLogLine('PLAY RECAP', text)
             self.assertLogLine(
                 r'controller \| ok: \d+ changed: \d+ unreachable: 0 failed: 0 '
-                'skipped: 2 rescued: 1 ignored: 0', text)
+                'skipped: 2 rescued: 2 ignored: 0', text)
             self.assertLogLine(
                 r'RUN END RESULT_NORMAL: \[untrusted : review.example.com/'
                 r'org/project/playbooks/command.yaml@master]', text)
@@ -390,6 +406,23 @@ class FunctionalZuulStreamMixIn:
                 r"""compute1 \| ok: \{'string': '\d.""", text)
             self.assertLogLine(
                 r'fake \| skipping: Conditional result was False', text)
+            self.assertLogLine(r'compute1 \| Testing raw', text)
+            self.assertLogLine(
+                r'compute1 \| FAILED - RETRYING: '
+                r'Retry test \(2 retries left\)',
+                text)
+            self.assertLogLine(
+                r'controller \| FAILED - RETRYING: '
+                r'Retry test \(2 retries left\)',
+                text)
+            self.assertLogLine(
+                r'compute1 \| FAILED - RETRYING: '
+                r'Retry test \(1 retries left\)',
+                text)
+            self.assertLogLine(
+                r'controller \| FAILED - RETRYING: '
+                r'Retry test \(1 retries left\)',
+                text)
 
     @zuul_config('executor', 'output_max_bytes', '2')
     def test_command_output_max_bytes(self):
@@ -570,7 +603,7 @@ class FunctionalZuulStreamMixIn:
             self.assertLogLine('PLAY RECAP', text)
             self.assertLogLine(
                 r'controller \| ok: \d+ changed: \d+ unreachable: 0 failed: 0 '
-                'skipped: 2 rescued: 1 ignored: 0', text)
+                'skipped: 2 rescued: 2 ignored: 0', text)
             self.assertLogLine(
                 r'RUN END RESULT_NORMAL: \[untrusted : review.example.com/'
                 r'org/project/playbooks/win-command.yaml@master]', text)
@@ -594,6 +627,22 @@ class FunctionalZuulStreamMixIn:
                 r"""compute1 \| ok: \{'string': '\d.""", text)
             self.assertLogLine(
                 r'fake \| skipping: Conditional result was False', text)
+            self.assertLogLine(
+                r'compute1 \| FAILED - RETRYING: '
+                r'Retry test \(2 retries left\)',
+                text)
+            self.assertLogLine(
+                r'controller \| FAILED - RETRYING: '
+                r'Retry test \(2 retries left\)',
+                text)
+            self.assertLogLine(
+                r'compute1 \| FAILED - RETRYING: '
+                r'Retry test \(1 retries left\)',
+                text)
+            self.assertLogLine(
+                r'controller \| FAILED - RETRYING: '
+                r'Retry test \(1 retries left\)',
+                text)
 
     @skip("Windows unavailable in gate")
     def test_win_command_fqcn(self):
@@ -703,7 +752,7 @@ class FunctionalZuulStreamMixIn:
             self.assertLogLine('PLAY RECAP', text)
             self.assertLogLine(
                 r'controller \| ok: \d+ changed: \d+ unreachable: 0 failed: 0 '
-                'skipped: 2 rescued: 1 ignored: 0', text)
+                'skipped: 2 rescued: 2 ignored: 0', text)
             self.assertLogLine(
                 r'RUN END RESULT_NORMAL: \[untrusted : review.example.com/'
                 r'org/project/playbooks/win-command-fqcn.yaml@master]', text)
@@ -727,6 +776,22 @@ class FunctionalZuulStreamMixIn:
                 r"""compute1 \| ok: \{'string': '\d.""", text)
             self.assertLogLine(
                 r'fake \| skipping: Conditional result was False', text)
+            self.assertLogLine(
+                r'compute1 \| FAILED - RETRYING: '
+                r'Retry test \(2 retries left\)',
+                text)
+            self.assertLogLine(
+                r'controller \| FAILED - RETRYING: '
+                r'Retry test \(2 retries left\)',
+                text)
+            self.assertLogLine(
+                r'compute1 \| FAILED - RETRYING: '
+                r'Retry test \(1 retries left\)',
+                text)
+            self.assertLogLine(
+                r'controller \| FAILED - RETRYING: '
+                r'Retry test \(1 retries left\)',
+                text)
 
 
 class TestZuulStream9(AnsibleZuulTestCase, FunctionalZuulStreamMixIn):
