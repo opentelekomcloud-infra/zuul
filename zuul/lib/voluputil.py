@@ -155,3 +155,20 @@ class Nullable:
         if v is UNDEFINED:
             return None
         return self.schema(v)
+
+
+class AsList:
+    """Accept either the specified value or a list of it.
+
+    Always return a list.
+    """
+    def __init__(self, schema):
+        self.schema = vs.Any([schema], schema)
+
+    def __call__(self, v):
+        val = self.schema(v)
+        if not val:
+            return []
+        if isinstance(val, list):
+            return val
+        return [val]
