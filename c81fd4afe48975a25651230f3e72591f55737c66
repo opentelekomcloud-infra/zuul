@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c3fffab9_577fc361",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-25T17:49:15Z",
+      "side": 1,
+      "message": "recheck failed in a launcher test which isn\u0027t affected by the kafka event source",
+      "revId": "c81fd4afe48975a25651230f3e72591f55737c66",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
