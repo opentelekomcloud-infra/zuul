@@ -825,8 +825,17 @@ def handle_options(allowed_methods=None):
         # discard decorated handler
         request = cherrypy.serving.request
         request.handler = None
-        # Set CORS response headers
         resp = cherrypy.response
+        # Set Content Security Policy header
+        resp.headers['Content-Security-Policy'] = (
+            "default-src 'none'; "
+            "font-src 'self'; "
+            "img-src 'self'; "
+            "manifest-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self'; "
+        )
+        # Set CORS response headers
         resp.headers['Access-Control-Allow-Origin'] = '*'
         resp.headers['Access-Control-Allow-Headers'] =\
             ', '.join(['Authorization', 'Content-Type'])
@@ -991,6 +1000,14 @@ class AuthContext:
 def check_root_auth(**kw):
     """Use this for root-level (non-tenant) methods"""
     cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
+    cherrypy.response.headers['Content-Security-Policy'] = (
+        "default-src 'none'; "
+        "font-src 'self'; "
+        "img-src 'self'; "
+        "manifest-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self'; "
+    )
     request = cherrypy.serving.request
     if request.handler is None:
         # handle_options has already aborted the request.
@@ -1002,6 +1019,14 @@ def check_root_auth(**kw):
 def check_tenant_auth(**kw):
     """Use this for tenant-scoped methods"""
     cherrypy.response.headers['Access-Control-Allow-Origin'] = '*'
+    cherrypy.response.headers['Content-Security-Policy'] = (
+        "default-src 'none'; "
+        "font-src 'self'; "
+        "img-src 'self'; "
+        "manifest-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self'; "
+    )
     request = cherrypy.serving.request
     zuulweb = request.app.root
     if request.handler is None:
@@ -1806,6 +1831,15 @@ class ZuulWebAPI(object):
             self.zuulweb.start_time.strftime('%a, %d %b %Y %X GMT')
         # We don't wrap info methods with check_auth
         resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Content-Security-Policy'] = (
+            "default-src 'none'; "
+            "font-src 'self'; "
+            "img-src 'self'; "
+            "manifest-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self'; "
+        )
+
         return ret
 
     def _isAuthorized(self, tenant, claims):
