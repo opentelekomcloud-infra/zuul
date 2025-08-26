@@ -39,7 +39,6 @@ import zuul.manager.serial
 from zuul.lib.logutil import get_annotated_logger
 from zuul.lib.re2util import ZuulRegex
 from zuul.lib.varnames import check_varnames
-from zuul.zk.components import COMPONENT_REGISTRY
 from zuul.zk.semaphore import SemaphoreHandler
 from zuul.exceptions import (
     AlgorithmNotSupportedException,
@@ -2300,18 +2299,10 @@ class TenantParser(object):
         # should not use the file cache at all) or a nested dict of
         # project and branch to ltime.  A value of None usually means
         # we are being called from the command line config validator.
-        # However, if the model api is old, we may be operating in
-        # compatibility mode and are loading a layout without a stored
-        # min_ltimes.  In that case, we treat it as if min_ltimes is a
-        # defaultdict of -1.
 
         # If min_ltimes is not None, then it is mutated and returned
         # with the actual ltimes of each entry in the unparsed branch
         # cache.
-
-        if min_ltimes is None and COMPONENT_REGISTRY.model_api < 6:
-            min_ltimes = collections.defaultdict(
-                lambda: collections.defaultdict(lambda: -1))
 
         # If the ltime is -1, then we should consider the file cache
         # valid.  If we have an unparsed branch cache entry for the
@@ -2330,8 +2321,6 @@ class TenantParser(object):
         # The circumstances under which this method is called are:
 
         # Prime:
-        #   min_ltimes is None: backwards compat from old model api
-        #   which we treat as a universal ltime of -1.
         #   We'll either get an actual min_ltimes dict from the last
         #   reconfig, or -1 if this is a new tenant.
         #   In all cases, our unparsed branch cache will be empty, so
@@ -2339,8 +2328,6 @@ class TenantParser(object):
         #   as appropriate.
 
         # Background layout update:
-        #   min_ltimes is None: backwards compat from old model api
-        #   which we treat as a universal ltime of -1.
         #   Otherwise, min_ltimes will always be the actual min_ltimes
         #   from the last reconfig.  No cat jobs should be needed; we
         #   either have an unparsed branch cache valid for the ltime,
