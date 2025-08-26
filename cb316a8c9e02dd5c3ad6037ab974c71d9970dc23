@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8e1b36f3_1321de3d",
+        "filename": "zuul/driver/github/githubreporter.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-26T16:15:19Z",
+      "side": 0,
+      "message": "I realize that status-url is being handled in a special way but want to note that MODEL_API 29 would\u0027ve been introduced by zuul 11 so this particular attribute isn\u0027t directly related to the pre 11 cleanup.",
+      "revId": "cb316a8c9e02dd5c3ad6037ab974c71d9970dc23",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}

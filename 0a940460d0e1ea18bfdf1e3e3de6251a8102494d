@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "87a99d14_74f3a1c7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-26T16:15:19Z",
+      "side": 1,
+      "message": "-1 for the `d.get[]` issue. My other comments are nits or observations.",
+      "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eafd25f1_8a01f93c",
+        "filename": "tests/unit/test_nodepool.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-26T16:15:19Z",
+      "side": 1,
+      "message": "I\u0027m not sure I understand why removing the MODEL_API controls means we need to add a tracing object.",
+      "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "53b0589a_fbd016a9",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6002,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-26T16:15:19Z",
+      "side": 1,
+      "message": "Nit the return isn\u0027t strictly necessary here as we\u0027re at the end of the function.",
+      "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "608c3ac2_8a1cd274",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6013,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-26T16:15:19Z",
+      "side": 1,
+      "message": "Nit the return isn\u0027t strictly necessary here as we\u0027re at the end of the function.",
+      "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b043a54_0c90530a",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6411,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-26T16:15:19Z",
+      "side": 1,
+      "message": "This should be `d[\"ref\"]`",
+      "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
