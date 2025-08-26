@@ -21,15 +21,9 @@ import time
 from zuul import model
 from zuul.lib.logutil import get_annotated_logger
 from zuul.reporter import BaseReporter
-from zuul.exceptions import DeprecationWarning, MergeFailure
+from zuul.exceptions import MergeFailure
 from zuul.driver.util import scalar_or_list
 from zuul.driver.github.githubsource import GithubSource
-
-
-class GithubStatusUrlDeprecation(DeprecationWarning):
-    zuul_error_name = 'Github status-url Deprecation'
-    zuul_error_message = """The 'status-url' reporter attribute
-is deprecated."""
 
 
 class GithubReporter(BaseReporter):
@@ -64,9 +58,6 @@ class GithubReporter(BaseReporter):
         self._review_body = self.config.get('review-body')
         if not isinstance(self._unlabels, list):
             self._unlabels = [self._unlabels]
-
-        if 'status-url' in self.config and parse_context:
-            parse_context.accumulator.addError(GithubStatusUrlDeprecation)
 
     def getContext(self, manager):
         return "{}/{}".format(manager.tenant.name,
@@ -422,8 +413,6 @@ class GithubReporter(BaseReporter):
 def getSchema():
     github_reporter = v.Schema({
         'status': v.Any('pending', 'success', 'failure'),
-        # MODEL_API < 31
-        'status-url': str,
         'comment': bool,
         'merge': bool,
         'label': scalar_or_list(str),
