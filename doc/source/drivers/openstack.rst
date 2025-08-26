@@ -108,15 +108,6 @@
       .. attr:: description
          :type: str
 
-      .. attr:: image-filters
-         :type: dict
-
-         .. attr:: name
-            :type: str
-
-         .. attr:: values
-            :type: str
-
       .. attr:: image-id
          :type: str
 
