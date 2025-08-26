@@ -923,8 +923,6 @@ class PipelineState(zkobject.ZKObject):
             build_set = i.current_build_set
             # Drop some attributes from local objects to save memory
             build_set._set(_files=None,
-                           _merge_repo_state=None,
-                           _extra_repo_state=None,
                            _repo_state=RepoState())
             job_graph = build_set.job_graph
             if not job_graph:
@@ -3410,9 +3408,6 @@ class FrozenJob(zkobject.ZKObject):
                   'pre_run',
                   'run',
                   'post_run',
-                  # MODEL_API < 30; all references to cleanup_run may
-                  # be removed.
-                  'cleanup_run',
                   'attempts',
                   'success_message',
                   'failure_message',
@@ -3784,7 +3779,7 @@ class FrozenJob(zkobject.ZKObject):
 
     @property
     def all_playbooks(self):
-        for k in ('pre_run', 'run', 'post_run', 'cleanup_run'):
+        for k in ('pre_run', 'run', 'post_run'):
             playbooks = getattr(self, k)
             yield from playbooks
 
@@ -3865,8 +3860,6 @@ class Job(ConfigObject):
         d['run'] = list(map(lambda x: x.toSchemaDict(), self.run))
         d['pre_run'] = list(map(lambda x: x.toSchemaDict(), self.pre_run))
         d['post_run'] = list(map(lambda x: x.toSchemaDict(), self.post_run))
-        d['cleanup_run'] = list(map(lambda x: x.toSchemaDict(),
-                                    self.cleanup_run))
         d['post_review'] = self.post_review
         d['match_on_config_updates'] = self.match_on_config_updates
         d['deduplicate'] = self.deduplicate
@@ -3938,7 +3931,6 @@ class Job(ConfigObject):
             workspace=None,
             pre_run=(),
             post_run=(),
-            cleanup_run=(),
             run=(),
             ansible_split_streams=None,
             ansible_version=None,
@@ -4019,8 +4011,8 @@ class Job(ConfigObject):
         else:
             run = []
         project_canonical_names.update(self._projectsFromPlaybooks(
-            itertools.chain(self.pre_run, run, self.post_run,
-                            self.cleanup_run), with_implicit=True))
+            itertools.chain(self.pre_run, run, self.post_run),
+            with_implicit=True))
         project_canonical_names.update({
             iv.project_name
             for iv in self.include_vars
@@ -4168,7 +4160,7 @@ class Job(ConfigObject):
                 v = None
             # Playbooks have a lot of objects that can be flattened at
             # this point to simplify serialization.
-            if k in ('pre_run', 'run', 'post_run', 'cleanup_run'):
+            if k in ('pre_run', 'run', 'post_run'):
                 v = [self._freezePlaybook(layout, item, pb,
                                           redact_secrets_and_keys)
                      for pb in v if pb.source_context]
@@ -4372,9 +4364,6 @@ class Job(ConfigObject):
         if self._get('post_run') is not None:
             self.post_run = self.freezePlaybooks(
                 self.post_run, layout, semaphore_handler)
-        if self._get('cleanup_run') is not None:
-            self.cleanup_run = self.freezePlaybooks(
-                self.cleanup_run, layout, semaphore_handler)
         self.inheritance_path = self.inheritance_path + (repr(self),)
 
     def getNodeset(self, layout):
@@ -4699,7 +4688,7 @@ class Job(ConfigObject):
                             "protected and cannot be inherited "
                             "from other projects."
                             % (repr(self), this_origin))
-                if k not in set(['pre_run', 'run', 'post_run', 'cleanup_run',
+                if k not in set(['pre_run', 'run', 'post_run',
                                  'roles', 'variables', 'extra_variables',
                                  'host_variables', 'group_variables',
                                  'required_projects', 'allowed_projects',
@@ -4779,7 +4768,7 @@ class Job(ConfigObject):
             # pre-review pipeline is if all playbooks are in the
             # trusted context.
             for pb in itertools.chain(
-                    self.pre_run, self.run, self.post_run, self.cleanup_run):
+                    self.pre_run, self.run, self.post_run):
                 pb.addSecrets(frozen_secrets)
                 if not layout.tenant.isTrusted(
                         pb.source_context.project_canonical_name):
@@ -4813,10 +4802,6 @@ class Job(ConfigObject):
             other_post_run = self.freezePlaybooks(
                 other.post_run, layout, semaphore_handler)
             self.post_run = other_post_run + self.post_run
-        if other._get('cleanup_run') is not None:
-            other_cleanup_run = self.freezePlaybooks(
-                other.cleanup_run, layout, semaphore_handler)
-            self.cleanup_run = other_cleanup_run + self.cleanup_run
         self.updateVariables(other)
         if other._get('include_vars') is not None:
             self.updateIncludeVars(other, layout)
@@ -4923,7 +4908,7 @@ class Job(ConfigObject):
 
     @property
     def all_playbooks(self):
-        for k in ('pre_run', 'run', 'post_run', 'cleanup_run'):
+        for k in ('pre_run', 'run', 'post_run'):
             playbooks = getattr(self, k)
             yield from playbooks
 
@@ -5886,16 +5871,6 @@ class BaseRepoState(zkobject.ShardedZKObject):
         return json.dumps(data, sort_keys=True).encode("utf8")
 
 
-class MergeRepoState(BaseRepoState):
-    def getPath(self):
-        return f"{self._buildset_path}/merge_repo_state"
-
-
-class ExtraRepoState(BaseRepoState):
-    def getPath(self):
-        return f"{self._buildset_path}/extra_repo_state"
-
-
 class BuildSet(zkobject.ZKObject):
     """A collection of Builds for one specific potential future repository
     state.
@@ -5946,10 +5921,6 @@ class BuildSet(zkobject.ZKObject):
             node_requests={},  # job -> request id
             _files=None,  # The files object if loaded
             _files_path=None,  # The ZK path to the files object
-            _merge_repo_state=None,  # The repo_state of the original merge
-            _merge_repo_state_path=None,  # ZK path for above
-            _extra_repo_state=None,  # Repo state for any additional projects
-            _extra_repo_state_path=None,  # ZK path for above
             repo_state_keys=[],  # Refs (links) to blobstore repo_state
             tries={},
             files_state=self.NEW,
@@ -6023,47 +5994,21 @@ class BuildSet(zkobject.ZKObject):
         if not self._active_context:
             raise Exception("setMergeRepoState must be used "
                             "with a context manager")
-        new = COMPONENT_REGISTRY.model_api >= 28
-        if (self._merge_repo_state_path is not None or
-            self._extra_repo_state_path is not None):
-            new = False
-        if new:
-            blobstore = BlobStore(self._active_context)
-            self._repo_state.add(blobstore, repo_state)
-            for key in self._repo_state.getKeys():
-                if key not in self.repo_state_keys:
-                    self.repo_state_keys.append(key)
-            return
-        if self._merge_repo_state_path is not None:
-            raise Exception("Merge repo state can not be updated")
-        rs = MergeRepoState.new(self._active_context,
-                                state=repo_state,
-                                _buildset_path=self.getPath())
-        self._merge_repo_state = rs
-        self._merge_repo_state_path = rs.getPath()
+        blobstore = BlobStore(self._active_context)
+        self._repo_state.add(blobstore, repo_state)
+        for key in self._repo_state.getKeys():
+            if key not in self.repo_state_keys:
+                self.repo_state_keys.append(key)
 
     def setExtraRepoState(self, repo_state):
         if not self._active_context:
             raise Exception("setExtraRepoState must be used "
                             "with a context manager")
-        new = COMPONENT_REGISTRY.model_api >= 28
-        if (self._merge_repo_state_path is not None or
-            self._extra_repo_state_path is not None):
-            new = False
-        if new:
-            blobstore = BlobStore(self._active_context)
-            self._repo_state.add(blobstore, repo_state)
-            for key in self._repo_state.getKeys():
-                if key not in self.repo_state_keys:
-                    self.repo_state_keys.append(key)
-            return
-        if self._extra_repo_state_path is not None:
-            raise Exception("Extra repo state can not be updated")
-        rs = ExtraRepoState.new(self._active_context,
-                                state=repo_state,
-                                _buildset_path=self.getPath())
-        self._extra_repo_state = rs
-        self._extra_repo_state_path = rs.getPath()
+        blobstore = BlobStore(self._active_context)
+        self._repo_state.add(blobstore, repo_state)
+        for key in self._repo_state.getKeys():
+            if key not in self.repo_state_keys:
+                self.repo_state_keys.append(key)
 
     def getPath(self):
         return f"{self.item.getPath()}/buildset/{self.uuid}"
@@ -6096,8 +6041,6 @@ class BuildSet(zkobject.ZKObject):
                              for i, ni in self.nodeset_info.items()},
             "node_requests": self.node_requests,
             "files": self._files_path,
-            "merge_repo_state": self._merge_repo_state_path,
-            "extra_repo_state": self._extra_repo_state_path,
             "repo_state_keys": self.repo_state_keys,
             "tries": self.tries,
             "files_state": self.files_state,
@@ -6125,8 +6068,6 @@ class BuildSet(zkobject.ZKObject):
         # These three values are immutable, and not kept in memory
         # unless accessed.
         data['_files_path'] = data.pop('files')
-        data['_merge_repo_state_path'] = data.pop('merge_repo_state')
-        data['_extra_repo_state_path'] = data.pop('extra_repo_state')
 
         data['nodeset_info'] = {i: NodesetInfo.fromDict(d)
                                 for i, d in data['nodeset_info'].items()}
@@ -6297,12 +6238,9 @@ class BuildSet(zkobject.ZKObject):
                 self.configured = True
 
     def _toChangeDict(self, item, change):
-        if COMPONENT_REGISTRY.model_api < 29:
-            change_dict = change.toDict()
-        else:
-            change_dict = dict(
-                ref=change.cache_key,
-            )
+        change_dict = dict(
+            ref=change.cache_key,
+        )
         # Inject bundle_id to dict if available, this can be used to decide
         # if changes belongs to the same bunbdle
         if len(item.changes) > 1:
@@ -6468,8 +6406,7 @@ class EventInfo:
         tinfo.zuul_event_id = d["zuul_event_id"]
         tinfo.timestamp = d["timestamp"]
         tinfo.span_context = d["span_context"]
-        # MODEL_API <= 26
-        tinfo.ref = d.get("ref")
+        tinfo.ref = d["ref"]
         tinfo.image_names = d.get("image_names")
         tinfo.image_upload_uuid = d.get("image_upload_uuid")
         tinfo.image_build_uuid = d.get("image_build_uuid")
