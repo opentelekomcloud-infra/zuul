@@ -338,14 +338,7 @@ class BaseMergeServer(metaclass=ABCMeta):
     def fileschanges(self, merge_request, args):
         self.log.debug("Got fileschanges job: %s", merge_request.uuid)
         zuul_event_id = merge_request.event_id
-
-        # MODEL_API < 26:
         changes = args.get('changes')
-        old_format = False
-        if changes is None:
-            changes = [args]
-            old_format = True
-
         results = []
         for change in changes:
             connection_name = change['connection']
@@ -364,11 +357,7 @@ class BaseMergeServer(metaclass=ABCMeta):
             except Exception:
                 return dict(updated=False)
 
-        if old_format:
-            # MODEL_API < 26:
-            return dict(updated=True, files=results[0])
-        else:
-            return dict(updated=True, files=results)
+        return dict(updated=True, files=results)
 
     def completeMergeJob(self, merge_request, result):
         log = get_annotated_logger(self.log, merge_request.event_id)

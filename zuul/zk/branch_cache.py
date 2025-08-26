@@ -14,7 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import collections
 from enum import IntFlag
 import logging
 import json
@@ -25,8 +24,6 @@ from zuul.zk.locks import (
     SessionAwareWriteLock,
     locked as zk_locked
 )
-from zuul import model
-from zuul.zk.components import COMPONENT_REGISTRY
 
 from kazoo.exceptions import NoNodeError
 
@@ -182,112 +179,19 @@ class BranchCacheZKObject(ShardedZKObject):
         )
 
     def serialize(self, context):
-        if COMPONENT_REGISTRY.model_api < 27:
-            data = self.serialize_old()
-        else:
-            data = self.serialize_new()
-        return json.dumps(data, sort_keys=True).encode("utf8")
-
-    def serialize_new(self):
-        return {
+        data = {
             "projects": {p.name: p.toDict() for p in self.projects.values()},
         }
-
-    def serialize_old(self):
-        protected = {}
-        remainder = {}
-        merge_modes = {}
-        default_branch = {}
-
-        for pi in self.projects.values():
-            merge_modes[pi.name] = pi.merge_modes
-            default_branch[pi.name] = pi.default_branch
-            if BranchFlag.PROTECTED in pi.completed_flags:
-                pl = protected[pi.name] = []
-            elif BranchFlag.PROTECTED in pi.failed_flags:
-                pl = protected[pi.name] = None
-            else:
-                pl = None
-            if BranchFlag.PRESENT in pi.completed_flags:
-                rl = remainder[pi.name] = []
-            elif BranchFlag.PRESENT in pi.failed_flags:
-                rl = remainder[pi.name] = None
-            else:
-                rl = None
-            for bi in pi.branches.values():
-                if bi.protected:
-                    if pl is not None:
-                        pl.append(bi.name)
-                    elif rl is not None:
-                        rl.append(bi.name)
-                elif rl is not None:
-                    rl.append(bi.name)
-
-        return {
-            "protected": protected,
-            "remainder": remainder,
-            "merge_modes": merge_modes,
-            "default_branch": default_branch,
-        }
+        return json.dumps(data, sort_keys=True).encode("utf8")
 
     def deserialize(self, raw, context, extra=None):
         data = super().deserialize(raw, context, extra)
-        if "protected" in data:
-            # MODEL_API < 27
-            self.deserialize_old(data)
-        else:
-            self.deserialize_new(data)
-        return data
-
-    def deserialize_new(self, data):
         projects = {}
         for project_name, project_data in data['projects'].items():
             projects[project_name] = ProjectInfo.fromDict(
                 project_name, project_data)
         data['projects'] = projects
-
-    def deserialize_old(self, data):
-        if "merge_modes" not in data:
-            # MODEL_API < 11
-            data["merge_modes"] = collections.defaultdict(
-                lambda: model.ALL_MERGE_MODES)
-        if "default_branch" not in data:
-            # MODEL_API < 16
-            data["default_branch"] = collections.defaultdict(
-                lambda: 'master')
-        projects = {}
-        for project_name, branches in data['protected'].items():
-            project_info = ProjectInfo(
-                project_name,
-                data['merge_modes'].get(project_name, model.ALL_MERGE_MODES),
-                data['default_branch'].get(project_name, 'master'))
-            projects[project_name] = project_info
-            if branches is None:
-                project_info.failed_flags |= BranchFlag.PROTECTED
-            else:
-                project_info.completed_flags |= BranchFlag.PROTECTED
-                for branch_name in branches:
-                    project_info.branches[branch_name] = BranchInfo(
-                        branch_name, protected=True)
-        for project_name, branches in data['remainder'].items():
-            project_info = projects.get(project_name)
-            if project_info is None:
-                project_info = ProjectInfo(
-                    project_name,
-                    data['merge_modes'].get(project_name,
-                                            model.ALL_MERGE_MODES),
-                    data['default_branch'].get(project_name, 'master'))
-                projects[project_name] = project_info
-            if branches is None:
-                project_info.failed_flags |= BranchFlag.PRESENT
-            else:
-                project_info.completed_flags |= BranchFlag.PRESENT
-                for branch_name in branches:
-                    # Create a branchinfo object
-                    project_info.branches[branch_name] = BranchInfo(
-                        branch_name, present=True)
-        data.clear()
-        data['projects'] = projects
+        return data
 
 
 class BranchCache:
