@@ -3033,6 +3033,8 @@ class StaticHandler(object):
         self.root = root
 
     def default(self, path, **kwargs):
+        cherrypy.response.headers['Server'] = ''
+
         # Try to handle static file first
         handled = cherrypy.lib.static.staticdir(
             section="",
@@ -3516,6 +3518,7 @@ class ZuulWeb(object):
                 'environment': 'production',
                 'server.socket_host': self.listen_address,
                 'server.socket_port': int(self.listen_port),
+                'response.headers.server': '',
             },
         })
 
