@@ -62,7 +62,6 @@ from zuul.zk.change_cache import (
     ChangeKey,
     ConcurrentUpdateError,
 )
-from zuul.zk.components import COMPONENT_REGISTRY
 from zuul.zk.event_queues import ConnectionEventQueue
 
 GITHUB_BASE_URL = 'https://api.github.com'
@@ -1813,9 +1812,8 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         if resp.get('allow_merge_commit'):
             merge_modes.append(model.MERGER_MERGE)
             merge_modes.append(model.MERGER_MERGE_RESOLVE)
-            if COMPONENT_REGISTRY.model_api >= 18:
-                merge_modes.append(model.MERGER_MERGE_RECURSIVE)
-                merge_modes.append(model.MERGER_MERGE_ORT)
+            merge_modes.append(model.MERGER_MERGE_RECURSIVE)
+            merge_modes.append(model.MERGER_MERGE_ORT)
         if resp.get('allow_squash_merge'):
             merge_modes.append(model.MERGER_SQUASH_MERGE)
         if resp.get('allow_rebase_merge'):

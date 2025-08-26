@@ -12,9 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import configparser
 import uuid
 
 from zuul import model
+from zuul.lib import tracing
 import zuul.nodepool
 
 from tests.base import (
@@ -25,8 +27,6 @@ from tests.base import (
 )
 from zuul.zk import ZooKeeperClient
 from zuul.zk.nodepool import ZooKeeperNodepool
-from zuul.zk.components import COMPONENT_REGISTRY
-from zuul.model_api import MODEL_API
 
 
 class NodepoolWithCallback(zuul.nodepool.Nodepool):
@@ -53,9 +53,8 @@ class TestNodepoolBase(BaseTestCase):
     def setUp(self):
         super().setUp()
 
-        COMPONENT_REGISTRY.registry = Dummy()
-        COMPONENT_REGISTRY.registry.model_api = MODEL_API
-
+        config = configparser.ConfigParser()
+        self.tracing = tracing.Tracing(config)
         self.statsd = None
         self.setupZK()
 
@@ -78,18 +77,6 @@ class TestNodepoolBase(BaseTestCase):
         self.addCleanup(self.fake_nodepool.stop)
 
 
-class FakeFrozenJob(model.Job):
-    def __init__(self, name):
-        super().__init__(name)
-        self.uuid = uuid.uuid4().hex
-        self.ref = 'fake reference'
-
-    # MODEL_API < 19
-    @property
-    def _job_id(self):
-        return self.uuid or self.name
-
-
 class TestNodepool(TestNodepoolBase):
     def test_node_request(self):
         # Test a simple node request
@@ -97,7 +84,8 @@ class TestNodepool(TestNodepoolBase):
         nodeset = model.NodeSet()
         nodeset.addNode(model.Node(['controller', 'foo'], 'ubuntu-xenial'))
         nodeset.addNode(model.Node(['compute'], 'ubuntu-xenial'))
-        job = FakeFrozenJob('testjob')
+        job = model.Job('testjob')
+        job.uuid = uuid.uuid4().hex
         job.nodeset = nodeset
         request = self.nodepool.requestNodes(
             "test-uuid", job, "tenant", "pipeline", "provider", 0, 0)
@@ -142,7 +130,8 @@ class TestNodepool(TestNodepoolBase):
         nodeset = model.NodeSet()
         nodeset.addNode(model.Node(['controller'], 'ubuntu-xenial'))
         nodeset.addNode(model.Node(['compute'], 'ubuntu-xenial'))
-        job = FakeFrozenJob('testjob')
+        job = model.Job('testjob')
+        job.uuid = uuid.uuid4().hex
         job.nodeset = nodeset
         self.fake_nodepool.pause()
         request = self.nodepool.requestNodes(
@@ -168,7 +157,8 @@ class TestNodepool(TestNodepoolBase):
         nodeset = model.NodeSet()
         nodeset.addNode(model.Node(['controller', 'foo'], 'ubuntu-xenial'))
         nodeset.addNode(model.Node(['compute'], 'ubuntu-xenial'))
-        job = FakeFrozenJob('testjob')
+        job = model.Job('testjob')
+        job.uuid = uuid.uuid4().hex
         job.nodeset = nodeset
         self.fake_nodepool.pause()
         request1 = self.nodepool.requestNodes(

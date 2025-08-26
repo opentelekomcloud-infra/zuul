@@ -75,10 +75,8 @@ from zuul.model import (
     BuildRequest,
     BuildStartedEvent,
     BuildStatusEvent,
-    ExtraRepoState,
     FrozenJob,
     Job,
-    MergeRepoState,
     RepoState,
 )
 import zuul.model
@@ -112,9 +110,6 @@ BLACKLISTED_VARS = dict(
     ansible_scp_extra_args='-o PermitLocalCommand=no',
     ansible_ssh_extra_args='-o PermitLocalCommand=no',
 )
-
-# MODEL_API < 30
-CLEANUP_TIMEOUT = 300
 
 
 class VerboseCommand(commandsocket.Command):
@@ -1394,30 +1389,12 @@ class AnsibleJob(object):
 
     def loadRepoState(self):
         repo_state_keys = self.arguments.get('repo_state_keys')
-        if repo_state_keys:
-            repo_state = RepoState()
-            with self.executor_server.zk_context as ctx:
-                blobstore = BlobStore(ctx)
-                for link in repo_state_keys:
-                    repo_state.load(blobstore, link)
-            d = repo_state.state
-        else:
-            # MODEL_API < 28
-            merge_rs_path = self.arguments['merge_repo_state_ref']
-            with self.executor_server.zk_context as ctx:
-                merge_repo_state = merge_rs_path and MergeRepoState.fromZK(
-                    ctx, merge_rs_path)
-                extra_rs_path = self.arguments['extra_repo_state_ref']
-                extra_repo_state = extra_rs_path and ExtraRepoState.fromZK(
-                    ctx, extra_rs_path)
-            d = {}
-            # Combine the two
-            for rs in (merge_repo_state, extra_repo_state):
-                if not rs:
-                    continue
-                for connection in rs.state.keys():
-                    d.setdefault(connection, {}).update(
-                        rs.state.get(connection, {}))
+        repo_state = RepoState()
+        with self.executor_server.zk_context as ctx:
+            blobstore = BlobStore(ctx)
+            for link in repo_state_keys:
+                repo_state.load(blobstore, link)
+        d = repo_state.state
         # Ensure that we have an origin ref for every local branch.
         # Some of these will be overwritten later as we merge changes,
         # but for starters, we can use the current head of each
@@ -2421,10 +2398,6 @@ class AnsibleJob(object):
         for playbook in post_run:
             jobdir_playbook = self.jobdir.addPostPlaybook()
             self.preparePlaybook(jobdir_playbook, playbook, args)
-            if playbook in self.job.cleanup_run:
-                # This backwards compatible handling for MODEL_API < 30
-                jobdir_playbook.cleanup = True
-                jobdir_playbook.ignore_result = True
 
     def preparePlaybook(self, jobdir_playbook, playbook, args):
         # Check out the playbook repo if needed and set the path to
@@ -2436,18 +2409,14 @@ class AnsibleJob(object):
             playbook['connection'])
         project = source.getProject(playbook['project'])
         branch = playbook['branch']
-        # MODEL_API < 30: if nesting_level not provided, use 0 so
-        # everything runs (old behavior)
-        jobdir_playbook.nesting_level = playbook.get('nesting_level', 0)
-        jobdir_playbook.cleanup = playbook.get('cleanup', False)
+        jobdir_playbook.nesting_level = playbook['nesting_level']
+        jobdir_playbook.cleanup = playbook['cleanup']
         jobdir_playbook.trusted = playbook['trusted']
         jobdir_playbook.branch = branch
         jobdir_playbook.project_canonical_name = project.canonical_name
         jobdir_playbook.canonical_name_and_path = os.path.join(
             project.canonical_name, playbook['path'])
-        # The playbook may lack semaphores if mid-upgrade and a build is run on
-        # behalf of a scheduler too old to add them.
-        jobdir_playbook.semaphores = playbook.get('semaphores', [])
+        jobdir_playbook.semaphores = playbook['semaphores']
         path = None
 
         if not jobdir_playbook.trusted:

@@ -1271,22 +1271,15 @@ class PipelineManager(metaclass=ABCMeta):
         log.debug("Executing jobs for %s", item)
         build_set = item.current_build_set
 
-        # dependent_changes is either fully populated (old) or a list of
-        # change refs we need to convert into the change dict)
-        if (build_set.dependent_changes and
-            'ref' not in build_set.dependent_changes[0]):
-            # MODEL_API < 29
-            dependent_changes = build_set.dependent_changes
-        else:
-            resolved_changes = self.resolveChangeReferences(
-                [c['ref'] for c in build_set.dependent_changes])
-            dependent_changes = []
-            for resolved_change, orig_dict in zip(resolved_changes,
-                                                  build_set.dependent_changes):
-                change_dict = resolved_change.toDict()
-                if 'bundle_id' in orig_dict:
-                    change_dict['bundle_id'] = orig_dict['bundle_id']
-                dependent_changes.append(change_dict)
+        resolved_changes = self.resolveChangeReferences(
+            [c['ref'] for c in build_set.dependent_changes])
+        dependent_changes = []
+        for resolved_change, orig_dict in zip(resolved_changes,
+                                              build_set.dependent_changes):
+            change_dict = resolved_change.toDict()
+            if 'bundle_id' in orig_dict:
+                change_dict['bundle_id'] = orig_dict['bundle_id']
+            dependent_changes.append(change_dict)
 
         for job in jobs:
             log.debug("Found job %s for %s", job, item)
@@ -1686,21 +1679,12 @@ class PipelineManager(metaclass=ABCMeta):
         connections = self.sched.connections.connections
 
         new_items = list()
-        build_set = item.current_build_set
-
-        # If we skipped the initial repo state (for branch/ref items),
-        # we need to include the merger items for the final repo state.
-        # MODEL_API < 28
-        if (build_set._merge_repo_state_path is None and
-            not build_set.repo_state_keys):
-            new_items.extend(build_set.merger_items)
-        else:
-            for merger_item in item.current_build_set.merger_items:
-                canonical_hostname = connections[
-                    merger_item['connection']].canonical_hostname
-                canonical_project_name = (canonical_hostname + '/' +
-                                          merger_item['project'])
-                project_cnames.discard(canonical_project_name)
+        for merger_item in item.current_build_set.merger_items:
+            canonical_hostname = connections[
+                merger_item['connection']].canonical_hostname
+            canonical_project_name = (canonical_hostname + '/' +
+                                      merger_item['project'])
+            project_cnames.discard(canonical_project_name)
 
         if not project_cnames:
             item.current_build_set.updateAttributes(

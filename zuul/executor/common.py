@@ -114,11 +114,6 @@ def construct_build_params(uuid, connections, job, item, pipeline,
     else:
         params['branch'] = None
     params['repo_state_keys'] = item.current_build_set.repo_state_keys
-    # MODEL_API < 28
-    params['merge_repo_state_ref'] = \
-        item.current_build_set._merge_repo_state_path
-    params['extra_repo_state_ref'] = \
-        item.current_build_set._extra_repo_state_path
 
     params['ssh_keys'] = []
     if pipeline.post_review:
