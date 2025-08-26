@@ -16,6 +16,24 @@
       "message": "I realize that status-url is being handled in a special way but want to note that MODEL_API 29 would\u0027ve been introduced by zuul 11 so this particular attribute isn\u0027t directly related to the pre 11 cleanup.",
       "revId": "cb316a8c9e02dd5c3ad6037ab974c71d9970dc23",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ba1e3507_4f3b2c60",
+        "filename": "zuul/driver/github/githubreporter.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-26T16:33:00Z",
+      "side": 0,
+      "message": "Oh yep.  It looks like this was introduced in zuul 11 and there is a minor error in the model-changelog.  It\u0027s still okay to remove it, though it\u0027s a slightly shorter deprecation period than I thought, but it\u0027s probably more than enough for this, which is easy to fix.  And it\u0027s confusing to still have this in there, so the sooner it\u0027s gone the better.",
+      "parentUuid": "8e1b36f3_1321de3d",
+      "revId": "cb316a8c9e02dd5c3ad6037ab974c71d9970dc23",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }

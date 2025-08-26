@@ -35,6 +35,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd15e288_f233d9d8",
+        "filename": "tests/unit/test_nodepool.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-26T16:33:00Z",
+      "side": 1,
+      "message": "Oh sorry, I should have included this in the commit message.\n\nThis only works in unit tests because other tests perform the global state initialization needed by the tracing module.  This test did not work when run in isolation because of that.  This fix is included here only because I was running these tests in isolation.\n\nI could add these 2 lines to a separate change before this, but it\u0027s probably not necessary.  I\u0027ll add it to the commit message if I update.",
+      "parentUuid": "eafd25f1_8a01f93c",
+      "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "53b0589a_fbd016a9",
@@ -48,6 +66,24 @@
       "writtenOn": "2025-08-26T16:15:19Z",
       "side": 1,
       "message": "Nit the return isn\u0027t strictly necessary here as we\u0027re at the end of the function.",
+      "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b19a322d_6a3477d2",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6002,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-26T16:33:00Z",
+      "side": 1,
+      "message": "Fixed.",
+      "parentUuid": "53b0589a_fbd016a9",
       "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -69,6 +105,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b463bc1_e2df0a49",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6013,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-26T16:33:00Z",
+      "side": 1,
+      "message": "Fixed.",
+      "parentUuid": "608c3ac2_8a1cd274",
+      "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9b043a54_0c90530a",
@@ -82,6 +136,24 @@
       "writtenOn": "2025-08-26T16:15:19Z",
       "side": 1,
       "message": "This should be `d[\"ref\"]`",
+      "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "13abf7c9_8bdd86e8",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6411,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-26T16:33:00Z",
+      "side": 1,
+      "message": "Fixed.",
+      "parentUuid": "9b043a54_0c90530a",
       "revId": "0a940460d0e1ea18bfdf1e3e3de6251a8102494d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
