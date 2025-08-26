@@ -19,14 +19,8 @@ import logging
 import voluptuous as v
 
 from zuul.reporter import BaseReporter
-from zuul.exceptions import DeprecationWarning, MergeFailure
+from zuul.exceptions import MergeFailure
 from zuul.driver.pagure.paguresource import PagureSource
-
-
-class PagureStatusUrlDeprecation(DeprecationWarning):
-    zuul_error_name = 'Pagure status-url Deprecation'
-    zuul_error_message = """The 'status-url' reporter attribute
-is deprecated."""
 
 
 class PagureReporter(BaseReporter):
@@ -42,9 +36,6 @@ class PagureReporter(BaseReporter):
         self._commit_status = self.config.get('status', None)
         self._create_comment = self.config.get('comment', True)
         self._merge = self.config.get('merge', False)
-
-        if 'status-url' in self.config and parse_context:
-            parse_context.accumulator.addError(PagureStatusUrlDeprecation)
 
     def getContext(self, manager):
         return "{}/{}".format(manager.tenant.name,
@@ -155,8 +146,6 @@ class PagureReporter(BaseReporter):
 def getSchema():
     pagure_reporter = v.Schema({
         'status': v.Any('pending', 'success', 'failure'),
-        # MODEL_API < 31
-        'status-url': str,
         'comment': bool,
         'merge': bool,
     })
