@@ -50,7 +50,6 @@ import {
   BellIcon,
   BookIcon,
   ChevronDownIcon,
-  CodeIcon,
   ServiceIcon,
   UsersIcon,
 } from '@patternfly/react-icons'
@@ -254,11 +253,6 @@ class App extends React.Component {
     history.push('/components')
   }
 
-  handleApiLink = () => {
-    const { history } = this.props
-    history.push('/openapi')
-  }
-
   handleDocumentationLink = () => {
     window.open('https://zuul-ci.org/docs', '_blank', 'noopener noreferrer')
   }
@@ -405,11 +399,6 @@ class App extends React.Component {
     }
 
     kebabDropdownItems.push(
-      <DropdownItem key="api" onClick={event => this.handleApiLink(event)}>
-        <CodeIcon /> API
-      </DropdownItem>
-    )
-    kebabDropdownItems.push(
       <DropdownItem
         key="documentation"
         onClick={event => this.handleDocumentationLink(event)}
@@ -445,13 +434,6 @@ class App extends React.Component {
               </Link>
             </PageHeaderToolsItem>
           }
-          <PageHeaderToolsItem>
-            <Link to='/openapi'>
-              <Button variant={ButtonVariant.plain}>
-                <CodeIcon /> API
-              </Button>
-            </Link>
-          </PageHeaderToolsItem>
           <PageHeaderToolsItem>
             <a
               href='https://zuul-ci.org/docs'
