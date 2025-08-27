@@ -31,7 +31,6 @@ import labels from './labels'
 import logfile from './logfile'
 import nodesetRequests from './nodesetRequests'
 import nodes from './nodes'
-import openapi from './openapi'
 import project from './project'
 import pipelines from './pipelines'
 import projects from './projects'
@@ -65,7 +64,6 @@ const reducers = {
   logfile,
   nodesetRequests,
   nodes,
-  openapi,
   pipelines,
   project,
   projects,

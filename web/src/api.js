@@ -156,10 +156,6 @@ function fetchTenantInfo(apiPrefix) {
   return makeRequest(apiPrefix + 'info')
 }
 
-function fetchOpenApi() {
-  return Axios.get(getHomepageUrl() + 'openapi.yaml')
-}
-
 function fetchTenants() {
   return makeRequest(apiUrl + 'tenants')
 }
@@ -453,7 +449,6 @@ export {
   fetchLabels,
   fetchNodesetRequests,
   fetchNodes,
-  fetchOpenApi,
   fetchPipelines,
   fetchProject,
   fetchProjects,
