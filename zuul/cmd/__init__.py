@@ -139,6 +139,7 @@ class ZuulApp(object):
                 cmd.add_argument(arg.name,
                                  help=arg.help,
                                  default=arg.default)
+        return subparsers
 
     def handleCommands(self):
         command_name = getattr(self.args, 'command', None)

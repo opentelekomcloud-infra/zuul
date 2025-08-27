@@ -1083,6 +1083,7 @@ class AnsibleJob(object):
         self.running = False
         self.started = False  # Whether playbooks have started running
         self.time_starting_build = None
+        self.disk_usage = 0
         self.paused = False
         self.aborted = False
         self.aborted_reason = None
@@ -3935,7 +3936,8 @@ class ExecutorServer(BaseMergeServer):
         self.disk_accountant = DiskAccountant(self.jobdir_root,
                                               self.disk_limit_per_job,
                                               self.stopJobDiskFull,
-                                              self.merge_root)
+                                              self.merge_root,
+                                              self.reportJobDiskUsage)
 
         if self.statsd:
             base_key = 'zuul.executor.{hostname}'
@@ -4518,6 +4520,12 @@ class ExecutorServer(BaseMergeServer):
     def stopJobDiskFull(self, jobdir):
         unique = os.path.basename(jobdir)
         self.stopJobByUnique(unique, reason=AnsibleJob.RESULT_DISK_FULL)
+
+    def reportJobDiskUsage(self, jobdir, size):
+        unique = os.path.basename(jobdir)
+        job_worker = self.job_workers.get(unique)
+        if job_worker:
+            job_worker.disk_usage = size
 
     def resumeJob(self, build_request):
         log = get_annotated_logger(

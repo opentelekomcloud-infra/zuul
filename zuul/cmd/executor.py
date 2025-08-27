@@ -18,6 +18,7 @@ import logging
 import os
 import sys
 import signal
+import time
 
 import zuul.cmd
 import zuul.executor.server
@@ -34,7 +35,15 @@ class Executor(zuul.cmd.ZuulDaemonApp):
         parser.add_argument('--keep-jobdir', dest='keep_jobdir',
                             action='store_true',
                             help='keep local jobdirs after run completes')
-        self.addSubCommands(parser, zuul.executor.server.COMMANDS)
+
+        subparsers = self.addSubCommands(parser,
+                                         zuul.executor.server.COMMANDS)
+        jobsStatsCmd = subparsers.add_parser(
+            'jobs-stats',
+            help='Displays statistics about jobs currently '
+                 'handled by this executor'
+        )
+        jobsStatsCmd.set_defaults(command='jobs-stats')
         return parser
 
     def parseArguments(self, args=None):
@@ -79,7 +88,31 @@ class Executor(zuul.cmd.ZuulDaemonApp):
             self.log_streamer_pipe = pipe_write
             self.log_streamer_pid = child_pid
 
+    def jobsStats(self):
+        print('#uuid;event id;state;duration (s);disk space (MB)')
+        for job_uuid in self.job_workers.keys():
+            job = self.job_workers[job_uuid]
+            event_id = getattr(job, 'zuul_event_id', 'N/A')
+            state = 'N/A'
+            if job.started:
+                state = 'started'
+            if job.running:
+                state = 'running'
+            if job.paused:
+                state = 'paused'
+            if self.aborted:
+                state = 'aborted'
+            duration = 'N/A'
+            if job.time_starting_build:
+                duration = round(time.monotonic() - job.time_starting_build,
+                                 2)
+            disk_space = getattr(job, 'disk_usage', 'N/A')
+            print(f'{job_uuid};{event_id};{state};{duration};{disk_space}')
+        sys.exit(0)
+
     def run(self):
+        if getattr(self.args, 'command', None) == 'jobs-stats':
+            self.jobsStats()
         self.handleCommands()
 
         self.setup_logging('executor', 'log_config')
