@@ -80,7 +80,6 @@ def linters(session):
     set_standard_env_vars(session)
     session.install('flake8', 'openapi-spec-validator')
     session.run('flake8')
-    session.run('openapi-spec-validator', 'web/public/openapi.yaml')
 
 
 @nox.session(python='3')

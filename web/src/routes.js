@@ -30,7 +30,6 @@ import FlavorsPage from './pages/Flavors'
 import LabelsPage from './pages/Labels'
 import NodesetRequestsPage from './pages/NodesetRequests'
 import NodesPage from './pages/Nodes'
-import OpenApiPage from './pages/OpenApi'
 import PipelineDetailsPage from './pages/PipelineDetails'
 import PipelineOverviewPage from './pages/PipelineOverview'
 import ProjectPage from './pages/Project'
@@ -168,11 +167,6 @@ const routes = (info) => {
       to: '/tenants',
       component: TenantsPage,
       globalRoute: true
-    },
-    {
-      to: '/openapi',
-      component: OpenApiPage,
-      noTenantPrefix: true,
     },
     {
       to: '/components',
