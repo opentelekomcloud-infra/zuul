@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eb9cf8e3_c481f73a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 36342
+      },
+      "writtenOn": "2025-08-27T13:29:26Z",
+      "side": 1,
+      "message": "Despite passing all tests it results in zuul-web that does not work",
+      "revId": "ebe7cbbe3184653f4d1fb3219ee6f12e845559c3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
