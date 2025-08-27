@@ -35,7 +35,6 @@ System, the remainder of the sections will be useful.
    project-config
    job-content
    admin
-   rest-api
    howtos/index
    developer/index
    governance
