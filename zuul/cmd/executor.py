@@ -115,7 +115,16 @@ class Executor(zuul.cmd.ZuulDaemonApp):
         self.executor.start()
 
         if self.args.nodaemon:
-            signal.signal(signal.SIGTERM, self.exit_handler)
+            _sigterm = self.config.get('executor',
+                                       'custom_termination_signal',
+                                       'SIGTERM').upper()
+            sigterm = getattr(signal, _sigterm, None)
+            if sigterm is None:
+                self.log.error(
+                    'Unknown value for executor.custom_termination_signal'
+                    f'value "{_sigterm}", using SIGTERM by default')
+                sigterm = signal.SIGTERM
+            signal.signal(sigterm, self.exit_handler)
 
         while True:
             try:
