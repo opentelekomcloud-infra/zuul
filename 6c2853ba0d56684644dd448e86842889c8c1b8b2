@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6eae54a6_c5a1b7e6",
+        "filename": "web/package.json",
+        "patchSetId": 16
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 36342
+      },
+      "writtenOn": "2025-08-27T13:25:19Z",
+      "side": 1,
+      "message": "according to docs just victory should\u0027ve work but it didn\u0027t to me for some reason so I need to check it again",
+      "range": {
+        "startLine": 43,
+        "startChar": 0,
+        "endLine": 59,
+        "endChar": 40
+      },
+      "revId": "6c2853ba0d56684644dd448e86842889c8c1b8b2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
