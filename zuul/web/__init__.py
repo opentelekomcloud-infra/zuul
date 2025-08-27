@@ -37,7 +37,6 @@ import threading
 import uuid
 import prometheus_client
 import urllib.parse
-import types
 
 import zuul.executor.common
 from zuul import exceptions
@@ -131,49 +130,7 @@ def _datetimeToString(my_datetime):
     return None
 
 
-class Prop:
-    def __init__(self, description, value):
-        """A property of an OpenAPI schema.
 
-        :param str description: The description of this property
-        :param type value: The type of the property; either a native
-            Python scalar type, Prop instance, or list or dictionary of
-            the preceding.
-        """
-        self.description = description
-        self.value = value
-
-    @staticmethod
-    def _toOpenAPI(value):
-        ret = {}
-        if isinstance(value, Prop):
-            ret['description'] = value.description
-            value = value.value
-        if isinstance(value, (list, tuple)):
-            ret['type'] = 'array'
-            ret['items'] = Prop._toOpenAPI(value[0])
-        elif isinstance(value, (types.MappingProxyType, dict)):
-            ret['type'] = 'object'
-            ret['properties'] = {
-                k: Prop._toOpenAPI(v) for (k, v) in value.items()
-            }
-        elif value is str:
-            ret['type'] = 'string'
-        elif value is int:
-            ret['type'] = 'integer'
-        elif value is float:
-            ret['type'] = 'number'
-        elif value is bool:
-            ret['type'] = 'boolean'
-        elif value is dict:
-            ret['type'] = 'object'
-        elif value is object:
-            ret['type'] = 'object'
-        return ret
-
-    def toOpenAPI(self):
-        "Convert this Prop to an OpenAPI schema."
-        return Prop._toOpenAPI(self.value)
 
 
 class RefConverter:
@@ -191,19 +148,6 @@ class RefConverter:
             'newrev': ref.newrev,
             'ref_url': ref.ref_url,
         }
-
-    @staticmethod
-    def schema():
-        return Prop('The ref', {
-            'project': str,
-            'branch': str,
-            'change': str,
-            'patchset': str,
-            'ref': str,
-            'oldrev': str,
-            'newrev': str,
-            'ref_url': str,
-        })
 
 
 class BuildConverter:
@@ -268,49 +212,6 @@ class BuildConverter:
             })
         return ret
 
-    @staticmethod
-    def schema(buildset=False, skip_refs=False):
-        ret = {
-            '_id': str,
-            'uuid': str,
-            'job_name': str,
-            'result': str,
-            'held': str,
-            'start_time': str,
-            'end_time': str,
-            'duration': str,
-            'voting': str,
-            'log_url': str,
-            'nodeset': str,
-            'error_detail': str,
-            'final': str,
-            'artifacts': [{
-                'name': str,
-                'url': str,
-                'metadata': dict,
-            }],
-            'provides': [{
-                'name': str,
-            }],
-            'ref': RefConverter.schema(),
-        }
-        if buildset:
-            # We enter this branch if we're returning top-level build
-            # objects (ie, not builds under a buildset).
-            ret.update({
-                'pipeline': str,
-                'event_id': str,
-                'event_timestamp': str,
-                'buildset': {
-                    'uuid': str,
-                },
-            })
-            if not skip_refs:
-                ret['buildset']['refs'] = [RefConverter.schema()]
-
-        ret = Prop('The build', ret)
-        return ret
-
 
 class BuildsetEventConverter:
     # A class to encapsulate the conversion of database BuildsetEvent
@@ -323,14 +224,6 @@ class BuildsetEventConverter:
             'description': event.description,
         }
         return ret
-
-    def schema(builds=False):
-        ret = {
-            'event_time': str,
-            'event_type': str,
-            'description': str,
-        }
-        return Prop('The buildset event', ret)
 
 
 class BuildsetConverter:
@@ -360,27 +253,6 @@ class BuildsetConverter:
         if events:
             ret['events'] = [BuildsetEventConverter.toDict(e) for e in events]
         return ret
-
-    def schema(builds=False, events=False):
-        ret = {
-            '_id': str,
-            'uuid': str,
-            'result': str,
-            'message': str,
-            'pipeline': str,
-            'event_id': str,
-            'event_timestamp': str,
-            'first_build_start_time': str,
-            'last_build_end_time': str,
-            'refs': [
-                RefConverter.schema()
-            ],
-        }
-        if builds:
-            ret['builds'] = [BuildConverter.schema()]
-        if events:
-            ret['events'] = [BuildsetEventConverter.schema()]
-        return Prop('The buildset', ret)
 
 
 class ProviderConverter:
@@ -430,30 +302,6 @@ class ProviderConverter:
             'flavors': flavors,
         }
 
-    @staticmethod
-    def schema():
-        return Prop('The provider', {
-            'name': str,
-            'canonical_name': str,
-            'images': [
-                {'name': str,
-                 'canonical_name': str,
-                 'type': str,
-                 'build_artifacts': [ImageBuildArtifactConverter.schema()],
-                 }
-            ],
-            'labels': [
-                {'name': str,
-                 'canonical_name': str,
-                 }
-            ],
-            'flavors': [
-                {'name': str,
-                 'canonical_name': str,
-                 }
-            ]
-        })
-
 
 class ImageUploadConverter:
     # A class to encapsulate the conversion of image upload objects to
@@ -478,22 +326,6 @@ class ImageUploadConverter:
             'lock_holder': upload.lock_holder,
         }
         return ret
-
-    @staticmethod
-    def schema():
-        return Prop('The image upload', {
-            'uuid': str,
-            'canonical_name': str,
-            'artifact_uuid': str,
-            'endpoint_name': str,
-            'external_id': str,
-            'timestamp': str,
-            'validated': str,
-            'state': str,
-            'state_time': str,
-            'is_locked': bool,
-            'lock_holder': str,
-        })
 
 
 class ImageBuildArtifactConverter:
@@ -526,26 +358,6 @@ class ImageBuildArtifactConverter:
                               for u in uploads]
         return ret
 
-    @staticmethod
-    def schema():
-        return Prop('The image build artifact', {
-            'uuid': str,
-            'canonical_name': str,
-            'build_tenant': bool,
-            'build_uuid': str,
-            'format': str,
-            'md5sum': str,
-            'sha256': str,
-            'url': str,
-            'timestamp': str,
-            'validated': str,
-            'state': str,
-            'state_time': str,
-            'is_locked': bool,
-            'lock_holder': str,
-            'uploads': [ImageUploadConverter.schema()],
-        })
-
 
 class ImageConverter:
     # A class to encapsulate the conversion of Image objects to
@@ -569,17 +381,6 @@ class ImageConverter:
             ]
         return ret
 
-    @staticmethod
-    def schema():
-        return Prop('The image', {
-            'name': str,
-            'canonical_name': str,
-            'project_canonical_name': str,
-            'branch': str,
-            'type': str,
-            'build_artifacts': [ImageBuildArtifactConverter.schema()],
-        })
-
 
 class FlavorConverter:
     # A class to encapsulate the conversion of Flavor objects to
@@ -593,14 +394,6 @@ class FlavorConverter:
         }
         return ret
 
-    @staticmethod
-    def schema():
-        return Prop('The image', {
-            'name': str,
-            'canonical_name': str,
-            'description': str,
-        })
-
 
 class LabelConverter:
     # A class to encapsulate the conversion of Label objects to
@@ -613,14 +406,6 @@ class LabelConverter:
             'description': label.description,
         }
         return ret
-
-    @staticmethod
-    def schema():
-        return Prop('The image', {
-            'name': str,
-            'canonical_name': str,
-            'description': str,
-        })
 
 
 class ProviderNodeConverter:
@@ -740,36 +525,6 @@ class NodesetRequestConverter:
         }
         return ret
 
-    @staticmethod
-    def schema():
-        return Prop('The nodeset request', {
-            'uuid': str,
-            'state': str,
-            'pipeline_name': str,
-            'buildset_uuid': str,
-            # Omitting job_uuid because it is not externally
-            # meaningful (it is not a build uuid, and it may be
-            # confused as one if we don't otherwise expose the frozen
-            # job uuid).
-            'job_name': str,
-            'labels': [str],
-            'priority': int,
-            'request_time': str,
-            'zuul_event_id': str,
-            'image_names': [str],
-            'image_upload_uuid': str,
-            'relative_priority': int,
-            'provider_node_data': [
-                {
-                    'uuid': str,
-                    'executor_zone': str,
-                    'failed_providers': [str],
-                }
-            ],
-            'is_locked': bool,
-            'lock_holder': str,
-        })
-
 
 class APIError(cherrypy.HTTPError):
     def __init__(self, code, json_doc=None, headers=None):
@@ -842,40 +597,7 @@ cherrypy.tools.handle_options = cherrypy.Tool('on_start_resource',
                                               priority=50)
 
 
-def openapi_response(
-        code,
-        description=None,
-        content_type=None,
-        example=None,
-        schema=None,
-):
-    """Describe an OpenAPI response
 
-    :param int code: The HTTP response code
-    :param str description: A description for the response
-    :param str content_type: The HTTP content type
-    :param str example: An example of the response output
-    :param Prop schema: A Prop describing the returned schema
-    """
-    response_spec = {}
-    if description:
-        response_spec['description'] = description
-    if content_type:
-        content_spec = {}
-        response_spec['content'] = {content_type: content_spec}
-        if example:
-            content_spec['example'] = example
-        if schema:
-            content_spec['schema'] = schema.toOpenAPI()
-
-    def decorator(func):
-        if not hasattr(func, '__openapi__'):
-            func.__openapi__ = {}
-        func.__openapi__.setdefault('responses', {})
-        func.__openapi__['responses'][code] = response_spec
-        return func
-
-    return decorator
 
 
 class AuthInfo:
@@ -1892,15 +1614,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_root_auth()
-    @openapi_response(
-        code=200,
-        content_type='application/json',
-        description='Returns the list of tenants',
-        schema=Prop('The list of tenants', [{
-            'name': Prop('Tenant name', str),
-        }]),
-    )
-    @openapi_response(404, description='Tenant not found')
     def tenants(self, auth):
         resp = cherrypy.response
         resp.headers["Cache-Control"] = f"public, max-age={self.cache_expiry}"
@@ -2061,21 +1774,6 @@ class ZuulWebAPI(object):
     )
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        content_type='application/json',
-        description='Returns the list of jobs',
-        schema=Prop('The list of jobs', [{
-            'name': str,
-            'description': str,
-            'tags': [str],
-            'variants': [{
-                'parent': str,
-                'branches': [str],
-            }],
-        }]),
-    )
-    @openapi_response(404, description='Tenant not found')
     def jobs(self, tenant_name, tenant, auth):
         result = []
         for job_name in sorted(tenant.layout.jobs):
@@ -2228,13 +1926,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        content_type='application/json',
-        description='Returns the list of providers',
-        schema=Prop('The list of providers', [ProviderConverter.schema()]),
-    )
-    @openapi_response(404, 'Tenant not found')
     def providers(self, tenant_name, tenant, auth):
         providers = self.zuulweb.tenant_providers[tenant_name]
         ret = []
@@ -2287,13 +1978,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        content_type='application/json',
-        description='Returns the list of images',
-        schema=Prop('The list of images', [ImageConverter.schema()]),
-    )
-    @openapi_response(404, 'Tenant not found')
     def images(self, tenant_name, tenant, auth):
         ret = []
         ibr = self.zuulweb.image_build_registry
@@ -2412,13 +2096,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        content_type='application/json',
-        description='Returns the list of flavors',
-        schema=Prop('The list of flavors', [FlavorConverter.schema()]),
-    )
-    @openapi_response(404, 'Tenant not found')
     def flavors(self, tenant_name, tenant, auth):
         ret = []
         for flavor in tenant.layout.flavors.values():
@@ -2545,18 +2222,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.save_params()
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        content_type='text/plain',
-        description=('Returns the project public key that is used '
-                     'to encrypt secrets'),
-        example=('-----BEGIN PUBLIC KEY-----\n'
-                 'MIICI...\n'
-                 '-----END PUBLIC KEY-----\n'),
-        schema=Prop('The project secrets public key '
-                    'in PKCS8 format', str)
-    )
-    @openapi_response(404, 'Tenant or Project not found')
     def key(self, tenant_name, tenant, auth, project_name):
         project = self._getProjectOrRaise(tenant, project_name)
 
@@ -2569,16 +2234,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.save_params()
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        content_type='text/plain',
-        description=('Returns the project public key that executor '
-                     'adds to SSH agent'),
-        example='ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACA',
-        schema=Prop('The project secrets public key '
-                    'in SSH2 format', str),
-    )
-    @openapi_response(404, 'Tenant or Project not found')
     def project_ssh_key(self, tenant_name, tenant, auth, project_name):
         project = self._getProjectOrRaise(tenant, project_name)
 
@@ -2595,13 +2250,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        content_type='application/json',
-        description='Returns the list of builds',
-        schema=Prop('The list of builds', [BuildConverter.schema()]),
-    )
-    @openapi_response(404, 'Tenant not found')
     def builds(self, tenant_name, tenant, auth, project=None,
                pipeline=None, change=None, branch=None, patchset=None,
                ref=None, newrev=None, uuid=None, job_name=None,
@@ -2723,14 +2371,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.save_params()
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        content_type='image/svg+xml',
-        description=('Badge describing the result of '
-                     'the latest buildset found.'),
-        schema=Prop('SVG image', object),
-    )
-    @openapi_response(404, 'No buildset found')
     def badge(self, tenant_name, tenant, auth, project=None,
               pipeline=None, branch=None):
         """
@@ -2770,13 +2410,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        content_type='application/json',
-        description='Returns the list of buildsets',
-        schema=Prop('The list of buildsets', [BuildsetConverter.schema()]),
-    )
-    @openapi_response(404, 'Tenant not found')
     def buildsets(self, tenant_name, tenant, auth, project=None,
                   pipeline=None, change=None, branch=None,
                   patchset=None, ref=None, newrev=None, uuid=None,
@@ -2807,13 +2440,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        content_type='application/json',
-        description='Returns a buildset',
-        schema=BuildsetConverter.schema(builds=True, events=True),
-    )
-    @openapi_response(404, 'Tenant not found')
     def buildset(self, tenant_name, tenant, auth, uuid):
         connection = self._get_connection()
 
@@ -2831,24 +2457,6 @@ class ZuulWebAPI(object):
     )
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
-    @openapi_response(
-        code=200,
-        description='Returns the list of semaphores',
-        schema=Prop('The list of semaphores', [{
-            'name': str,
-            'global': bool,
-            'max': int,
-            'holders': {
-                'count': int,
-                'other_tenants': int,
-                'this_tenant': [{
-                    'buildset_uuid': str,
-                    'job_name': str,
-                }],
-            },
-        }]),
-    )
-    @openapi_response(404, 'Tenant not found')
     def semaphores(self, tenant_name, tenant, auth):
         result = []
         names = set(tenant.layout.semaphores.keys())
