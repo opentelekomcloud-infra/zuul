@@ -67,6 +67,17 @@ class TimerDriver(Driver, TriggerInterface):
 
     def _runElection(self):
         self.log.debug("Starting timer election loop")
+        # If there are other contenders, wait until we are primed so
+        # that we have all the tenant information.  If there are no
+        # other schedulers running, we can start ASAP so we emit
+        # events for the early tenants.
+        try:
+            if self.election.lock.contenders():
+                self.log.debug("Waiting for scheduler to be primed")
+                self.sched.primed_event.wait()
+        except Exception:
+            self.log.exception("Error in timer election startup:")
+            # Just keep going
         while not self.stopped:
             try:
                 self.log.info("Running timer election")
@@ -100,11 +111,15 @@ class TimerDriver(Driver, TriggerInterface):
         # not be present.
         existing_jobs = self.tenant_jobs.get(tenant.name)
         if not existing_jobs:
+            self.log.debug("No jobs to remove for %s, %s remain",
+                           tenant, len(new_jobs))
             return
         to_remove = set(existing_jobs.keys()) - set(new_jobs.keys())
         for key in to_remove:
             job = existing_jobs[key]
             job.remove()
+        self.log.debug("Removed %s jobs for %s, %s remain",
+                       len(to_remove), tenant, len(new_jobs))
 
     def _addJobs(self, tenant):
         jobs = {}
@@ -159,6 +174,7 @@ class TimerDriver(Driver, TriggerInterface):
                       timespec, dereference, jobs):
         # jobs is a dict of args->job that we mutate
         existing_jobs = self.tenant_jobs.get(tenant.name, {})
+        start_job_count = len(jobs)
         for project_name, pcs in tenant.layout.project_configs.items():
             # timer operates on branch heads and doesn't need
             # speculative layouts to decide if it should be
@@ -209,17 +225,23 @@ class TimerDriver(Driver, TriggerInterface):
                 self.log.exception("Unable to create APScheduler job for "
                                    "%s %s %s",
                                    tenant, pipeline, project_name)
+        end_job_count = len(jobs)
+        self.log.debug("Added %s jobs for %s %s with %s existing tenant jobs",
+                       (end_job_count - start_job_count),
+                       tenant, pipeline,
+                       len(existing_jobs))
 
     def _onTrigger(self, tenant_name, pipeline_name, project_name, branch,
                    dereference, timespec):
-        if not self.election_won:
-            return
-
-        if not self.election.is_still_valid():
-            self.stop_event.set()
-            return
-
         try:
+            if not self.election_won:
+                return
+
+            if not self.election.is_still_valid():
+                self.log.debug("Noticed election is no longer valid")
+                self.stop_event.set()
+                return
+
             attributes = {
                 "timespec": timespec,
             }
