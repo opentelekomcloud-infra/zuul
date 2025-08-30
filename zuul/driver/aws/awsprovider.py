@@ -187,6 +187,9 @@ class AwsProviderLabel(BaseProviderLabel):
         Optional('security-group-ids'): Nullable(AsList(str)),
         Optional('subnet-ids', default=[]): AsList(str),
         Optional('iam-instance-profile'): Nullable(aws_iam_schema),
+        # This could make sense for image as well, but currently is
+        # only included in label.
+        Optional('kms-key-id'): Nullable(str),
     })
 
     inheritable_schema = assemble(
