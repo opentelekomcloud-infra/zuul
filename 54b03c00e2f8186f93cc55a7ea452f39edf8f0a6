@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c8791a71_8bbaabef",
+        "filename": "zuul/ansible/base/callback/zuul_stream.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-30T17:01:55Z",
+      "side": 1,
+      "message": "We emit messages indicating that retries are occuring which I assume are sufficient to make the logs for a single task retried multiple times clear enough without some additional banner?",
+      "revId": "54b03c00e2f8186f93cc55a7ea452f39edf8f0a6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f76c736_2a3fc4da",
+        "filename": "zuul/ansible/base/callback/zuul_stream.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 536,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-30T17:01:55Z",
+      "side": 1,
+      "message": "I guess we are 1 not 0 indexed. This seems to match stream_setup.py",
+      "revId": "54b03c00e2f8186f93cc55a7ea452f39edf8f0a6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "195d32be_39524e86",
+        "filename": "zuul/ansible/base/callback/zuul_stream.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-30T17:01:55Z",
+      "side": 1,
+      "message": "This function looks identical to the one above. Can they be combined?",
+      "revId": "54b03c00e2f8186f93cc55a7ea452f39edf8f0a6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "078310cc_7fe2d007",
+        "filename": "zuul/ansible/base/callback/zuul_stream.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 718,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-30T17:01:55Z",
+      "side": 1,
+      "message": "This `delay` value is the amount of extra time we have determined we need to delay for internally before starting the log streaming back up again which may be different than the actual task delay time. I worry that using this `delay` value here rather than `result.task.delay` may be confusing to users who ask for a delay value and see a different one in the log here.",
+      "revId": "54b03c00e2f8186f93cc55a7ea452f39edf8f0a6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "deaa842e_3f338e8d",
+        "filename": "zuul/ansible/base/callback/zuul_stream.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 726,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-08-30T17:01:55Z",
+      "side": 1,
+      "message": "I guess we put `start()` in a separate thread so that the `time.sleep(delay)` doesn\u0027t affect the completion of this method. But this should be safe because `v2_playbook_on_task_start()` isn\u0027t going to hang around for long after that sleep completes. Mostly thinking out loud here to ensure we aren\u0027t introducing a memory leak by having a bunch of threads with references to self (and self._log, etc).",
+      "revId": "54b03c00e2f8186f93cc55a7ea452f39edf8f0a6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
