@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec21bd4d_741fddce",
+        "filename": "zuul/ansible/base/callback/zuul_stream.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-30T17:11:26Z",
+      "side": 1,
+      "message": "Yes, if we add a banner it\u0027s confusing, since the banner is for the *task* and we\u0027re retrying it for the *host*.  Therefore, I think this is the least confusing and most accurate output.",
+      "parentUuid": "c8791a71_8bbaabef",
+      "revId": "54b03c00e2f8186f93cc55a7ea452f39edf8f0a6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3f76c736_2a3fc4da",
@@ -52,6 +70,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "43c7a3f7_ce75d12c",
+        "filename": "zuul/ansible/base/callback/zuul_stream.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-30T17:11:26Z",
+      "side": 1,
+      "message": "Oh good point, this was supposed to be a little different; it\u0027s supposed to be what the comment said, which means we don\u0027t have the \"connected\" check.",
+      "parentUuid": "195d32be_39524e86",
+      "revId": "54b03c00e2f8186f93cc55a7ea452f39edf8f0a6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "078310cc_7fe2d007",
@@ -65,6 +101,24 @@
       "writtenOn": "2025-08-30T17:01:55Z",
       "side": 1,
       "message": "This `delay` value is the amount of extra time we have determined we need to delay for internally before starting the log streaming back up again which may be different than the actual task delay time. I worry that using this `delay` value here rather than `result.task.delay` may be confusing to users who ask for a delay value and see a different one in the log here.",
+      "revId": "54b03c00e2f8186f93cc55a7ea452f39edf8f0a6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "888615cc_c88caca0",
+        "filename": "zuul/ansible/base/callback/zuul_stream.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 718,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-08-30T17:11:26Z",
+      "side": 1,
+      "message": "Users will never see this; this only goes to the debug log on the executor, and that audience (us) would want to know that exact value to figure out why something went wrong.",
+      "parentUuid": "078310cc_7fe2d007",
       "revId": "54b03c00e2f8186f93cc55a7ea452f39edf8f0a6",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
