@@ -40,7 +40,7 @@ class ZooKeeperClient(object):
         self,
         hosts,
         read_only=False,
-        timeout=10.0,
+        timeout=120.0,
         tls_cert=None,
         tls_key=None,
         tls_ca=None,
@@ -52,7 +52,7 @@ class ZooKeeperClient(object):
             127.0.0.1:2181,127.0.0.1:2182,[::1]:2183).
         :param bool read_only: If True, establishes a read-only connection.
         :param float timeout: The ZooKeeper session timeout, in
-            seconds (default: 10.0).
+            seconds (default: 120.0).
         :param str tls_key: Path to TLS key
         :param str tls_cert: Path to TLS cert
         :param str tls_ca: Path to TLS CA cert

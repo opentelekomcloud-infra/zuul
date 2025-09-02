@@ -165,7 +165,7 @@ ZooKeeper
       The path to the PEM encoded CA certificate file.
 
    .. attr:: session_timeout
-      :default: 10.0
+      :default: 120.0
 
       The ZooKeeper session timeout, in seconds.
 
