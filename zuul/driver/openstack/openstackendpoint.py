@@ -640,14 +640,22 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
             self.getRegionName(),
             server, quota)
 
-    def _getClient(self):
+    def _getRegionConfig(self):
         config = openstack.config.OpenStackConfig(
             config_files=self.connection.config_files,
             load_envvars=False,
             app_name='zuul',
         )
-        region = config.get_one(cloud=self.connection.cloud_name,
-                                region_name=self.region)
+        return config.get_one(cloud=self.connection.cloud_name,
+                              region_name=self.region)
+
+    def _getClient(self):
+        region = self._getRegionConfig()
+        # Note: the connection object holds resources internally that
+        # prevent GC.  Currently our endpoints are long-lived, and we
+        # don't perform any cleanup for them.  If we do in the future,
+        # we will need to call Connection.close() to release
+        # resources.
         return openstack.connection.Connection(
             config=region,
             use_direct_get=False,
@@ -655,7 +663,8 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
         )
 
     def getImageFormat(self):
-        return self._getClient().config.config['image_format']
+        region = self._getRegionConfig()
+        return region.config['image_format']
 
     def getRegionName(self):
         # With OpenStackSDK, users can omit the region and the SDK may
