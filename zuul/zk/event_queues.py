@@ -244,11 +244,19 @@ class ZooKeeperEventQueue(ZooKeeperSimpleBase, Iterable):
 
     log = logging.getLogger("zuul.ZooKeeperEventQueue")
 
+    # How often to update our internal cache of the queue size
+    CACHED_COUNT_INTERVAL = 10
+    # The maximum number of events in the queue; more than this will
+    # be discarded.
+    MAX_QUEUE = 90000
+
     def __init__(self, client, queue_root):
         super().__init__(client)
         self.queue_root = queue_root
         self.event_root = f'{queue_root}/queue'
         self.data_root = f'{queue_root}/data'
+        self._cached_count = 0
+        self._cached_count_time = 0
         self.initialize()
 
     def initialize(self):
@@ -315,6 +323,34 @@ class ZooKeeperEventQueue(ZooKeeperSimpleBase, Iterable):
         if updater and not updater.preRun():
             # Don't even try the update
             return
+
+        # Protect against a ZK error if the queue is too large; ZK
+        # will let us add children, but we won't be able to get the
+        # list of children if there are more than about 95k of them.
+        # We implement an internal limit of 90k events.  If the queue
+        # has more than that number, we discard events.  In order to
+        # avoid adding an extra ZK "stat" call before every "create",
+        # we cache the queue size, and update it only every 10
+        # seconds.  However, if the cached size exceeds 50% of the
+        # max, then we update it on every request, to reduce the
+        # chances of going over the limit.  Additionally, we increment
+        # our cached value every time we put an item in the queue.  If
+        # there is a large rush of 50k events that would push us over
+        # the limit in less than 10 seconds, they are likely to come
+        # from the same place, which means our internal counter would
+        # detect that and start issuing the stat call more often.
+        # Nothing decrements the counter, but if it gets too high, we
+        # will issue a stat call and override the cache.
+        now = time.monotonic()
+        if ((now - self._cached_count_time > self.CACHED_COUNT_INTERVAL) or
+            self._cached_count > (self.MAX_QUEUE / 2)):
+            self._cached_count = len(self)
+            self._cached_count_time = now
+        if self._cached_count >= self.MAX_QUEUE:
+            self.log.warning("Discarding event %s due to queue length %s",
+                             data, self._cached_count)
+            return
+        self._cached_count += 1
 
         # Write the side channel data here under the assumption that
         # the transaction will proceed.  If the transaction fails, it
