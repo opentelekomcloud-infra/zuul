@@ -143,7 +143,10 @@ class FakeOpenstackSession:
 
 
 class FakeOpenstackConfig:
-    pass
+    def __init__(self, region):
+        self.config = {}
+        self.config['image_format'] = 'qcow2'
+        self.config['region_name'] = region
 
 
 class FakeOpenstackConnection:
@@ -152,10 +155,7 @@ class FakeOpenstackConnection:
     def __init__(self, cloud):
         self.cloud = cloud
         self.compute = FakeOpenstackSession(cloud)
-        self.config = FakeOpenstackConfig()
-        self.config.config = {}
-        self.config.config['image_format'] = 'qcow2'
-        self.config.config['region_name'] = cloud._fake_region or 'region1'
+        self.config = FakeOpenstackConfig(cloud._fake_region or 'region1')
 
     def _needs_floating_ip(self, server, nat_destination):
         return self.cloud._fake_needs_floating_ip
@@ -303,6 +303,9 @@ class FakeOpenstackConnection:
 
 
 class FakeOpenstackProviderEndpoint(OpenstackProviderEndpoint):
+    def _getRegionConfig(self):
+        return FakeOpenstackConfig('region1')
+
     def _getClient(self):
         return self._fake_cloud[self.region]._getConnection()
 
