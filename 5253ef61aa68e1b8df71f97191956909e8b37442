@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "939e1707_b8f47038",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 9311
+      },
+      "writtenOn": "2025-09-03T07:24:23Z",
+      "side": 1,
+      "message": "Maybe the fix should be the otherway around: change the default back to its intended value. That way Zuul would use the same default (10sec) as Nodepool. Though that\u0027s kind of a breaking change.",
+      "revId": "5253ef61aa68e1b8df71f97191956909e8b37442",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "ac8d9456_d289cdcf",
