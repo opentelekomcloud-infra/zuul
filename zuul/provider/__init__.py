@@ -541,11 +541,9 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
             "tenant_name",
         )
         attrs.update({a: getattr(request, a, None) for a in request_attrs})
-
-        attributes = model.Attributes(**attrs)
         for k, v in label.tags.items():
             try:
-                tags[k] = v.format(**attributes)
+                tags[k] = v.format(**attrs)
             except Exception:
                 self.log.exception("Error formatting metadata %s", k)
 
