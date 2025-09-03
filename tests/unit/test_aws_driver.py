@@ -233,6 +233,14 @@ class TestAwsDriver(AwsBaseTest):
             200,
             self.run_instances_calls[0]['BlockDeviceMappings'][0]['Ebs']
             ['Throughput'])
+        for tag_spec in self.run_instances_calls[0]['TagSpecifications']:
+            tags = {t["Key"]: t["Value"] for t in tag_spec['Tags']}
+            self.assertEqual(
+                "tenant-one",
+                tags["tenant"])
+            self.assertIn(
+                "event_id",
+                tags)
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     @driver_config('aws', node_checks=check_node_attrs)
