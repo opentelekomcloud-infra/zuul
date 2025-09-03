@@ -3251,6 +3251,15 @@ class ZuulTestCase(BaseTestCase):
             if cache_state == zk_state:
                 return
 
+    def waitForArtifacts(self, image_name, count, format=None):
+        for _ in iterate_timeout(30, "artifacts to settle"):
+            artifacts = self.launcher.image_build_registry.\
+                getArtifactsForImage(image_name)
+            if format:
+                artifacts = [a for a in artifacts if a.format == format]
+            if len(artifacts) == count:
+                return artifacts
+
     def __haveAllBuildsReported(self):
         # The build requests will be deleted from ZooKeeper once the
         # scheduler processed their result event. Thus, as long as

@@ -2118,15 +2118,6 @@ class TestLauncherUpload(LauncherBaseTestCase):
             self._upload_run))
         super().setUp()
 
-    def _waitForArtifacts(self, image_name, count, format=None):
-        for _ in iterate_timeout(30, "artifacts to settle"):
-            artifacts = self.launcher.image_build_registry.\
-                getArtifactsForImage(image_name)
-            if format:
-                artifacts = [a for a in artifacts if a.format == format]
-            if len(artifacts) == count:
-                return artifacts
-
     def _waitForUploads(self, image_name, count,
                         states=(model.ImageUpload.State.FAILED,
                                 model.ImageUpload.State.READY)):
@@ -2193,8 +2184,8 @@ class TestLauncherUpload(LauncherBaseTestCase):
                 'review.example.com%2Forg%2Fcommon-config/debian-local',
                 'review.example.com%2Forg%2Fcommon-config/ubuntu-local',
         ]:
-            artifacts = self._waitForArtifacts(name, 1, format='raw')
-            self._waitForArtifacts(name, 0, format='qcow2')
+            artifacts = self.waitForArtifacts(name, 1, format='raw')
+            self.waitForArtifacts(name, 0, format='qcow2')
             self.assertEqual('raw', artifacts[0].format)
             self.assertTrue(artifacts[0].validated)
             uploads = self._waitForUploads(name, 1)
@@ -2227,7 +2218,7 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
-        artifacts = self._waitForArtifacts(image_cname, 2, format='raw')
+        artifacts = self.waitForArtifacts(image_cname, 2, format='raw')
         uploads = self._waitForUploads(
             image_cname, 1,
             states=(model.ImageUpload.State.READY,))
@@ -2260,7 +2251,7 @@ class TestLauncherUpload(LauncherBaseTestCase):
         # At this point, we have:
         # debian-local: 1 artifact, 1 ready upload
         # ubuntu-local: 2 artifacts, 2 ready uploads
-        artifacts = self._waitForArtifacts(image_cname, 2, format='raw')
+        artifacts = self.waitForArtifacts(image_cname, 2, format='raw')
         artifact_uuids = [x.uuid for x in artifacts]
         self.assertNotIn(oldest_artifact_uuid, artifact_uuids)
         uploads = self._waitForUploads(image_cname, 2)
@@ -2738,8 +2729,9 @@ class TestExecutorZone(LauncherBaseTestCase):
                          'debian-normal')
 
 
-class TestNodepoolAbsent(LauncherBaseTestCase):
-    tenant_config_file = 'config/nodepool-absent/main.yaml'
+class TestNodepool(LauncherBaseTestCase):
+    # Test nodepool-in-zuul features that require a full config.
+    tenant_config_file = 'config/nodepool/main.yaml'
 
     def test_normal_label(self):
         A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
@@ -2790,6 +2782,180 @@ class TestNodepoolAbsent(LauncherBaseTestCase):
         self.assertIn('The label "debian-missing" was not found',
                       A.messages[0],
                       "A should have failed the check pipeline")
+
+    @return_data(
+        'build-debian-new-image',
+        'refs/changes/01/1/1',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="ami-1e749f67")
+    def test_image_addition(self, mock_uploadimage):
+        # Test that we can add a new image and the jobs to build it in
+        # a single change.
+        in_repo_conf = textwrap.dedent(
+            """
+            - image:
+                name: debian-new
+                type: zuul
+            - job:
+                name: build-debian-new-image
+                image-build-name: debian-new
+            - project:
+                gate:
+                  jobs:
+                    - build-debian-new-image
+            - provider:
+                name: aws-new
+                section: aws-us-east-1
+                images:
+                  - name: debian-new
+            """)
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                           files=file_dict)
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertHistory([
+            dict(name='build-debian-new-image',
+                 result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+        # The provider should not be known to the launcher yet.
+        self.assertNotIn('aws-new',
+                         self.launcher.tenant_providers['tenant-one'])
+        # Perform the reconfiguration after the change merges.
+        self.fake_gerrit.addEvent(A.getChangeMergedEvent())
+        self.waitUntilSettled()
+        provider = self.launcher._getProvider(
+            'tenant-one', 'aws-new')
+        self.assertIn('debian-new', provider.images)
+        # We should have two artifacts for it.
+        image_cname = 'review.example.com%2Forg%2Fproject1/debian-new'
+        self.waitForArtifacts(image_cname, 2)
+
+    @return_data(
+        'build-debian-new-image',
+        'refs/changes/01/1/1',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="ami-1e749f67")
+    def test_label_addition(self, mock_uploadimage):
+        # Building on the previous test, verify that we can add a
+        # label to a new provider.
+        in_repo_conf = textwrap.dedent(
+            """
+            - image:
+                name: debian-new
+                type: zuul
+            - label:
+                name: debian-new
+                image: debian-new
+                flavor: normal
+            - job:
+                name: build-debian-new-image
+                image-build-name: debian-new
+            - job:
+                name: testjob
+                nodeset:
+                  nodes:
+                    - label: debian-new
+                      name: controller
+            - project:
+                gate:
+                  jobs:
+                    - build-debian-new-image
+            - provider:
+                name: aws-new
+                section: aws-us-east-1
+                images:
+                  - name: debian-new
+                labels:
+                  - name: debian-new
+            """)
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                           files=file_dict)
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertHistory([
+            dict(name='build-debian-new-image',
+                 result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+        # The provider should not be known to the launcher yet.
+        self.assertNotIn('aws-new',
+                         self.launcher.tenant_providers['tenant-one'])
+        # Perform the reconfiguration after the change merges.
+        self.fake_gerrit.addEvent(A.getChangeMergedEvent())
+        self.waitUntilSettled()
+        provider = self.launcher._getProvider(
+            'tenant-one', 'aws-new')
+        self.assertIn('debian-new', provider.images)
+        self.assertIn('debian-new', provider.labels)
+        # We should have two artifacts for it.
+        image_cname = 'review.example.com%2Forg%2Fproject1/debian-new'
+        self.waitForArtifacts(image_cname, 2)
+
+    @return_data(
+        'build-debian-new-image',
+        'refs/changes/01/1/1',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="ami-1e749f67")
+    def test_label_addition_limits(self, mock_uploadimage):
+        # Building on the previous test, verify that we can't actually
+        # use a new label that we dynamically add.
+        in_repo_conf = textwrap.dedent(
+            """
+            - image:
+                name: debian-new
+                type: zuul
+            - label:
+                name: debian-new
+                image: debian-new
+                flavor: normal
+            - job:
+                name: build-debian-new-image
+                image-build-name: debian-new
+            - job:
+                name: testjob
+                nodeset:
+                  nodes:
+                    - label: debian-new
+                      name: controller
+            - project:
+                check:
+                  jobs:
+                    - testjob
+                gate:
+                  jobs:
+                    - testjob
+                    - build-debian-new-image
+            - provider:
+                name: aws-new
+                section: aws-us-east-1
+                images:
+                  - name: debian-new
+                labels:
+                  - name: debian-new
+            """)
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                           files=file_dict)
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertEqual(A.data['status'], 'NEW')
+        self.assertHistory([
+            dict(name='build-debian-new-image',
+                 result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+        self.assertIn('NODE_FAILURE', A.messages[1])
 
 
 class TestSnapshot(AnsibleZuulTestCase, LauncherBaseTestCase):
