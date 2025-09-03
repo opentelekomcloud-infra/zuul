@@ -1329,8 +1329,6 @@ class TestWeb(BaseTestWeb):
                      'user_data': None}]},
             'override_branch': None,
             'override_checkout': None,
-            'merge_repo_state_ref': None,
-            'extra_repo_state_ref': None,
             'repo_state_keys': [],
             'playbooks': [{
                 'cleanup': False,
@@ -1454,8 +1452,6 @@ class TestWeb(BaseTestWeb):
             'pre_timeout': None,
             'post_timeout': None,
             'projects': [],
-            'merge_repo_state_ref': None,
-            'extra_repo_state_ref': None,
             'repo_state_keys': [],
             'secret_vars': None,
             'ssh_keys': [],

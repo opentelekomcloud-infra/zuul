@@ -924,8 +924,6 @@ class PipelineState(zkobject.ZKObject):
             build_set = i.current_build_set
             # Drop some attributes from local objects to save memory
             build_set._set(_files=None,
-                           _merge_repo_state=None,
-                           _extra_repo_state=None,
                            _repo_state=RepoState())
             job_graph = build_set.job_graph
             if not job_graph:
@@ -5937,16 +5935,6 @@ class BaseRepoState(zkobject.ShardedZKObject):
         return json.dumps(data, sort_keys=True).encode("utf8")
 
 
-class MergeRepoState(BaseRepoState):
-    def getPath(self):
-        return f"{self._buildset_path}/merge_repo_state"
-
-
-class ExtraRepoState(BaseRepoState):
-    def getPath(self):
-        return f"{self._buildset_path}/extra_repo_state"
-
-
 class BuildSet(zkobject.ZKObject):
     """A collection of Builds for one specific potential future repository
     state.
@@ -5997,10 +5985,6 @@ class BuildSet(zkobject.ZKObject):
             node_requests={},  # job -> request id
             _files=None,  # The files object if loaded
             _files_path=None,  # The ZK path to the files object
-            _merge_repo_state=None,  # The repo_state of the original merge
-            _merge_repo_state_path=None,  # ZK path for above
-            _extra_repo_state=None,  # Repo state for any additional projects
-            _extra_repo_state_path=None,  # ZK path for above
             repo_state_keys=[],  # Refs (links) to blobstore repo_state
             tries={},
             files_state=self.NEW,
@@ -6074,47 +6058,21 @@ class BuildSet(zkobject.ZKObject):
         if not self._active_context:
             raise Exception("setMergeRepoState must be used "
                             "with a context manager")
-        new = COMPONENT_REGISTRY.model_api >= 28
-        if (self._merge_repo_state_path is not None or
-            self._extra_repo_state_path is not None):
-            new = False
-        if new:
-            blobstore = BlobStore(self._active_context)
-            self._repo_state.add(blobstore, repo_state)
-            for key in self._repo_state.getKeys():
-                if key not in self.repo_state_keys:
-                    self.repo_state_keys.append(key)
-            return
-        if self._merge_repo_state_path is not None:
-            raise Exception("Merge repo state can not be updated")
-        rs = MergeRepoState.new(self._active_context,
-                                state=repo_state,
-                                _buildset_path=self.getPath())
-        self._merge_repo_state = rs
-        self._merge_repo_state_path = rs.getPath()
+        blobstore = BlobStore(self._active_context)
+        self._repo_state.add(blobstore, repo_state)
+        for key in self._repo_state.getKeys():
+            if key not in self.repo_state_keys:
+                self.repo_state_keys.append(key)
 
     def setExtraRepoState(self, repo_state):
         if not self._active_context:
             raise Exception("setExtraRepoState must be used "
                             "with a context manager")
-        new = COMPONENT_REGISTRY.model_api >= 28
-        if (self._merge_repo_state_path is not None or
-            self._extra_repo_state_path is not None):
-            new = False
-        if new:
-            blobstore = BlobStore(self._active_context)
-            self._repo_state.add(blobstore, repo_state)
-            for key in self._repo_state.getKeys():
-                if key not in self.repo_state_keys:
-                    self.repo_state_keys.append(key)
-            return
-        if self._extra_repo_state_path is not None:
-            raise Exception("Extra repo state can not be updated")
-        rs = ExtraRepoState.new(self._active_context,
-                                state=repo_state,
-                                _buildset_path=self.getPath())
-        self._extra_repo_state = rs
-        self._extra_repo_state_path = rs.getPath()
+        blobstore = BlobStore(self._active_context)
+        self._repo_state.add(blobstore, repo_state)
+        for key in self._repo_state.getKeys():
+            if key not in self.repo_state_keys:
+                self.repo_state_keys.append(key)
 
     def getPath(self):
         return f"{self.item.getPath()}/buildset/{self.uuid}"
@@ -6147,8 +6105,6 @@ class BuildSet(zkobject.ZKObject):
                              for i, ni in self.nodeset_info.items()},
             "node_requests": self.node_requests,
             "files": self._files_path,
-            "merge_repo_state": self._merge_repo_state_path,
-            "extra_repo_state": self._extra_repo_state_path,
             "repo_state_keys": self.repo_state_keys,
             "tries": self.tries,
             "files_state": self.files_state,
@@ -6176,8 +6132,6 @@ class BuildSet(zkobject.ZKObject):
         # These three values are immutable, and not kept in memory
         # unless accessed.
         data['_files_path'] = data.pop('files')
-        data['_merge_repo_state_path'] = data.pop('merge_repo_state')
-        data['_extra_repo_state_path'] = data.pop('extra_repo_state')
 
         data['nodeset_info'] = {i: NodesetInfo.fromDict(d)
                                 for i, d in data['nodeset_info'].items()}
@@ -6348,12 +6302,9 @@ class BuildSet(zkobject.ZKObject):
                 self.configured = True
 
     def _toChangeDict(self, item, change):
-        if COMPONENT_REGISTRY.model_api < 29:
-            change_dict = change.toDict()
-        else:
-            change_dict = dict(
-                ref=change.cache_key,
-            )
+        change_dict = dict(
+            ref=change.cache_key,
+        )
         # Inject bundle_id to dict if available, this can be used to decide
         # if changes belongs to the same bunbdle
         if len(item.changes) > 1:
@@ -6519,8 +6470,7 @@ class EventInfo:
         tinfo.zuul_event_id = d["zuul_event_id"]
         tinfo.timestamp = d["timestamp"]
         tinfo.span_context = d["span_context"]
-        # MODEL_API <= 26
-        tinfo.ref = d.get("ref")
+        tinfo.ref = d["ref"]
         tinfo.image_names = d.get("image_names")
         tinfo.image_upload_uuid = d.get("image_upload_uuid")
         tinfo.image_build_uuid = d.get("image_build_uuid")
