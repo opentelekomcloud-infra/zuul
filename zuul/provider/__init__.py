@@ -75,15 +75,6 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, image_config, provider_config):
         new_config = image_config.copy()
-        if image_config['type'] == 'zuul':
-            schema = self.inheritable_zuul_schema
-        else:
-            schema = self.inheritable_cloud_schema
-        defaults = provider_config.get('image-defaults', {})
-        for k in schema.schema.keys():
-            if k not in new_config and k in defaults:
-                new_config[k] = defaults[k]
-
         self.__dict__.update(self.schema(new_config))
 
 
@@ -95,11 +86,6 @@ class BaseProviderFlavor(CNameMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, flavor_config, provider_config):
         new_config = flavor_config.copy()
-        defaults = provider_config.get('flavor-defaults', {})
-        for k in self.inheritable_schema.schema.keys():
-            if k not in new_config and k in defaults:
-                new_config[k] = defaults[k]
-
         self.__dict__.update(self.schema(new_config))
 
 
@@ -115,11 +101,6 @@ class BaseProviderLabel(CNameMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, label_config, provider_config):
         new_config = label_config.copy()
-        defaults = provider_config.get('label-defaults', {})
-        for k in self.inheritable_schema.schema.keys():
-            if k not in new_config and k in defaults:
-                new_config[k] = defaults[k]
-
         self.__dict__.update(self.schema(new_config))
 
     def __repr__(self):
@@ -239,6 +220,12 @@ class BaseProviderSchema(metaclass=abc.ABCMeta):
 
     def getInheritableImageSchema(self):
         return BaseProviderImage.inheritable_schema
+
+    def getInheritableZuulImageSchema(self):
+        return BaseProviderImage.inheritable_zuul_schema
+
+    def getInheritableCloudImageSchema(self):
+        return BaseProviderImage.inheritable_cloud_schema
 
     def getInheritableFlavorSchema(self):
         return BaseProviderFlavor.inheritable_schema

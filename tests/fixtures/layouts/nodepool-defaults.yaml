@@ -47,7 +47,7 @@
       throughput: 20  # winner (normal, large)
     flavor-defaults:
       volume-size: 30
-      iops: 30
+      iops: 30  # winner (large)
       imds-http-tokens: required # winner (all)
     flavors:
       - name: normal
@@ -69,7 +69,7 @@
     region: us-east-1
     flavor-defaults:
       volume-size: 70
-      iops: 70  # winner (large)
+      iops: 70  # unused since no flavors defined here
 
 - provider:
     name: aws-us-east-1-main

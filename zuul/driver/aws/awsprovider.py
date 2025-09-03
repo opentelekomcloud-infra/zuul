@@ -226,6 +226,12 @@ class AwsProviderSchema(BaseProviderSchema):
     def getInheritableImageSchema(self):
         return AwsProviderImage.inheritable_schema
 
+    def getInheritableZuulImageSchema(self):
+        return AwsProviderImage.inheritable_zuul_schema
+
+    def getInheritableCloudImageSchema(self):
+        return AwsProviderImage.inheritable_cloud_schema
+
     def getInheritableFlavorSchema(self):
         return AwsProviderFlavor.inheritable_schema
 

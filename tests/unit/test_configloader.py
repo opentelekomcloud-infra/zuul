@@ -1464,11 +1464,10 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         # Some notes about the current inheritance scheme:
         # 1) Providers inherit attributes from sections (and so on)
         #   A) Dictionaries are merged
-        #   B) But flavors, images, labels lists are appended
-        #   C) That means we can't override a label config in a section
-        #   D) And we can add more than one label config with the same name
-        #   E) But in the end, the launcher will only see the last one
-        #   F) TODO: consider correcting D, and possibly C
+        #   B) Flavors, images, labels lists behave as units
+        #   C) Their defaults are applied at each inheritance level
+        #   D) Later definitions completely override earlier ones
+        #      (are not merged)
         # 2) Labels inherit some attributes from their images and flavors
         #   A) Labels override flavors override images
         layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
@@ -1527,7 +1526,7 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         label = provider.labels['debian-large']
         self.assertEqual('gp3', label.volume_type)
         self.assertEqual(10, label.volume_size)
-        self.assertEqual(70, label.iops)
+        self.assertEqual(30, label.iops)
         self.assertEqual(20, label.throughput)
         self.assertEqual('required', label.imds_http_tokens)
         self.assertFalse(label.host_key_checking)
@@ -1539,6 +1538,38 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.assertEqual(60, label.throughput)
         self.assertEqual('required', label.imds_http_tokens)
         self.assertFalse(label.host_key_checking)
+
+    @simple_layout('layouts/nodepool-defaults-redefinition.yaml',
+                   enable_nodepool=True)
+    def test_nodepool_config_defaults_redefinition(self):
+        layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
+        provider = layout.providers['aws-us-east-1-main']
+        self.assertEqual(3, len(provider.labels))
+
+        # Check the inherited values
+        label = provider.labels['debian-normal']
+        self.assertEqual(40, label.iops)
+
+        label = provider.labels['debian-large']
+        self.assertEqual(70, label.iops)
+
+        label = provider.labels['debian-local-normal']
+        self.assertEqual(40, label.iops)
+
+    @simple_layout('layouts/nodepool-defaults-inheritance.yaml',
+                   enable_nodepool=True)
+    def test_nodepool_config_defaults_inheritance(self):
+        layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
+
+        provider = layout.providers['aws-us-east-1-main']
+        self.assertEqual(2, len(provider.labels))
+
+        # Check the inherited values
+        label = provider.labels['debian-normal']
+        self.assertEqual(20, label.iops)
+
+        label = provider.labels['debian-local-normal']
+        self.assertEqual(30, label.iops)
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_section_inheritance(self):

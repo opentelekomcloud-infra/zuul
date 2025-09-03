@@ -1907,12 +1907,87 @@ class ProviderConfig(ConfigObject):
                 ret[k] = v
         return ret
 
-    def flattenConfig(self, layout):
-        config = copy.deepcopy(self.config)
+    @staticmethod
+    def applyConfig(config, section, layout, schema_class):
+        # Return an updated config by applying the config from the
+        # specified section/provider
+        other_config = copy.deepcopy(section.config)
+        old_images = {i['name']: i for i in config.get('images', [])}
+        old_flavors = {i['name']: i for i in config.get('flavors', [])}
+        old_labels = {i['name']: i for i in config.get('labels', [])}
+        # Save the images, flavors, labels before we merge
+        new_images = {i['name']: copy.deepcopy(i)
+                      for i in other_config.pop('images', [])}
+        new_flavors = {i['name']: copy.deepcopy(i)
+                       for i in other_config.pop('flavors', [])}
+        new_labels = {i['name']: copy.deepcopy(i)
+                      for i in other_config.pop('labels', [])}
+        # Merge the config dicts, except for images, flavors, labels
+        config = ProviderConfig._mergeDict(config, other_config)
+        # Apply the defaults to our saved images, flavors, labels
+        image_defaults = config.get('image-defaults', {})
+        image_defaults_schema = schema_class.getInheritableImageSchema()
+        image_defaults_schema(image_defaults)
+
+        flavor_defaults = config.get('flavor-defaults', {})
+        flavor_defaults_schema = schema_class.getInheritableFlavorSchema()
+        flavor_defaults_schema(flavor_defaults)
+
+        label_defaults = config.get('label-defaults', {})
+        label_defaults_schema = schema_class.getInheritableLabelSchema()
+        label_defaults_schema(label_defaults)
+        for image in new_images.values():
+            # Provide defaults from the layout objects
+            layout_image = ProviderConfig._dropNone(
+                layout.images[image['name']].toConfig())
+            image.update(ProviderConfig._mergeDict(layout_image, image))
+
+            if image['type'] == 'zuul':
+                schema = schema_class.getInheritableZuulImageSchema()
+            else:
+                schema = schema_class.getInheritableCloudImageSchema()
+            # If schema.schema.keys ever becomes problematic due to
+            # schema complexity, we could convert the above methods
+            # into methods that just return a list of keys.
+            # Convert the key to string since it may be an instance of Optional
+            for k in (str(k) for k in schema.schema.keys()):
+                if k not in image and k in image_defaults:
+                    image[k] = image_defaults[k]
+        for flavor in new_flavors.values():
+            layout_flavor = ProviderConfig._dropNone(
+                layout.flavors[flavor['name']].toConfig())
+            flavor.update(ProviderConfig._mergeDict(layout_flavor, flavor))
+            schema = schema_class.getInheritableFlavorSchema()
+            for k in (str(k) for k in schema.schema.keys()):
+                if k not in flavor and k in flavor_defaults:
+                    flavor[k] = flavor_defaults[k]
+        for label in new_labels.values():
+            layout_label = ProviderConfig._dropNone(
+                layout.labels[label['name']].toConfig())
+            label.update(ProviderConfig._mergeDict(layout_label, label))
+            schema = schema_class.getInheritableLabelSchema()
+            for k in (str(k) for k in schema.schema.keys()):
+                if k not in label and k in label_defaults:
+                    label[k] = label_defaults[k]
+
+        # Overwrite any images from the parent with newly-defined
+        # images from the child.
+        old_images.update(new_images)
+        old_flavors.update(new_flavors)
+        old_labels.update(new_labels)
+        # Add the images, flavors, labels back into the new config
+        config['images'] = list(old_images.values())
+        config['flavors'] = list(old_flavors.values())
+        config['labels'] = list(old_labels.values())
+        return config
+
+    def flattenConfig(self, layout, connections):
+        inheritance_path = [self]
         parent_name = self.section
         previous_section = None
         while parent_name:
             parent_section = layout.sections[parent_name]
+            inheritance_path.append(parent_section)
             # Prevent sections from referencing sections in other projects
             if (previous_section and
                 parent_section.source_context.project_canonical_name !=
@@ -1920,16 +1995,27 @@ class ProviderConfig(ConfigObject):
                 raise Exception(
                     f'The section "{previous_section.name}" references a '
                     'section in a different project.')
-            parent_config = copy.deepcopy(parent_section.config)
-            config = ProviderConfig._mergeDict(parent_config, config)
             parent_name = parent_section.parent
             previous_section = parent_section
-        # Provide defaults from the images/flavors/labels objects
+        inheritance_path.reverse()
+
+        root = inheritance_path[0]
+        config = copy.deepcopy(root.config)
+        # The connection is set by the root section
+        connection_name = config.get('connection')
+        connection = connections.get(connection_name)
+        if connection is None:
+            raise UnknownConnection(connection_name)
+
+        # Apply inheritance
+        schema_class = connection.driver.getProviderSchemaClass()()
+        for section in inheritance_path:
+            config = ProviderConfig.applyConfig(
+                config, section, layout, schema_class)
+
+        # Set config hashes
         image_hashes = {}
         for image in config.get('images', []):
-            layout_image = self._dropNone(
-                layout.images[image['name']].toConfig())
-            image.update(ProviderConfig._mergeDict(layout_image, image))
             # This is used for identifying unique image configurations
             # across multiple providers.
             image['config_hash'] = hashlib.sha256(
@@ -1937,16 +2023,10 @@ class ProviderConfig(ConfigObject):
             image_hashes[image['name']] = image['config_hash']
         flavor_hashes = {}
         for flavor in config.get('flavors', []):
-            layout_flavor = self._dropNone(
-                layout.flavors[flavor['name']].toConfig())
-            flavor.update(ProviderConfig._mergeDict(layout_flavor, flavor))
             flavor['config_hash'] = hashlib.sha256(
                 json.dumps(flavor, sort_keys=True).encode("utf8")).hexdigest()
             flavor_hashes[flavor['name']] = flavor['config_hash']
         for label in config.get('labels', []):
-            layout_label = self._dropNone(
-                layout.labels[label['name']].toConfig())
-            label.update(ProviderConfig._mergeDict(layout_label, label))
             try:
                 label['config_hash'] = self._getLabelConfigHash(
                     label, image_hashes, flavor_hashes)
@@ -1954,6 +2034,10 @@ class ProviderConfig(ConfigObject):
                 # We might miss some flavor or label, but this will be
                 # caught later during config validation.
                 label['config_hash'] = None
+
+        # Validate the overall schema
+        schema = connection.driver.getProviderSchema()
+        schema(config)
         return config
 
     def _getLabelConfigHash(self, label, image_hashes, flavor_hashes):
