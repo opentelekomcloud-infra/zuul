@@ -362,6 +362,14 @@ class ProviderInterface(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
+    def getProviderSchemaClass(self):
+        """Get the schema class for this driver's providers.
+
+        This method is required by the interface.
+        """
+        pass
+
+    @abc.abstractmethod
     def getProviderNodeClass(self):
         """Return the provider node class.
 
