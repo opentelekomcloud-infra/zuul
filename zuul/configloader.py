@@ -2940,14 +2940,14 @@ class TenantParser(object):
             with parse_context.errorContext(stanza='provider',
                                             conf=provider_config):
                 with parse_context.accumulator.catchErrors():
-                    flat_config = provider_config.flattenConfig(shadow_layout)
+                    flat_config = provider_config.flattenConfig(
+                        shadow_layout,
+                        parse_context.connections.connections)
                     connection_name = flat_config.get('connection')
                     connection = parse_context.connections.connections.get(
                         connection_name)
                     if connection is None:
                         raise UnknownConnection(connection_name)
-                    schema = connection.driver.getProviderSchema()
-                    schema(flat_config)
                     provider = connection.driver.getProvider(
                         self.zk_client, connection, tenant.name,
                         provider_config.canonical_name,

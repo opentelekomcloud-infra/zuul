@@ -35,20 +35,11 @@
     launch-attempts: 2
     object-storage:
       bucket-name: zuul
-    label-defaults:
-      host-key-checking: false
-      boot-timeout: 120
-      key-name: zuul
-      volume-type: gp3
-      volume-size: 10  # winner (all)
     image-defaults:
-      volume-size: 20
       iops: 20
-      throughput: 20  # winner (normal, large)
     flavor-defaults:
-      volume-size: 30
       iops: 30  # winner (large)
-      imds-http-tokens: required # winner (all)
+      final: allow-override
     flavors:
       - name: normal
         instance-type: t3.medium
@@ -61,7 +52,6 @@
         iops: 60
       - name: debian-local
         iops: 60
-        throughput: 60  # winner (local-normal)
 
 - section:
     name: aws-us-east-1
@@ -69,13 +59,15 @@
     region: us-east-1
     flavor-defaults:
       volume-size: 70
-      iops: 70  # winner (large)
+      iops: 70  # winner (large) since it's redefined
+    flavors:
+      - name: large
+        instance-type: t3.large
 
 - provider:
     name: aws-us-east-1-main
     section: aws-us-east-1
     labels:
       - name: debian-normal
-        volume-type: gp2  # winner (normal)
       - name: debian-large
       - name: debian-local-normal
