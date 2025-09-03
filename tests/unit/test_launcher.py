@@ -13,6 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import itertools
 import logging
 import math
 import os
@@ -481,13 +482,19 @@ class TestLauncher(LauncherBaseTestCase):
         'refs/heads/master',
         LauncherBaseTestCase.debian_return_data,
     )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
-                return_value="ami-785db401")
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run')
     def test_launcher_image_validation(self, mock_image_upload_run):
         # Test a two-stage image-build where we do run the validate
         # stage.
         self.executor_server.hold_jobs_in_build = True
         self.waitUntilSettled()
+
+        # Use distinct AMI IDs for each expected upload and
+        # fail other uploads (there shouldn't be any).
+        upload_ids = {"ami-1e749f67", "ami-785db401"}
+        mock_image_upload_run.side_effect = itertools.chain.from_iterable((
+            upload_ids, itertools.repeat(RuntimeError)
+        ))
 
         self.executor_server.release('build-debian-local-image')
         self.waitUntilSettled()
@@ -497,9 +504,11 @@ class TestLauncher(LauncherBaseTestCase):
 
         nodes = self.launcher.api.getProviderNodes()
         self.assertEqual(len(nodes), 2)
-        for node in nodes:
-            self.assertEqual(node.create_state['image_external_id'],
-                             mock_image_upload_run.return_value)
+        # We should have one node for each image that we uploaded
+        external_ids = set(n.create_state['image_external_id'] for n in nodes)
+        self.assertEqual(upload_ids, external_ids)
+        # Each node should be for a different provider
+        self.assertEqual(2, len(set(n.provider for n in nodes)))
 
         self.executor_server.hold_jobs_in_build = False
         self.executor_server.release()
@@ -536,8 +545,7 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(2, len(uploads))
         for upload in uploads:
             self.assertEqual(artifact.uuid, upload.artifact_uuid)
-            self.assertEqual(mock_image_upload_run.return_value,
-                             upload.external_id)
+            self.assertIn(upload.external_id, upload_ids)
             self.assertTrue(upload.validated)
 
     @simple_layout('layouts/nodepool-image-validate.yaml',

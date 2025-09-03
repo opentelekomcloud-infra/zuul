@@ -1450,7 +1450,8 @@ class Launcher:
                     # the requested image.
                     valid_uploads = (
                         u for u in uploads
-                        if u.uuid == request.image_upload_uuid
+                        if provider.canonical_name in u.providers
+                        and u.uuid == request.image_upload_uuid
                     )
                     if not any(valid_uploads):
                         continue
