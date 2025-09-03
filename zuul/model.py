@@ -2523,6 +2523,24 @@ class NodesetRequest(zkobject.LockableZKObject):
             return self.provider_node_data[index]
         return None
 
+    def getSafeAttributes(self):
+        attrs = dict(
+            request_id=self.uuid,
+        )
+        request_attrs = (
+            "pipeline_name",
+            "buildset_uuid",
+            "job_uuid",
+            "job_name",
+            "labels",
+            "zuul_event_id",
+            "tenant_name",
+        )
+        attrs.update({
+            a: getattr(self, a, None) for a in request_attrs
+        })
+        return Attributes(**attrs)
+
     @property
     def fulfilled(self):
         return self.state == self.State.FULFILLED
