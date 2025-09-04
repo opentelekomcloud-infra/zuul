@@ -251,10 +251,7 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
             limits = {}
         else:
             limits = limits.quota
-        cloud = QuotaInformation(default=math.inf, **limits)
-        zuul = QuotaInformation(default=math.inf, **self.resource_limits)
-        cloud.min(zuul)
-        return cloud
+        return QuotaInformation(default=math.inf, **limits)
 
     def getQuotaForLabel(self, label):
         flavor = self.flavors[label.flavor]
