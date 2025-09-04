@@ -22,6 +22,7 @@ import errno
 import fcntl
 import hashlib
 import logging
+import math
 import os
 import random
 import select
@@ -2706,16 +2707,36 @@ class Launcher:
         if val:
             return val
 
-        # This is initialized with the full tenant quota and later becomes
-        # the quota available for nodepool.
+        # This is initialized with the full provider endpoint quota
+        # and later becomes the quota available for this provider.
         quota = self.getProviderQuota(provider).copy()
         unmanaged = provider.getEndpoint().quota_cache.getUnmanagedUsage()
-        self.log.debug("Provider unmanaged quota used for %s: %s",
+        self.log.debug("Provider endpoint unmanaged quota used for %s: %s",
                        provider.name, unmanaged)
-
         # Subtract the unmanaged quota usage from nodepool_max
         # to get the quota available for us.
         quota.subtract(unmanaged)
+
+        # Subtract the quota used by other providers on the same
+        # endpoint.
+        endpoint_providers = set()
+        for tenant_providers in self.tenant_providers.values():
+            endpoint_providers.update(p for p in tenant_providers
+                                      if p.endpoint == provider.endpoint)
+
+        other = model.QuotaInformation()
+        for other_provider in endpoint_providers:
+            other.add(self.api.nodes_cache.getQuota(other_provider))
+
+        quota.subtract(other)
+        self.log.debug("Provider endpoint other quota used for %s: %s",
+                       provider.name, other)
+
+        # Restrict quota based on our provider resource limits
+        provider_limits = model.QuotaInformation(
+            default=math.inf, **provider.resource_limits
+        )
+        quota.min(provider_limits)
         self._provider_available_cache[provider.canonical_name] = quota
         return quota
 

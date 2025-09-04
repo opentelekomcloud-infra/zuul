@@ -392,10 +392,7 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
                     value *= 1000
                 args[code] = value
 
-        cloud = QuotaInformation(**args)
-        zuul = QuotaInformation(default=math.inf, **self.resource_limits)
-        cloud.min(zuul)
-        return cloud
+        return QuotaInformation(**args)
 
     def getQuotaForLabel(self, label):
         flavor = self.flavors[label.flavor]
