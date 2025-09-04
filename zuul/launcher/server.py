@@ -1026,8 +1026,13 @@ class Launcher:
         self._start_cleanup = True
         self.config = config
         self.connections = connections
-        self.connection_filter = get_default(
+        filter_string = get_default(
             self.config, "launcher", "connection_filter")
+        if filter_string:
+            self.connection_filter = [
+                f.strip() for f in filter_string.split(",")]
+        else:
+            self.connection_filter = None
         self.repl = None
         # All tenants and all providers
         self.tenant_providers = {}

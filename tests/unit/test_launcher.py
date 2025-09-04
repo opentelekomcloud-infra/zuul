@@ -956,6 +956,23 @@ class TestLauncher(LauncherBaseTestCase):
         launcher2.stop()
         launcher2.join()
 
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_launcher_connection_filter_match(self):
+        # Wait until everything is fully initialized before stopping
+        # the launcher.
+        self.waitUntilSettled()
+
+        # Re-create the launcher with a connection filter
+        self.launcher.stop()
+        self.launcher.join()
+        self.launcher = self.createLauncher(instance_id=1,
+                                            connection_filter="nope, aws")
+        self.waitUntilSettled()
+
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.State.FULFILLED, request.state)
+        self.waitUntilSettled()
+
     @simple_layout('layouts/launch-timeout.yaml', enable_nodepool=True)
     def test_launcher_launch_timeout(self):
         with mock.patch(
