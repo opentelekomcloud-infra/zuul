@@ -22,6 +22,7 @@ import errno
 import fcntl
 import hashlib
 import logging
+import math
 import os
 import random
 import select
@@ -1046,11 +1047,11 @@ class Launcher:
         else:
             self.statsd_timer = nullcontext
 
-        # Raw provider quota
-        self._provider_quota_cache = cachetools.TTLCache(
+        # Raw provider quota limits
+        self._provider_limits_cache = cachetools.TTLCache(
             maxsize=8192, ttl=self.MAX_QUOTA_AGE)
         # Provider quota - unmanaged usage
-        self._provider_available_cache = cachetools.TTLCache(
+        self._provider_quota_cache = cachetools.TTLCache(
             maxsize=8192, ttl=self.MAX_QUOTA_AGE)
 
         self.tracing = tracing.Tracing(self.config)
@@ -2687,42 +2688,72 @@ class Launcher:
         image_upload = valid_uploads[-1]
         return image_upload.external_id
 
+    def getEndpointLimits(self, provider):
+        val = self._provider_limits_cache.get(provider.canonical_name)
+        if val:
+            return val
+
+        quota = provider.getQuotaLimits()
+        self.log.debug("Provider endpoint limits for %s: %s",
+                       provider.name, quota)
+
+        self._provider_limits_cache[provider.canonical_name] = quota
+        return quota
+
     def getProviderQuota(self, provider):
         val = self._provider_quota_cache.get(provider.canonical_name)
         if val:
             return val
 
-        # This is initialized with the full tenant quota and later becomes
-        # the quota available for nodepool.
-        quota = provider.getQuotaLimits()
-        self.log.debug("Provider quota for %s: %s",
-                       provider.name, quota)
+        # This is initialized with the full endpoint quota and later
+        # becomes the quota available for Zuul.
+        quota = self.getEndpointLimits(provider).copy()
+
+        unmanaged = provider.getEndpoint().quota_cache.getUnmanagedUsage()
+        self.log.debug("Provider endpoint unmanaged quota used for %s: %s",
+                       provider.name, unmanaged)
+        # Subtract the unmanaged quota usage from nodepool_max
+        # to get the quota available for us.
+        quota.subtract(unmanaged)
 
         self._provider_quota_cache[provider.canonical_name] = quota
         return quota
 
-    def getProviderQuotaAvailable(self, provider):
-        val = self._provider_available_cache.get(provider.canonical_name)
-        if val:
-            return val
-
-        # This is initialized with the full tenant quota and later becomes
-        # the quota available for nodepool.
+    def getProviderQuotaAvailable(self, provider, include_requested=False):
+        # This is initialized with the full provider endpoint quota,
+        # which is cached and updated every 5 minutes.
         quota = self.getProviderQuota(provider).copy()
-        unmanaged = provider.getEndpoint().quota_cache.getUnmanagedUsage()
-        self.log.debug("Provider unmanaged quota used for %s: %s",
-                       provider.name, unmanaged)
 
-        # Subtract the unmanaged quota usage from nodepool_max
-        # to get the quota available for us.
-        quota.subtract(unmanaged)
-        self._provider_available_cache[provider.canonical_name] = quota
+        # Subtract the quota used by other providers on the same
+        # endpoint.
+        endpoint_providers = set()
+        for tenant_providers in self.tenant_providers.values():
+            endpoint_providers.update(
+                p for p in tenant_providers
+                if p.endpoint == provider.endpoint
+                and p.canonical_name != provider.canonical_name
+            )
+
+        other = model.QuotaInformation()
+        for other_provider in endpoint_providers:
+            other.add(self.api.nodes_cache.getQuota(
+                other_provider, include_requested=include_requested))
+
+        quota.subtract(other)
+        self.log.debug("Provider endpoint other quota used for %s: %s",
+                       provider.name, other)
+
+        # Restrict quota based on our provider resource limits
+        provider_limits = model.QuotaInformation(
+            default=math.inf, **provider.resource_limits
+        )
+        quota.min(provider_limits)
         return quota
 
     def getQuotaPercentage(self, provider, messages):
         try:
-            # This is cached and updated every 5 minutes
-            total = self.getProviderQuotaAvailable(provider).copy()
+            total = self.getProviderQuotaAvailable(
+                provider, include_requested=True)
         except Exception:
             # This will emit an annotated log message, but no traceback
             messages.append("Unable to get provider quota")
@@ -2760,39 +2791,46 @@ class Launcher:
     def doesProviderHaveQuotaForLabel(self, provider, label, messages,
                                       include_usage=True):
         if include_usage:
-            total = self.getProviderQuotaAvailable(provider).copy()
+            # When include_usage is True, we include requested nodes here
+            # because this is called to decide whether to add a new request
+            # to the provider, so we should include other nodes we've
+            # already allocated to providers in the decision.
+            total = self.getProviderQuotaAvailable(
+                provider, include_requested=True)
             messages.append(
-                f"Provider {provider} quota available before Zuul: {total}")
-            # We include requested nodes here because this is called
-            # to decide whether to add a new request to the provider,
-            # so we should include other nodes we've already allocated
-            # to this provider in the decision.
+                f"Provider quota available before {provider}: {total}")
             used = self.api.nodes_cache.getQuota(
                 provider, include_requested=True)
             total.subtract(used)
             messages.append(
-                f"Provider {provider} quota available including Zuul: {total}")
+                f"Provider quota available including {provider} : {total}")
         else:
-            total = self.getProviderQuota(provider).copy()
-            messages.append(
-                f"Provider {provider} quota before Zuul: {total}")
+            total = self.getEndpointLimits(provider).copy()
+            # Restrict quota based on our provider resource limits
+            provider_limits = model.QuotaInformation(
+                default=math.inf, **provider.resource_limits
+            )
+            total.min(provider_limits)
+            messages.append(f"Provider {provider} limits: {total}")
 
         label_quota = provider.getQuotaForLabel(label)
         total.subtract(label_quota)
         messages.append(
             f"Label {label} required quota: {label_quota}")
+
         return total.nonNegative()
 
     def doesProviderHaveQuotaForNode(self, provider, node, messages):
-        total = self.getProviderQuotaAvailable(provider).copy()
-        messages.append(f"Provider {provider} quota before Zuul: {total}")
         # We do not include requested nodes here because this is
         # called to decide whether to issue the create API call for a
         # node already allocated to the provider.  We only want to
         # "pause" the provider if it really is at quota.
+        total = self.getProviderQuotaAvailable(
+            provider, include_requested=False)
+        messages.append(f"Provider quota before {provider} : {total}")
         used = self.api.nodes_cache.getQuota(provider, include_requested=False)
         total.subtract(used)
-        messages.append(f"Provider {provider} quota including Zuul: {total}")
+        messages.append(f"Provider quota including {provider}: {total}")
         total.subtract(node.quota)
         messages.append(f"Node {node} required quota: {node.quota}")
         return total.nonNegative()
@@ -2861,7 +2899,8 @@ class Launcher:
                 providers[tenant_provider.canonical_name] = tenant_provider
         for provider in providers.values():
             safe_pname = normalize_statsd_name(provider.canonical_name)
-            limits = self.getProviderQuota(provider).getResources()
+            limits = self.getProviderQuotaAvailable(
+                provider, include_requested=False).getResources()
             # zuul.provider.<provider>.limit.<resource> gauge
             for res, value in limits.items():
                 safe_res = normalize_statsd_name(res)

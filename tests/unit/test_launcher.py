@@ -1741,9 +1741,9 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(1, len(nodes0))
 
         # Make sure the next requests always have current quota info
-        self.launcher._provider_quota_cache = cachetools.TTLCache(
+        self.launcher._provider_limits_cache = cachetools.TTLCache(
             maxsize=8192, ttl=0)
-        self.launcher._provider_available_cache = cachetools.TTLCache(
+        self.launcher._provider_quota_cache = cachetools.TTLCache(
             maxsize=8192, ttl=0)
 
         requests = []
