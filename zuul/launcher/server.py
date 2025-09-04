@@ -22,6 +22,7 @@ import errno
 import fcntl
 import hashlib
 import logging
+import math
 import os
 import random
 import select
@@ -2710,12 +2711,22 @@ class Launcher:
         # the quota available for nodepool.
         quota = self.getProviderQuota(provider).copy()
         unmanaged = provider.getEndpoint().quota_cache.getUnmanagedUsage()
-        self.log.debug("Provider unmanaged quota used for %s: %s",
+        self.log.debug("Provider endpoint unmanaged quota used for %s: %s",
                        provider.name, unmanaged)
+        other = self.api.nodes_cache.getOtherQuota(provider)
+        self.log.debug("Provider endpoint other quota used for %s: %s",
+                       provider.name, other)
 
-        # Subtract the unmanaged quota usage from nodepool_max
+        # Subtract the unmanaged/other quota usage from nodepool_max
         # to get the quota available for us.
         quota.subtract(unmanaged)
+        quota.subtract(other)
+
+        # Restrict quota based on our provider resource limits
+        provider_limits = model.QuotaInformation(
+            default=math.inf, **provider.resource_limits
+        )
+        quota.min(provider_limits)
         self._provider_available_cache[provider.canonical_name] = quota
         return quota
 

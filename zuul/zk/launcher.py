@@ -258,6 +258,14 @@ class NodeCache(LockableZKObjectCache):
         else:
             return self._provider_quota_used[provider.canonical_name]
 
+    def getOtherQuota(self, provider):
+        quota = QuotaInformation()
+        for provider_cname, pquota in self._provider_quota_used.items():
+            if provider_cname == provider.canonical_name:
+                continue
+            quota.add(pquota)
+        return quota
+
 
 class LauncherApi:
     log = logging.getLogger("zuul.LauncherApi")
