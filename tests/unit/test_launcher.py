@@ -1390,6 +1390,36 @@ class TestLauncher(LauncherBaseTestCase):
         with testtools.ExpectedException(Exception):
             self.requestNodes(["debian-normal"])
 
+    @simple_layout('layouts/resource-limits.yaml',
+                   enable_nodepool=True)
+    @driver_config('test_launcher', quotas={
+        'instances': 3,
+    })
+    @okay_tracebacks('_listImportSnapshotTasks')
+    def test_resource_limits_external_usage(self):
+        self.waitUntilSettled()
+
+        # Create 2 unmanaged instances that only leave one instance
+        # as available quota.
+        ec2_client = boto3.client('ec2', region_name='us-east-1')
+        ec2_client.run_instances(
+            ImageId="ami-12c6146b", MinCount=2, MaxCount=2,
+        )
+        self.launcher._provider_quota_cache.clear()
+
+        # The cleanup worker is responsible for recording external
+        # usage in the quota cache
+        self.launcher.cleanup_worker._run()
+
+        # We can still get a node since we've not reached
+        # the endpoint quota limit.
+        self.requestNodes(["debian-normal"])
+
+        # We expect a timeout waiting for nodes, as the
+        # endpoint has reached the instance limit.
+        with testtools.ExpectedException(Exception):
+            self.requestNodes(["debian-normal"])
+
     @simple_layout('layouts/nodepool.yaml',
                    enable_nodepool=True)
     @driver_config('test_launcher', quotas={
@@ -1741,9 +1771,9 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(1, len(nodes0))
 
         # Make sure the next requests always have current quota info
-        self.launcher._provider_quota_cache = cachetools.TTLCache(
+        self.launcher._provider_limits_cache = cachetools.TTLCache(
             maxsize=8192, ttl=0)
-        self.launcher._provider_available_cache = cachetools.TTLCache(
+        self.launcher._provider_quota_cache = cachetools.TTLCache(
             maxsize=8192, ttl=0)
 
         requests = []
