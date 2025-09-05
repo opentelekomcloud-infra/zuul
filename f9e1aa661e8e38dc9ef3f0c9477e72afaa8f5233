@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eff899d2_86c7d953",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 36342
+      },
+      "writtenOn": "2025-09-05T15:41:43Z",
+      "side": 1,
+      "message": "I\u0027ve been testing this out and the policy doesn\u0027t cover everything, after I tested it by putting the same headers into ingress I realized that the CSP policy is insufficient. We also need unsafe-inline here with hashes/nonces, so no quick update at this time",
+      "revId": "f9e1aa661e8e38dc9ef3f0c9477e72afaa8f5233",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
