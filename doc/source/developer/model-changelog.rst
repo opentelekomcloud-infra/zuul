@@ -249,6 +249,6 @@ Version 34
 
 Version 35
 ----------
-:Prior Zuul version: 11.3.0
+:Prior Zuul version: 12.0.0
 :Description: Updated Secret configuration format to support OIDC token.
               Affects schedulers and executors.
