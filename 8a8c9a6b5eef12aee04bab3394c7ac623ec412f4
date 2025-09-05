@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c3ebecce_949eb5bc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 36342
+      },
+      "writtenOn": "2025-09-05T15:42:48Z",
+      "side": 1,
+      "message": "@jim@acmegating.com Gerrit does it via gerrit.xframeOption (source: https://gerrit-review.googlesource.com/Documentation/config-gerrit.html)\n\nAdd X-Frame-Options header to all HTTP responses. The X-Frame-Options HTTP response header can be used to indicate whether or not a browser should be allowed to render a page in a \u003cframe\u003e, \u003ciframe\u003e, \u003cembed\u003e or \u003cobject\u003e.\n\nAvailable values:\n\nALLOW - The page can be displayed in a frame.\n\nSAMEORIGIN - The page can only be displayed in a frame on the same origin as the page itself.\n\nIf link:#gerrit.canLoadInIFrame is set to false this option is ignored and the X-Frame-Options header is always set to DENY. Setting this option to ALLOW will cause the X-Frame-Options header to be omitted the page can be displayed in a frame.\n\nBy default SAMEORIGIN.",
+      "revId": "8a8c9a6b5eef12aee04bab3394c7ac623ec412f4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
