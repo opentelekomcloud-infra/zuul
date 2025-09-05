@@ -231,6 +231,7 @@ class Streamer:
         # reconnect.  When we decide to remove this, we can remove
         # anything in the "version 0" path.
         if buff == '[Zuul] Log not found':
+            s.shutdown(socket.SHUT_RDWR)
             s.close()
             s = self._read_log_connect()
             if s is None:
@@ -278,8 +279,11 @@ class Streamer:
                         try:
                             # reestablish connection and tell console to
                             # clean up
+                            s.shutdown(socket.SHUT_RDWR)
+                            s.close()
                             s = self._read_log_connect()
                             s.send(f'f:{self.log_id}\n'.encode('utf-8'))
+                            s.shutdown(socket.SHUT_RDWR)
                             s.close()
                         except Exception:
                             # Don't worry if this fails
