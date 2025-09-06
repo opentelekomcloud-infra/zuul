@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "c81fd4afe48975a25651230f3e72591f55737c66",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8795366_39a46f95",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-09-06T20:32:47Z",
+      "side": 1,
+      "message": "I have manually tested this change with an end to end test setup from Gerrit emitting events to Kafka to zuul scheduler reading the events from Kafka. To do this I hacked up the existing Zuul Quickstart setup using these edits:\n\nhttps://paste.opendev.org/show/bmK9wEZtLq5ayykg1jsy/\n\nThis sets up a kafka service within the quickstart zuul network configured to use plaintext sasl auth. These edits also use a locally built set of zuul images against this change and configure the zuul scheduler to connect to kafka for events (with ssh disabled). This should get just about everything working except for the Gerrit Kafka plugin.\n\nOnce the quickstart is running we need to configure the Gerrit events-kafka plugin. To do that we use the plugin manager to install events-broker. This is a dependency of the events-kafka plugin and we don\u0027t get automatic dep resolution. Before we install the events-kafka plugin we need to copy or symlink /var/gerrit/plugins/events-broker.jar into /var/gerrit/lib/events-broker.jar. The reason for this is events-broker is a lib plugin and and you get errors like those reported in https://groups.google.com/g/repo-discuss/c/M2pZbxuWrF8/m/N9JQKENVAgAJ without the plugin being in the /var/gerrit/lib dir. I simply exec\u0027d into the gerrit container to symlink things then stopped gerrit. With Gerrit stopped you can edit the gerrit.config contents (use `docker volume inspect` to get the local file path) to add:\n\n```\n[plugin \"events-kafka\"]\n\tbootstrapServers \u003d kafka:9094\n\tsendStreamEvents \u003d true\n\tsendAsync \u003d true\n\tpollingIntervalMs \u003d 1000\n\tnumberOfSubscribers \u003d 6\n\tsaslJaasConfig \u003d \"org.apache.kafka.common.security.scram.ScramLoginModule required username\u003d\\\"client\\\" password\u003d\\\"client-secret\\\";\"\n\tsaslMechanism \u003d PLAIN\n\tsecurityProtocol \u003d SASL_PLAINTEXT\n```\n\nNow start the Gerrit container back up again and use the plugin manager to install the events-kafka plugin. The Gerrit error_log should show that the plugin connects to kafka successfully.\n\nFinally, we need to emit an event to create the `gerrit` topic in kafka. To do this I left a comment on the existing (merged) change in the quickstart gerrit. At this point Zuul\u0027s busy loop of failed kafka connections due to the missing topic should go away. To confirm Zuul sees events we need to send one more event. Again I just left another comment on the single closed change in the quickstart. That produced this log output from the scheduler:\n\nhttps://paste.opendev.org/show/b7nGgCFcNlxaTRIEnUOE/\n\nApologies for the long writeup, but this ended up being complicated enough between getting the kafka container configuration just right, the gerrit plugin installation working, and configuring zuul to talk to it that I figured over sharing is helpful in this case should anyone need to debug this in the future.",
+      "revId": "c81fd4afe48975a25651230f3e72591f55737c66",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
