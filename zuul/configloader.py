@@ -2871,12 +2871,41 @@ class TenantParser(object):
                             "Skipped adding job %s which shadows "
                             "an existing job", job)
 
+        for e in parsed_config.image_errors:
+            layout.loading_errors.addError(e)
+        for image in parsed_config.images:
+            with parse_context.errorContext(stanza='image',
+                                            conf=image):
+                with parse_context.accumulator.catchErrors():
+                    layout.addImage(image)
+        for e in parsed_config.flavor_errors:
+            layout.loading_errors.addError(e)
+        for flavor in parsed_config.flavors:
+            with parse_context.errorContext(stanza='flavor',
+                                            conf=flavor):
+                with parse_context.accumulator.catchErrors():
+                    layout.addFlavor(flavor)
+        for e in parsed_config.label_errors:
+            layout.loading_errors.addError(e)
+        for label in parsed_config.labels:
+            with parse_context.errorContext(stanza='label',
+                                            conf=label):
+                with parse_context.accumulator.catchErrors():
+                    layout.addLabel(label)
+        for label in layout.labels.values():
+            with parse_context.errorContext(stanza='label', conf=label):
+                with parse_context.accumulator.catchErrors():
+                    label.validateReferences(layout)
+
         if dynamic_layout:
             # We should not actually update the layout with new
             # semaphores, but so that we can validate that the config
             # is correct, create a shadow layout here to which we add
             # new semaphores so validation is complete.
             shadow_layout = model.Layout(tenant)
+            shadow_layout.images = layout.images.copy()
+            shadow_layout.flavors = layout.flavors.copy()
+            shadow_layout.labels = layout.labels.copy()
         else:
             shadow_layout = layout
         for e in parsed_config.semaphore_errors:
@@ -2886,27 +2915,6 @@ class TenantParser(object):
                                             conf=semaphore):
                 with parse_context.accumulator.catchErrors():
                     shadow_layout.addSemaphore(semaphore)
-        for e in parsed_config.image_errors:
-            shadow_layout.loading_errors.addError(e)
-        for image in parsed_config.images:
-            with parse_context.errorContext(stanza='image',
-                                            conf=image):
-                with parse_context.accumulator.catchErrors():
-                    shadow_layout.addImage(image)
-        for e in parsed_config.flavor_errors:
-            shadow_layout.loading_errors.addError(e)
-        for flavor in parsed_config.flavors:
-            with parse_context.errorContext(stanza='flavor',
-                                            conf=flavor):
-                with parse_context.accumulator.catchErrors():
-                    shadow_layout.addFlavor(flavor)
-        for e in parsed_config.label_errors:
-            shadow_layout.loading_errors.addError(e)
-        for label in parsed_config.labels:
-            with parse_context.errorContext(stanza='label',
-                                            conf=label):
-                with parse_context.accumulator.catchErrors():
-                    shadow_layout.addLabel(label)
         for e in parsed_config.section_errors:
             shadow_layout.loading_errors.addError(e)
         for section in parsed_config.sections:
@@ -2923,10 +2931,6 @@ class TenantParser(object):
                     shadow_layout.addProviderConfig(provider_config)
 
         # Verify the nodepool references in the shadow (or real) layout
-        for label in shadow_layout.labels.values():
-            with parse_context.errorContext(stanza='label', conf=label):
-                with parse_context.accumulator.catchErrors():
-                    label.validateReferences(shadow_layout)
         for section in shadow_layout.sections.values():
             with parse_context.errorContext(stanza='section', conf=section):
                 with parse_context.accumulator.catchErrors():
@@ -3474,9 +3478,6 @@ class ConfigLoader(object):
             layout.semaphores = tenant.layout.semaphores
             # We also don't support dynamic changes to
             # provider-related objects.
-            layout.images = tenant.layout.images
-            layout.flavors = tenant.layout.flavors
-            layout.labels = tenant.layout.labels
             layout.sections = tenant.layout.sections
             layout.providers = tenant.layout.providers
             dynamic_layout = True

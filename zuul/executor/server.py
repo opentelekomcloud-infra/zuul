@@ -1745,7 +1745,7 @@ class AnsibleJob(object):
             (not self.nodeset_request)):
             return
 
-        zuul_data = result_data.get('zuul')
+        zuul_data = result_data.get('zuul', {})
         if not (snapshot_nodes := zuul_data.get('snapshot_nodes', [])):
             return
 

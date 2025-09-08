@@ -41,7 +41,9 @@ class ZuulReporter(BaseReporter):
             if not build.job.image_build_name:
                 continue
             image_name = build.job.image_build_name
-            image = item.manager.tenant.layout.images[image_name]
+            # Allow the use of an image in a dynamic layout
+            layout = item.manager.getLayout(item)
+            image = layout.images[image_name]
             ibas = []
             for artifact in get_artifacts_from_result_data(
                     build.result_data,
