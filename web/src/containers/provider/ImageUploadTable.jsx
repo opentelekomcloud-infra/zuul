@@ -34,7 +34,7 @@ import {
 import { fetchImages } from '../../actions/images'
 import { fetchProviders } from '../../actions/providers'
 import { addNotification, addApiError } from '../../actions/notifications'
-import { deleteImageUpload } from '../../api'
+import { deleteImageUpload, validateImageUpload } from '../../api'
 
 const STATE_STYLES = {
   ready: {
@@ -54,7 +54,8 @@ const STATE_STYLES = {
 function ImageUploadTable(props) {
   const { build, uploads, fetching } = props
   const [showDeleteUploadModal, setShowDeleteUploadModal] = useState(false)
-  const [pendingDeleteRow, setPendingDeleteRow] = useState(null)
+  const [showValidateUploadModal, setShowValidateUploadModal] = useState(false)
+  const [pendingActionRow, setPendingActionRow] = useState(null)
   const tenant = useSelector((state) => state.tenant)
   const user = useSelector((state) => state.user)
   const dispatch = useDispatch()
@@ -94,7 +95,7 @@ function ImageUploadTable(props) {
     const state_style = STATE_STYLES[upload.state] || {}
     return {
       _uuid: upload.uuid,
-      canDelete: build.build_tenant,
+      canModify: build.build_tenant,
       cells: [
         {
           title: upload.uuid
@@ -141,15 +142,22 @@ function ImageUploadTable(props) {
   }
 
   const actionResolver = (rowData) => {
-    if (rowData.canDelete &&
+    if (rowData.canModify &&
         user.isAdmin &&
         user.scope.indexOf(tenant.name) !== -1) {
       return [
         {
           title: 'Delete upload',
           onClick: () => {
-            setPendingDeleteRow(rowData)
+            setPendingActionRow(rowData)
             setShowDeleteUploadModal(true)
+          }
+        },
+        {
+          title: 'Validate upload',
+          onClick: () => {
+            setPendingActionRow(rowData)
+            setShowValidateUploadModal(true)
           }
         },
       ]
@@ -170,7 +178,7 @@ function ImageUploadTable(props) {
                   onClick={() => {
                     setShowDeleteUploadModal(false)
                     deleteImageUpload(tenant.apiPrefix,
-                                      pendingDeleteRow._uuid
+                                      pendingActionRow._uuid
                                      ).then(() => {
                       dispatch(addNotification(
                         {
@@ -195,6 +203,49 @@ function ImageUploadTable(props) {
         ]}>
         <p>
           Please confirm that you want to delete this image upload.
+        </p>
+      </Modal>
+    )
+  }
+
+  function renderValidateUploadModal() {
+    const title = 'Validate image upload'
+    return (
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={showValidateUploadModal}
+        title={title}
+        onClose={() => { setShowValidateUploadModal(false) }}
+        actions={[
+          <Button key="confirm" variant="primary"
+                  onClick={() => {
+                    setShowValidateUploadModal(false)
+                    validateImageUpload(tenant.apiPrefix,
+                                      pendingActionRow._uuid
+                                     ).then(() => {
+                      dispatch(addNotification(
+                        {
+                          text: 'Validation event submitted.',
+                          type: 'success',
+                          status: '',
+                          url: '',
+                        }))
+                      dispatch(fetchProviders(tenant))
+                      dispatch(fetchImages(tenant))
+                    })
+                      .catch(error => {
+                        dispatch(addApiError(error))
+                      })
+                  }}>
+            Confirm
+          </Button>,
+          <Button key="cancel" variant="link"
+                  onClick={() => {setShowValidateUploadModal(false) }}>
+            Cancel
+          </Button>,
+        ]}>
+        <p>
+          Please confirm that you want to validate this image upload.
         </p>
       </Modal>
     )
@@ -239,6 +290,7 @@ function ImageUploadTable(props) {
         </EmptyState>
       )}
       {renderDeleteUploadModal()}
+      {renderValidateUploadModal()}
     </>
   )
 }

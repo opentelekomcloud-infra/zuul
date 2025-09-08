@@ -262,6 +262,13 @@ function deleteImageUpload(apiPrefix, uploadId) {
   )
 }
 
+function validateImageUpload(apiPrefix, uploadId) {
+  return makeRequest(
+    apiPrefix + 'image-upload/' + uploadId + '/validate',
+    'post'
+  )
+}
+
 function fetchFlavors(apiPrefix) {
   return makeRequest(apiPrefix + 'flavors')
 }
@@ -471,4 +478,5 @@ export {
   promote,
   setNodeState,
   setTenantState,
+  validateImageUpload,
 }

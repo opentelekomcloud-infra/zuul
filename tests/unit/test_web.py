@@ -1743,6 +1743,85 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
             if 'build_artifacts' not in data[1]:
                 break
 
+    @simple_layout('layouts/nodepool-image-validate.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="ami-785db401")
+    def test_web_upload_validate(self, mock_image_upload_run):
+        self.executor_server.hold_jobs_in_build = True
+        self.startWebServer()
+        self.waitUntilSettled()
+
+        self.executor_server.release('build-debian-local-image')
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+        ])
+
+        nodes = self.launcher.api.getProviderNodes()
+        self.assertEqual(len(nodes), 2)
+        for node in nodes:
+            self.assertEqual(node.create_state['image_external_id'],
+                             mock_image_upload_run.return_value)
+
+        self.assertEqual(len(self.builds), 2)
+        for build in self.builds:
+            build.should_fail = True
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='validate-debian-local-image', result='FAILURE'),
+            dict(name='validate-debian-local-image', result='FAILURE'),
+        ])
+
+        resp = self.get_url('api/tenant/tenant-one/images')
+        data = resp.json()
+        self.assertEqual(1, len(data))
+        self.assertEqual(1, len(data[0]['build_artifacts']))
+        self.assertEqual(2, len(data[0]['build_artifacts'][0]['uploads']))
+        upload = data[0]['build_artifacts'][0]['uploads'][0]
+        self.assertFalse(upload['validated'])
+
+        # Now retrigger validation
+        url = f"api/tenant/tenant-one/image-upload/{upload['uuid']}/validate"
+        # Test that unauthenticated access fails
+        resp = self.post_url(url)
+        self.assertEqual(401, resp.status_code, resp.text)
+        # Do it again with auth
+        token = self._getToken(['tenant-one'])
+        resp = self.post_url(
+            url,
+            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(200, resp.status_code, resp.text)
+        self.waitUntilSettled("image validate")
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='validate-debian-local-image', result='FAILURE'),
+            dict(name='validate-debian-local-image', result='FAILURE'),
+            dict(name='validate-debian-local-image', result='SUCCESS'),
+        ])
+
+        resp = self.get_url('api/tenant/tenant-one/images')
+        data = resp.json()
+        self.assertEqual(1, len(data))
+        self.assertEqual(1, len(data[0]['build_artifacts']))
+        self.assertEqual(2, len(data[0]['build_artifacts'][0]['uploads']))
+        for new_upload in data[0]['build_artifacts'][0]['uploads']:
+            if new_upload['uuid'] == upload['uuid']:
+                break
+        else:
+            raise Exception("Upload not found")
+        self.assertTrue(new_upload['validated'])
+
     @return_data(
         'build-debian-local-image',
         'refs/heads/master',
