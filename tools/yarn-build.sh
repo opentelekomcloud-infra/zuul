@@ -53,7 +53,7 @@ then
         # Be forgiving of package retrieval errors
         attempts=0
         set +e
-        until yarn install --verbose --frozen-lockfile; do
+        until yarn install --frozen-lockfile; do
             ((attempts++))
             if [[ $attempts > 2 ]]
             then
@@ -63,6 +63,7 @@ then
         done
         set -e
 
+        yarn list
         yarn build
         if [[ -n "${YARN_REGISTRY}" ]]
         then
