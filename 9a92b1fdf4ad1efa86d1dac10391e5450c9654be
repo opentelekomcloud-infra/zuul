@@ -51,6 +51,24 @@
       "parentUuid": "365e75c8_244541c0",
       "revId": "9a92b1fdf4ad1efa86d1dac10391e5450c9654be",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2dbeac03_7a8e737e",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2729,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-09-08T09:17:40Z",
+      "side": 1,
+      "message": "If the intention with the provider resource limits was to configure global endpoint resource limits that apply across provider boundaries, I think we need a different way of configuring that.",
+      "parentUuid": "60bdf2e5_51b59535",
+      "revId": "9a92b1fdf4ad1efa86d1dac10391e5450c9654be",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
