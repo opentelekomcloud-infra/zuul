@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "035e547f_621ddc4e",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2075,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-09-08T12:39:40Z",
+      "side": 1,
+      "message": "Debug leftover?",
+      "range": {
+        "startLine": 2074,
+        "startChar": 0,
+        "endLine": 2075,
+        "endChar": 29
+      },
+      "revId": "3c30430b406b6a9656277809c730c973cfe3130f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
