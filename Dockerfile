@@ -41,7 +41,7 @@ FROM node-base AS js-builder
 
 COPY web /tmp/src
 # Explicitly run the Javascript build
-RUN cd /tmp/src && yarn install -d --verbose && yarn build
+RUN cd /tmp/src && yarn install -d --verbose --frozen-lockfile && yarn build
 
 # We need skopeo >=v1.14.0 to negotioate with newer docker; once this
 # is available in debian we can drop the custom build.
