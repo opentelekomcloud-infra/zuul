@@ -69,6 +69,24 @@
       "parentUuid": "60bdf2e5_51b59535",
       "revId": "9a92b1fdf4ad1efa86d1dac10391e5450c9654be",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "11d9a71c_b09c98f3",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2729,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-08T14:03:26Z",
+      "side": 1,
+      "message": "I agree that given that we do only want the provider resource limits to be \"visible\" to that one provider, that your proposal is correct, and there is no problem with starting with math.inf in that case.",
+      "parentUuid": "365e75c8_244541c0",
+      "revId": "9a92b1fdf4ad1efa86d1dac10391e5450c9654be",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
