@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "d97ecc248756bae2e6814fdcdc2a39a39de10cb7",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c472d7d_2b36eaac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-09-09T09:43:26Z",
+      "side": 1,
+      "message": "looks like the previous run\u0027s error was due to a 504 failure during docker-compose:\n\n    podman build -f ./logs-Dockerfile -t zuul-tutorial_logs --build-arg http_proxy\u003d --build-arg https_proxy\u003d --build-arg no_proxy\u003d ./\n    STEP 1/2: FROM quay.io/opendevmirror/httpd:alpine\n    Trying to pull quay.io/opendevmirror/httpd:alpine...\n    Getting image source signatures\n    Copying blob sha256:a4692d2e009ed17015aecb1bb827580bd82860fbb27e67390193b8bca2ed977e\n    Copying blob sha256:640af2297e40e46bc1ec9694673477351bb7dc955e044ea64216624b4018a977\n    Copying blob sha256:5e3ba26ebd15e9b42642da10052a1cb94d3cf70b837a5b34192943d63b2b2c4f\n    Copying blob sha256:9824c27679d3b27c5e1cb00a73adb6f4f8d556994111c12db3c5d61a0c843df8\n    Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1\n    Copying blob sha256:222864b721ffccbd4309ad713a31d1db7a56d17369a543a32d3744a917f01725\n    Copying blob sha256:49dda30605d3cb7a3079379107af081e2ffc98659f140dccc88bcf52151e39e3\n    Error: creating build container: copying system image from manifest list: reading blob sha256:49dda30605d3cb7a3079379107af081e2ffc98659f140dccc88bcf52151e39e3: fetching blob: received unexpected HTTP status: 504 Gateway Time-out\n    exit code: 125",
+      "revId": "d97ecc248756bae2e6814fdcdc2a39a39de10cb7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
