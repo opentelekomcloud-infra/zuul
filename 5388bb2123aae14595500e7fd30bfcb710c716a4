@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "48072d94_8a65dc6d",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1421,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-09T14:31:35Z",
+      "side": 1,
+      "message": "Do we also need a test where we have two providers on the same endpoint, each has a max of 1, provider A has one node, and we check that we can still launch a node in provider B?\n\nThe difference with this test is that the the extra two instances show up in \"unmanaged_usage\" rather than \"other_provider_usage\".",
+      "revId": "5388bb2123aae14595500e7fd30bfcb710c716a4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "31fd26e2_9cb3c242",
@@ -14,6 +31,75 @@
       "writtenOn": "2025-09-09T12:39:23Z",
       "side": 1,
       "message": "Just wondering if this method should now rather be called `provider.getEndpointLimits()`?",
+      "revId": "5388bb2123aae14595500e7fd30bfcb710c716a4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2f8c2f4_86055f4b",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 2696,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-09T14:31:35Z",
+      "side": 1,
+      "message": "I was thinking we should change the name, and I think that\u0027s a good one.",
+      "parentUuid": "31fd26e2_9cb3c242",
+      "revId": "5388bb2123aae14595500e7fd30bfcb710c716a4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ea594df9_3a87826a",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 2735,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-09T14:31:35Z",
+      "side": 1,
+      "message": "I\u0027m not sure that we guarantee that putting Provider objects in a set will make them unique.  I think that LayoutProviderStore creates new ones for each tenant, and I don\u0027t think we implement the hash methods needed for set() to deduplicate them.  Even if I\u0027m wrong about that, I\u0027m still not sure we want to treat that as guaranteed.  (Endpoints on the other hand we do make an effort to ensure are singletons.)\n\nWe do have a method to get the *unique* providers already (and it uses the provider cname to determine uniqueness), so you can change this to iterate over self._getUniqueProviders().  You can probably make it a one line comprehension.",
+      "revId": "5388bb2123aae14595500e7fd30bfcb710c716a4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b09867cf_5a83dd48",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 2806,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-09T14:31:35Z",
+      "side": 1,
+      "message": "Extra space before the \":\" which would normally qualify as a nit, but given how we will be searching for these messages, is actually important this time.",
+      "revId": "5388bb2123aae14595500e7fd30bfcb710c716a4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13823404_8674ecc1",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 2829,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-09T14:31:35Z",
+      "side": 1,
+      "message": "Extra space again.",
       "revId": "5388bb2123aae14595500e7fd30bfcb710c716a4",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
