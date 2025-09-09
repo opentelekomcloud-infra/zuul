@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31fd26e2_9cb3c242",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 2696,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-09-09T12:39:23Z",
+      "side": 1,
+      "message": "Just wondering if this method should now rather be called `provider.getEndpointLimits()`?",
+      "revId": "5388bb2123aae14595500e7fd30bfcb710c716a4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
