@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ca7852cd_ed4a6484",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1231,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-10T13:38:27Z",
+      "side": 1,
+      "message": "I originally wrote a comment that said we should include the requset here with a %s like we do on line 1246, but then I realized the log is annotated, so we could actually remove them elsewhere.  Serializing the request gives us a little more info (the current state, etc), but it\u0027s probably not necessary.\n\nRegardless, it probably makes sense to be consistent, so we should either add or remove it to/from all.",
+      "revId": "6d88a9879edc028afa9838070e7b87021f2d2fe4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "70a82d8c_76a48f46",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1246,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-10T13:38:27Z",
+      "side": 1,
+      "message": "Here we serialize the request.",
+      "revId": "6d88a9879edc028afa9838070e7b87021f2d2fe4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
