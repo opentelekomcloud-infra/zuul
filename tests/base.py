@@ -975,10 +975,12 @@ class HoldableLauncherClient(zuul.launcher.client.LauncherClient):
 
     hold_in_queue = False
 
-    def _getInitialRequestState(self, job):
+    def _getInitialRequestStates(self, job):
         if self.hold_in_queue:
-            return model.NodesetRequest.State.TEST_HOLD
-        return super()._getInitialRequestState(job)
+            return dict(
+                state=model.NodesetRequest.State.TEST_HOLD,
+            )
+        return super()._getInitialRequestStates(job)
 
 
 class TestingExecutorApi(HoldableExecutorApi):
