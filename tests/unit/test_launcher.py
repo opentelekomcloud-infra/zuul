@@ -3091,3 +3091,114 @@ class TestSnapshot(AnsibleZuulTestCase, LauncherBaseTestCase):
         image_cname = 'review.example.com%2Fcommon-config/debian-local'
         # We have an image, that's good enough for this test.
         self._waitForUploads(image_cname, 1)
+
+
+class TestSubnodes(LauncherBaseTestCase):
+
+    @simple_layout('layouts/nodepool-subnodes.yaml', enable_nodepool=True)
+    def test_subnodes(self):
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.State.FULFILLED, request.state)
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(2, len(nodes))
+        # Get a list with the main node first and the subnode last
+        nodes.sort(key=lambda x: len(x.subnodes))
+        nodes.reverse()
+        main = nodes[0]
+        sub = nodes[1]
+        # Get a copy so we're not modifying the launcher's
+        main = model.ProviderNode.fromZK(ctx, path=main.getPath())
+        sub = model.ProviderNode.fromZK(ctx, path=sub.getPath())
+        self.assertIsNone(main.main_node_id)
+        self.assertEqual(main.uuid, sub.main_node_id)
+        self.assertEqual([sub.uuid], main.subnodes)
+        self.assertEqual([], sub.subnodes)
+        self.assertEqual(main.State.READY, main.state)
+        self.assertEqual(sub.State.READY, sub.state)
+
+        with sub.locked(ctx):
+            with sub.activeContext(ctx):
+                sub.request_id = "dne"
+                sub.setState(sub.State.USED)
+
+        for _ in iterate_timeout(10, "sub to be deleted"):
+            try:
+                sub.refresh(ctx)
+            except NoNodeError:
+                break
+
+        # Main should still exist
+        main.refresh(ctx)
+
+        with main.locked(ctx):
+            with main.activeContext(ctx):
+                main.request_id = "dne"
+                main.setState(sub.State.USED)
+
+        for _ in iterate_timeout(10, "main to be deleted"):
+            try:
+                main.refresh(ctx)
+            except NoNodeError:
+                break
+
+    @simple_layout('layouts/nodepool-subnodes-ready.yaml',
+                   enable_nodepool=True)
+    def test_subnodes_max_ready_age(self):
+        for _ in iterate_timeout(60, "nodes to be ready"):
+            nodes = self.launcher.api.nodes_cache.getItems()
+            if (len(nodes) == 2 and
+                all(n.state == n.State.READY for n in nodes)):
+                break
+
+        self.waitUntilSettled('start')
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(2, len(nodes))
+        # Get a list with the main node first and the subnode last
+        nodes.sort(key=lambda x: len(x.subnodes))
+        nodes.reverse()
+        main = nodes[0]
+        sub = nodes[1]
+
+        ctx = self.createZKContext(None)
+        # Make a new copy so we can obtain our own lock
+        main = model.ProviderNode.fromZK(ctx, path=main.getPath())
+        with main.locked(ctx):
+            main.updateAttributes(ctx, state_time=0)
+
+        # Nothing should happen here, but give it a chance to
+        # erroneously delete.
+        time.sleep(1)
+        self.waitUntilSettled()
+
+        # Assert the node still exists
+        main.refresh(ctx)
+
+        # Make sure we didn't create more nodes
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(2, len(nodes))
+
+        # Now delete the subnode, which should work.
+        sub = model.ProviderNode.fromZK(ctx, path=sub.getPath())
+        with sub.locked(ctx):
+            sub.updateAttributes(ctx, state_time=0)
+
+        self.log.debug("Wait for deletion")
+        for _ in iterate_timeout(60, "sub node to be deleted"):
+            try:
+                sub.refresh(ctx)
+            except NoNodeError:
+                break
+        for _ in iterate_timeout(60, "main node to be deleted"):
+            try:
+                main.refresh(ctx)
+            except NoNodeError:
+                break
+
+        self.waitUntilSettled('deleted')
+        for _ in iterate_timeout(60, "node to be replaced"):
+            nodes = self.launcher.api.nodes_cache.getItems()
+            if (len(nodes) == 2 and
+                all(n.state == n.State.READY for n in nodes)):
+                break

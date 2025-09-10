@@ -161,6 +161,13 @@ class QuotaCache(ZuulTreeCache):
                     kind=kind,
                     resource=resource,
                 )
+                # Put the item in the cache so that we can use it
+                # immediately without hitting a cache error.  This
+                # will race the addition triggered by the watch, but
+                # we'll end up with the same data, and no consumers of
+                # the quota cache would be affected by having the
+                # object replaced.
+                self._cached_objects.setdefault(key, obj)
         except (BadVersionError, NodeExistsError):
             self.log.debug("Skipping update of %s", path)
 
