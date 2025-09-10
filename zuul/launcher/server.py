@@ -68,6 +68,10 @@ from zuul.zk.layout import (
 from zuul.zk.locks import tenant_read_lock
 from zuul.zk.system import ZuulSystem
 from zuul.zk.zkobject import ZKContext
+from zuul.launcher.subnodes import (
+    SubnodeProviderNode,
+    SubnodeStateMachine,
+)
 
 COMMANDS = (
     commandsocket.StopCommand,
@@ -1554,17 +1558,10 @@ class Launcher:
         # the request UUID as namespace.
         node_uuid = uuid.uuid4().hex
         image = provider.images[label.image]
-        tags = provider.getNodeTags(
-            self.system.system_id, label, node_uuid, provider, request)
-        node_class = provider.driver.getProviderNodeClass()
         label_quota = provider.getQuotaForLabel(label)
-        with trace.use_span(request._span):
-            node_span = self.tracer.start_span("ProviderNode")
-        span_info = tracing.getSpanInfo(node_span)
-        node = node_class.new(
-            ctx,
+
+        args = dict(
             uuid=node_uuid,
-            min_request_version=request.getZKVersion() + 1,
             label=label.name,
             label_config_hash=label.config_hash,
             max_ready_age=label.max_ready_age,
@@ -1573,22 +1570,66 @@ class Launcher:
             snapshot_timeout=label.snapshot_timeout,
             snapshot_expiration=label.snapshot_expiration,
             executor_zone=label.executor_zone,
-            request_id=request.uuid,
-            zuul_event_id=request.zuul_event_id,
-            span_info=span_info,
             connection_name=provider.connection_name,
-            tenant_name=request.tenant_name,
-            provider=provider.canonical_name,
-            request_time=request.request_time,
-            tags=tags,
-            image_upload_uuid=request.image_upload_uuid,
             # Set any node attributes we already know here
             connection_port=image.connection_port,
             connection_type=image.connection_type,
             quota=label_quota,
         )
+        # Save a copy of the args here since nothing below should be
+        # set on subnodes.
+        subnode_args = args.copy()
+        if request is not None:
+            with trace.use_span(request._span):
+                node_span = self.tracer.start_span("ProviderNode")
+            args['tags'] = provider.getNodeTags(
+                self.system.system_id, label, node_uuid, provider, request)
+            args['span_info'] = tracing.getSpanInfo(node_span)
+            args['min_request_version'] = request.getZKVersion() + 1
+            args['request_id'] = request.uuid
+            args['zuul_event_id'] = request.zuul_event_id
+            args['tenant_name'] = request.tenant_name
+            args['request_time'] = request.request_time
+            args['image_upload_uuid'] = request.image_upload_uuid
+            args['provider'] = provider.canonical_name
+        else:
+            # We don't pass a provider here as the node should not
+            # be directly associated with a tenant or provider.
+            args['tags'] = provider.getNodeTags(
+                self.system.system_id, label, node_uuid)
+        node_class = provider.driver.getProviderNodeClass()
+        node = node_class.new(ctx, **args)
         log.debug("Requested node %s", node)
+        subnodes = []
+        for slot in range(max(label.slots - 1, 0)):
+            subnode = self._createSubNode(ctx, node, subnode_args, slot)
+            log.debug("Requested subnode %s for node %s", subnode, node)
+            subnodes.append(subnode.uuid)
+        if subnodes:
+            node.updateAttributes(
+                ctx,
+                subnodes=subnodes,
+                slot=0,
+            )
         return node
+
+    def _createSubNode(self, context, node, args, slot):
+        # Get a new uuid for the subnode
+        args['uuid'] = uuid.uuid4().hex
+        # Subnodes use no quota
+        args['quota'] = model.QuotaInformation()
+        subnode = SubnodeProviderNode.new(
+            context,
+            state=node.state,
+            state_time=node.state_time,
+            slot=slot,
+            main_node_id=node.uuid,
+            # A fake create state machine since we follow the main
+            # node.
+            create_state_machine=SubnodeStateMachine(),
+            **args,
+        )
+        return subnode
 
     def _checkRequest(self, request, log):
         messages = []
@@ -1736,6 +1777,16 @@ class Launcher:
                               node.State.TEMPFAILED,
                               node.State.OUTDATED)
         ):
+            # Safety check to make sure we don't delete main nodes if
+            # subnodes are in use.
+            for subnode_id in node.subnodes:
+                if subnode := self.api.getProviderNode(subnode_id):
+                    if subnode.state not in (subnode.State.REQUESTED,
+                                             subnode.State.BUILDING):
+                        log.debug("Not deleting node %s due to subnode %s",
+                                  node, subnode)
+                        return
+
             try:
                 self._cleanupNode(node, log)
             except Exception:
@@ -1749,6 +1800,22 @@ class Launcher:
     def _isNodeActionable(self, node):
         if node.is_locked:
             return False
+
+        # If we have subnodes and are in any state other than
+        # requested or building, then they are "live" and we should
+        # not act until they are deleted.
+        if node.state not in (node.State.REQUESTED, node.State.BUILDING):
+            for subnode_id in node.subnodes:
+                if self.api.getProviderNode(subnode_id):
+                    return False
+
+        # If we are a subnode and our main node is in requested or
+        # building, then we should not act.
+        if isinstance(node, SubnodeProviderNode):
+            if main_node := self.api.getProviderNode(node.main_node_id):
+                if main_node.state in (
+                        node.State.REQUESTED, node.State.BUILDING):
+                    return False
 
         if node.state in node.LAUNCHER_STATES:
             return True
@@ -1786,11 +1853,16 @@ class Launcher:
                 provider = self._getProviderForNode(node)
                 if not node.create_state_machine:
                     log.debug("Building node %s", node)
-                    image_external_id = self.getImageExternalId(node, provider)
-                    log.debug("Node %s external id %s",
-                              node, image_external_id)
-                    node.create_state_machine = provider.getCreateStateMachine(
-                        node, image_external_id, log)
+                    if isinstance(node, SubnodeProviderNode):
+                        node.create_state_machine = SubnodeStateMachine()
+                    else:
+                        image_external_id = self.getImageExternalId(
+                            node, provider)
+                        log.debug("Node %s external id %s",
+                                  node, image_external_id)
+                        node.create_state_machine =\
+                            provider.getCreateStateMachine(
+                                node, image_external_id, log)
 
                 old_state = node.create_state_machine.state
                 if old_state == node.create_state_machine.START:
@@ -1831,6 +1903,11 @@ class Launcher:
                     node.nodescan_request = None
                     self.wake_event.set()
                     log.debug("Marking node %s as %s", node, node.state)
+                    for subnode_id in node.subnodes:
+                        if subnode := self.api.getProviderNode(subnode_id):
+                            subnode.updateFromMainNode(ctx, node)
+                            log.debug("Marking subnode %s as %s",
+                                      subnode, subnode.state)
                 else:
                     self.wake_event.set()
                     return
@@ -1935,10 +2012,13 @@ class Launcher:
 
                 if not node.delete_state_machine:
                     log.debug("Cleaning up node %s", node)
-                    provider = self._getProviderForNode(
-                        node, ignore_label=True)
-                    node.delete_state_machine = provider.getDeleteStateMachine(
-                        node, log)
+                    if isinstance(node, SubnodeProviderNode):
+                        node.delete_state_machine = SubnodeStateMachine()
+                    else:
+                        provider = self._getProviderForNode(
+                            node, ignore_label=True)
+                        node.delete_state_machine =\
+                            provider.getDeleteStateMachine(node, log)
 
                 old_state = node.delete_state_machine.state
 
@@ -2008,36 +2088,8 @@ class Launcher:
             return
 
         for label, provider in self._getMissingMinReadySlots():
-            node_uuid = uuid.uuid4().hex
-            # We don't pass a provider here as the node should not
-            # be directly associated with a tenant or provider.
-            image = provider.images[label.image]
-            tags = provider.getNodeTags(
-                self.system.system_id, label, node_uuid)
-            node_class = provider.driver.getProviderNodeClass()
             with self.createZKContext(None, self.log) as ctx:
-                node = node_class.new(
-                    ctx,
-                    uuid=node_uuid,
-                    label=label.name,
-                    label_config_hash=label.config_hash,
-                    max_ready_age=label.max_ready_age,
-                    host_key_checking=label.host_key_checking,
-                    boot_timeout=label.boot_timeout,
-                    snapshot_timeout=label.snapshot_timeout,
-                    snapshot_expiration=label.snapshot_expiration,
-                    executor_zone=label.executor_zone,
-                    request_id=None,
-                    connection_name=provider.connection_name,
-                    zuul_event_id=uuid.uuid4().hex,
-                    tenant_name=None,
-                    provider=None,
-                    request_time=time.time(),
-                    tags=tags,
-                    # Set any node attributes we already know here
-                    connection_port=image.connection_port,
-                    connection_type=image.connection_type,
-                )
+                node = self._requestNode(label, None, provider, self.log, ctx)
                 self.log.debug("Created min-ready node %s via provider %s",
                                node, provider)
 
