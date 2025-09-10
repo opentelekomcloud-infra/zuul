@@ -1,0 +1,31 @@
+# Copyright 2024 BMW Group
+# Copyright 2024-2025 Acme Gating, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+from zuul import model
+
+
+class SubnodeProviderNode(model.ProviderNode, subclass_id="subnode"):
+    def __repr__(self):
+        return (f"<{self.__class__.__name__} uuid={self.uuid},"
+                f" label={self.label}, state={self.state},"
+                f" main_node={self.main_node_id}>")
+
+    def updateFromMainNode(self, context, node):
+        self.updateAttributes(
+            context,
+            state=node.state,
+            state_time=node.state_time,
+            **self.getNodeData(),
+        )

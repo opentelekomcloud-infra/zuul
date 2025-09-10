@@ -68,6 +68,11 @@ from zuul.zk.layout import (
 from zuul.zk.locks import tenant_read_lock
 from zuul.zk.system import ZuulSystem
 from zuul.zk.zkobject import ZKContext
+from zuul.driver.subnode.subnodemodel import SubnodeProviderNode
+from zuul.driver.subnode.subnodeprovider import (
+    SubnodeProvider,
+    SubnodeStateMachine,
+)
 
 COMMANDS = (
     commandsocket.StopCommand,
@@ -1588,7 +1593,40 @@ class Launcher:
             quota=label_quota,
         )
         log.debug("Requested node %s", node)
+        subnodes = []
+        for slot in range(max(label.slots - 1, 0)):
+            subnode = self._createSubNode(ctx, node, slot)
+            log.debug("Requested subnode %s for node %s", subnode, node)
+            subnodes.append(subnode.uuid)
+        if subnodes:
+            node.updateAttributes(
+                ctx,
+                subnodes=subnodes,
+                slot=0,
+            )
         return node
+
+    def _createSubNode(self, context, node, slot):
+        node_uuid = uuid.uuid4().hex
+        quota = model.QuotaInformation()
+        subnode = SubnodeProviderNode.new(
+            context,
+            uuid=node_uuid,
+            state=node.state,
+            state_time=node.state_time,
+            label=node.label,
+            label_config_hash=node.label_config_hash,
+            connection_name=node.connection_name,
+            endpoint_name=node.endpoint_name,
+            slot=slot,
+            main_node_id=node.uuid,
+            # Subnodes use no quota
+            quota=quota,
+            # A fake create state machine since we follow the main
+            # node.
+            create_state_machine=SubnodeStateMachine(),
+        )
+        return subnode
 
     def _checkRequest(self, request, log):
         messages = []
@@ -1736,6 +1774,16 @@ class Launcher:
                               node.State.TEMPFAILED,
                               node.State.OUTDATED)
         ):
+            # Safety check to make sure we don't delete main nodes if
+            # subnodes are in use.
+            for subnode_id in node.subnodes:
+                if subnode := self.api.getProviderNode(subnode_id):
+                    if subnode.state not in (subnode.State.REQUESTED,
+                                             subnode.State.BUILDING):
+                        log.debug("Not deleting node %s due to subnode %s",
+                                  node, subnode)
+                        return
+
             try:
                 self._cleanupNode(node, log)
             except Exception:
@@ -1749,6 +1797,23 @@ class Launcher:
     def _isNodeActionable(self, node):
         if node.is_locked:
             return False
+
+        # If we have subnodes and are in any state other than
+        # requested or building, then they are "live" and we should
+        # not act until they are deleted.
+        # TODO: allow reuse here
+        if node.state not in (node.State.REQUESTED, node.State.BUILDING):
+            for subnode_id in node.subnodes:
+                if self.api.getProviderNode(subnode_id):
+                    return False
+
+        # If we are a subnode and our main node is in requested or
+        # building, then we should not act.
+        if isinstance(node, SubnodeProviderNode):
+            if main_node := self.api.getProviderNode(node.main_node_id):
+                if main_node.state in (
+                        node.State.REQUESTED, node.State.BUILDING):
+                    return False
 
         if node.state in node.LAUNCHER_STATES:
             return True
@@ -1831,6 +1896,11 @@ class Launcher:
                     node.nodescan_request = None
                     self.wake_event.set()
                     log.debug("Marking node %s as %s", node, node.state)
+                    for subnode_id in node.subnodes:
+                        if subnode := self.api.getProviderNode(subnode_id):
+                            subnode.updateFromMainNode(ctx, node)
+                            log.debug("Marking subnode %s as %s",
+                                      subnode, subnode.state)
                 else:
                     self.wake_event.set()
                     return
@@ -2119,6 +2189,9 @@ class Launcher:
         return ready_nodes
 
     def _getProviderForNode(self, node, ignore_label=False):
+        if isinstance(node, SubnodeProviderNode):
+            return SubnodeProvider(self.api)
+
         # Common case when a node is assigned to a provider
         if node.provider:
             return self._getProviderByCanonicalName(node.provider)
@@ -2675,6 +2748,9 @@ class Launcher:
         return path
 
     def getImageExternalId(self, node, provider):
+        if not hasattr(provider, 'labels'):
+            # Subnode provider
+            return None
         label = provider.labels[node.label]
         image = provider.images[label.image]
         if image.type != 'zuul':

@@ -3016,3 +3016,49 @@ class TestSnapshot(AnsibleZuulTestCase, LauncherBaseTestCase):
         image_cname = 'review.example.com%2Fcommon-config/debian-local'
         # We have an image, that's good enough for this test.
         self._waitForUploads(image_cname, 1)
+
+
+class TestSubnodes(LauncherBaseTestCase):
+
+    @simple_layout('layouts/nodepool-subnodes.yaml', enable_nodepool=True)
+    def test_subnodes(self):
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.State.FULFILLED, request.state)
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(2, len(nodes))
+        # Get a list with the main node first and the subnode last
+        nodes.sort(key=lambda x: len(x.subnodes))
+        nodes.reverse()
+        main = nodes[0]
+        sub = nodes[1]
+        self.assertIsNone(main.main_node_id)
+        self.assertEqual(main.uuid, sub.main_node_id)
+        self.assertEqual([sub.uuid], main.subnodes)
+        self.assertEqual([], sub.subnodes)
+        self.assertEqual(main.State.READY, main.state)
+        self.assertEqual(sub.State.READY, sub.state)
+
+        ctx = self.createZKContext(None)
+        with sub.activeContext(ctx):
+            sub.updateAttributes(ctx, request_id="dne")
+            sub.setState(sub.State.USED)
+
+        for _ in iterate_timeout(10, "sub to be deleted"):
+            try:
+                sub.refresh(ctx)
+            except NoNodeError:
+                break
+
+        # Main should still exist
+        main.refresh(ctx)
+
+        with main.activeContext(ctx):
+            main.updateAttributes(ctx, request_id="dne")
+            main.setState(sub.State.USED)
+
+        for _ in iterate_timeout(10, "main to be deleted"):
+            try:
+                main.refresh(ctx)
+            except NoNodeError:
+                break
