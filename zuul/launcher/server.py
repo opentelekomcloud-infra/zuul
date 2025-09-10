@@ -1204,55 +1204,60 @@ class Launcher:
         ready_nodes = self._getUnassignedReadyNodes()
         for request in self.api.getMatchingRequests():
             log = get_annotated_logger(self.log, request, request=request.uuid)
-            if not request.hasLock():
-                if ((request.state in request.FINAL_STATES) and
-                    (request.event_state == request.EventState.COMPLETE)):
-                    # Nothing to do here
-                    continue
-                log.debug("Got request %s", request)
-                with self.createZKContext(None, log) as ctx:
-                    if not request.acquireLock(ctx, blocking=False):
-                        log.debug("Failed to lock matching request %s",
-                                  request)
-                        continue
-                    request.refresh(ctx)
-
-                request_span = tracing.restoreSpan(request.span_info)
-                with trace.use_span(request_span):
-                    request._set(_span=self.tracer.start_span(
-                        "NodesetRequestProcessing"))
-
-            if not self._cachesReadyForRequest(request):
-                self.log.debug("Caches are not up-to-date for %s", request)
-                continue
-
             try:
-                if request.state == model.NodesetRequest.State.REQUESTED:
-                    self._acceptRequest(request, log, ready_nodes)
-                elif request.state == model.NodesetRequest.State.ACCEPTED:
-                    self._checkRequest(request, log)
-            except NodesetRequestError as err:
-                state = model.NodesetRequest.State.FAILED
-                log.error("Marking request %s as %s: %s",
-                          request, state, str(err))
-                with self.createZKContext(request._lock, log) as ctx:
-                    request.updateAttributes(ctx, state=state)
+                if not request.hasLock():
+                    if ((request.state in request.FINAL_STATES) and
+                        (request.event_state == request.EventState.COMPLETE)):
+                        # Nothing to do here
+                        continue
+                    log.debug("Got request %s", request)
+                    with self.createZKContext(None, log) as ctx:
+                        if not request.acquireLock(ctx, blocking=False):
+                            log.debug("Failed to lock matching request %s",
+                                      request)
+                            continue
+                        request.refresh(ctx)
+
+                    request_span = tracing.restoreSpan(request.span_info)
+                    with trace.use_span(request_span):
+                        request._set(_span=self.tracer.start_span(
+                            "NodesetRequestProcessing"))
+
+                if not self._cachesReadyForRequest(request):
+                    self.log.debug("Caches are not up-to-date for %s", request)
+                    continue
+                self._processNodesetRequest(request, ready_nodes, log)
             except Exception:
-                log.exception("Error processing request %s", request)
-            if request.state in request.FINAL_STATES:
-                # Note that we still hold the lock for a few more
-                # instructions, but the schedulers or executors should
-                # not care.
-                event = model.NodesProvisionedEvent(
-                    request.uuid, request.buildset_uuid)
-                self.result_events[request.tenant_name][
-                    request.pipeline_name].put(event)
-                request._span.set_attributes(request.getSpanAttributes())
-                request._span.end()
-                with self.createZKContext(None, log) as ctx:
-                    request.updateAttributes(
-                        ctx, event_state=request.EventState.COMPLETE)
-                    request.releaseLock(ctx)
+                log.exception("Failed to process request:")
+
+    def _processNodesetRequest(self, request, ready_nodes, log):
+        try:
+            if request.state == model.NodesetRequest.State.REQUESTED:
+                self._acceptRequest(request, log, ready_nodes)
+            elif request.state == model.NodesetRequest.State.ACCEPTED:
+                self._checkRequest(request, log)
+        except NodesetRequestError as err:
+            state = model.NodesetRequest.State.FAILED
+            log.error("Marking request %s as %s: %s",
+                      request, state, str(err))
+            with self.createZKContext(request._lock, log) as ctx:
+                request.updateAttributes(ctx, state=state)
+        except Exception:
+            log.exception("Error processing request %s", request)
+        if request.state in request.FINAL_STATES:
+            # Note that we still hold the lock for a few more
+            # instructions, but the schedulers or executors should
+            # not care.
+            event = model.NodesProvisionedEvent(
+                request.uuid, request.buildset_uuid)
+            self.result_events[request.tenant_name][
+                request.pipeline_name].put(event)
+            request._span.set_attributes(request.getSpanAttributes())
+            request._span.end()
+            with self.createZKContext(None, log) as ctx:
+                request.updateAttributes(
+                    ctx, event_state=request.EventState.COMPLETE)
+                request.releaseLock(ctx)
 
     def _cachesReadyForRequest(self, request):
         # Make sure we have all associated provider nodes in the cache
@@ -1642,98 +1647,104 @@ class Launcher:
                 self._processNodeSnapshot(node, log)
             except Exception:
                 log.exception("Error processing node %s snapshot", node)
-            if not node.hasLock():
-                if not self._isNodeActionable(node):
-                    continue
 
-                with self.createZKContext(None, log) as ctx:
-                    if not node.acquireLock(ctx, blocking=False):
-                        log.debug("Failed to lock matching node %s", node)
+            try:
+                if not node.hasLock():
+                    if not self._isNodeActionable(node):
                         continue
-                    node.refresh(ctx)
 
-            request = self.api.getNodesetRequest(node.request_id)
-            if ((request or node.request_id is None)
-                    and node.state in node.CREATE_STATES):
-                try:
-                    self._checkNode(node, log)
-                except exceptions.QuotaException as e:
-                    state = node.State.TEMPFAILED
-                    log.info("Marking node %s as %s due to %s", node, state, e)
-                    with self.createZKContext(node._lock, self.log) as ctx:
-                        with node.activeContext(ctx):
-                            node.setState(state)
-                        self.wake_event.set()
-                except Exception as e:
-                    state = node.State.FAILED
-                    if isinstance(e, LaunchTimeoutError):
-                        log.error("Marking node %s as %s", node, state)
-                    else:
-                        log.exception("Marking node %s as %s", node, state)
-                    with self.createZKContext(node._lock, self.log) as ctx:
-                        with node.activeContext(ctx):
-                            node.setState(state)
-                        self.wake_event.set()
+                    with self.createZKContext(None, log) as ctx:
+                        if not node.acquireLock(ctx, blocking=False):
+                            log.debug("Failed to lock matching node %s", node)
+                            continue
+                        node.refresh(ctx)
+                self._processProviderNode(node, log)
+            except Exception:
+                log.exception("Failed to process node:")
 
-                # Export span for node creation phase
-                if (node.state in node.FINAL_STATES and
-                        node.create_state_machine):
-                    with trace.use_span(tracing.restoreSpan(node.span_info)):
-                        with self.tracer.start_as_current_span(
-                            "ProviderNodeCreate",
-                            start_time=node.create_state_machine.start_time,
-                            attributes=node.getSpanAttributes()
-                        ):
-                            # Nothing to do here; ctx manager is just
-                            # a shorthand for span start/end. The
-                            # start time is dated back to the start
-                            # of the create state machine.
-                            pass
-            # Deallocate ready node w/o a request for re-use
-            if (node.request_id and not request
-                    and node.state == node.State.READY):
-                log.debug("Deallocating ready node %s from missing request %s",
-                          node, node.request_id)
-                with self.createZKContext(node._lock, self.log) as ctx:
-                    node.updateAttributes(
-                        ctx,
-                        request_id=None,
-                        tenant_name=None,
-                        provider=None)
-
-            # Mark outdated nodes w/o a request for cleanup when ...
-            if not request and (
-                    # ... it expired
-                    node.hasExpired() or
-                    # ... we are sure that our providers are up-to-date
-                    # and we can't find a provider for this node.
-                    (not self.layout_updated_event.is_set()
-                     and not self._hasProvider(node))):
-                state = node.State.OUTDATED
-                log.debug("Marking node %s as %s", node, state)
+    def _processProviderNode(self, node, log):
+        request = self.api.getNodesetRequest(node.request_id)
+        if ((request or node.request_id is None)
+                and node.state in node.CREATE_STATES):
+            try:
+                self._checkNode(node, log)
+            except exceptions.QuotaException as e:
+                state = node.State.TEMPFAILED
+                log.info("Marking node %s as %s due to %s", node, state, e)
                 with self.createZKContext(node._lock, self.log) as ctx:
                     with node.activeContext(ctx):
                         node.setState(state)
-
-            # Clean up the node if ...
-            if (
-                # ... it is associated with a request that no
-                # longer exists
-                (node.request_id is not None and not request)
-                # ... it is failed/outdated
-                or node.state in (node.State.FAILED,
-                                  node.State.TEMPFAILED,
-                                  node.State.OUTDATED)
-            ):
-                try:
-                    self._cleanupNode(node, log)
-                except Exception:
-                    log.exception("Error in node cleanup")
+                    self.wake_event.set()
+            except Exception as e:
+                state = node.State.FAILED
+                if isinstance(e, LaunchTimeoutError):
+                    log.error("Marking node %s as %s", node, state)
+                else:
+                    log.exception("Marking node %s as %s", node, state)
+                with self.createZKContext(node._lock, self.log) as ctx:
+                    with node.activeContext(ctx):
+                        node.setState(state)
                     self.wake_event.set()
 
-            if node.state == model.ProviderNode.State.READY:
-                with self.createZKContext(None, self.log) as ctx:
-                    node.releaseLock(ctx)
+            # Export span for node creation phase
+            if (node.state in node.FINAL_STATES and
+                    node.create_state_machine):
+                with trace.use_span(tracing.restoreSpan(node.span_info)):
+                    with self.tracer.start_as_current_span(
+                        "ProviderNodeCreate",
+                        start_time=node.create_state_machine.start_time,
+                        attributes=node.getSpanAttributes()
+                    ):
+                        # Nothing to do here; ctx manager is just
+                        # a shorthand for span start/end. The
+                        # start time is dated back to the start
+                        # of the create state machine.
+                        pass
+        # Deallocate ready node w/o a request for re-use
+        if (node.request_id and not request
+                and node.state == node.State.READY):
+            log.debug("Deallocating ready node %s from missing request %s",
+                      node, node.request_id)
+            with self.createZKContext(node._lock, self.log) as ctx:
+                node.updateAttributes(
+                    ctx,
+                    request_id=None,
+                    tenant_name=None,
+                    provider=None)
+
+        # Mark outdated nodes w/o a request for cleanup when ...
+        if not request and (
+                # ... it expired
+                node.hasExpired() or
+                # ... we are sure that our providers are up-to-date
+                # and we can't find a provider for this node.
+                (not self.layout_updated_event.is_set()
+                 and not self._hasProvider(node))):
+            state = node.State.OUTDATED
+            log.debug("Marking node %s as %s", node, state)
+            with self.createZKContext(node._lock, self.log) as ctx:
+                with node.activeContext(ctx):
+                    node.setState(state)
+
+        # Clean up the node if ...
+        if (
+            # ... it is associated with a request that no
+            # longer exists
+            (node.request_id is not None and not request)
+            # ... it is failed/outdated
+            or node.state in (node.State.FAILED,
+                              node.State.TEMPFAILED,
+                              node.State.OUTDATED)
+        ):
+            try:
+                self._cleanupNode(node, log)
+            except Exception:
+                log.exception("Error in node cleanup")
+                self.wake_event.set()
+
+        if node.state == model.ProviderNode.State.READY:
+            with self.createZKContext(None, self.log) as ctx:
+                node.releaseLock(ctx)
 
     def _isNodeActionable(self, node):
         if node.is_locked:
