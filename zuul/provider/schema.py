@@ -39,6 +39,11 @@ common_label = vs.Schema({
         doc="""The time (in seconds) until a snapshot expires."""
     ): int,
     Optional(
+        'slots', default=1,
+        doc="""\
+        How many jobs are permitted run on the same node simultaneously."""
+    ): int,
+    Optional(
         'executor-zone',
         doc="""\
         Specify that a Zuul executor in the specified zone is
