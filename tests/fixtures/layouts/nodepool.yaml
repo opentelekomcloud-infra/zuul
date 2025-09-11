@@ -132,6 +132,9 @@
       host-key-checking: false
       boot-timeout: 120
       key-name: zuul
+      tags:
+        event_id: "{zuul_event_id}"
+        tenant: "{tenant_name}"
     flavors:
       - name: normal
         instance-type: t3.medium

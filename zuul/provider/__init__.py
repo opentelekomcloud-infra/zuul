@@ -527,25 +527,10 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         :param NodesetRequest request: The node request or None
         """
         tags = dict()
-
-        attrs = dict(
-            request_id=getattr(request, "uuid", None),
-        )
-        request_attrs = (
-            "pipeline_name",
-            "buildset_uuid",
-            "job_uuid",
-            "job_name",
-            "labels",
-            "zuul_event_id",
-            "tenant_name",
-        )
-        attrs.update({a: getattr(request, a, None) for a in request_attrs})
-
-        attributes = model.Attributes(**attrs)
+        attrs = request.getSafeAttributes().toDict() if request else {}
         for k, v in label.tags.items():
             try:
-                tags[k] = v.format(**attributes)
+                tags[k] = v.format(**attrs)
             except Exception:
                 self.log.exception("Error formatting metadata %s", k)
 
