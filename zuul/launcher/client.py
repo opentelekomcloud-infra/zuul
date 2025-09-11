@@ -67,7 +67,7 @@ class LauncherClient:
         with self.createZKContext(None, self.log) as ctx:
             request = NodesetRequest.new(
                 ctx,
-                state=self._getInitialRequestState(job),
+                **self._getInitialRequestStates(job),
                 tenant_name=item.manager.tenant.name,
                 pipeline_name=item.manager.pipeline.name,
                 buildset_uuid=buildset.uuid,
@@ -364,6 +364,12 @@ class LauncherClient:
         return ZKContext(self.zk_client, lock, self.stop_event, log,
                          default_lock_identifier=identifier)
 
-    def _getInitialRequestState(self, job):
-        return (NodesetRequest.State.REQUESTED if job.nodeset.nodes
-                else NodesetRequest.State.FULFILLED)
+    def _getInitialRequestStates(self, job):
+        if not job.nodeset.nodes:
+            # Nodeless job
+            return dict(
+                state=NodesetRequest.State.FULFILLED,
+                event_state=NodesetRequest.EventState.COMPLETE,
+            )
+        # Use default states
+        return dict()
