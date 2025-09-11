@@ -2644,6 +2644,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         OUTDATED = "outdated"
         HOLD = "hold"
         SNAPSHOT = "snapshot"
+        PENDING_DELETE = "pending-delete"
 
     # States where quota counts
     ALLOCATED_STATES = (
@@ -2654,6 +2655,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         State.OUTDATED,
         State.HOLD,
         State.SNAPSHOT,
+        State.PENDING_DELETE,
     )
 
     FINAL_STATES = (
