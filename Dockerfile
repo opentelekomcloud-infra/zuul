@@ -21,17 +21,19 @@ ARG IMAGE_FLAVOR=
 # Base images, defined as separate stages to allow for mirror selection or
 # downstream customization via named contexts when built with docker buildx.
 
-FROM quay.io/opendevorg/python-base:3.11-bookworm${IMAGE_FLAVOR} AS zuul-base
+FROM quay.io/opendevorg/python-base:3.11-trixie${IMAGE_FLAVOR} AS zuul-base
 
 # This is a mirror of:
-# FROM docker.io/library/node:22-bookworm AS node-base
-FROM quay.io/opendevmirror/node:22-bookworm AS node-base
+FROM docker.io/library/node:22-trixie AS node-base
+# TODO(clarkb) use the mirror when it has new images available.
+# FROM quay.io/opendevmirror/node:22-trixie AS node-base
 
 # This is a mirror of:
-# FROM golang:1.22-bookworm AS go-base
-FROM quay.io/opendevmirror/golang:1.22-bookworm AS go-base
+FROM golang:1.25-trixie AS go-base
+# TODO(clarkb) use the mirror when it has new images available.
+# FROM quay.io/opendevmirror/golang:1.25-trixie AS go-base
 
-FROM quay.io/opendevorg/python-builder:3.11-bookworm AS builder-base
+FROM quay.io/opendevorg/python-builder:3.11-trixie AS builder-base
 
 FROM node-base AS js-builder
 
