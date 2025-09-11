@@ -50,6 +50,11 @@ common_label = vs.Schema({
         How many jobs are permitted run on the same node simultaneously."""
     ): int,
     Optional(
+        'reuse', default=False,
+        doc="""\
+        Should the node be reused (True) or deleted (False) after use."""
+    ): bool,
+    Optional(
         'executor-zone',
         doc="""\
         Specify that a Zuul executor in the specified zone is

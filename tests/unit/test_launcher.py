@@ -3093,7 +3093,7 @@ class TestSnapshot(AnsibleZuulTestCase, LauncherBaseTestCase):
         self._waitForUploads(image_cname, 1)
 
 
-class TestSubnodes(LauncherBaseTestCase):
+class TestSubnodesAndReuse(LauncherBaseTestCase):
 
     @simple_layout('layouts/nodepool-subnodes.yaml', enable_nodepool=True)
     def test_subnodes(self):
@@ -3201,4 +3201,74 @@ class TestSubnodes(LauncherBaseTestCase):
             nodes = self.launcher.api.nodes_cache.getItems()
             if (len(nodes) == 2 and
                 all(n.state == n.State.READY for n in nodes)):
+                break
+
+    @simple_layout('layouts/nodepool-reuse.yaml', enable_nodepool=True)
+    def test_reuse(self):
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.State.FULFILLED, request.state)
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(1, len(nodes))
+        node = nodes[0]
+        # Get a copy so we're not modifying the launcher's
+        node = model.ProviderNode.fromZK(ctx, path=node.getPath())
+
+        with node.locked(ctx):
+            with node.activeContext(ctx):
+                node.request_id = "dne"
+                node.setState(node.State.USED)
+
+        for _ in iterate_timeout(10, "node to be recycled"):
+            node.refresh(ctx)
+            if node.state == node.State.READY:
+                break
+
+    @simple_layout('layouts/nodepool-subnodes-reuse.yaml',
+                   enable_nodepool=True)
+    def test_subnodes_reuse(self):
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.State.FULFILLED, request.state)
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(2, len(nodes))
+        # Get a list with the main node first and the subnode last
+        nodes.sort(key=lambda x: len(x.subnodes))
+        nodes.reverse()
+        main = nodes[0]
+        sub = nodes[1]
+        # Get a copy so we're not modifying the launcher's
+        main = model.ProviderNode.fromZK(ctx, path=main.getPath())
+        sub = model.ProviderNode.fromZK(ctx, path=sub.getPath())
+        self.assertIsNone(main.main_node_id)
+        self.assertEqual(main.uuid, sub.main_node_id)
+        self.assertEqual([sub.uuid], main.subnodes)
+        self.assertEqual([], sub.subnodes)
+        self.assertEqual(main.State.READY, main.state)
+        self.assertEqual(sub.State.READY, sub.state)
+
+        with sub.locked(ctx):
+            with sub.activeContext(ctx):
+                sub.request_id = "dne"
+                sub.setState(sub.State.USED)
+
+        for _ in iterate_timeout(10, "sub to be recycled"):
+            sub.refresh(ctx)
+            if sub.state == sub.State.READY:
+                break
+        self.assertEqual(sub.uuid, nodes[1].uuid)
+
+        # Main should still exist
+        main.refresh(ctx)
+
+        with main.locked(ctx):
+            with main.activeContext(ctx):
+                main.request_id = "dne"
+                main.setState(main.State.USED)
+
+        for _ in iterate_timeout(10, "main to be recycled"):
+            main.refresh(ctx)
+            if main.state == main.State.READY:
                 break

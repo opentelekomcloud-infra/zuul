@@ -1743,17 +1743,6 @@ class Launcher:
                         # start time is dated back to the start
                         # of the create state machine.
                         pass
-        # Deallocate ready node w/o a request for re-use
-        if (node.request_id and not request
-                and node.state == node.State.READY):
-            log.debug("Deallocating ready node %s from missing request %s",
-                      node, node.request_id)
-            with self.createZKContext(node._lock, self.log) as ctx:
-                node.updateAttributes(
-                    ctx,
-                    request_id=None,
-                    tenant_name=None,
-                    provider=None)
 
         # Mark outdated nodes w/o a request for cleanup when ...
         if not request and (
@@ -1769,6 +1758,34 @@ class Launcher:
                 with node.activeContext(ctx):
                     node.setState(state)
 
+        # Deallocate ready node w/o a request for re-use
+        elif (node.request_id and not request
+                and node.state == node.State.READY):
+            log.debug("Deallocating ready node %s from missing request %s",
+                      node, node.request_id)
+            with self.createZKContext(node._lock, self.log) as ctx:
+                node.updateAttributes(
+                    ctx,
+                    request_id=None,
+                    tenant_name=None,
+                    provider=None)
+
+        # Recycle a node if the label allows reuse
+        elif (node.request_id and not request
+                and node.state == node.State.USED):
+            if provider := self._getProviderForNode(node):
+                if label := provider.labels.get(node.label):
+                    if label.reuse:
+                        state = node.State.READY
+                        log.debug("Marking node %s as %s for reuse",
+                                  node, state)
+                        with self.createZKContext(node._lock, self.log) as ctx:
+                            with node.activeContext(ctx):
+                                node.request_id = None
+                                node.tenant_name = None
+                                node.provider = None
+                                node.setState(state)
+
         # Clean up the node if ...
         if (
             # ... it is associated with a request that no
@@ -1777,23 +1794,30 @@ class Launcher:
             # ... it is failed/outdated
             or node.state in (node.State.FAILED,
                               node.State.TEMPFAILED,
+                              node.State.PENDING_DELETE,
                               node.State.OUTDATED)
         ):
             # Safety check to make sure we don't delete main nodes if
             # subnodes are in use.
+            ok = True
             for subnode_id in node.subnodes:
                 if subnode := self.api.getProviderNode(subnode_id):
                     if subnode.state not in (subnode.State.REQUESTED,
                                              subnode.State.BUILDING):
-                        log.debug("Not deleting node %s due to subnode %s",
-                                  node, subnode)
-                        return
-
-            try:
-                self._cleanupNode(node, log)
-            except Exception:
-                log.exception("Error in node cleanup")
-                self.wake_event.set()
+                        state = node.State.PENDING_DELETE
+                        log.debug("Marking node %s as %s due to subnode %s",
+                                  node, state, subnode)
+                        with self.createZKContext(node._lock, self.log) as ctx:
+                            with node.activeContext(ctx):
+                                node.setState(state)
+                                ok = False
+                                break
+            if ok:
+                try:
+                    self._cleanupNode(node, log)
+                except Exception:
+                    log.exception("Error in node cleanup")
+                    self.wake_event.set()
 
         if node.state == model.ProviderNode.State.READY:
             with self.createZKContext(None, self.log) as ctx:
@@ -1802,14 +1826,6 @@ class Launcher:
     def _isNodeActionable(self, node):
         if node.is_locked:
             return False
-
-        # If we have subnodes and are in any state other than
-        # requested or building, then they are "live" and we should
-        # not act until they are deleted.
-        if node.state not in (node.State.REQUESTED, node.State.BUILDING):
-            for subnode_id in node.subnodes:
-                if self.api.getProviderNode(subnode_id):
-                    return False
 
         # If we are a subnode and our main node is in requested or
         # building, then we should not act.
@@ -1821,6 +1837,17 @@ class Launcher:
 
         if node.state in node.LAUNCHER_STATES:
             return True
+
+        # Below this point, if we are actionable, it's in order to delete.
+
+        # If we have subnodes, then they are "live" and we should not
+        # delete the node until they are deleted.  We went into the
+        # pending-delete state because we're ready to delete but just
+        # waiting on the subnodes.
+        if node.state == node.State.PENDING_DELETE:
+            for subnode_id in node.subnodes:
+                if self.api.getProviderNode(subnode_id):
+                    return False
 
         if node.state == node.State.HOLD:
             if node.hasHoldExpired():
