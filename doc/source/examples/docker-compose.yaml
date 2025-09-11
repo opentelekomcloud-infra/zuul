@@ -76,7 +76,7 @@ services:
     command: |
       sh -c '/var/playbooks/wait-to-start-certs.sh && \
              /var/playbooks/wait-to-start.sh && \
-             exec zuul-scheduler -f'
+             exec zuul-scheduler -f -d'
     # FIXME: The scheduler has no ansible anymore so use the executor image.
     #        This needs to be changes such that ansible is not required for startup.
     image: quay.io/zuul-ci/zuul-scheduler
@@ -119,7 +119,7 @@ services:
       - "logs:/srv/static/logs:z"
       - "certs:/var/certs:z"
       - "lib-zuul-executor:/var/lib/zuul:z"
-    command: "sh -c '/var/playbooks/wait-to-start-certs.sh && exec zuul-executor -f'"
+    command: "sh -c '/var/playbooks/wait-to-start-certs.sh && exec zuul-executor -f -d'"
     networks:
       - zuul
   node:
