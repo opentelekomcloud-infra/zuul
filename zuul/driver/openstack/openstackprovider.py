@@ -245,16 +245,13 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
     def listInstances(self):
         return self.endpoint.listInstances()
 
-    def getQuotaLimits(self):
+    def getEndpointLimits(self):
         limits = self.endpoint.quota_cache.getLimits()
         if limits is None:
             limits = {}
         else:
             limits = limits.quota
-        cloud = QuotaInformation(default=math.inf, **limits)
-        zuul = QuotaInformation(default=math.inf, **self.resource_limits)
-        cloud.min(zuul)
-        return cloud
+        return QuotaInformation(default=math.inf, **limits)
 
     def getQuotaForLabel(self, label):
         flavor = self.flavors[label.flavor]

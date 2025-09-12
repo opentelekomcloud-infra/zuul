@@ -117,15 +117,15 @@ class TestSelectProviders(LauncherBaseTestCase):
         test = self
         self.ordered_providers = None
 
-        def getQuotaLimits(self):
+        def getEndpointLimits(self):
             quotas = test.test_config.driver.test_launcher['provider_quotas']
             return model.QuotaInformation(
                 default=math.inf,
                 **quotas[self.name],
             )
         self.patch(zuul.driver.aws.awsprovider.AwsProvider,
-                   'getQuotaLimits',
-                   getQuotaLimits)
+                   'getEndpointLimits',
+                   getEndpointLimits)
 
         def shuffleProviders(self, providers):
             if test.ordered_providers:

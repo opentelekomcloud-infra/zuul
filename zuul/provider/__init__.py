@@ -611,8 +611,8 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         """
         raise NotImplementedError()
 
-    def getQuotaLimits(self):
-        """Return the quota limits for this provider
+    def getEndpointLimits(self):
+        """Return the endpoint quota limits for this provider
 
         The default implementation returns a simple QuotaInformation
         with no limits.  Override this to provide accurate
