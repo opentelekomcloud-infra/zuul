@@ -3027,40 +3027,52 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
         self.assertEqual(request.State.FULFILLED, request.state)
 
         nodes = self.launcher.api.nodes_cache.getItems()
-        self.assertEqual(2, len(nodes))
-        # Get a list with the main node first and the subnode last
+        self.assertEqual(3, len(nodes))
+        # Get a list with the main node first and the subnodes last
         nodes.sort(key=lambda x: len(x.subnodes))
         nodes.reverse()
         main = nodes[0]
-        sub = nodes[1]
+        sub1 = nodes[1]
+        sub2 = nodes[2]
         # Get a copy so we're not modifying the launcher's
         main = model.ProviderNode.fromZK(ctx, path=main.getPath())
-        sub = model.ProviderNode.fromZK(ctx, path=sub.getPath())
+        sub1 = model.ProviderNode.fromZK(ctx, path=sub1.getPath())
+        sub2 = model.ProviderNode.fromZK(ctx, path=sub2.getPath())
         self.assertIsNone(main.main_node_id)
-        self.assertEqual(main.uuid, sub.main_node_id)
-        self.assertEqual([sub.uuid], main.subnodes)
-        self.assertEqual([], sub.subnodes)
-        self.assertEqual(main.State.READY, main.state)
-        self.assertEqual(sub.State.READY, sub.state)
+        self.assertEqual(main.uuid, sub1.main_node_id)
+        self.assertEqual(main.uuid, sub2.main_node_id)
+        self.assertEqual(set([sub1.uuid, sub2.uuid]), set(main.subnodes))
+        self.assertEqual([], sub1.subnodes)
+        self.assertEqual([], sub2.subnodes)
+        self.assertEqual(main.State.SLOT_HOST, main.state)
+        self.assertEqual(sub1.State.READY, sub1.state)
+        self.assertEqual(sub2.State.READY, sub2.state)
 
-        with sub.locked(ctx):
-            with sub.activeContext(ctx):
-                sub.request_id = "dne"
-                sub.setState(sub.State.USED)
+        with sub1.locked(ctx):
+            with sub1.activeContext(ctx):
+                sub1.request_id = "dne"
+                sub1.setState(sub1.State.USED)
 
-        for _ in iterate_timeout(10, "sub to be deleted"):
+        for _ in iterate_timeout(10, "sub1 to be deleted"):
             try:
-                sub.refresh(ctx)
+                sub1.refresh(ctx)
             except NoNodeError:
                 break
 
-        # Main should still exist
+        # Main and sub2 should still exist
         main.refresh(ctx)
+        sub2.refresh(ctx)
 
-        with main.locked(ctx):
-            with main.activeContext(ctx):
-                main.request_id = "dne"
-                main.setState(sub.State.USED)
+        with sub2.locked(ctx):
+            with sub2.activeContext(ctx):
+                sub2.request_id = "dne"
+                sub2.setState(sub2.State.USED)
+
+        for _ in iterate_timeout(10, "sub2 to be deleted"):
+            try:
+                sub2.refresh(ctx)
+            except NoNodeError:
+                break
 
         for _ in iterate_timeout(10, "main to be deleted"):
             try:
@@ -3073,59 +3085,50 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
     def test_subnodes_max_ready_age(self):
         for _ in iterate_timeout(60, "nodes to be ready"):
             nodes = self.launcher.api.nodes_cache.getItems()
-            if (len(nodes) == 2 and
-                all(n.state == n.State.READY for n in nodes)):
+            if any(n.state == n.State.SLOT_HOST for n in nodes):
                 break
 
         self.waitUntilSettled('start')
         nodes = self.launcher.api.nodes_cache.getItems()
-        self.assertEqual(2, len(nodes))
+        self.assertEqual(3, len(nodes))
         # Get a list with the main node first and the subnode last
         nodes.sort(key=lambda x: len(x.subnodes))
         nodes.reverse()
         main = nodes[0]
-        sub = nodes[1]
-
+        sub1 = nodes[1]
+        sub2 = nodes[2]
         ctx = self.createZKContext(None)
-        # Make a new copy so we can obtain our own lock
-        main = model.ProviderNode.fromZK(ctx, path=main.getPath())
-        with main.locked(ctx):
-            main.updateAttributes(ctx, state_time=0)
 
-        # Nothing should happen here, but give it a chance to
-        # erroneously delete.
-        time.sleep(1)
-        self.waitUntilSettled()
+        sub1 = model.ProviderNode.fromZK(ctx, path=sub1.getPath())
+        with sub1.locked(ctx):
+            sub1.updateAttributes(ctx, state_time=0)
 
-        # Assert the node still exists
-        main.refresh(ctx)
-
-        # Make sure we didn't create more nodes
-        nodes = self.launcher.api.nodes_cache.getItems()
-        self.assertEqual(2, len(nodes))
-
-        # Now delete the subnode, which should work.
-        sub = model.ProviderNode.fromZK(ctx, path=sub.getPath())
-        with sub.locked(ctx):
-            sub.updateAttributes(ctx, state_time=0)
-
-        self.log.debug("Wait for deletion")
-        for _ in iterate_timeout(60, "sub node to be deleted"):
+        for _ in iterate_timeout(10, "sub1 node to be deleted"):
             try:
-                sub.refresh(ctx)
+                sub1.refresh(ctx)
             except NoNodeError:
                 break
-        for _ in iterate_timeout(60, "main node to be deleted"):
+
+        sub2 = model.ProviderNode.fromZK(ctx, path=sub2.getPath())
+        with sub2.locked(ctx):
+            sub2.updateAttributes(ctx, state_time=0)
+
+        for _ in iterate_timeout(10, "sub2 node to be deleted"):
+            try:
+                sub2.refresh(ctx)
+            except NoNodeError:
+                break
+
+        for _ in iterate_timeout(10, "main node to be deleted"):
             try:
                 main.refresh(ctx)
             except NoNodeError:
                 break
 
         self.waitUntilSettled('deleted')
-        for _ in iterate_timeout(60, "node to be replaced"):
+        for _ in iterate_timeout(10, "node to be replaced"):
             nodes = self.launcher.api.nodes_cache.getItems()
-            if (len(nodes) == 2 and
-                all(n.state == n.State.READY for n in nodes)):
+            if any(n.state == n.State.SLOT_HOST for n in nodes):
                 break
 
     @simple_layout('layouts/nodepool-reuse.yaml', enable_nodepool=True)
@@ -3158,42 +3161,38 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
         self.assertEqual(request.State.FULFILLED, request.state)
 
         nodes = self.launcher.api.nodes_cache.getItems()
-        self.assertEqual(2, len(nodes))
+        self.assertEqual(3, len(nodes))
         # Get a list with the main node first and the subnode last
         nodes.sort(key=lambda x: len(x.subnodes))
         nodes.reverse()
         main = nodes[0]
-        sub = nodes[1]
+        sub1 = nodes[1]
+        sub2 = nodes[2]
         # Get a copy so we're not modifying the launcher's
         main = model.ProviderNode.fromZK(ctx, path=main.getPath())
-        sub = model.ProviderNode.fromZK(ctx, path=sub.getPath())
+        sub1 = model.ProviderNode.fromZK(ctx, path=sub1.getPath())
+        sub2 = model.ProviderNode.fromZK(ctx, path=sub2.getPath())
         self.assertIsNone(main.main_node_id)
-        self.assertEqual(main.uuid, sub.main_node_id)
-        self.assertEqual([sub.uuid], main.subnodes)
-        self.assertEqual([], sub.subnodes)
-        self.assertEqual(main.State.READY, main.state)
-        self.assertEqual(sub.State.READY, sub.state)
+        self.assertEqual(main.uuid, sub1.main_node_id)
+        self.assertEqual(main.uuid, sub2.main_node_id)
+        self.assertEqual(set([sub1.uuid, sub2.uuid]), set(main.subnodes))
+        self.assertEqual([], sub1.subnodes)
+        self.assertEqual([], sub2.subnodes)
+        self.assertEqual(main.State.SLOT_HOST, main.state)
+        self.assertEqual(sub1.State.READY, sub1.state)
+        self.assertEqual(sub2.State.READY, sub2.state)
 
-        with sub.locked(ctx):
-            with sub.activeContext(ctx):
-                sub.request_id = "dne"
-                sub.setState(sub.State.USED)
+        with sub1.locked(ctx):
+            with sub1.activeContext(ctx):
+                sub1.request_id = "dne"
+                sub1.setState(sub1.State.USED)
 
         for _ in iterate_timeout(10, "sub to be recycled"):
-            sub.refresh(ctx)
-            if sub.state == sub.State.READY:
+            sub1.refresh(ctx)
+            if sub1.state == sub1.State.READY:
                 break
-        self.assertEqual(sub.uuid, nodes[1].uuid)
+        self.assertEqual(sub1.uuid, nodes[1].uuid)
 
-        # Main should still exist
+        # Main and sub2 should still exist
         main.refresh(ctx)
-
-        with main.locked(ctx):
-            with main.activeContext(ctx):
-                main.request_id = "dne"
-                main.setState(main.State.USED)
-
-        for _ in iterate_timeout(10, "main to be recycled"):
-            main.refresh(ctx)
-            if main.state == main.State.READY:
-                break
+        sub2.refresh(ctx)
