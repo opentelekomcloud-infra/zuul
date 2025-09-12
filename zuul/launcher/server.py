@@ -1579,39 +1579,51 @@ class Launcher:
         # Save a copy of the args here since nothing below should be
         # set on subnodes.
         subnode_args = args.copy()
+        request_args = {}
         if request is not None:
             with trace.use_span(request._span):
                 node_span = self.tracer.start_span("ProviderNode")
-            args['tags'] = provider.getNodeTags(
+            request_args['tags'] = provider.getNodeTags(
                 self.system.system_id, label, node_uuid, provider, request)
-            args['span_info'] = tracing.getSpanInfo(node_span)
-            args['min_request_version'] = request.getZKVersion() + 1
-            args['request_id'] = request.uuid
-            args['zuul_event_id'] = request.zuul_event_id
-            args['tenant_name'] = request.tenant_name
-            args['request_time'] = request.request_time
-            args['image_upload_uuid'] = request.image_upload_uuid
-            args['provider'] = provider.canonical_name
+            request_args['span_info'] = tracing.getSpanInfo(node_span)
+            request_args['min_request_version'] = request.getZKVersion() + 1
+            request_args['request_id'] = request.uuid
+            request_args['zuul_event_id'] = request.zuul_event_id
+            request_args['tenant_name'] = request.tenant_name
+            request_args['request_time'] = request.request_time
+            request_args['image_upload_uuid'] = request.image_upload_uuid
+            request_args['provider'] = provider.canonical_name
         else:
             # We don't pass a provider here as the node should not
             # be directly associated with a tenant or provider.
             args['tags'] = provider.getNodeTags(
                 self.system.system_id, label, node_uuid)
+        if not (label.slots and label.slots > 1):
+            args.update(request_args)
         node_class = provider.driver.getProviderNodeClass()
         node = node_class.new(ctx, **args)
         log.debug("Requested node %s", node)
         subnodes = []
-        for slot in range(max(label.slots - 1, 0)):
-            subnode = self._createSubNode(ctx, node, subnode_args, slot)
-            log.debug("Requested subnode %s for node %s", subnode, node)
-            subnodes.append(subnode.uuid)
-        if subnodes:
+        retnode = node
+        if label.slots and label.slots > 1:
+            for slot in range(max(label.slots, 0)):
+                if slot == 0:
+                    merged_subnode_args = {}
+                    merged_subnode_args.update(subnode_args)
+                    merged_subnode_args.update(request_args)
+                else:
+                    merged_subnode_args = subnode_args
+                subnode = self._createSubNode(
+                    ctx, node, merged_subnode_args, slot)
+                log.debug("Requested subnode %s for node %s", subnode, node)
+                subnodes.append(subnode.uuid)
+                if slot == 0:
+                    retnode = subnode
             node.updateAttributes(
                 ctx,
                 subnodes=subnodes,
-                slot=0,
             )
-        return node
+        return retnode
 
     def _createSubNode(self, context, node, args, slot):
         # Get a new uuid for the subnode
@@ -1669,7 +1681,8 @@ class Launcher:
         if not all(n.state in n.FINAL_STATES for n in requested_nodes):
             return
         log.debug("Request %s nodes ready: %s", request, requested_nodes)
-        failed = not all(n.state in model.ProviderNode.State.READY
+        failed = not all(n.state in (model.ProviderNode.State.READY,
+                                     model.ProviderNode.State.SLOT_HOST)
                          for n in requested_nodes)
         # TODO:
         # * gracefully handle node failures (retry with another connection)
@@ -1792,7 +1805,7 @@ class Launcher:
             # ... it is failed/outdated
             or node.state in (node.State.FAILED,
                               node.State.TEMPFAILED,
-                              node.State.PENDING_DELETE,
+                              node.State.SLOT_HOST,
                               node.State.OUTDATED)
         ):
             # Safety check to make sure we don't delete main nodes if
@@ -1802,14 +1815,10 @@ class Launcher:
                 if subnode := self.api.getProviderNode(subnode_id):
                     if subnode.state not in (subnode.State.REQUESTED,
                                              subnode.State.BUILDING):
-                        state = node.State.PENDING_DELETE
-                        log.debug("Marking node %s as %s due to subnode %s",
-                                  node, state, subnode)
-                        with self.createZKContext(node._lock, self.log) as ctx:
-                            with node.activeContext(ctx):
-                                node.setState(state)
-                                ok = False
-                                break
+                        log.debug("Not deleting node %s due to subnode %s",
+                                  node, subnode)
+                        ok = False
+                        break
             if ok:
                 try:
                     self._cleanupNode(node, log)
@@ -1833,19 +1842,19 @@ class Launcher:
                         node.State.REQUESTED, node.State.BUILDING):
                     return False
 
-        if node.state in node.LAUNCHER_STATES:
-            return True
-
-        # Below this point, if we are actionable, it's in order to delete.
-
         # If we have subnodes, then they are "live" and we should not
-        # delete the node until they are deleted.  We went into the
-        # pending-delete state because we're ready to delete but just
-        # waiting on the subnodes.
-        if node.state == node.State.PENDING_DELETE:
+        # do anything with the node until they are deleted.  We went
+        # into the pending-delete state because we're ready to delete
+        # but just waiting on the subnodes.
+        if node.state == node.State.SLOT_HOST:
             for subnode_id in node.subnodes:
                 if self.api.getProviderNode(subnode_id):
                     return False
+            # A slot host with no nodes should be deleted
+            return True
+
+        if node.state in node.LAUNCHER_STATES:
+            return True
 
         if node.state == node.State.HOLD:
             if node.hasHoldExpired():
@@ -1926,15 +1935,21 @@ class Launcher:
                 # Note this method has the side effect of updating
                 # node info from the instance.
                 if self._checkNodescanRequest(node, instance, log):
-                    node.setState(node.State.READY)
+                    if node.subnodes:
+                        state = node.State.SLOT_HOST
+                        for subnode_id in node.subnodes:
+                            if subnode := self.api.getProviderNode(subnode_id):
+                                with subnode.activeContext(ctx):
+                                    subnode.updateFromMainNode(node)
+                                    subnode.setState(node.State.READY)
+                                log.debug("Marking subnode %s as %s",
+                                          subnode, subnode.state)
+                    else:
+                        state = node.State.READY
+                    node.setState(state)
                     node.nodescan_request = None
-                    self.wake_event.set()
                     log.debug("Marking node %s as %s", node, node.state)
-                    for subnode_id in node.subnodes:
-                        if subnode := self.api.getProviderNode(subnode_id):
-                            subnode.updateFromMainNode(ctx, node)
-                            log.debug("Marking subnode %s as %s",
-                                      subnode, subnode.state)
+                    self.wake_event.set()
                 else:
                     self.wake_event.set()
                     return
