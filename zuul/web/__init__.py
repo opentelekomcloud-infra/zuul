@@ -2408,6 +2408,34 @@ class ZuulWebAPI(object):
         cherrypy.response.status = 204
 
     @cherrypy.expose
+    @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
+    @cherrypy.tools.handle_options(allowed_methods=['POST'])
+    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    def image_upload_validate(self, tenant_name, tenant, auth, upload_id):
+        upload = self.zuulweb.image_upload_registry.getItem(upload_id)
+        if upload:
+            iba = self.zuulweb.image_build_registry.getItem(
+                upload.artifact_uuid)
+        else:
+            iba = None
+
+        if not iba or tenant.name != iba.build_tenant_name:
+            raise cherrypy.HTTPError(
+                404, "Image upload not found in tenant")
+
+        self.log.info(f'User {auth.uid} requesting image-upload-validate on '
+                      f'{upload_id}')
+
+        project_hostname, project_name = \
+            iba.project_canonical_name.split('/', 1)
+        driver = self.zuulweb.connections.drivers['zuul']
+        event = driver.getImageValidateEvent(
+            [iba.name], project_hostname, project_name, iba.project_branch,
+            upload.uuid)
+        self.zuulweb.trigger_events[tenant_name].put(
+            event.trigger_name, event)
+
+    @cherrypy.expose
     @cherrypy.tools.save_params()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
@@ -3246,6 +3274,12 @@ class ZuulWeb(object):
                           controller=api,
                           conditions=dict(method=['DELETE', 'OPTIONS']),
                           action='image_upload_delete')
+        route_map.connect('api',
+                          '/api/tenant/{tenant_name}/'
+                          'image-upload/{upload_id}/validate',
+                          controller=api,
+                          conditions=dict(method=['POST', 'OPTIONS']),
+                          action='image_upload_validate')
         route_map.connect('api', '/api/tenant/{tenant_name}/labels',
                           controller=api, action='labels')
         route_map.connect('api', '/api/tenant/{tenant_name}/nodes',
