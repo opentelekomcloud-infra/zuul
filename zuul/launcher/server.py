@@ -1730,6 +1730,7 @@ class Launcher:
                 with self.createZKContext(node._lock, self.log) as ctx:
                     with node.activeContext(ctx):
                         node.setState(state)
+                        self._setSubnodeStates(node, log)
                     self.wake_event.set()
             except Exception as e:
                 state = node.State.FAILED
@@ -1740,6 +1741,7 @@ class Launcher:
                 with self.createZKContext(node._lock, self.log) as ctx:
                     with node.activeContext(ctx):
                         node.setState(state)
+                        self._setSubnodeStates(node, log)
                     self.wake_event.set()
 
             # Export span for node creation phase
@@ -1884,6 +1886,8 @@ class Launcher:
         messages.clear()
 
     def _checkNode(self, node, log):
+        if isinstance(node, SubnodeProviderNode):
+            return
         # Log messages that we will only emit if they are interesting
         messages = []
         with self.createZKContext(node._lock, self.log) as ctx:
@@ -1891,16 +1895,13 @@ class Launcher:
                 provider = self._getProviderForNode(node)
                 if not node.create_state_machine:
                     log.debug("Building node %s", node)
-                    if isinstance(node, SubnodeProviderNode):
-                        node.create_state_machine = SubnodeStateMachine()
-                    else:
-                        image_external_id = self.getImageExternalId(
-                            node, provider)
-                        log.debug("Node %s external id %s",
-                                  node, image_external_id)
-                        node.create_state_machine =\
-                            provider.getCreateStateMachine(
-                                node, image_external_id, log)
+                    image_external_id = self.getImageExternalId(
+                        node, provider)
+                    log.debug("Node %s external id %s",
+                              node, image_external_id)
+                    node.create_state_machine =\
+                        provider.getCreateStateMachine(
+                            node, image_external_id, log)
 
                 old_state = node.create_state_machine.state
                 if old_state == node.create_state_machine.START:
@@ -1924,6 +1925,7 @@ class Launcher:
                     # Set state to building so that we start counting
                     # quota.
                     node.setState(node.State.BUILDING)
+                    self._setSubnodeStates(node, log)
 
                 if not node.create_state_machine.complete:
                     if provider.launch_timeout:
@@ -1939,15 +1941,9 @@ class Launcher:
                 if self._checkNodescanRequest(node, instance, log):
                     if node.subnodes:
                         state = node.State.SLOT_HOST
-                        for subnode_id in node.subnodes:
-                            if subnode := self.api.getProviderNode(subnode_id):
-                                with subnode.activeContext(ctx):
-                                    subnode.updateFromMainNode(node)
-                                    subnode.setState(node.State.READY)
-                                log.debug("Marking subnode %s as %s",
-                                          subnode, subnode.state)
                     else:
                         state = node.State.READY
+                    self._setSubnodeStates(node, log, state)
                     node.setState(state)
                     node.nodescan_request = None
                     log.debug("Marking node %s as %s", node, node.state)
@@ -1956,6 +1952,22 @@ class Launcher:
                     self.wake_event.set()
                     return
             node.releaseLock(ctx)
+
+    def _setSubnodeStates(self, node, log, state=None):
+        if not node.subnodes:
+            return
+        state = state or node.state
+        for subnode_id in node.subnodes:
+            if subnode := self.api.getProviderNode(subnode_id):
+                with subnode.activeContext(node._active_context):
+                    if state == node.State.SLOT_HOST:
+                        # This is the initial creation, so we copy
+                        # data and set the state to READY.
+                        subnode.updateFromMainNode(node)
+                        state = node.State.READY
+                    subnode.setState(state)
+                log.debug("Marking subnode %s as %s",
+                          subnode, subnode.state)
 
     def _checkNodescanRequest(self, node, instance, log):
         if node.nodescan_request is None:
