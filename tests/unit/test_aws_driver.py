@@ -267,6 +267,12 @@ class TestAwsDriver(AwsBaseTest):
         self.assertEqual(
             'required',
             self.run_instances_calls[0]['MetadataOptions']['HttpTokens'])
+        self.assertEqual(
+            self.run_instances_calls[0]['BlockDeviceMappings'][0]['Ebs']
+            ['KmsKeyId'], 'alias/aws/ebs')
+        self.assertEqual(
+            self.run_instances_calls[0]['BlockDeviceMappings'][0]['Ebs']
+            ['Encrypted'], True)
         self.assertTrue(pnode.node_properties['spot'])
         instance = self.ec2_client.describe_instance_attribute(
             InstanceId=pnode.aws_instance_id,

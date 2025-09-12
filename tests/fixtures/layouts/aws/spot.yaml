@@ -74,6 +74,9 @@
       iam-instance-profile:
         name: {iam_profile_name}
       userdata: testuserdata
+      # Not really a customer-managed-key, but it is one that
+      # moto has pre-defined.
+      kms-key-id: alias/aws/ebs
     flavor-defaults:
       public-ipv6: True
 

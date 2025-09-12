@@ -1926,6 +1926,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 ebs_settings['Iops'] = label.iops
             if label.throughput:
                 ebs_settings['Throughput'] = label.throughput
+            if label.kms_key_id:
+                ebs_settings['KmsKeyId'] = label.kms_key_id
+                ebs_settings['Encrypted'] = True
             override_dict = {
                 'ImageId': image_id,
                 'InstanceType': instance_type,
@@ -2091,10 +2094,21 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     mapping['Ebs']['Iops'] = label.iops
                 if label.throughput:
                     mapping['Ebs']['Throughput'] = label.throughput
-                # If the AMI is a snapshot, we cannot supply an "encrypted"
-                # parameter
+                # If the AMI is a snapshot, we cannot supply an
+                # "encrypted" parameter. See
+                # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/run_instances.html
+                # However, this documentation contradicts the above
+                # and suggests that it may be harmless:
+                # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIEncryption.html
                 if 'Encrypted' in mapping['Ebs']:
                     del mapping['Ebs']['Encrypted']
+                if label.kms_key_id:
+                    mapping['Ebs']['KmsKeyId'] = label.kms_key_id
+                    # If KmsKeyId is specified, Encrypted must be
+                    # true.  We assume the UserGuide is correct, and this
+                    # howto also supports that:
+                    # https://aws.amazon.com/blogs/security/how-to-share-encrypted-amis-across-accounts-to-launch-encrypted-ec2-instances/
+                    mapping['Ebs']['Encrypted'] = True
                 args['BlockDeviceMappings'] = [mapping]
 
         if flavor.market_type == 'spot':
