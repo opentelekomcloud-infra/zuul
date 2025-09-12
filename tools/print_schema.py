@@ -19,7 +19,7 @@ import textwrap
 
 from zuul.driver.openstack import openstackprovider
 from zuul.driver.aws import awsprovider
-from zuul.lib.voluputil import AsList, Nullable
+from zuul.lib.voluputil import AsList, Nullable, Constant
 
 import voluptuous as vs
 import yaml
@@ -38,6 +38,10 @@ class SchemaWalker:
     def toDict(self):
         if isinstance(self.schema, str):
             return dict(type="const", value=self.schema, doc=self.doc)
+        if self.schema is True:
+            return dict(type="const", value=self.schema, doc=self.doc)
+        if self.schema is False:
+            return dict(type="const", value=self.schema, doc=self.doc)
         if self.schema == str:  # noqa
             return dict(type="str", doc=self.doc)
         if self.schema == int:  # noqa
@@ -48,6 +52,9 @@ class SchemaWalker:
             return dict(type="float", doc=self.doc)
         if self.schema == None:  # noqa
             return dict(type="const", value='null', doc=self.doc)
+        if isinstance(self.schema, Constant):
+            w = SchemaWalker(self.schema.schema)
+            return w.toDict()
         if isinstance(self.schema, Nullable):
             w = SchemaWalker(self.schema.schema, self.doc)
             return w.toDict()

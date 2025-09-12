@@ -18,7 +18,7 @@
 # driver.
 
 import voluptuous as vs
-from zuul.lib.voluputil import Required, Optional, Nullable
+from zuul.lib.voluputil import Required, Optional, Nullable, Constant
 
 # Labels
 
@@ -46,6 +46,23 @@ common_label = vs.Schema({
         """,
     ): Nullable(str),
     Optional('tags', default=dict): {str: str},
+    Optional(
+        'final',
+        doc="""\
+        Whether the configuration of the label may be updated
+        by values in label-defaults or overidden with a new definition
+        by sections or providers lower in the hierarchy than the point
+        at which the final attribute is applied.""",
+        default=False): vs.Any(
+            Constant(True,
+                     doc="The label may not be updated or overidden."),
+            Constant(False,
+                     doc="The label may be updated or overidden."),
+            Constant('allow-override',
+                     doc="""\
+                     The label may not be updated by label-defaults
+                     but may be explicitly overidden by redefining
+                     it in a new 'label' entry.""")),
 })
 
 # The label attributes that can appear in a section/provider label or
@@ -79,6 +96,23 @@ common_image = vs.Schema({
     Optional('python-path'): Nullable(str),
     Optional('shell-type'): Nullable(str),
     Optional('import-timeout', default=300): int,
+    Optional(
+        'final',
+        doc="""\
+        Whether the configuration of the label may be updated
+        by values in label-defaults or overidden with a new definition
+        by sections or providers lower in the hierarchy than the point
+        at which the final attribute is applied.""",
+        default=False): vs.Any(
+            Constant(True,
+                     doc="The label may not be updated or overidden."),
+            Constant(False,
+                     doc="The label may be updated or overidden."),
+            Constant('allow-override',
+                     doc="""\
+                     The label may not be updated by label-defaults
+                     but may be explicitly overidden by redefining
+                     it in a new 'label' entry.""")),
 })
 
 # Same as above, but only for cloud drivers.
@@ -114,6 +148,26 @@ base_flavor = vs.Schema({
     Required('config_hash'): str,
     Required('name'): str,
     Optional('description'): Nullable(str),
+})
+
+common_flavor = vs.Schema({
+    Optional(
+        'final',
+        doc="""\
+        Whether the configuration of the flavor may be updated
+        by values in flavor-defaults or overidden with a new definition
+        by sections or providers lower in the hierarchy than the point
+        at which the final attribute is applied.""",
+        default=False): vs.Any(
+            Constant(True,
+                     doc="The flavor may not be updated or overidden."),
+            Constant(False,
+                     doc="The flavor may be updated or overidden."),
+            Constant('allow-override',
+                     doc="""\
+                     The flavor may not be updated by flavor-defaults
+                     but may be explicitly overidden by redefining
+                     it in a new 'flavor' entry.""")),
 })
 
 # Flavor attributes that are common to any kind of cloud driver.

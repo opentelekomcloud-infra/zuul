@@ -163,6 +163,12 @@ class OpenstackProviderSchema(BaseProviderSchema):
     def getInheritableImageSchema(self):
         return OpenstackProviderImage.inheritable_schema
 
+    def getInheritableZuulImageSchema(self):
+        return OpenstackProviderImage.inheritable_zuul_schema
+
+    def getInheritableCloudImageSchema(self):
+        return OpenstackProviderImage.inheritable_cloud_schema
+
     def getInheritableFlavorSchema(self):
         return OpenstackProviderFlavor.inheritable_schema
 

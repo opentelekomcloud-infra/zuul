@@ -44,6 +44,9 @@ class OpenstackDriver(Driver, EndpointCacheMixin,
     def getProviderSchema(self):
         return openstackprovider.OpenstackProviderSchema().getProviderSchema()
 
+    def getProviderSchemaClass(self):
+        return openstackprovider.OpenstackProviderSchema
+
     def getProviderNodeClass(self):
         return openstackmodel.OpenstackProviderNode
 

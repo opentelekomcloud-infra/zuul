@@ -172,3 +172,18 @@ class AsList:
         if isinstance(val, list):
             return val
         return [val]
+
+
+class Constant:
+    """A string constant with a documentation attribute
+
+    Use this instead of a bare string when you want to supply
+    documentation.
+
+    """
+    def __init__(self, schema, doc=None):
+        self.schema = vs.Schema(schema)
+        self.schema.doc = doc
+
+    def __call__(self, v):
+        return self.schema(v)
