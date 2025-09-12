@@ -21,7 +21,7 @@ import textwrap
 import threading
 import time
 import uuid
-from collections import defaultdict
+from collections import defaultdict, Counter
 from unittest import mock
 
 from zuul import exceptions
@@ -3196,3 +3196,60 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
         # Main and sub2 should still exist
         main.refresh(ctx)
         sub2.refresh(ctx)
+
+    @simple_layout('layouts/nodepool-subnodes.yaml', enable_nodepool=True)
+    @okay_tracebacks('_checkNodescanRequest')
+    def test_subnodes_failure(self):
+        # Test a node failure
+        ctx = self.createZKContext(None)
+
+        def my_advance(*args, **kw):
+            raise Exception("Test exception")
+
+        with mock.patch.object(
+            zuul.launcher.server.NodescanRequest, 'advance', my_advance
+        ):
+            request = self.requestNodes(["debian-normal"])
+
+        # We retry; the first set of nodes will be deleted. Our stable
+        # state is one main node and one subnode (the other is deleted
+        # because it is unattached).
+        for _ in iterate_timeout(10, "nodes to be deleted"):
+            nodes = self.launcher.api.nodes_cache.getItems()
+            states = Counter(n.state for n in nodes)
+            if states['failed'] == 2:
+                break
+
+        self.assertEqual(request.state, model.NodesetRequest.State.FAILED)
+        provider_node_data = request.provider_node_data[0]
+        self.assertEqual(len(provider_node_data['failed_providers']), 1)
+        self.assertEqual(len(request.nodes), 1)
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(2, len(nodes))
+        # Get a list with the main node first and the subnode last
+        nodes.sort(key=lambda x: len(x.subnodes))
+        nodes.reverse()
+        main = nodes[0]
+        sub1 = nodes[1]
+        # Get a copy so we're not modifying the launcher's
+        main = model.ProviderNode.fromZK(ctx, path=main.getPath())
+        sub1 = model.ProviderNode.fromZK(ctx, path=sub1.getPath())
+        self.assertIsNone(main.main_node_id)
+        self.assertEqual(main.uuid, sub1.main_node_id)
+        # We don't know the expected uuid of sub2 because the test
+        # never saw it, so we just assert the length and content of
+        # sub1.
+        self.assertEqual(2, len(main.subnodes))
+        self.assertIn(sub1.uuid, main.subnodes)
+        self.assertEqual([], sub1.subnodes)
+        self.assertEqual(main.State.FAILED, main.state)
+        self.assertEqual(sub1.State.FAILED, sub1.state)
+
+        request.delete(ctx)
+        self.waitUntilSettled()
+
+        for _ in iterate_timeout(10, "nodes to be deleted"):
+            nodes = self.launcher.api.nodes_cache.getItems()
+            if len(nodes) == 0:
+                break
