@@ -32,7 +32,7 @@ services:
       - "./playbooks/:/var/playbooks/:z"
       - "certs:/var/certs:z"
       - "../../../tools/:/var/zuul-tools/:z"
-      - "lib-zuul-executor:/var/lib/zuul:z"
+      - "lib-zuul-executor-gerritconfig:/var/lib/zuul:z"
     # NOTE(pabelanger): Be sure to update this line each time we change the
     # default version of ansible for Zuul.
     command: "/usr/local/lib/zuul/ansible/9/bin/ansible-playbook /var/playbooks/setup.yaml"
@@ -168,6 +168,7 @@ volumes:
   lib-zuul-scheduler:
   lib-zuul-web:
   lib-zuul-executor:
+  lib-zuul-executor-gerritconfig:
   zk-data:
   zk-datalog:
   lib-mysql:
