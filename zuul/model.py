@@ -2875,6 +2875,8 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
     def isPermittedForProvider(self, provider):
         if provider.canonical_name == self.provider:
             return True
+        # TODO: Remove the rest of this method or remove this method
+        # altogether since nodes always have providers attached.
 
         if (provider.connection_name !=
             self.connection_name):
