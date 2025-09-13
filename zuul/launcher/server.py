@@ -1280,7 +1280,8 @@ class Launcher:
             # This is a request for an image validation job.
             # Don't use any ready nodes for that.
             return request_ready_nodes
-        providers = self.tenant_providers.get(request.tenant_name)
+        providers = {p.canonical_name: p
+                     for p in self.tenant_providers.get(request.tenant_name)}
         if not providers:
             return request_ready_nodes
         label_names = set(request.labels)
@@ -1296,10 +1297,8 @@ class Launcher:
                 if node.hasExpired():
                     continue
                 # Check to see if this node is valid in this tenant
-                for provider in providers:
-                    if node.isPermittedForProvider(provider):
-                        # This node is usable with this provider
-                        request_ready_nodes[label_name][node].append(provider)
+                if provider := providers.get(node.provider):
+                    request_ready_nodes[label_name][node].append(provider)
         return request_ready_nodes
 
     def _acceptRequest(self, request, log, ready_nodes):
@@ -1337,7 +1336,6 @@ class Launcher:
                         with self.createZKContext(node._lock, self.log) as ctx:
                             node.updateAttributes(
                                 ctx,
-                                provider=provider.canonical_name,
                                 request_id=request.uuid,
                                 tenant_name=request.tenant_name,
                                 tags=tags,
@@ -1577,6 +1575,7 @@ class Launcher:
             connection_port=image.connection_port,
             connection_type=image.connection_type,
             quota=label_quota,
+            provider=provider.canonical_name,
         )
         # Save a copy of the args here since nothing below should be
         # set on subnodes.
@@ -1594,7 +1593,6 @@ class Launcher:
             request_args['tenant_name'] = request.tenant_name
             request_args['request_time'] = request.request_time
             request_args['image_upload_uuid'] = request.image_upload_uuid
-            request_args['provider'] = provider.canonical_name
         else:
             # We don't pass a provider here as the node should not
             # be directly associated with a tenant or provider.
@@ -1783,7 +1781,7 @@ class Launcher:
                     ctx,
                     request_id=None,
                     tenant_name=None,
-                    provider=None)
+                )
 
         # Recycle a node if the label allows reuse
         elif (node.request_id and not request
@@ -1798,7 +1796,6 @@ class Launcher:
                             with node.activeContext(ctx):
                                 node.request_id = None
                                 node.tenant_name = None
-                                node.provider = None
                                 node.setState(state)
 
         # Clean up the node if ...
@@ -2985,18 +2982,9 @@ class Launcher:
 
         for node in self.api.nodes_cache.getItems():
             nodes[node.state] += 1
-            if node.provider:
-                provider_nodes[node.provider][node.state] += 1
-                provider_label_nodes[node.provider][node.label][
-                    node.state] += 1
-            else:
-                for provider in self._getUniqueProviders():
-                    if node.isPermittedForProvider(provider):
-                        provider_nodes[provider.canonical_name][
-                            node.state] += 1
-                        provider_label_nodes[
-                            provider.canonical_name][node.label][
-                                node.state] += 1
+            provider_nodes[node.provider][node.state] += 1
+            provider_label_nodes[node.provider][node.label][
+                node.state] += 1
 
         requests = {}
         for state in model.NodesetRequest.State:
