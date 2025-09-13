@@ -4,6 +4,7 @@
     flavor: normal
     min-ready: 1
     max-ready-age: 900
+    max-age: 900
 
 - provider:
     name: aws-eu-central-1-main

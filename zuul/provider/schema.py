@@ -69,6 +69,7 @@ base_label = vs.Schema({
     Optional('flavor'): Nullable(str),
     Optional('min-ready', default=0): int,
     Optional('max-ready-age', default=0): int,
+    Optional('max-age', default=0): int,
 })
 
 # Label attributes that are common to any kind of ssh-based driver.
