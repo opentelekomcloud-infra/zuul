@@ -1992,10 +1992,7 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         self.assertEqual(len(data), 2)
         pname = 'review.example.com%2Forg%2Fcommon-config/aws-us-east-1-main'
         for node in data:
-            if node['label'] == 'debian-normal':
-                self.assertEqual(pname, node["provider"])
-            else:
-                self.assertIsNone(node["provider"])
+            self.assertEqual(pname, node["provider"])
         labels = collections.Counter(x['label'] for x in data)
         self.assertEqual({'debian-normal': 1, 'debian-large': 1},
                          labels)
