@@ -2497,6 +2497,54 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
         nodes_by_label = self._nodes_by_label()
         self.assertEqual(1, len(nodes_by_label['debian-emea']))
 
+    def test_max_age(self):
+        for _ in iterate_timeout(60, "nodes to be ready"):
+            nodes = self.launcher.api.nodes_cache.getItems()
+            # Since we are randomly picking a provider to fill the
+            # min-ready slots we might end up with 3-5 nodes
+            # depending on the choice of providers.
+            if not 3 <= len(nodes) <= 5:
+                continue
+            if all(n.state == n.State.READY for n in nodes):
+                break
+
+        self.waitUntilSettled('start')
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertGreaterEqual(len(nodes), 3)
+        self.assertLessEqual(len(nodes), 5)
+
+        nodes_by_label = self._nodes_by_label()
+        self.assertEqual(1, len(nodes_by_label['debian-emea']))
+        node = nodes_by_label['debian-emea'][0]
+        ctx = self.createZKContext(None)
+        # Make a new copy so we can obtain our own lock
+        node = model.ProviderNode.fromZK(ctx, path=node.getPath())
+        try:
+            node.acquireLock(ctx)
+            node.updateAttributes(ctx, request_time=0)
+        finally:
+            node.releaseLock(ctx)
+
+        for _ in iterate_timeout(60, "node to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
+                break
+
+        self.waitUntilSettled('deleted')
+        for _ in iterate_timeout(60, "node to be replaced"):
+            nodes = self.launcher.api.nodes_cache.getItems()
+            if node in nodes:
+                continue
+            if not 3 <= len(nodes) <= 5:
+                continue
+            if all(n.state == n.State.READY for n in nodes):
+                break
+
+        self.waitUntilSettled('replaced')
+        nodes_by_label = self._nodes_by_label()
+        self.assertEqual(1, len(nodes_by_label['debian-emea']))
+
 
 class TestMinReadyTenantVariant(LauncherBaseTestCase):
     tenant_config_file = "config/launcher-min-ready/tenant-variant.yaml"
@@ -3206,6 +3254,57 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
             if any(n.state == n.State.SLOT_HOST for n in nodes):
                 break
 
+    @simple_layout('layouts/nodepool-subnodes-ready.yaml',
+                   enable_nodepool=True)
+    def test_subnodes_max_age(self):
+        for _ in iterate_timeout(60, "nodes to be ready"):
+            nodes = self.launcher.api.nodes_cache.getItems()
+            if any(n.state == n.State.SLOT_HOST for n in nodes):
+                break
+
+        self.waitUntilSettled('start')
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(3, len(nodes))
+        # Get a list with the main node first and the subnode last
+        nodes.sort(key=lambda x: len(x.subnodes))
+        nodes.reverse()
+        main = nodes[0]
+        sub1 = nodes[1]
+        sub2 = nodes[2]
+        ctx = self.createZKContext(None)
+
+        sub1 = model.ProviderNode.fromZK(ctx, path=sub1.getPath())
+        with sub1.locked(ctx):
+            sub1.updateAttributes(ctx, request_time=0)
+
+        for _ in iterate_timeout(10, "sub1 node to be deleted"):
+            try:
+                sub1.refresh(ctx)
+            except NoNodeError:
+                break
+
+        sub2 = model.ProviderNode.fromZK(ctx, path=sub2.getPath())
+        with sub2.locked(ctx):
+            sub2.updateAttributes(ctx, request_time=0)
+
+        for _ in iterate_timeout(10, "sub2 node to be deleted"):
+            try:
+                sub2.refresh(ctx)
+            except NoNodeError:
+                break
+
+        for _ in iterate_timeout(10, "main node to be deleted"):
+            try:
+                main.refresh(ctx)
+            except NoNodeError:
+                break
+
+        self.waitUntilSettled('deleted')
+        for _ in iterate_timeout(10, "node to be replaced"):
+            nodes = self.launcher.api.nodes_cache.getItems()
+            if any(n.state == n.State.SLOT_HOST for n in nodes):
+                break
+
     @simple_layout('layouts/nodepool-reuse.yaml', enable_nodepool=True)
     def test_reuse(self):
         ctx = self.createZKContext(None)
@@ -3226,6 +3325,16 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
         for _ in iterate_timeout(10, "node to be recycled"):
             node.refresh(ctx)
             if node.state == node.State.READY:
+                break
+
+        # Max-age should cause it to be deleted
+        with node.locked(ctx):
+            node.updateAttributes(ctx, request_time=0)
+
+        for _ in iterate_timeout(10, "node to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
                 break
 
     @simple_layout('layouts/nodepool-subnodes-reuse.yaml',

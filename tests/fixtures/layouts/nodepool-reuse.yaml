@@ -70,3 +70,4 @@
     labels:
       - name: debian-normal
         reuse: true
+        max-age: 600
