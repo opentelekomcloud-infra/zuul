@@ -43,6 +43,7 @@
     flavor: normal
     min-ready: 1
     max-ready-age: 600
+    max-age: 600
 
 - section:
     name: aws-base
