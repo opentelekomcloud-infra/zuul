@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "09d77ef8_811f4b15",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-15T21:27:10Z",
+      "side": 1,
+      "message": "This could make for some interesting behavior.  We might see ready nodes slowly \"migrate\" to providers with larger max-ready-ages.  (The actual nodes won\u0027t move, but there will be a form of natural selection that causes nodes in some providers to die earlier than those in others.  With no other inputs, we\u0027d expect all the ready nodes to end up in the provider with the largest max-ready-age.)  I don\u0027t think this is a problem, just interesting.",
+      "parentUuid": "627e788f_52545a89",
+      "revId": "74f622f8e7ca9e271639b83ac50a89c2067f140d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "d8169574_27a8fc73",
