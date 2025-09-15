@@ -1520,6 +1520,7 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.assertEqual(10, label.volume_size)
         self.assertEqual(40, label.iops)
         self.assertEqual(20, label.throughput)
+        self.assertEqual(900, label.max_ready_age)
         self.assertEqual('required', label.imds_http_tokens)
         self.assertFalse(label.host_key_checking)
 
@@ -1528,6 +1529,7 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.assertEqual(10, label.volume_size)
         self.assertEqual(70, label.iops)
         self.assertEqual(20, label.throughput)
+        self.assertEqual(300, label.max_ready_age)
         self.assertEqual('required', label.imds_http_tokens)
         self.assertFalse(label.host_key_checking)
 
@@ -1536,6 +1538,7 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.assertEqual(10, label.volume_size)
         self.assertEqual(40, label.iops)
         self.assertEqual(60, label.throughput)
+        self.assertEqual(900, label.max_ready_age)
         self.assertEqual('required', label.imds_http_tokens)
         self.assertFalse(label.host_key_checking)
 

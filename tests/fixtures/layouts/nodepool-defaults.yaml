@@ -21,6 +21,7 @@
     name: debian-large
     image: debian
     flavor: large
+    max-ready-age: 300
 
 - label:
     name: debian-local-normal
@@ -38,6 +39,7 @@
     label-defaults:
       host-key-checking: false
       boot-timeout: 120
+      max-ready-age: 900
       key-name: zuul
       volume-type: gp3
       volume-size: 10  # winner (all)
