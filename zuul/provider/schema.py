@@ -31,6 +31,12 @@ common_label = vs.Schema({
         doc="""The time (in seconds) to wait for a node to boot.""",
     ): int,
     Optional(
+        'max-ready-age', default=0,
+        doc="""\
+        The time (in seconds) an unassigned node should stay in ready state.
+        """
+    ): int,
+    Optional(
         'snapshot-timeout', default=3600,
         doc="""The time (in seconds) to wait for a snapshot to complete."""
     ): int,
@@ -75,7 +81,6 @@ base_label = vs.Schema({
     Optional('image'): Nullable(str),
     Optional('flavor'): Nullable(str),
     Optional('min-ready', default=0): int,
-    Optional('max-ready-age', default=0): int,
 })
 
 # Label attributes that are common to any kind of ssh-based driver.
