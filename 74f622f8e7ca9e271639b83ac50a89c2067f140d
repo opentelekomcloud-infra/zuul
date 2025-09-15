@@ -3,6 +3,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "627e788f_52545a89",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-15T21:17:15Z",
+      "side": 1,
+      "message": "I think there\u0027s an implicit justification missing from this commit message:\n\nWe can already set max-ready-age on the base label object, which means that it would apply to any nodes no matter how they are created.  The part I think is missing is that we may want to set different max-ready-age values for certain labels in different providers.\n\nThe test changes you made imply this reasoning, it\u0027s just not in the commit message, and it took me a moment to connect the two.",
+      "revId": "74f622f8e7ca9e271639b83ac50a89c2067f140d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "d8169574_27a8fc73",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 3
