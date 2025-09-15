@@ -16,6 +16,24 @@
       "message": "Looking at the following Nodepool changes, I\u0027m not sure we want to skip the nodescan step:\n- 908952: Add host-key-checking to metastatic driver | https://review.opendev.org/c/zuul/nodepool/+/908952\n- 934187: Handle early AWS spot instance reclamations | https://review.opendev.org/c/zuul/nodepool/+/934187\n\nBesides that I think we need to consider what should happen when the nodescan fails for a subnode. Should we mark the main node as failed?",
       "revId": "871b20f25d483c8d9e9ce2490d1ada3638e8f5b8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "18647ed4_e520406d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-15T21:09:59Z",
+      "side": 1,
+      "message": "I\u0027m thinking of these as two separate procedures: when we create a real node, we only need to scan it once, then copy all the information to the subnodes.  When we reuse any kind of node, we need to scan it again to verify it\u0027s still alive.\n\nI\u0027ve implemented scans for reused nodes in https://review.opendev.org/961292 where I also address the other concern: marking the main node as failed.",
+      "parentUuid": "34889e10_2443b4fb",
+      "revId": "871b20f25d483c8d9e9ce2490d1ada3638e8f5b8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
