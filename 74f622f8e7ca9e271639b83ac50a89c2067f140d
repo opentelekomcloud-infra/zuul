@@ -36,6 +36,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "75ddde3b_f6d9c50b",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-09-16T05:14:20Z",
+      "side": 1,
+      "message": "Nodes should receive the `max-ready-age` when they are created, as this is not a property of the provider, but the label. But maybe I misunderstood your point here?",
+      "parentUuid": "09d77ef8_811f4b15",
+      "revId": "74f622f8e7ca9e271639b83ac50a89c2067f140d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "d8169574_27a8fc73",
