@@ -154,7 +154,7 @@ class TestSelectProviders(LauncherBaseTestCase):
         self.ordered_providers = ['east', 'west', 'unused']
         request = self._makeRequest(['debian-normal'])
         ready_nodes = collections.defaultdict(list)
-        request_ready_nodes = self.launcher._filterReadyNodes(
+        request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
         label_providers = self.launcher._selectProviders(
@@ -169,7 +169,7 @@ class TestSelectProviders(LauncherBaseTestCase):
         self.ordered_providers = ['unused', 'east', 'west']
         request = self._makeRequest(['debian-normal', 'debian-normal'])
         ready_nodes = collections.defaultdict(list)
-        request_ready_nodes = self.launcher._filterReadyNodes(
+        request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
         label_providers = self.launcher._selectProviders(
@@ -190,7 +190,7 @@ class TestSelectProviders(LauncherBaseTestCase):
         self.ordered_providers = ['east', 'west', 'unused']
         request = self._makeRequest(['debian-small', 'debian-large'])
         ready_nodes = collections.defaultdict(list)
-        request_ready_nodes = self.launcher._filterReadyNodes(
+        request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
         label_providers = self.launcher._selectProviders(
@@ -218,7 +218,7 @@ class TestSelectProviders(LauncherBaseTestCase):
         request.updateProviderNode(0, node1, add_failed_provider=east)
         request.updateProviderNode(0, node1, add_failed_provider=east)
         ready_nodes = collections.defaultdict(list)
-        request_ready_nodes = self.launcher._filterReadyNodes(
+        request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
         label_providers = self.launcher._selectProviders(
@@ -239,7 +239,7 @@ class TestSelectProviders(LauncherBaseTestCase):
                    provider=east)
         self.launcher.api.nodes_cache._items[node1.uuid] = node1
         ready_nodes = collections.defaultdict(list)
-        request_ready_nodes = self.launcher._filterReadyNodes(
+        request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
         label_providers = self.launcher._selectProviders(
@@ -264,7 +264,7 @@ class TestSelectProviders(LauncherBaseTestCase):
                    provider=east)
         self.launcher.api.nodes_cache._items[node2.uuid] = node2
         ready_nodes = collections.defaultdict(list)
-        request_ready_nodes = self.launcher._filterReadyNodes(
+        request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
         label_providers = self.launcher._selectProviders(
@@ -292,8 +292,8 @@ class TestSelectProviders(LauncherBaseTestCase):
             provider=west,
         )
         self.launcher.api.nodes_cache._items[node1.uuid] = node1
-        ready_nodes = self.launcher._getUnassignedReadyNodes()
-        request_ready_nodes = self.launcher._filterReadyNodes(
+        ready_nodes = self.launcher._getUnassignedNodes()
+        request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         self.assertEqual(1, len(request_ready_nodes['debian-normal'][node1]))
         messages = []
