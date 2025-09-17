@@ -91,8 +91,8 @@ def scores_for_label(label_cname, candidate_names):
     }
 
 
-def endpoint_score(endpoint):
-    return mmh3.hash(f"{endpoint.canonical_name}", signed=False)
+def endpoint_score(name, endpoint):
+    return mmh3.hash(f"{name}-{endpoint.canonical_name}", signed=False)
 
 
 class NodesetRequestError(Exception):
@@ -893,7 +893,7 @@ class CleanupWorker:
                 if not c.connection_filter
                 or endpoint.connection.connection_name in c.connection_filter}
             candidate_names = set(candidate_launchers)
-            launcher_scores = {endpoint_score(endpoint): n
+            launcher_scores = {endpoint_score(n, endpoint): n
                                for n in candidate_names}
             sorted_scores = sorted(launcher_scores.items())
             for score, launcher_name in sorted_scores:
