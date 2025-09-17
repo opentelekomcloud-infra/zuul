@@ -16,6 +16,24 @@
       "message": "Maybe put the try except around each unlink call so that we can automatically clean up as much as possible despite errors? I guess either way an operator may need to intervene so consider this a nit.",
       "revId": "1edc75d972c71567bc4fdfe3b1c10e7fae934dab",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4b402fa_32f72f4c",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2238,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-09-17T20:52:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8212e839_a405f7c8",
+      "revId": "1edc75d972c71567bc4fdfe3b1c10e7fae934dab",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
