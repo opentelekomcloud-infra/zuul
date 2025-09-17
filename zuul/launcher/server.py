@@ -2731,7 +2731,8 @@ class Launcher:
         self._provider_quota_cache[provider.canonical_name] = quota
         return quota
 
-    def getProviderQuotaAvailable(self, provider, include_requested=False):
+    def getProviderQuotaAvailable(self, provider, messages,
+                                  include_requested=False):
         # This is initialized with the full provider endpoint quota,
         # which is cached and updated every 5 minutes.
         quota = self.getProviderQuota(provider).copy()
@@ -2747,8 +2748,8 @@ class Launcher:
                 other_provider, include_requested=include_requested))
 
         quota.subtract(other)
-        self.log.debug("Provider endpoint other quota used for %s: %s",
-                       provider.name, other)
+        messages.append(
+            f"Provider endpoint other quota used for {provider.name}: {other}")
 
         # Restrict quota limits based on our provider limits
         provider_limits = model.QuotaInformation(
@@ -2760,7 +2761,7 @@ class Launcher:
     def getQuotaPercentage(self, provider, messages):
         try:
             total = self.getProviderQuotaAvailable(
-                provider, include_requested=True)
+                provider, messages, include_requested=True)
         except Exception:
             # This will emit an annotated log message, but no traceback
             messages.append("Unable to get provider quota")
@@ -2803,7 +2804,7 @@ class Launcher:
             # to the provider, so we should include other nodes we've
             # already allocated to providers in the decision.
             total = self.getProviderQuotaAvailable(
-                provider, include_requested=True)
+                provider, messages, include_requested=True)
             messages.append(
                 f"Provider quota available before {provider}: {total}")
             used = self.api.nodes_cache.getQuota(
@@ -2832,7 +2833,7 @@ class Launcher:
         # node already allocated to the provider.  We only want to
         # "pause" the provider if it really is at quota.
         total = self.getProviderQuotaAvailable(
-            provider, include_requested=False)
+            provider, messages, include_requested=False)
         messages.append(f"Provider quota before {provider}: {total}")
         used = self.api.nodes_cache.getQuota(provider, include_requested=False)
         total.subtract(used)
