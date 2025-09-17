@@ -2227,7 +2227,19 @@ class Launcher:
                     return provider
         raise Exception(f"Unable to find {provider_cname}")
 
+    def _cleanTempdir(self):
+        try:
+            for f in os.listdir(self.temp_dir):
+                path = os.path.join(self.temp_dir, f)
+                if os.path.isfile(path):
+                    os.unlink(path)
+                    self.log.info("Deleted %s", path)
+        except Exception:
+            self.log.exception("Error cleanning temp dir")
+
     def start(self):
+        self.log.debug("Cleaning up temp dir")
+        self._cleanTempdir()
         self.log.debug("Starting command processor")
         self._command_running = True
         self.command_socket.start()
