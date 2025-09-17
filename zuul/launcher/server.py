@@ -1206,7 +1206,7 @@ class Launcher:
         self._processMinReady()
 
     def _processRequests(self):
-        ready_nodes = self._getUnassignedReadyNodes()
+        unassigned_nodes = self._getUnassignedNodes()
         for request in self.api.getMatchingRequests():
             log = get_annotated_logger(self.log, request, request=request.uuid)
             try:
@@ -1231,14 +1231,14 @@ class Launcher:
                 if not self._cachesReadyForRequest(request):
                     self.log.debug("Caches are not up-to-date for %s", request)
                     continue
-                self._processNodesetRequest(request, ready_nodes, log)
+                self._processNodesetRequest(request, unassigned_nodes, log)
             except Exception:
                 log.exception("Failed to process request %s", request)
 
-    def _processNodesetRequest(self, request, ready_nodes, log):
+    def _processNodesetRequest(self, request, unassigned_nodes, log):
         try:
             if request.state == model.NodesetRequest.State.REQUESTED:
-                self._acceptRequest(request, log, ready_nodes)
+                self._acceptRequest(request, log, unassigned_nodes)
             elif request.state == model.NodesetRequest.State.ACCEPTED:
                 self._checkRequest(request, log)
         except NodesetRequestError as err:
@@ -1271,42 +1271,43 @@ class Launcher:
             for n in request.nodes
         )
 
-    def _filterReadyNodes(self, ready_nodes, request):
+    def _filterUnassignedNodes(self, unassigned_nodes, request):
         # This returns a nested defaultdict like:
         # {label_name: {node: [node_providers]}}
-        request_ready_nodes = collections.defaultdict(
+        request_unassigned_nodes = collections.defaultdict(
             lambda: collections.defaultdict(list))
         if request.image_upload_uuid:
             # This is a request for an image validation job.
-            # Don't use any ready nodes for that.
-            return request_ready_nodes
+            # Don't use any unassigned nodes for that.
+            return request_unassigned_nodes
         providers = {p.canonical_name: p
                      for p in self.tenant_providers.get(request.tenant_name)}
         if not providers:
-            return request_ready_nodes
+            return request_unassigned_nodes
         label_names = set(request.labels)
         for label_name in label_names:
-            ready_for_label = list(ready_nodes.get(label_name, []))
-            if not ready_for_label:
+            unassigned_for_label = list(unassigned_nodes.get(label_name, []))
+            if not unassigned_for_label:
                 continue
             # TODO: sort by age? use old nodes first? random to reduce
             # chance of thundering herd?
-            for node in ready_for_label:
+            for node in unassigned_for_label:
                 if node.is_locked:
                     continue
                 if node.hasExpired():
                     continue
                 # Check to see if this node is valid in this tenant
                 if provider := providers.get(node.provider):
-                    request_ready_nodes[label_name][node].append(provider)
-        return request_ready_nodes
+                    request_unassigned_nodes[label_name][node].append(provider)
+        return request_unassigned_nodes
 
-    def _acceptRequest(self, request, log, ready_nodes):
+    def _acceptRequest(self, request, log, unassigned_nodes):
         messages = []
-        request_ready_nodes = self._filterReadyNodes(ready_nodes, request)
+        request_unassigned_nodes = self._filterUnassignedNodes(
+            unassigned_nodes, request)
         # Create provider nodes for the requested labels
         label_providers = self._selectProviders(
-            request, request_ready_nodes, messages)
+            request, request_unassigned_nodes, messages)
         with (self.createZKContext(request._lock, log) as ctx,
               request.activeContext(ctx)):
             for i, (label, provider) in enumerate(label_providers):
@@ -1314,21 +1315,21 @@ class Launcher:
                 # a node for this slot.
                 if i < len(request.provider_node_data):
                     continue
-                ready_for_label = request_ready_nodes[label.name]
+                unassigned_for_label = request_unassigned_nodes[label.name]
                 # TODO: sort by age? use old nodes first? random to reduce
                 # chance of thundering herd?
-                for node, providers in list(ready_for_label.items()):
+                for node, providers in list(unassigned_for_label.items()):
                     if not node.acquireLock(ctx, blocking=False):
-                        log.debug("Failed to lock matching ready node %s",
+                        log.debug("Failed to lock matching unassigned node %s",
                                   node)
                         continue
                     try:
                         node.refresh(ctx)
                         # Double check if it's still available
                         if (node.request_id or
-                            node.state != node.State.READY):
-                            request_ready_nodes[label.name].pop(node)
-                            ready_nodes[label.name].remove(node)
+                            node.state not in node.ASSIGNABLE_STATES):
+                            request_unassigned_nodes[label.name].pop(node)
+                            unassigned_nodes[label.name].remove(node)
                             continue
                         tags = provider.getNodeTags(
                             self.system.system_id, label, node.uuid,
@@ -1340,12 +1341,13 @@ class Launcher:
                                 tenant_name=request.tenant_name,
                                 tags=tags,
                             )
-                        request_ready_nodes[label.name].pop(node)
-                        ready_nodes[label.name].remove(node)
-                        log.debug("Assigned ready node %s", node.uuid)
+                        request_unassigned_nodes[label.name].pop(node)
+                        unassigned_nodes[label.name].remove(node)
+                        log.debug("Assigned unassigned node %s", node.uuid)
                         break
                     except Exception:
-                        log.exception("Faild to assign ready node %s", node)
+                        log.exception(
+                            "Faild to assign unassigned node %s", node)
                         continue
                     finally:
                         node.releaseLock(ctx)
@@ -1386,7 +1388,7 @@ class Launcher:
         random.shuffle(providers)
         return providers
 
-    def _selectProviders(self, request, request_ready_nodes, messages):
+    def _selectProviders(self, request, request_unassigned_nodes, messages):
         providers = self.tenant_providers.get(request.tenant_name)
         if not providers:
             raise NodesetRequestError(
@@ -1399,22 +1401,23 @@ class Launcher:
         # Sort that list by quota
         providers.sort(key=lambda p: self.getQuotaPercentage(p, messages))
 
-        # Then if there are ready nodes, sort so that we can use the
-        # most ready nodes.
-        if request_ready_nodes:
-            # provider -> total ready nodes
-            usable_provider_ready_nodes = collections.Counter()
+        # Then if there are unassigned nodes, sort so that we can use the
+        # most unassigned nodes.
+        if request_unassigned_nodes:
+            # provider -> total unassigned nodes
+            usable_provider_unassigned_nodes = collections.Counter()
             for label_name in set(request.labels):
-                for node, node_providers in request_ready_nodes[
+                for node, node_providers in request_unassigned_nodes[
                         label_name].items():
                     for node_provider in node_providers:
-                        usable_provider_ready_nodes[
+                        usable_provider_unassigned_nodes[
                             node_provider.canonical_name] += 1
                         messages.append(
-                            f"Found usable ready node {node} "
+                            f"Found usable unassigned node {node} "
                             f"in {node_provider}")
             providers.sort(
-                key=lambda p: usable_provider_ready_nodes[p.canonical_name],
+                key=lambda p: usable_provider_unassigned_nodes[
+                    p.canonical_name],
                 reverse=True
             )
 
@@ -1772,10 +1775,10 @@ class Launcher:
                 with node.activeContext(ctx):
                     node.setState(state)
 
-        # Deallocate ready node w/o a request for re-use
-        elif (node.request_id and not request
-                and node.state == node.State.READY):
-            log.debug("Deallocating ready node %s from missing request %s",
+        # Deallocate node w/o a request for re-use
+        elif (node.request_id and not request and
+              node.state in node.ASSIGNABLE_STATES):
+            log.debug("Deallocating node %s from missing request %s",
                       node, node.request_id)
             with self.createZKContext(node._lock, self.log) as ctx:
                 node.updateAttributes(
@@ -2278,22 +2281,31 @@ class Launcher:
         return False
 
     def _getUnassignedNodeLabelHashes(self):
-        ready_nodes = collections.defaultdict(list)
+        unassigned_nodes = collections.defaultdict(list)
         for node in self.api.getProviderNodes():
             if node.request_id is not None:
                 continue
-            ready_nodes[node.label].append(node.label_config_hash)
-        return ready_nodes
+            unassigned_nodes[node.label].append(node.label_config_hash)
+        return unassigned_nodes
 
-    def _getUnassignedReadyNodes(self):
-        ready_nodes = collections.defaultdict(list)
+    def _getUnassignedNodes(self):
+        # Get unassigned ready nodes and also building nodes.  We can
+        # have unassigned building nodes if a request is canceled, or
+        # in the case of subnodes.
+        unassigned_nodes = collections.defaultdict(list)
         for node in self.api.getProviderNodes():
             if node.request_id is not None:
                 continue
-            if node.is_locked or node.state != node.State.READY:
+            if node.is_locked or node.state not in node.ASSIGNABLE_STATES:
                 continue
-            ready_nodes[node.label].append(node)
-        return ready_nodes
+            unassigned_nodes[node.label].append(node)
+        # Sort by state first
+        for nodes in unassigned_nodes.values():
+            nodes.sort(key=lambda node: node.ASSIGNABLE_STATES[node.state])
+        # Then by time
+        for nodes in unassigned_nodes.values():
+            nodes.sort()
+        return unassigned_nodes
 
     def _getProviderForNode(self, node, ignore_label=False):
         # Common case when a node is assigned to a provider

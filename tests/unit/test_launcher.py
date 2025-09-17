@@ -2194,10 +2194,15 @@ class TestLauncherLocality(LauncherBaseTestCase):
         request1.delete(ctx)
         self.waitUntilSettled()
 
-        # All nodes failed, so all should be deleted; wait for that to
-        # happen to avoid test cleanup races.
+        # All nodes failed, so all should be deleted, but we may have
+        # one ready node from the last attempt for the second
+        # position; wait everything to stabilize to avoid test cleanup
+        # races.
         for _ in iterate_timeout(60, "extra nodes to be deleted"):
-            if len(self.launcher.api.nodes_cache.getItems()) == 0:
+            nodes = self.launcher.api.nodes_cache.getItems()
+            if len(nodes) == 0:
+                break
+            if all(n.state == n.State.READY for n in nodes):
                 break
 
 
@@ -3494,4 +3499,39 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
             for _ in iterate_timeout(10, "nodes to be deleted"):
                 nodes = self.launcher.api.nodes_cache.getItems()
                 if len(nodes) == 0:
+                    break
+
+    @simple_layout('layouts/nodepool-subnodes-reuse.yaml',
+                   enable_nodepool=True)
+    def test_subnodes_building_packing(self):
+        # Test that a request for a second node gets assigned to the
+        # same main node even while it's building.
+        with mock.patch(
+            'zuul.driver.aws.awsendpoint.AwsProviderEndpoint._refresh'
+        ) as refresh_mock:
+            # Patch 'endpoint._refresh()' to return w/o updating
+            refresh_mock.side_effect = lambda o: o
+            request1 = self.requestNodes(['debian-normal'], timeout=0)
+            for _ in iterate_timeout(10, "node is building"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                if not nodes:
+                    continue
+                if all(
+                        n.state in (n.State.BUILDING, n.State.SLOT_HOST)
+                        for n in nodes
+                ):
+                    break
+
+            request2 = self.requestNodes(['debian-normal'], timeout=0)
+            for _ in iterate_timeout(10, "node is building"):
+                # Get a list with the main node first and the subnode last
+                nodes.sort(key=lambda x: len(x.subnodes))
+                nodes.reverse()
+                main = nodes[0]
+                sub1 = nodes[1]
+                sub2 = nodes[2]
+
+                if (main.request_id is None and
+                    sub1.request_id == request1.uuid and
+                    sub2.request_id == request2.uuid):
                     break
