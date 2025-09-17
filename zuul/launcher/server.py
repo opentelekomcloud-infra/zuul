@@ -1089,8 +1089,10 @@ class Launcher:
             self.zk_client, COMPONENT_REGISTRY.registry, self.component_info,
             self.wake_event.set, self.connection_filter)
 
-        self.temp_dir = get_default(self.config, 'launcher', 'temp_dir',
-                                    '/tmp', expand_user=True)
+        temp_root = get_default(self.config, 'launcher', 'temp_dir',
+                                '/tmp', expand_user=True)
+        self.temp_dir = os.path.join(temp_root, 'zuul-launcher')
+        os.makedirs(self.temp_dir, exist_ok=True)
 
         self.command_map = {
             commandsocket.StopCommand.name: self.stop,
@@ -2227,7 +2229,22 @@ class Launcher:
                     return provider
         raise Exception(f"Unable to find {provider_cname}")
 
+    def _cleanTempdir(self):
+        try:
+            for f in os.listdir(self.temp_dir):
+                path = os.path.join(self.temp_dir, f)
+                if os.path.isfile(path):
+                    try:
+                        os.unlink(path)
+                    except Exception:
+                        self.log.exception("Error deleting %s", path)
+                    self.log.info("Deleted %s", path)
+        except Exception:
+            self.log.exception("Error cleanning temp dir")
+
     def start(self):
+        self.log.debug("Cleaning up temp dir")
+        self._cleanTempdir()
         self.log.debug("Starting command processor")
         self._command_running = True
         self.command_socket.start()
