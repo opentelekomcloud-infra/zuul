@@ -2004,6 +2004,11 @@ class ProviderConfig(ConfigObject):
         inheritance_path = [self]
         parent_name = self.section
         previous_section = None
+        # We will take the first available connection name as we walk
+        # up the hierarchy, but we won't allow it to be redefined (so
+        # from the user's perspective, it doesn't matter which order
+        # we use internally).
+        connection_name = self.config.get('connection')
         while parent_name:
             parent_section = layout.sections[parent_name]
             inheritance_path.append(parent_section)
@@ -2014,14 +2019,18 @@ class ProviderConfig(ConfigObject):
                 raise Exception(
                     f'The section "{previous_section.name}" references a '
                     'section in a different project.')
+            new_connection_name = parent_section.connection
+            if new_connection_name:
+                if connection_name:
+                    raise Exception(
+                        'Unable to change connections in provider inheritance')
+                connection_name = new_connection_name
             parent_name = parent_section.parent
             previous_section = parent_section
         inheritance_path.reverse()
 
         root = inheritance_path[0]
         config = copy.deepcopy(root.config)
-        # The connection is set by the root section
-        connection_name = config.get('connection')
         connection = connections.get(connection_name)
         if connection is None:
             raise UnknownConnection(connection_name)
