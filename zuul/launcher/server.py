@@ -2514,6 +2514,8 @@ class Launcher:
             if upload.timestamp > latest_upload_timestamp:
                 latest_upload_timestamp = upload.timestamp
             uploads_by_artifact[upload.artifact_uuid].append(upload)
+            if upload.endpoint_name not in self.endpoints:
+                continue
             iba = self.image_build_registry.getItem(upload.artifact_uuid)
             if not iba:
                 self.log.warning("Unable to find artifact %s for upload %s",
