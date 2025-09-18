@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "f6ad5478_47cbc119",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1981,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-18T13:40:26Z",
+      "side": 1,
+      "message": "That\u0027s probably a good check.",
+      "parentUuid": "8bd3888a_fb49d641",
+      "revId": "00e6753217fc916bdcbd1699839c309cfa7cda23",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "addbbc4f_9ae1b299",
         "filename": "zuul/launcher/server.py",
         "patchSetId": 5
@@ -31,6 +49,24 @@
       "writtenOn": "2025-09-18T12:50:25Z",
       "side": 1,
       "message": "Maybe we should also check if we already hold the lock for a particular node. Otherwise we will always fail to acquire it here if we are also the elected launcher for the given node.",
+      "revId": "00e6753217fc916bdcbd1699839c309cfa7cda23",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "666efdc0_338dfdfe",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1991,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-18T13:40:26Z",
+      "side": 1,
+      "message": "Good point.",
+      "parentUuid": "addbbc4f_9ae1b299",
       "revId": "00e6753217fc916bdcbd1699839c309cfa7cda23",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
