@@ -34,6 +34,24 @@
       "parentUuid": "3a4836fb_fb2e528c",
       "revId": "3ce94361a07c2f910d28c2a0e9a5b26028ef8cf7",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f7195df5_2c3698b0",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1947,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-18T13:38:10Z",
+      "side": 1,
+      "message": "No launcher should hold a lock on a subnode while the main node is in requested or building (neither this launcher nor any other).  There\u0027s a check in isNodeActionable for that.\n\nI think there is an error here, in that the update to slot_host should come after the subnode state changes (in order to keep that check effective), and also as you point out, to avoid a situation where we fail here and then don\u0027t update the subnode.",
+      "parentUuid": "3a4836fb_fb2e528c",
+      "revId": "3ce94361a07c2f910d28c2a0e9a5b26028ef8cf7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
