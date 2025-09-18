@@ -15,10 +15,12 @@ The following general configuration setting in
 
 .. code-block::
 
-   autopurge.purgeInterval=6
+   autopurge.purgeInterval=2
 
-This instructs ZooKeeper to purge old snapshots every 6 hours.  This
-will avoid filling the disk.
+ZooKeeper's default config will never purge snapshots, causing the
+disk to eventually fill up.  This instructs ZooKeeper to purge old
+snapshots every 2 hours.  This covers most use cases.  This value
+depends on load and available disk space.
 
 .. _zk-encrypted-connections:
 
