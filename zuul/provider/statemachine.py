@@ -18,19 +18,47 @@ import time
 class StateMachine:
     START = 'start'
 
-    def __init__(self, initial_state):
-        self.state = initial_state.get("state", self.START)
-        self.complete = False
-        self.start_time = initial_state.get("start_time", time.time())
+    def __init__(self, state_info):
+        self.info = state_info
+        # The node_data field can hold any serializable value, and the
+        # entire contents will be copied to the node at the end.
+        self.data = state_info.node_data
+        # The scratch field holds data that will not be copied to the
+        # node.
+        self.scratch = state_info.scratch_data
+        if self.info.state is None:
+            self.info.state = self.START
+        if self.info.complete is None:
+            self.info.complete = False
+        if self.info.start_time is None:
+            self.info.start_time = time.time()
+
+    @property
+    def state(self):
+        return self.info.state
+
+    @state.setter
+    def state(self, value):
+        self.info.state = value
+
+    @property
+    def complete(self):
+        return self.info.complete
+
+    @complete.setter
+    def complete(self, value):
+        self.info.complete = value
+
+    @property
+    def start_time(self):
+        return self.info.start_time
+
+    @start_time.setter
+    def start_time(self, value):
+        self.info.start_time = value
 
     def advance(self):
         pass
-
-    def toDict(self):
-        return dict(
-            state=self.state,
-            start_time=self.start_time,
-        )
 
 
 class Instance:

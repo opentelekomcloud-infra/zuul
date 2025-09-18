@@ -505,7 +505,8 @@ class TestLauncher(LauncherBaseTestCase):
         nodes = self.launcher.api.getProviderNodes()
         self.assertEqual(len(nodes), 2)
         # We should have one node for each image that we uploaded
-        external_ids = set(n.create_state['image_external_id'] for n in nodes)
+        external_ids = set(
+            n.create_state_machine.image_external_id for n in nodes)
         self.assertEqual(upload_ids, external_ids)
         # Each node should be for a different provider
         self.assertEqual(2, len(set(n.provider for n in nodes)))
@@ -571,8 +572,9 @@ class TestLauncher(LauncherBaseTestCase):
         nodes = self.launcher.api.getProviderNodes()
         self.assertEqual(len(nodes), 2)
         for node in nodes:
-            self.assertEqual(node.create_state['image_external_id'],
-                             mock_image_upload_run.return_value)
+            self.assertEqual(
+                node.create_state_machine.image_external_id,
+                mock_image_upload_run.return_value)
 
         self.assertEqual(len(self.builds), 2)
         for build in self.builds:
@@ -910,10 +912,10 @@ class TestLauncher(LauncherBaseTestCase):
                 if not nodes:
                     continue
                 if all(
-                    n.create_state and
-                    n.create_state[
-                        "state"] == n.create_state_machine.INSTANCE_CREATING
-                    for n in nodes
+                    n.create_info and
+                    n.create_info.state ==
+                        n.create_state_machine.INSTANCE_CREATING
+                        for n in nodes
                 ):
                     break
             self.launcher.stop()
@@ -1737,18 +1739,19 @@ class TestLauncher(LauncherBaseTestCase):
 
         with node.locked(ctx):
             request.delete(ctx)
-            node.createSnapshot(ctx)
             with node.activeContext(ctx):
                 self.log.debug("Set node to snapshot")
+                node.snapshot_info.ensure(ctx)
                 node.setState(node.State.SNAPSHOT)
 
-            for _ in iterate_timeout(60, "snapshot"):
-                if node.snapshot.complete:
+            for _ in iterate_timeout(10, "snapshot"):
+                if node.snapshot_info.complete:
                     break
-                node.snapshot.refresh(ctx)
+                node.snapshot_info.refresh(ctx)
 
-            self.assertTrue(node.snapshot.complete)
-            self.assertEqual("test-external-id", node.snapshot.external_id)
+            self.assertTrue(node.snapshot_info.complete)
+            self.assertEqual("test-external-id",
+                             node.snapshot_info.node_data['external_id'])
             with node.activeContext(ctx):
                 self.log.debug("Set node to used")
                 node.setState(node.State.USED)
@@ -1778,18 +1781,19 @@ class TestLauncher(LauncherBaseTestCase):
 
         with node.locked(ctx):
             request.delete(ctx)
-            node.createSnapshot(ctx)
             with node.activeContext(ctx):
                 self.log.debug("Set node to snapshot")
+                node.snapshot_info.ensure(ctx)
                 node.setState(node.State.SNAPSHOT)
 
-            for _ in iterate_timeout(60, "snapshot"):
-                if node.snapshot.complete:
+            for _ in iterate_timeout(10, "snapshot"):
+                if node.snapshot_info.complete:
                     break
-                node.snapshot.refresh(ctx)
+                node.snapshot_info.refresh(ctx)
 
-            self.assertTrue(node.snapshot.complete)
-            self.assertEqual(None, node.snapshot.external_id)
+            self.assertTrue(node.snapshot_info.complete)
+            self.assertEqual(None,
+                             node.snapshot_info.node_data.get('external_id'))
             with node.activeContext(ctx):
                 self.log.debug("Set node to used")
                 node.setState(node.State.USED)
@@ -2045,6 +2049,48 @@ class TestLauncher(LauncherBaseTestCase):
                     for event in result_events:
                         # Remove event(s) from queue
                         result_queue.ack(event)
+                    break
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_building_node_reassignment(self):
+        # Test that a request for a building node gets assigned to a
+        # new request.
+        ctx = self.createZKContext(None)
+        with mock.patch(
+            'zuul.driver.aws.awsendpoint.AwsProviderEndpoint._refresh'
+        ) as refresh_mock:
+            # Patch 'endpoint._refresh()' to return w/o updating
+            refresh_mock.side_effect = lambda o: o
+            request1 = self.requestNodes(['debian-normal'], timeout=0)
+            for _ in iterate_timeout(10, "node is building"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                if len(nodes) != 1:
+                    continue
+                node = nodes[0]
+                if node.state == node.State.BUILDING:
+                    break
+
+            self.assertEqual(request1.uuid, node.request_id)
+            self.log.debug("Delete request")
+            request1.delete(ctx)
+
+            for _ in iterate_timeout(10, "node is unassigned"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                if len(nodes) != 1:
+                    continue
+                node = nodes[0]
+
+                if (node.request_id is None):
+                    break
+
+            request2 = self.requestNodes(['debian-normal'], timeout=0)
+            for _ in iterate_timeout(10, "node is reassigned"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                if len(nodes) != 1:
+                    continue
+                node = nodes[0]
+
+                if (node.request_id == request2.uuid):
                     break
 
 
@@ -3327,15 +3373,18 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
                 node.request_id = "dne"
                 node.setState(node.State.USED)
 
+        self.log.debug("Wait for node to be recycled")
         for _ in iterate_timeout(10, "node to be recycled"):
             node.refresh(ctx)
             if node.state == node.State.READY:
                 break
 
         # Max-age should cause it to be deleted
+        self.log.debug("Update request time")
         with node.locked(ctx):
             node.updateAttributes(ctx, request_time=0)
 
+        self.log.debug("Wait for node to be deleted")
         for _ in iterate_timeout(10, "node to be deleted"):
             try:
                 node.refresh(ctx)
@@ -3406,7 +3455,7 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
         for _ in iterate_timeout(10, "nodes to be deleted"):
             nodes = self.launcher.api.nodes_cache.getItems()
             states = Counter(n.state for n in nodes)
-            if states['failed'] == 2:
+            if states['failed'] == 1 and states['deleting'] == 1:
                 break
 
         self.assertEqual(request.state, model.NodesetRequest.State.FAILED)
@@ -3433,7 +3482,7 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
         self.assertIn(sub1.uuid, main.subnodes)
         self.assertEqual([], sub1.subnodes)
         self.assertEqual(main.State.FAILED, main.state)
-        self.assertEqual(sub1.State.FAILED, sub1.state)
+        self.assertEqual(sub1.State.DELETING, sub1.state)
 
         request.delete(ctx)
         self.waitUntilSettled()
@@ -3525,11 +3574,11 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
             request2 = self.requestNodes(['debian-normal'], timeout=0)
             for _ in iterate_timeout(10, "node is building"):
                 # Get a list with the main node first and the subnode last
+                nodes = self.launcher.api.nodes_cache.getItems()
                 nodes.sort(key=lambda x: len(x.subnodes))
-                nodes.reverse()
-                main = nodes[0]
-                sub1 = nodes[1]
-                sub2 = nodes[2]
+                sub1 = nodes[0]
+                sub2 = nodes[1]
+                main = nodes[2]
 
                 if (main.request_id is None and
                     sub1.request_id == request1.uuid and

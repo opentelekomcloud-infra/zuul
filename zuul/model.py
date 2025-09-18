@@ -2781,10 +2781,10 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         TEMPFAILED = "tempfailed"
         IN_USE = "in-use"
         USED = "used"
-        OUTDATED = "outdated"
         HOLD = "hold"
         SNAPSHOT = "snapshot"
         SLOT_HOST = "slot-host"
+        DELETING = "deleting"
 
     # States where quota counts
     ALLOCATED_STATES = (
@@ -2792,7 +2792,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         State.READY,
         State.IN_USE,
         State.USED,
-        State.OUTDATED,
+        State.DELETING,
         State.HOLD,
         State.SNAPSHOT,
         State.SLOT_HOST,
@@ -2814,12 +2814,8 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         State.BUILDING,
     )
 
-    LAUNCHER_STATES = (
-        State.REQUESTED,
-        State.BUILDING,
-        State.FAILED,
-        State.USED,
-        State.OUTDATED,
+    DELETE_STATES = (
+        State.DELETING,
     )
 
     # The order of preference for unassigned node states (we want
@@ -2835,8 +2831,12 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
 
     def __init__(self):
         super().__init__()
-        snapshot = ProviderNodeSnapshot()
-        snapshot._set(node=self)
+        create_info = ProviderNodeStateMachineInfo()
+        create_info._set(node=self, name='create')
+        delete_info = ProviderNodeStateMachineInfo()
+        delete_info._set(node=self, name='delete')
+        snapshot_info = ProviderNodeStateMachineInfo()
+        snapshot_info._set(node=self, name='snapshot')
         self._set(
             uuid=uuid4().hex,
             request_id=None,
@@ -2853,8 +2853,6 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             tags={},
             connection_name="",
             endpoint_name=None,
-            create_state={},
-            delete_state={},
             host_key_checking=None,
             comment=None,
             main_node_id=None,
@@ -2891,8 +2889,11 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             lock_holder=None,
             create_state_machine=None,
             delete_state_machine=None,
+            snapshot_state_machine=None,
             nodescan_request=None,
-            snapshot=snapshot,
+            create_info=create_info,
+            delete_info=delete_info,
+            snapshot_info=snapshot_info,
             # Attributes set by the launcher
             _lscores=None,
         )
@@ -2924,11 +2925,6 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         return data
 
     def serialize(self, context):
-        if self.create_state_machine:
-            self._set(create_state=self.create_state_machine.toDict())
-        if self.delete_state_machine:
-            self._set(delete_state=self.delete_state_machine.toDict())
-
         data = dict(
             request_id=self.request_id,
             min_request_version=self.min_request_version,
@@ -2947,8 +2943,6 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             comment=self.comment,
             main_node_id=self.main_node_id,
             subnodes=self.subnodes,
-            create_state=self.create_state,
-            delete_state=self.delete_state,
             quota=self.quota.getResources(),
             image_upload_uuid=self.image_upload_uuid,
             **self.getNodeData(),
@@ -2973,8 +2967,6 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
 
     def hasHoldExpired(self):
         if not self.hold_expiration:
-            return False
-        if self.state != self.State.HOLD:
             return False
         return (self.state_time + self.hold_expiration) < time.time()
 
@@ -3023,44 +3015,64 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             zuul_event_id=self.zuul_event_id,
         )
 
-    def createSnapshot(self, context):
-        self.snapshot.internalCreate(context)
+    def updateFromStateMachineInfo(self, state_info):
+        for k, v in state_info.node_data.items():
+            setattr(self, k, v)
+        if state_info.quota is not None:
+            self.quota = state_info.quota
 
 
-class ProviderNodeSnapshot(zkobject.LockableZKObject):
+class ProviderNodeStateMachineInfo(zkobject.LockableZKObject):
     # We don't want to re-create the node in case it was deleted
     makepath = False
-    SNAPSHOT_PATH = 'snapshot'
-    SNAPSHOT_LOCK_PATH = 'snapshot-lock'
 
     def __init__(self):
         super().__init__()
         self._set(
-            complete=None,
-            external_id=None,
-            tags=None,
-            snapshot_state={},
+            node_data={},
+            scratch_data={},
+            quota=None,
+            state='start',  # Same constant as StateMachine.START
+            complete=False,
+            start_time=None,
             # Not serialized
-            node=None,
-            state_machine=None,
+            _node=None,
+            _name=None,
         )
 
+    def ensure(self, context, **kw):
+        self._set(**kw)
+        if getattr(self, '_zstat', None) is None:
+            try:
+                return self.internalCreate(context)
+            except NodeExistsError:
+                self.refresh(context)
+
     def getPath(self):
-        return f"{self.node.getPath()}/{self.SNAPSHOT_PATH}"
+        return f"{self.node.getPath()}/sm-{self.name}-state"
 
     def getLockPath(self):
-        return f"{self.node.getPath()}/{self.SNAPSHOT_LOCK_PATH}"
+        return f"{self.node.getPath()}/sm-{self.name}-lock"
+
+    def deserialize(self, raw, context, extra=None):
+        data = super().deserialize(raw, context)
+        resources = data.get('quota') or {}
+        if data['quota'] is not None:
+            data['quota'] = QuotaInformation(**resources)
+        return data
 
     def serialize(self, context):
-        if self.state_machine:
-            snapshot_state = self.state_machine.toDict()
+        if self.quota is None:
+            quota = None
         else:
-            snapshot_state = {}
+            quota = self.quota.getResources()
         data = dict(
-            snapshot_state=snapshot_state,
+            node_data=self.node_data,
+            scratch_data=self.scratch_data,
+            quota=quota,
+            state=self.state,
             complete=self.complete,
-            external_id=self.external_id,
-            tags=self.tags,
+            start_time=self.start_time,
         )
         return json.dumps(data, sort_keys=True).encode("utf-8")
 

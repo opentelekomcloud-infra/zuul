@@ -695,18 +695,18 @@ class TestAwsDriver(AwsBaseTest):
 
         with node.locked(ctx):
             request.delete(ctx)
-            node.createSnapshot(ctx)
             with node.activeContext(ctx):
                 self.log.debug("Set node to snapshot")
+                node.snapshot_info.ensure(ctx)
                 node.setState(node.State.SNAPSHOT)
 
-            for _ in iterate_timeout(60, "snapshot"):
-                if node.snapshot.complete:
+            for _ in iterate_timeout(10, "snapshot"):
+                if node.snapshot_info.complete:
                     break
-                node.snapshot.refresh(ctx)
+                node.snapshot_info.refresh(ctx)
 
-            self.assertTrue(node.snapshot.complete)
-            arn = node.snapshot.external_id
+            self.assertTrue(node.snapshot_info.complete)
+            arn = node.snapshot_info.node_data['external_id']
             with node.activeContext(ctx):
                 self.log.debug("Set node to used")
                 node.setState(node.State.USED)

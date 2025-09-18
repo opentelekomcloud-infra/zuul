@@ -147,18 +147,19 @@ class OpenstackDeleteStateMachine(statemachine.StateMachine):
     COMPLETE = 'complete'
 
     def __init__(self, endpoint, node, log):
+        super().__init__(node.delete_info)
         self.log = log
         self.endpoint = endpoint
-        self.node = node
-        super().__init__(node.delete_state)
         self.delete_future = None
+
+        self.openstack_server_id = node.openstack_server_id
 
         # Restore local objects
         self.server = None
         self.floating_ips = []
-        if self.node.openstack_server_id:
+        if self.openstack_server_id:
             self.server = self.endpoint._getServer(
-                self.node.openstack_server_id)
+                self.openstack_server_id)
             if (self.server and
                 self.endpoint._hasFloatingIps() and
                 self.server.get('addresses')):
@@ -167,7 +168,7 @@ class OpenstackDeleteStateMachine(statemachine.StateMachine):
 
     def advance(self):
         if self.state == self.START:
-            if self.node.openstack_server_id:
+            if self.openstack_server_id:
                 for fip in self.floating_ips:
                     self.endpoint._deleteFloatingIp(fip)
                     self.state = self.FLOATING_IP_DELETING
@@ -194,7 +195,7 @@ class OpenstackDeleteStateMachine(statemachine.StateMachine):
             if not self.delete_future:
                 self.delete_future = self.endpoint._submitApi(
                     self.endpoint._deleteServer,
-                    self.node.openstack_server_id)
+                    self.openstack_server_id)
             if self.endpoint._completeApi(self.delete_future):
                 self.state = self.SERVER_DELETING
 
@@ -218,26 +219,22 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
 
     def __init__(self, endpoint, node, hostname, label, flavor, image,
                  image_external_id, tags, log):
+        super().__init__(node.create_info)
         self.log = log
         self.endpoint = endpoint
-        self.node = node
         self.label = label
         self.flavor = flavor
         self.image = image
         self.hostname = hostname
         self.az = label.az
         self.create_future = None
-        super().__init__(node.create_state)
-        self.attempts = node.create_state.get("attempts", 0)
-        self.image_external_id = node.create_state.get(
-            "image_external_id", image_external_id)
+        self.image_external_id = image_external_id
         self.config_drive = image.config_drive
 
         if image_external_id:
             self.image_external = image_external_id
         else:
             # launch using unmanaged cloud image
-
             if image.image_id:
                 # Using a dict with the ID bypasses an image search during
                 # server creation.
@@ -251,35 +248,35 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
         self.os_flavor = self.endpoint._findFlavor(
             flavor_name=flavor.flavor_name,
         )
-        self.node.quota = quota_from_flavor(self.os_flavor, label=self.label)
+        self.info.quota = quota_from_flavor(self.os_flavor, label=self.label)
 
         if self.state == self.SERVER_CREATING_SUBMIT:
             for instance in self.endpoint.listInstances():
                 if instance.metadata.get('zuul_node_uuid') == node.uuid:
-                    self.node.openstack_server_id =\
+                    self.data['openstack_server_id'] =\
                         instance.openstack_server_id
-            if self.node.openstack_server_id:
+            if self.data.get('openstack_server_id'):
                 self.state = self.SERVER_CREATING
 
         self.server = None
-        if self.node.openstack_server_id:
+        if server_id := self.data.get('openstack_server_id'):
             self.server = self.endpoint._refreshServer(
                 dict(
-                    id=self.node.openstack_server_id,
+                    id=server_id,
                     status='_unknown',
                 ))
         self.floating_ip = None
-        if self.node.openstack_floating_ip_id:
+        if fip_id := self.data.get('openstack_floating_ip_id'):
             self.floating_ip = self.endpoint._refreshFloatingIp(
-                dict(id=self.node.openstack_floating_ip_id))
+                dict(id=fip_id))
 
     def _handleServerFault(self):
         # Return True if this is a quota fault
-        if not self.node.openstack_server_id:
+        if not self.data.get('openstack_server_id'):
             return
         try:
             server = self.endpoint._getServerByIdNow(
-                self.node.openstack_server_id)
+                self.data.get('openstack_server_id'))
             if not server:
                 return
             fault = server.get('fault', {}).get('message')
@@ -326,11 +323,11 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
                         self.create_future)
                     if self.server is None:
                         return
-                    self.node.openstack_server_id = self.server['id']
+                    self.data['openstack_server_id'] = self.server['id']
                     self.state = self.SERVER_CREATING
                 except openstack.cloud.exc.OpenStackCloudCreateException as e:
                     if e.resource_id:
-                        self.node.openstack_server_id = e.resource_id
+                        self.data['openstack_server_id'] = e.resource_id
                         if self._handleServerFault():
                             self.log.error("Launch attempt failed: %s", str(e))
                             raise exceptions.QuotaException("Quota exceeded")
@@ -349,7 +346,8 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
                     self.endpoint._needsFloatingIp(self.server)):
                     self.floating_ip = self.endpoint._createFloatingIp(
                         self.server)
-                    self.node.openstack_floating_ip_id = self.floating_ip['id']
+                    self.data['openstack_floating_ip_id'] =\
+                        self.floating_ip['id']
                     self.state = self.FLOATING_IP_CREATING
                 else:
                     self.state = self.COMPLETE
@@ -390,7 +388,7 @@ class OpenstackCreateStateMachine(statemachine.StateMachine):
 
         if self.state == self.COMPLETE:
             self.complete = True
-            return self.endpoint._getInstance(self.server, self.node.quota)
+            return self.endpoint._getInstance(self.server, self.info.quota)
 
 
 class OpenstackImageUploadJob(BaseImageUploadJob):

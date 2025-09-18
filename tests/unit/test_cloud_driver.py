@@ -203,7 +203,11 @@ class BaseCloudDriverTest(ZuulTestCase):
         executed_future_names = set()
         next_future_names = set()
         for _ in iterate_timeout(60, "create state machine to complete"):
-            with node.activeContext(ctx):
+            node.create_info.ensure(ctx)
+            node.delete_info.ensure(ctx)
+            with (node.activeContext(ctx),
+                  node.create_info.activeContext(ctx),
+                  node.delete_info.activeContext(ctx)):
                 # Re-create the SM from the state in ZK
                 if create:
                     sm = provider.getCreateStateMachine(

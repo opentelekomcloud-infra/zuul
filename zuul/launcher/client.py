@@ -200,6 +200,7 @@ class LauncherClient:
         log = get_annotated_logger(self.log, zuul_event_id)
         log.debug("Snapshotting nodes %s in nodeset %s", node_ids, nodeset)
 
+        ret = {}
         wait_event = threading.Event()
         wait_snapshots = []
 
@@ -215,20 +216,21 @@ class LauncherClient:
             with self.createZKContext(provider_node._lock, log) as ctx:
                 try:
                     if provider_node.state == provider_node.State.IN_USE:
+                        provider_node.snapshot_info.ensure(ctx)
                         with provider_node.activeContext(ctx):
-                            provider_node.createSnapshot(ctx)
                             provider_node.setState(ProviderNode.State.SNAPSHOT)
-                        ExistingDataWatch(self.zk_client.client,
-                                          provider_node.snapshot.getPath(),
-                                          node_watcher)
-                        wait_snapshots.append(provider_node.snapshot)
+                        ExistingDataWatch(
+                            self.zk_client.client,
+                            provider_node.snapshot_info.getPath(),
+                            node_watcher)
+                        wait_snapshots.append(provider_node)
                         log.debug("Set %s to snapshot", provider_node)
                 except Exception:
                     log.exception("Unable to snapshot node %s", provider_node)
 
         if not wait_snapshots:
             log.debug("Nothing to snapshot in nodeset %s", nodeset)
-            return
+            return ret
         done = False
         log.debug("Waiting for snapshots in nodeset %s", nodeset)
         while not done:
@@ -236,11 +238,15 @@ class LauncherClient:
             wait_event.clear()
             done = True
             with self.createZKContext(provider_node._lock, log) as ctx:
-                for snapshot in wait_snapshots:
-                    snapshot.refresh(ctx)
-                    if not snapshot.complete:
+                for node in wait_snapshots:
+                    node.snapshot_info.refresh(ctx)
+                    if not node.snapshot_info.complete:
                         done = False
+                    else:
+                        ret[node.uuid] =\
+                            node.snapshot_info.node_data.get('external_id')
         log.debug("Finished snapshots in nodeset %s", nodeset)
+        return ret
 
     def addResources(self, target, source):
         for key, value in source.items():

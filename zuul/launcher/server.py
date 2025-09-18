@@ -16,7 +16,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 import collections
-from contextlib import nullcontext
+from contextlib import nullcontext, contextmanager
 import copy
 import errno
 import fcntl
@@ -1702,64 +1702,104 @@ class Launcher:
         for node in self.api.getMatchingProviderNodes():
             log = get_annotated_logger(self.log, node, request=node.request_id)
             try:
+                self._processNodeStateChange(node, log)
+                self._processNodeCreate(node, log)
+                self._processNodeDelete(node, log)
                 self._processNodeSnapshot(node, log)
             except Exception:
-                log.exception("Error processing node %s snapshot", node)
+                log.exception("Error processing node %s", node)
 
-            try:
-                if not node.hasLock():
-                    if not self._isNodeActionable(node):
-                        continue
+    def _processNodeCreate(self, node, log):
+        if node.state not in node.CREATE_STATES:
+            return
+        # Subnodes are not created
+        if isinstance(node, SubnodeProviderNode):
+            return
+        create_info = node.create_info
+        if not create_info.hasLock():
+            with self.createZKContext(None, log) as ctx:
+                create_info.ensure(ctx)
+                if not create_info.acquireLock(ctx, blocking=False):
+                    log.debug("Failed to lock node %s for create", node)
+                    return
+                create_info.refresh(ctx)
 
-                    with self.createZKContext(None, log) as ctx:
-                        if not node.acquireLock(ctx, blocking=False):
-                            log.debug("Failed to lock matching node %s", node)
-                            continue
-                        node.refresh(ctx)
-                self._processProviderNode(node, log)
-            except Exception:
-                log.exception("Failed to process node %s", node)
+        try:
+            self._checkNodeCreate(node, log)
+        except exceptions.QuotaException as e:
+            state = node.State.TEMPFAILED
+            log.info("Marking node %s as %s due to %s", node, state, e)
+            with self.stateMachineNodeActiveContext(create_info, node, log):
+                node.setState(state)
+                self._setSubnodeStates(node, log)
+            self.wake_event.set()
+        except Exception as e:
+            state = node.State.FAILED
+            if isinstance(e, LaunchTimeoutError):
+                log.error("Marking node %s as %s", node, state)
+            else:
+                log.exception("Marking node %s as %s", node, state)
+            with self.stateMachineNodeActiveContext(create_info, node, log):
+                node.setState(state)
+                self._setSubnodeStates(node, log)
+            self.wake_event.set()
 
-    def _processProviderNode(self, node, log):
-        request = self.api.getNodesetRequest(node.request_id)
-        if ((request or node.request_id is None)
-                and node.state in node.CREATE_STATES):
-            try:
-                self._checkNodeCreate(node, log)
-            except exceptions.QuotaException as e:
-                state = node.State.TEMPFAILED
-                log.info("Marking node %s as %s due to %s", node, state, e)
-                with self.createZKContext(node._lock, self.log) as ctx:
-                    with node.activeContext(ctx):
-                        node.setState(state)
-                        self._setSubnodeStates(node, log)
-                    self.wake_event.set()
-            except Exception as e:
-                state = node.State.FAILED
-                if isinstance(e, LaunchTimeoutError):
-                    log.error("Marking node %s as %s", node, state)
-                else:
-                    log.exception("Marking node %s as %s", node, state)
-                with self.createZKContext(node._lock, self.log) as ctx:
-                    with node.activeContext(ctx):
-                        node.setState(state)
-                        self._setSubnodeStates(node, log)
-                    self.wake_event.set()
-
-            # Export span for node creation phase
-            if (node.state in node.FINAL_STATES and
-                    node.create_state_machine):
-                with trace.use_span(tracing.restoreSpan(node.span_info)):
-                    with self.tracer.start_as_current_span(
+        # Export span for node creation phase
+        if (node.state in node.FINAL_STATES and
+            node.create_state_machine):
+            with trace.use_span(tracing.restoreSpan(node.span_info)):
+                with self.tracer.start_as_current_span(
                         "ProviderNodeCreate",
                         start_time=node.create_state_machine.start_time,
                         attributes=node.getSpanAttributes()
-                    ):
-                        # Nothing to do here; ctx manager is just
-                        # a shorthand for span start/end. The
-                        # start time is dated back to the start
-                        # of the create state machine.
-                        pass
+                ):
+                    # Nothing to do here; ctx manager is just
+                    # a shorthand for span start/end. The
+                    # start time is dated back to the start
+                    # of the create state machine.
+                    pass
+
+    def _processNodeDelete(self, node, log):
+        if node.state not in node.DELETE_STATES:
+            return
+
+        # Safety check: don't delete a main node while active subnodes
+        # still exist.
+        for subnode_id in node.subnodes:
+            if subnode := self.api.getProviderNode(subnode_id):
+                if subnode.state not in (subnode.State.REQUESTED,
+                                         subnode.State.BUILDING):
+                    return
+
+        delete_info = node.delete_info
+        # When deleting, we acquire the node lock instead of the state
+        # machine lock because no one should be able to alter the node
+        # from this point.
+        if not node.hasLock():
+            with self.createZKContext(None, log) as ctx:
+                if not node.acquireLock(ctx, blocking=False):
+                    log.debug("Failed to lock node %s for delete", node)
+                    return
+                node.refresh(ctx)
+                delete_info.ensure(ctx)
+                delete_info.refresh(ctx)
+
+        try:
+            self._checkNodeDelete(node, log)
+        except Exception:
+            log.exception("Error in node delete")
+            self.wake_event.set()
+
+    # The following are helper functions for node state changes.  We
+    # call them once to decide if we should lock the node, and again
+    # to verify the state after locking it.
+    def _shouldDeleteNode(self, request, node):
+        if node.state in (node.State.DELETING,
+                          node.State.SNAPSHOT):
+            return False
+        if node.state == node.State.HOLD:
+            if not node.hasHoldExpired():
+                return False
 
         # Mark outdated nodes w/o a request for cleanup when ...
         if not request and (
@@ -1769,114 +1809,68 @@ class Launcher:
                 # and we can't find a provider for this node.
                 (not self.layout_updated_event.is_set()
                  and not self._hasProvider(node))):
-            state = node.State.OUTDATED
-            log.debug("Marking node %s as %s", node, state)
-            with self.createZKContext(node._lock, self.log) as ctx:
-                with node.activeContext(ctx):
-                    node.setState(state)
+            return True
 
-        # Deallocate node w/o a request for re-use
-        elif (node.request_id and not request and
-              node.state in node.ASSIGNABLE_STATES):
-            log.debug("Deallocating node %s from missing request %s",
-                      node, node.request_id)
-            with self.createZKContext(node._lock, self.log) as ctx:
-                node.updateAttributes(
-                    ctx,
-                    request_id=None,
-                    tenant_name=None,
-                )
-
-        # Recycle a node if the label allows reuse
-        elif (node.request_id and not request
-                and node.state == node.State.USED):
-            if provider := self._getProviderForNode(node):
-                if label := provider.labels.get(node.label):
-                    if label.reuse:
-                        self._checkNodeReuse(node, log)
-                        if node.state == node.State.USED:
-                            # If we haven't changed state, keep the
-                            # lock and check back later.
-                            return
-
-        # Clean up the node if ...
         if (
             # ... it is associated with a request that no
             # longer exists
             (node.request_id is not None and not request)
-            # ... it is failed/outdated
+            # ... it is failed, no longer held, or is an unused slot host
             or node.state in (node.State.FAILED,
                               node.State.TEMPFAILED,
-                              node.State.SLOT_HOST,
-                              node.State.OUTDATED)
+                              node.State.HOLD,
+                              node.State.SLOT_HOST)
         ):
-            # Safety check to make sure we don't delete main nodes if
-            # subnodes are in use.
-            ok = True
+            # Don't delete main nodes if subnodes are in use.
             for subnode_id in node.subnodes:
                 if subnode := self.api.getProviderNode(subnode_id):
                     if subnode.state not in (subnode.State.REQUESTED,
                                              subnode.State.BUILDING):
-                        log.debug("Not deleting node %s due to subnode %s",
-                                  node, subnode)
-                        ok = False
-                        break
-            if ok:
-                try:
-                    self._cleanupNode(node, log)
-                except Exception:
-                    log.exception("Error in node cleanup")
-                    self.wake_event.set()
-
-        if node.state == model.ProviderNode.State.READY:
-            with self.createZKContext(None, self.log) as ctx:
-                node.releaseLock(ctx)
-
-    def _isNodeActionable(self, node):
-        if node.is_locked:
-            return False
-
-        # If we are a subnode and our main node is in requested or
-        # building, then we should not act.
-        if isinstance(node, SubnodeProviderNode):
-            if main_node := self.api.getProviderNode(node.main_node_id):
-                if main_node.state in (
-                        node.State.REQUESTED, node.State.BUILDING):
-                    return False
-
-        # If we have subnodes, then they are "live" and we should not
-        # do anything with the node until they are deleted.  We went
-        # into the pending-delete state because we're ready to delete
-        # but just waiting on the subnodes.
-        if node.state == node.State.SLOT_HOST:
-            for subnode_id in node.subnodes:
-                if self.api.getProviderNode(subnode_id):
-                    return False
-            # A slot host with no nodes should be deleted
+                        return False
             return True
-
-        if node.state in node.LAUNCHER_STATES:
-            return True
-
-        if node.state == node.State.HOLD:
-            if node.hasHoldExpired():
-                return True
-            return False
-
-        if node.request_id:
-            request_exists = bool(self.api.getNodesetRequest(node.request_id))
-            return not request_exists
-        elif node.hasExpired():
-            return True
-        elif not self._hasProvider(node):
-            if self.layout_updated_event.is_set():
-                # If our providers are not up-to-date we can't be sure
-                # there is no provider for this node.
-                return False
-            # We no longer have a provider that uses the given node
-            return True
-
         return False
+
+    def _shouldDeallocateNode(self, request, node):
+        # Deallocate node w/o a request for re-use
+        if (node.request_id and not request and
+            node.state in node.ASSIGNABLE_STATES):
+            return True
+        return False
+
+    def _shouldReuseNode(self, request, node):
+        # Recycle a node if the label allows reuse
+        if (node.request_id and not request
+            and node.state == node.State.USED):
+            if provider := self._getProviderForNode(node):
+                if label := provider.labels.get(node.label):
+                    if label.reuse:
+                        return True
+        return False
+
+    def _processNodeStateChange(self, node, log):
+        request = self.api.getNodesetRequest(node.request_id)
+
+        if self._shouldDeallocateNode(request, node):
+            with self.nodeActiveContext(node, log):
+                node.refresh(node._active_context)
+                if self._shouldDeallocateNode(request, node):
+                    log.debug("Deallocating node %s from missing request %s",
+                              node, node.request_id)
+                    node.request_id = None
+                    node.tenant_name = None
+
+        elif self._shouldReuseNode(request, node):
+            # This method handles locking the node and changing state
+            # if necessary.
+            self._checkNodeReuse(node, log)
+
+        elif self._shouldDeleteNode(request, node):
+            state = node.State.DELETING
+            with self.nodeActiveContext(node, log):
+                node.refresh(node._active_context)
+                if self._shouldDeleteNode(request, node):
+                    log.debug("Marking node %s as %s", node, state)
+                    node.setState(state)
 
     def _emitMessages(self, log, messages):
         for m in messages:
@@ -1884,12 +1878,10 @@ class Launcher:
         messages.clear()
 
     def _checkNodeCreate(self, node, log):
-        if isinstance(node, SubnodeProviderNode):
-            return
         # Log messages that we will only emit if they are interesting
         messages = []
         with self.createZKContext(node._lock, self.log) as ctx:
-            with node.activeContext(ctx):
+            with node.create_info.activeContext(ctx):
                 provider = self._getProviderForNode(node)
                 if not node.create_state_machine:
                     log.debug("Building node %s", node)
@@ -1897,9 +1889,9 @@ class Launcher:
                         node, provider)
                     log.debug("Node %s external id %s",
                               node, image_external_id)
-                    node.create_state_machine =\
-                        provider.getCreateStateMachine(
-                            node, image_external_id, log)
+                    node._set(
+                        create_state_machine=provider.getCreateStateMachine(
+                            node, image_external_id, log))
 
                 old_state = node.create_state_machine.state
                 if old_state == node.create_state_machine.START:
@@ -1922,8 +1914,11 @@ class Launcher:
                     node.state == node.State.REQUESTED):
                     # Set state to building so that we start counting
                     # quota.
-                    node.setState(node.State.BUILDING)
-                    self._setSubnodeStates(node, log)
+                    with self.stateMachineNodeActiveContext(
+                            node.create_info, node, log):
+                        node.updateFromStateMachineInfo(node.create_info)
+                        node.setState(node.State.BUILDING)
+                        self._setSubnodeStates(node, log)
 
                 if not node.create_state_machine.complete:
                     if provider.launch_timeout:
@@ -1937,24 +1932,32 @@ class Launcher:
                 elif node.nodescan_request is None:
                     # We just finished the create state machine,
                     # update with new info.
-                    self._updateNodeFromInstance(node, instance)
+                    with self.stateMachineNodeActiveContext(
+                            node.create_info, node, log):
+                        node.updateFromStateMachineInfo(node.create_info)
+                        self._updateNodeFromInstance(node, instance)
 
-                # Note this method has the side effect of updating
-                # node info from the instance.
-                if self._checkNodescanRequest(node, log):
+                # This returns False if ongoing, otherwise the keys
+                # (which may be None).
+                ns_result = self._checkNodescanRequest(node, log)
+                if ns_result is not False:
+                    keys = ns_result
                     if node.subnodes:
                         state = node.State.SLOT_HOST
                     else:
                         state = node.State.READY
-                    node.setState(state)
-                    self._setSubnodeStates(node, log)
-                    node.nodescan_request = None
+                    with self.stateMachineNodeActiveContext(
+                            node.create_info, node, log):
+                        node.host_keys = keys
+                        node.setState(state)
+                        self._setSubnodeStates(node, log)
+                    node._set(nodescan_request=None)
                     log.debug("Marking node %s as %s", node, node.state)
                     self.wake_event.set()
                 else:
                     self.wake_event.set()
                     return
-            node.releaseLock(ctx)
+            node.create_info.releaseLock(ctx)
 
     def _setSubnodeStates(self, node, log):
         if not node.subnodes:
@@ -1991,7 +1994,12 @@ class Launcher:
         # node or each other; we try to lock the node and update the
         # state, but we ignore lock errors.
         try:
-            with node.locked(context, blocking=False):
+            # We may already have the lock for this node
+            if node.hasLock():
+                lock_mgr = nullcontext
+            else:
+                lock_mgr = node.locked(context, blocking=False)
+            with lock_mgr:
                 with self.createZKContext(node._lock, log) as ctx:
                     with node.activeContext(ctx):
                         node.setState(state)
@@ -2002,7 +2010,7 @@ class Launcher:
 
     def _checkNodescanRequest(self, node, log):
         if node.nodescan_request is None:
-            node.nodescan_request = NodescanRequest(node, log)
+            node._set(nodescan_request=NodescanRequest(node, log))
             self.nodescan_worker.addRequest(node.nodescan_request)
             log.debug(
                 "Submitted nodescan request for %s queue length %s",
@@ -2019,9 +2027,7 @@ class Launcher:
                 log.exception("Exception scanning keys:")
             raise exceptions.LaunchKeyscanException(
                 "Can't scan key for %s" % (node,))
-        if keys:
-            node.host_keys = keys
-        return True
+        return keys
 
     def _checkNodeReuse(self, node, log):
         # Handle re-processing a node for reuse
@@ -2030,29 +2036,30 @@ class Launcher:
         else:
             main_node = None
         with self.createZKContext(node._lock, log) as ctx:
-            with node.activeContext(ctx):
-                try:
-                    if main_node and main_node.state == main_node.State.FAILED:
-                        raise Exception("Main node is failed")
-                    done = self._checkNodescanRequest(node, log)
-                except Exception:
-                    state = node.State.FAILED
-                    log.exception("Marking node %s as %s", node, state)
+            try:
+                if main_node and main_node.state == main_node.State.FAILED:
+                    raise Exception("Main node is failed")
+                result = self._checkNodescanRequest(node, log)
+            except Exception:
+                state = node.State.FAILED
+                log.exception("Marking node %s as %s", node, state)
+                with self.nodeActiveContext(node, log):
                     node.nodescan_request = None
                     node.setState(state)
-                    # If we are a subnode, then declare the main node
-                    # and any READY subnodes as failed as well.
-                    if main_node:
-                        self._bestEffortLockAndSetNodeState(
-                            ctx, main_node, state, log)
-                        self._setReadySubnodeStates(ctx, main_node, log)
-                    return
+                # If we are a subnode, then declare the main node
+                # and any READY subnodes as failed as well.
+                if main_node:
+                    self._bestEffortLockAndSetNodeState(
+                        ctx, main_node, state, log)
+                    self._setReadySubnodeStates(ctx, main_node, log)
+                return
 
-                if not done:
-                    self.wake_event.set()
-                    return
+            if result is False:
+                self.wake_event.set()
+                return
 
-                state = node.State.READY
+            state = node.State.READY
+            with self.nodeActiveContext(node, log):
                 log.debug("Marking node %s as %s for reuse",
                           node, state)
                 node.request_id = None
@@ -2063,76 +2070,80 @@ class Launcher:
     def _processNodeSnapshot(self, node, log):
         if node.state != node.State.SNAPSHOT:
             return
-        snapshot = node.snapshot
-        if snapshot.complete:
+        snapshot_info = node.snapshot_info
+        if snapshot_info.complete:
             return
         # This is similar to processNode
-        if not snapshot.hasLock():
+        if not snapshot_info.hasLock():
             with self.createZKContext(None, log) as ctx:
-                if not snapshot.acquireLock(ctx, blocking=False):
+                if not snapshot_info.acquireLock(ctx, blocking=False):
                     log.debug("Failed to lock node %s for snapshot", node)
                     return
                 node.refresh(ctx)
+                snapshot_info.refresh(ctx)
 
         try:
             self._checkNodeSnapshot(node, log)
         except Exception:
             log.exception("Error processing node %s snapshot", node)
-            with self.createZKContext(snapshot._lock, self.log) as ctx:
-                with snapshot.activeContext(ctx):
-                    snapshot.complete = True
+            with self.createZKContext(snapshot_info._lock, self.log) as ctx:
+                with snapshot_info.activeContext(ctx):
+                    snapshot_info.complete = True
                     self.wake_event.set()
 
-        if snapshot.complete:
+        if snapshot_info.complete:
             with self.createZKContext(None, self.log) as ctx:
-                snapshot.releaseLock(ctx)
+                snapshot_info.releaseLock(ctx)
 
     def _checkNodeSnapshot(self, node, log):
-        snapshot = node.snapshot
-        with self.createZKContext(snapshot._lock, self.log) as ctx:
-            with snapshot.activeContext(ctx):
+        snapshot_info = node.snapshot_info
+        with self.createZKContext(snapshot_info._lock, self.log) as ctx:
+            with snapshot_info.activeContext(ctx):
                 provider = self._getProviderForNode(node)
-                if not snapshot.state_machine:
+                if not node.snapshot_state_machine:
                     tags = copy.deepcopy(node.tags)
                     tags.pop('zuul_node_uuid', None)
                     exp = int(time.time() + node.snapshot_expiration)
                     tags['zuul_expiration'] = str(exp)
-                    snapshot.tags = tags
                     log.debug("Snapshotting node %s", node)
-                    snapshot.state_machine = provider.getSnapshotStateMachine(
-                        node, log)
+                    node._set(
+                        snapshot_state_machine=provider.
+                        getSnapshotStateMachine(
+                            node, tags, log))
 
-                old_state = snapshot.state_machine.state
-                if old_state == snapshot.state_machine.START:
-                    snapshot.state_machine.start_time = time.time()
-                external_id = snapshot.state_machine.advance()
-                new_state = snapshot.state_machine.state
+                old_state = snapshot_info.state
+                if old_state == node.snapshot_state_machine.START:
+                    node.snapshot_state_machine.start_time = time.time()
+                external_id = node.snapshot_state_machine.advance()
+                new_state = node.snapshot_state_machine.state
                 if old_state != new_state:
                     log.debug("Snapshot for %s advanced from %s to %s",
                               node, old_state, new_state)
 
-                if not snapshot.state_machine.complete:
+                if not node.snapshot_state_machine.complete:
                     if node.snapshot_timeout:
                         now = time.time()
-                        if (now - snapshot.state_machine.start_time >
+                        if (now - node.snapshot_state_machine.start_time >
                             node.snapshot_timeout):
                             log.error("Timeout snapshotting node %s", node)
                             raise Exception("Timeout snapshotting node")
                     self.wake_event.set()
                     return
                 # Snapshot is complete
-                snapshot.complete = True
-                snapshot.external_id = external_id
-                snapshot.releaseLock(ctx)
+                snapshot_info.complete = True
+                # We'll "borrow" the node_data dict to pass the
+                # external id to the executor without updating the node.
+                snapshot_info.node_data['external_id'] = external_id
+                snapshot_info.releaseLock(ctx)
 
-    def _cleanupNode(self, node, log):
+    def _checkNodeDelete(self, node, log):
         with self.createZKContext(node._lock, self.log) as ctx:
-            with node.activeContext(ctx):
-                self.nodescan_worker.removeRequest(node.nodescan_request)
-                node.nodescan_request = None
-
+            with (node.activeContext(ctx),
+                  node.delete_info.activeContext(ctx)):
                 if not node.delete_state_machine:
                     log.debug("Cleaning up node %s", node)
+                    self.nodescan_worker.removeRequest(node.nodescan_request)
+                    node.nodescan_request = None
                     if isinstance(node, SubnodeProviderNode):
                         node.delete_state_machine = SubnodeStateMachine()
                     else:
@@ -2288,6 +2299,8 @@ class Launcher:
         unassigned_nodes = collections.defaultdict(list)
         for node in self.api.getProviderNodes():
             if node.request_id is not None:
+                continue
+            if node.subnodes:
                 continue
             if node.is_locked or node.state not in node.ASSIGNABLE_STATES:
                 continue
@@ -2488,6 +2501,28 @@ class Launcher:
     def createZKContext(self, lock, log):
         return ZKContext(self.zk_client, lock, self.join_event, log,
                          default_lock_identifier=self.component_info.hostname)
+
+    @contextmanager
+    def stateMachineNodeActiveContext(self, sm_info, node, log):
+        # We expect to be able to quickly lock and set these values;
+        # if we are unable to lock in 60 seconds, timeout and let the
+        # lock timeout exception propagate in case we are in a
+        # deadlock or another launcher took over processing and is in
+        # a long lock phase.
+        with self.createZKContext(sm_info._lock, self.log) as ctx1:
+            with node.locked(ctx1, timeout=60):
+                with self.createZKContext(node._lock, self.log) as ctx2:
+                    with node.activeContext(ctx2):
+                        yield
+
+    @contextmanager
+    def nodeActiveContext(self, node, log):
+        # See note abouv about timeout.
+        with self.createZKContext(None, self.log) as ctx1:
+            with node.locked(ctx1, timeout=60):
+                with self.createZKContext(node._lock, self.log) as ctx2:
+                    with node.activeContext(ctx2):
+                        yield
 
     def _chooseLauncherForEndpoint(self, endpoint):
         all_launchers = {

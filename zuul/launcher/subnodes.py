@@ -33,6 +33,16 @@ class SubnodeProviderNode(model.ProviderNode, subclass_id="subnode"):
             setattr(self, k, v)
 
 
+class SubnodeStateInfo:
+    def __init__(self):
+        self.state = None
+        self.complete = None
+        self.start_time = None
+        self.quota = None
+        self.node_data = {}
+        self.scratch_data = {}
+
+
 class SubnodeStateMachine(statemachine.StateMachine):
     """A no-op state machine since subnodes don't need to be created
     or deleted.
@@ -41,7 +51,8 @@ class SubnodeStateMachine(statemachine.StateMachine):
     COMPLETE = 'complete'
 
     def __init__(self):
-        super().__init__({})
+        state_info = SubnodeStateInfo()
+        super().__init__(state_info)
         self.state = self.COMPLETE
         self.complete = True
 

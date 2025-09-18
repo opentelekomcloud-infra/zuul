@@ -1750,19 +1750,12 @@ class AnsibleJob(object):
             return
 
         node_ids = [x['node'] for x in snapshot_nodes]
-        self.executor_server.launcher.snapshotNodeset(
+        node_snapshots = self.executor_server.launcher.snapshotNodeset(
             self.nodeset, node_ids, self.zuul_event_id)
 
         artifacts = zuul_data.setdefault('artifacts', [])
         for snapshot_info in snapshot_nodes:
-            for node in self.nodeset.getNodes():
-                provider_node = getattr(node, "_provider_node", None)
-                if provider_node.uuid == snapshot_info['node']:
-                    break
-            else:
-                # Did not find the corresponding node
-                continue
-            external_id = provider_node.snapshot.external_id
+            external_id = node_snapshots.get(snapshot_info['node'])
             if external_id is None:
                 continue
             artifact = dict(
