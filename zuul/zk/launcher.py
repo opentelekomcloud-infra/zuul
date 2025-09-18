@@ -23,7 +23,6 @@ from kazoo.exceptions import NoNodeError
 from zuul.model import (
     NodesetRequest,
     ProviderNode,
-    ProviderNodeSnapshot,
     QuotaInformation,
 )
 from zuul.zk.cache import ZuulTreeCache
@@ -229,13 +228,13 @@ class NodeCache(LockableZKObjectCache):
 
         # (<self.locks_path>, <uuid>, <lock>,)
         # (<self.items_path>, <uuid>,)
-        # (<self.items_path>, <uuid>, snapshot,)
-        # (<self.items_path>, <uuid>, snapshot-lock,)
+        # (<self.items_path>, <uuid>, sm-create-state,)
+        # (<self.items_path>, <uuid>, sm-create-lock,)
+        # etc
         if len(parts) >= 3:
             # Ignore anything related to snapshots
             if (parts[0] == ProviderNode.NODES_PATH and
-                parts[2] in (ProviderNodeSnapshot.SNAPSHOT_PATH,
-                             ProviderNodeSnapshot.SNAPSHOT_LOCK_PATH)):
+                parts[2].startswith('sm-')):
                 return self.STOP_OBJECT_UPDATE
         return super().preCacheHook(event, exists, data, stat)
 

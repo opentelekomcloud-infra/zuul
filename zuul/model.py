@@ -2835,8 +2835,12 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
 
     def __init__(self):
         super().__init__()
-        snapshot = ProviderNodeSnapshot()
-        snapshot._set(node=self)
+        create_info = ProviderNodeStateMachineInfo()
+        create_info._set(node=self, name='create')
+        delete_info = ProviderNodeStateMachineInfo()
+        delete_info._set(node=self, name='delete')
+        snapshot_info = ProviderNodeStateMachineInfo()
+        snapshot_info._set(node=self, name='snapshot')
         self._set(
             uuid=uuid4().hex,
             request_id=None,
@@ -2853,8 +2857,6 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             tags={},
             connection_name="",
             endpoint_name=None,
-            create_state={},
-            delete_state={},
             host_key_checking=None,
             comment=None,
             main_node_id=None,
@@ -2892,7 +2894,9 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             create_state_machine=None,
             delete_state_machine=None,
             nodescan_request=None,
-            snapshot=snapshot,
+            create_info=create_info,
+            delete_info=delete_info,
+            snapshot_info=snapshot_info,
             # Attributes set by the launcher
             _lscores=None,
         )
@@ -2921,14 +2925,15 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         data = super().deserialize(raw, context)
         resources = data.get('quota') or {}
         data['quota'] = QuotaInformation(**resources)
+        #TODO: upgrade handling
+        # Remove after opendev upgrade
+        #if state := data.pop('create_state', None):
+        #    self.create_state._set(data=state)
+        #if state := data.pop('delete_state', None):
+        #    self.delete_state._set(data=state)
         return data
 
     def serialize(self, context):
-        if self.create_state_machine:
-            self._set(create_state=self.create_state_machine.toDict())
-        if self.delete_state_machine:
-            self._set(delete_state=self.delete_state_machine.toDict())
-
         data = dict(
             request_id=self.request_id,
             min_request_version=self.min_request_version,
@@ -2947,8 +2952,6 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             comment=self.comment,
             main_node_id=self.main_node_id,
             subnodes=self.subnodes,
-            create_state=self.create_state,
-            delete_state=self.delete_state,
             quota=self.quota.getResources(),
             image_upload_uuid=self.image_upload_uuid,
             **self.getNodeData(),
@@ -3023,44 +3026,54 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             zuul_event_id=self.zuul_event_id,
         )
 
-    def createSnapshot(self, context):
-        self.snapshot.internalCreate(context)
+    def updateFromStateMachineInfo(self, state_info):
+        for k, v in state_info.node_data.items():
+            setattr(self, k, v)
 
 
-class ProviderNodeSnapshot(zkobject.LockableZKObject):
+class ProviderNodeStateMachineInfo(zkobject.LockableZKObject):
     # We don't want to re-create the node in case it was deleted
     makepath = False
-    SNAPSHOT_PATH = 'snapshot'
-    SNAPSHOT_LOCK_PATH = 'snapshot-lock'
 
     def __init__(self):
         super().__init__()
         self._set(
-            complete=None,
-            external_id=None,
-            tags=None,
-            snapshot_state={},
+            node_data={},
+            scratch_data={},
+            quota=QuotaInformation(),
+            state='start',  # Same constant as StateMachine.START
+            complete=False,
+            start_time=None,
             # Not serialized
-            node=None,
-            state_machine=None,
+            _node=None,
+            _name=None,
         )
 
+    def ensure(self, context, **kw):
+        self._set(**kw)
+        if getattr(self, '_zstat', None) is None:
+            try:
+                return self.internalCreate(context)
+            except NodeExistsError:
+                self.refresh(context)
+
     def getPath(self):
-        return f"{self.node.getPath()}/{self.SNAPSHOT_PATH}"
+        return f"{self.node.getPath()}/sm-{self.name}-state"
 
     def getLockPath(self):
-        return f"{self.node.getPath()}/{self.SNAPSHOT_LOCK_PATH}"
+        return f"{self.node.getPath()}/sm-{self.name}-lock"
+
+    def deserialize(self, raw, context, extra=None):
+        data = super().deserialize(raw, context)
+        resources = data.get('quota') or {}
+        data['quota'] = QuotaInformation(**resources)
+        return data
 
     def serialize(self, context):
-        if self.state_machine:
-            snapshot_state = self.state_machine.toDict()
-        else:
-            snapshot_state = {}
         data = dict(
-            snapshot_state=snapshot_state,
-            complete=self.complete,
-            external_id=self.external_id,
-            tags=self.tags,
+            node_data=self.node_data,
+            scratch_data=self.scratch_data,
+            quota=self.quota.getResources(),
         )
         return json.dumps(data, sort_keys=True).encode("utf-8")
 

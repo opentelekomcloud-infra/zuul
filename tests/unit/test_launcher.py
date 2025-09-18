@@ -2047,6 +2047,47 @@ class TestLauncher(LauncherBaseTestCase):
                         result_queue.ack(event)
                     break
 
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_building_node_reassignment(self):
+        # Test that a request for a building node gets assigned to a
+        # new request.
+        ctx = self.createZKContext(None)
+        with mock.patch(
+            'zuul.driver.aws.awsendpoint.AwsProviderEndpoint._refresh'
+        ) as refresh_mock:
+            # Patch 'endpoint._refresh()' to return w/o updating
+            refresh_mock.side_effect = lambda o: o
+            request1 = self.requestNodes(['debian-normal'], timeout=0)
+            for _ in iterate_timeout(10, "node is building"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                if len(nodes) != 1:
+                    continue
+                node = nodes[0]
+                if node.state == node.State.BUILDING:
+                    break
+
+            self.assertEqual(request1.uuid, node.request_id)
+            request1.delete(ctx)
+
+            for _ in iterate_timeout(10, "node is unassigned"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                if len(nodes) != 1:
+                    continue
+                node = nodes[0]
+
+                if (node.request_id is None):
+                    break
+
+            request2 = self.requestNodes(['debian-normal'], timeout=0)
+            for _ in iterate_timeout(10, "node is reassigned"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                if len(nodes) != 1:
+                    continue
+                node = nodes[0]
+
+                if (node.request_id == request2.uuid):
+                    break
+
 
 class TestLauncherLocality(LauncherBaseTestCase):
     # We use a multi-tenant config here to make sure we don't end up
@@ -3525,6 +3566,7 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
             request2 = self.requestNodes(['debian-normal'], timeout=0)
             for _ in iterate_timeout(10, "node is building"):
                 # Get a list with the main node first and the subnode last
+                nodes = self.launcher.api.nodes_cache.getItems()
                 nodes.sort(key=lambda x: len(x.subnodes))
                 nodes.reverse()
                 main = nodes[0]

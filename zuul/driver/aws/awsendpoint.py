@@ -71,20 +71,22 @@ class AwsDeleteStateMachine(statemachine.StateMachine):
     INSTANCE_DELETING = 'deleting instance'
     COMPLETE = 'complete'
 
-    def __init__(self, endpoint, node, log):
+    def __init__(self, endpoint, node, state_info, log):
+        super().__init__(state_info)
         self.log = log
         self.endpoint = endpoint
-        self.node = node
-        super().__init__(node.delete_state)
+
+        self.aws_instance_id = self.node.aws_instance_id
+        self.aws_dedicated_host_id = self.node.aws_dedicated_host_id
 
         # Restore local objects
         self.host = None
         if node.aws_dedicated_host_id:
-            host = dict(HostId=node.aws_dedicated_host_id)
+            host = dict(HostId=self.aws_dedicated_host_id)
             self.host = self.endpoint._refreshDelete(host)
         self.instance = None
         if node.aws_instance_id:
-            instance = dict(InstanceId=node.aws_instance_id)
+            instance = dict(InstanceId=self.aws_instance_id)
             self.instance = self.endpoint._refreshDelete(instance)
 
     def advance(self):
@@ -98,7 +100,7 @@ class AwsDeleteStateMachine(statemachine.StateMachine):
 
         if self.state == self.INSTANCE_DELETING_START:
             self.instance = self.endpoint._deleteInstance(
-                self.node.aws_instance_id, self.log)
+                self.aws_instance_id, self.log)
             self.state = self.INSTANCE_DELETING
 
         if self.state == self.INSTANCE_DELETING:
@@ -111,7 +113,7 @@ class AwsDeleteStateMachine(statemachine.StateMachine):
 
         if self.state == self.HOST_RELEASING_START:
             self.host = self.endpoint._releaseHost(
-                self.node.aws_dedicated_host_id, self.log)
+                self.aws_dedicated_host_id, self.log)
             self.state = self.HOST_RELEASING
 
         if self.state == self.HOST_RELEASING:
@@ -130,12 +132,14 @@ class AwsCreateStateMachine(statemachine.StateMachine):
     INSTANCE_CREATING = 'creating instance'
     COMPLETE = 'complete'
 
-    def __init__(self, provider, endpoint, node, hostname, label,
-                 flavor, image, image_external_id, tags, log):
+    def __init__(self, provider, endpoint, node, hostname,
+                 label, flavor, image, image_external_id, tags, log):
+        super().__init__(node.create_info)
         self.log = log
         self.provider = provider
         self.endpoint = endpoint
-        self.node = node
+        self.data.setdefault('node_properties', {})
+        self.image_external_id = image_external_id
         self.tags = tags.copy()
         self.tags['Name'] = hostname
         self.hostname = hostname
@@ -147,13 +151,9 @@ class AwsCreateStateMachine(statemachine.StateMachine):
         self.nic = None
         self.host_create_future = None
         self.create_future = None
-        super().__init__(node.create_state)
-        self.attempts = node.create_state.get("attempts", 0)
-        self.image_external_id = node.create_state.get(
-            "image_external_id", image_external_id)
 
         # Restore local objects
-        self.node.quota = self.endpoint.getQuotaForLabel(
+        self.info.quota = self.endpoint.getQuotaForLabel(
             self.label, self.flavor)
 
         if self.state in (
@@ -161,41 +161,33 @@ class AwsCreateStateMachine(statemachine.StateMachine):
             for instance in self.endpoint.listInstances():
                 # TODO: use the nodepool node id tag instead
                 if instance.metadata.get("Name") == hostname:
-                    self.node.aws_instance_id = instance.aws_instance_id
-                    self.node.aws_dedicated_host_id =\
+                    self.data['aws_instance_id'] = instance.aws_instance_id
+                    self.data['aws_dedicated_host_id'] =\
                         instance.aws_dedicated_host_id
-            if self.node.aws_instance_id:
+            if self.data.get('aws_instance_id'):
                 self.state = self.INSTANCE_CREATING
-            elif self.node.aws_dedicated_host_id:
+            elif self.data.get('aws_dedicated_host_id'):
                 self.state = self.HOST_ALLOCATING
 
         self.host = None
-        if self.node.aws_dedicated_host_id:
+        if host_id := self.data.get('aws_dedicated_host_id'):
             host = dict(
-                HostId=self.node.aws_dedicated_host_id,
+                HostId=host_id,
                 State=dict(Name='pending'),
             )
             self.host = self.endpoint._refresh(host)
         self.instance = None
-        if self.node.aws_instance_id:
+        if instance_id := self.data.get('aws_instance_id'):
             instance = dict(
-                InstanceId=self.node.aws_instance_id,
+                InstanceId=instance_id,
                 State=dict(Name='pending'),
             )
             self.instance = self.endpoint._refresh(instance)
 
-    def toDict(self):
-        data = super().toDict()
-        data.update(
-            attempts=self.attempts,
-            image_external_id=self.image_external_id,
-        )
-        return data
-
     def advance(self):
         if self.state == self.START:
-            self.node.node_properties['fleet'] = bool(self.flavor.fleet)
-            self.node.node_properties['spot'] = bool(
+            self.data['node_properties']['fleet'] = bool(self.flavor.fleet)
+            self.data['node_properties']['spot'] = bool(
                 self.flavor.market_type == 'spot')
 
             if self.flavor.dedicated_host:
@@ -214,7 +206,7 @@ class AwsCreateStateMachine(statemachine.StateMachine):
             if host is None:
                 return
             self.host = host
-            self.node.aws_dedicated_host_id = host['HostId']
+            self.data['aws_dedicated_host_id'] = host['HostId']
             self.state = self.HOST_ALLOCATING
 
         if self.state == self.HOST_ALLOCATING:
@@ -222,7 +214,7 @@ class AwsCreateStateMachine(statemachine.StateMachine):
 
             state = self.host['State'].lower()
             if state == 'available':
-                self.node.aws_dedicated_host_id = self.host['HostId']
+                self.data['aws_dedicated_host_id'] = self.host['HostId']
                 self.state = self.INSTANCE_CREATING_START
             elif state in [
                     'permanent-failure', 'released',
@@ -237,14 +229,14 @@ class AwsCreateStateMachine(statemachine.StateMachine):
                 self.create_future = self.endpoint._submitCreateInstance(
                     self.provider, self.label, self.flavor, self.image,
                     self.image_external_id, self.tags, self.hostname,
-                    self.node.aws_dedicated_host_id, self.log)
+                    self.data.get('aws_dedicated_host_id'), self.log)
 
             instance = self.endpoint._completeCreateInstance(
                 self.create_future)
             if instance is None:
                 return
             self.instance = instance
-            self.node.aws_instance_id = instance['InstanceId']
+            self.data['aws_instance_id'] = instance['InstanceId']
             self.state = self.INSTANCE_CREATING
 
         if self.state == self.INSTANCE_CREATING:
@@ -260,24 +252,23 @@ class AwsCreateStateMachine(statemachine.StateMachine):
 
         if self.state == self.COMPLETE:
             self.complete = True
-            self.node.quota = self.endpoint.getQuotaForLabel(
+            self.info.quota = self.endpoint.getQuotaForLabel(
                 self.label, self.flavor, self.instance['InstanceType'])
             return AwsInstance(self.endpoint.region, self.instance,
-                               self.host, self.node.quota)
+                               self.host, self.info.quota)
 
 
 class AwsSnapshotStateMachine(statemachine.StateMachine):
     SNAPSHOT_PENDING = 'snapshot pending'
     COMPLETE = 'complete'
 
-    def __init__(self, endpoint, node, log):
+    def __init__(self, endpoint, node, state_info, tags, log):
+        super().__init__(state_info)
         self.log = log
         self.endpoint = endpoint
         self.node = node
-        initial_state = node.snapshot.snapshot_state
-        super().__init__(initial_state)
-        self.snapshot_id = initial_state.get('snapshot_id', None)
-        self.tags = node.snapshot.tags
+        self.scratch.setdefault('snapshot_id', None)
+        self.tags = node.tags
         # Restore local variables
         self.account_id = self.endpoint._getAccountId()
 
@@ -293,22 +284,15 @@ class AwsSnapshotStateMachine(statemachine.StateMachine):
                     self.volume_id = attachment['Ebs']['VolumeId']
                     break
 
-        if self.snapshot_id:
-            snapshot = dict(SnapshotId=self.snapshot_id)
+        if snapshot_id := self.scratch['snapshot_id']:
+            snapshot = dict(SnapshotId=snapshot_id)
             self.snapshot = self.endpoint._refresh(snapshot)
-
-    def toDict(self):
-        data = super().toDict()
-        data.update(
-            snapshot_id=self.snapshot_id,
-        )
-        return data
 
     def advance(self):
         if self.state == self.START:
             self.snapshot = self.endpoint._createSnapshot(
                 self.volume_id, self.tags)
-            self.snapshot_id = self.snapshot['SnapshotId']
+            self.scratch['snapshot_id'] = self.snapshot['SnapshotId']
             self.state = self.SNAPSHOT_PENDING
 
         if self.state == self.SNAPSHOT_PENDING:
@@ -323,8 +307,9 @@ class AwsSnapshotStateMachine(statemachine.StateMachine):
                 raise Exception(f"Snapshot in {state} state")
 
         if self.state == self.COMPLETE:
+            snapshot_id = self.scratch['snapshot_id']
             arn = (f'arn:aws:ec2:{self.endpoint.region}:{self.account_id}:'
-                   f'snapshot/{self.snapshot_id}')
+                   f'snapshot/{snapshot_id}')
             self.complete = True
             return arn
 

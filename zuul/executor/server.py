@@ -1762,7 +1762,7 @@ class AnsibleJob(object):
             else:
                 # Did not find the corresponding node
                 continue
-            external_id = provider_node.snapshot.external_id
+            external_id = provider_node.snapshot_id
             if external_id is None:
                 continue
             artifact = dict(

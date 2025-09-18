@@ -216,12 +216,11 @@ class LauncherClient:
                 try:
                     if provider_node.state == provider_node.State.IN_USE:
                         with provider_node.activeContext(ctx):
-                            provider_node.createSnapshot(ctx)
                             provider_node.setState(ProviderNode.State.SNAPSHOT)
                         ExistingDataWatch(self.zk_client.client,
-                                          provider_node.snapshot.getPath(),
+                                          provider_node.getPath(),
                                           node_watcher)
-                        wait_snapshots.append(provider_node.snapshot)
+                        wait_snapshots.append(provider_node)
                         log.debug("Set %s to snapshot", provider_node)
                 except Exception:
                     log.exception("Unable to snapshot node %s", provider_node)
