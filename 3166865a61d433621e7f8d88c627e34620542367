@@ -16,6 +16,23 @@
       "message": "recheck archive.apache.org timeout",
       "revId": "3166865a61d433621e7f8d88c627e34620542367",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b503a8b1_06a952db",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-09-18T21:29:57Z",
+      "side": 1,
+      "message": "recheck unrelated failure",
+      "revId": "3166865a61d433621e7f8d88c627e34620542367",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
