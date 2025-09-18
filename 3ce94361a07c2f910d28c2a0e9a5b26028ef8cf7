@@ -16,6 +16,24 @@
       "message": "It looks like by setting the subnode state after we\u0027ve transitioned the main node to `SLOT_HOST` we could end up in a situation where the subnodes are stuck in building state.\n\nE.g. if we get an exception while updating the subnode state for slot 0, we already change the main node\u0027s state and with that won\u0027t update any of the remaining subnodes.\n\nI\u0027m also wondering whether we want to update the subnode state here at all and instead do that when the subnode itself is processed. The problem I see is that we are holding also a lock for the subnode, which is not release when we transition to ready here.\n\nWith unfortunate timings we could mark the subnode as ready, fulfill the request and schedule a build all while the subnode is still locked which would prevent the executor from using the node.\n\nWe could also release the locks for the subnodes in line #1954 below, but maybe it would be better to treat them like any other node in this regard.",
       "revId": "3ce94361a07c2f910d28c2a0e9a5b26028ef8cf7",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c0a39425_22460bae",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1947,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-09-18T12:38:43Z",
+      "side": 1,
+      "message": "I think this also breaks the assumption that we only modify a node if we hold the node lock as a different launcher might have been the selected to process a subnode.",
+      "parentUuid": "3a4836fb_fb2e528c",
+      "revId": "3ce94361a07c2f910d28c2a0e9a5b26028ef8cf7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
