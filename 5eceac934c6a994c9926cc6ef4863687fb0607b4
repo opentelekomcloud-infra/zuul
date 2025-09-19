@@ -16,6 +16,23 @@
       "message": "recheck unrelated",
       "revId": "5eceac934c6a994c9926cc6ef4863687fb0607b4",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "04f857f9_b3e03390",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 35923
+      },
+      "writtenOn": "2025-09-19T15:26:51Z",
+      "side": 1,
+      "message": "Great fix, suffering with these exceptions that are failing jobs. Would be great if that could be ported to nodepool repo as well.",
+      "revId": "5eceac934c6a994c9926cc6ef4863687fb0607b4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ],
   "submitRequirementResults": [
