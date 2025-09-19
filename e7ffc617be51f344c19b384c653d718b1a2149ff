@@ -16,6 +16,24 @@
       "message": "s/provider/endpoint/",
       "revId": "e7ffc617be51f344c19b384c653d718b1a2149ff",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "271b4277_10942df9",
+        "filename": "zuul/driver/openstack/openstackendpoint.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 793,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-19T19:29:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "13dc0459_755fe917",
+      "revId": "e7ffc617be51f344c19b384c653d718b1a2149ff",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
