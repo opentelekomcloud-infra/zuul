@@ -788,9 +788,10 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
     def _findNetwork(self, name):
         with Timer(self.log, 'API call get_network'):
             network = self._client.get_network(name)
+            self.log.debug('Found network %s: %s', name, network)
         if not network:
-            raise Exception("Unable to find network %s in provider %s" % (
-                name, self.provider.name))
+            raise Exception("Unable to find network %s in endpoint %s" % (
+                name, self.name))
         return network
 
     # This method is based on code from OpenStackSDK, licensed
