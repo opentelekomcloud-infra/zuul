@@ -1388,10 +1388,9 @@ class ProjectParser(object):
 
         project_config.name = project_name
 
-        if not project_name.startswith('^'):
-            # Explicitly override this to False since we're reusing the
-            # project-template loading method which sets it True.
-            project_config.is_template = False
+        # Explicitly override this to False since we're reusing the
+        # project-template loading method which sets it True.
+        project_config.is_template = False
 
         branches = None
         if 'branches' in conf:
