@@ -2837,10 +2837,10 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         super().__init__()
         snapshot = ProviderNodeSnapshot()
         snapshot._set(node=self)
+        assignment = ProviderNodeAssignment()
+        assignment._set(node=self)
         self._set(
             uuid=uuid4().hex,
-            request_id=None,
-            min_request_version=None,
             zuul_event_id=None,
             span_info=None,
             max_ready_age=None,
@@ -2880,7 +2880,6 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             username=None,
             hold_expiration=None,
             attributes={},
-            tenant_name=None,
             host_keys=[],
             quota=QuotaInformation(),
             image_upload_uuid=None,
@@ -2893,6 +2892,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             delete_state_machine=None,
             nodescan_request=None,
             snapshot=snapshot,
+            assignment=assignment,
             # Attributes set by the launcher
             _lscores=None,
         )
@@ -2917,7 +2917,46 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
     def getLockPath(self):
         return f"{self.ROOT}/{self.LOCKS_PATH}/{self.uuid}"
 
+    @property
+    def request_id(self):
+        if self.assignment.getZKVersion() is not None:
+            return self.assignment.request_id
+        return None
+
+    @property
+    def min_request_version(self):
+        if self.assignment.getZKVersion() is not None:
+            return self.assignment.min_request_version
+        return None
+
+    @property
+    def tenant_name(self):
+        if self.assignment.getZKVersion() is not None:
+            return self.assignment.tenant_name
+        return None
+
+    def assign(self, context, request_id, tenant_name,
+               min_request_version=None):
+        self.assignment._set(
+            request_id=request_id,
+            min_request_version=min_request_version,
+            tenant_name=tenant_name,
+        )
+        self.assignment.internalCreate(context)
+
+    def unassign(self, context):
+        try:
+            self.assignment.delete(context)
+        except NoNodeError:
+            pass
+        self.assignment._clear()
+
     def deserialize(self, raw, context, extra=None):
+        if context is not None:
+            try:
+                self.assignment.refresh(context)
+            except NoNodeError:
+                self.assignment._clear()
         data = super().deserialize(raw, context)
         resources = data.get('quota') or {}
         data['quota'] = QuotaInformation(**resources)
@@ -2930,8 +2969,6 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             self._set(delete_state=self.delete_state_machine.toDict())
 
         data = dict(
-            request_id=self.request_id,
-            min_request_version=self.min_request_version,
             zuul_event_id=self.zuul_event_id,
             span_info=self.span_info,
             max_ready_age=self.max_ready_age,
@@ -2951,7 +2988,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             delete_state=self.delete_state,
             quota=self.quota.getResources(),
             image_upload_uuid=self.image_upload_uuid,
-            **self.getNodeData(),
+            **self.getNodeData(serialize_node=True),
             **self.getDriverData(),
         )
         return json.dumps(data, sort_keys=True).encode("utf-8")
@@ -2981,10 +3018,10 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
     def getDriverData(self):
         return dict()
 
-    def getNodeData(self):
+    def getNodeData(self, serialize_node=False):
         # This gets stored on the ProviderNode object, but also copied
         # to the Node object for use by the executor.
-        return dict(
+        ret = dict(
             uuid=self.uuid,
             attributes=self.attributes,
             az=self.az,
@@ -3008,10 +3045,12 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             region=self.region,
             resources=None,
             slot=self.slot,
-            tenant_name=self.tenant_name,
             username=self.username,
             node_properties=self.node_properties,
         )
+        if not serialize_node:
+            ret['tenant_name'] = self.tenant_name
+        return ret
 
     def getSpanAttributes(self):
         return dict(
@@ -3063,6 +3102,57 @@ class ProviderNodeSnapshot(zkobject.LockableZKObject):
             tags=self.tags,
         )
         return json.dumps(data, sort_keys=True).encode("utf-8")
+
+
+class ProviderNodeAssignment(zkobject.ZKObject):
+    # We don't want to re-create the node in case it was deleted
+    makepath = False
+    ASSIGNMENT_PATH = 'assignment'
+
+    # This object allows us to change the request to which a node is
+    # assigned without locking it.  That allows us to reassign a node
+    # that is in the building state while the launcher still holds the
+    # node lock.  The conflict resolution algorithm is simply that we
+    # always create or delete the assignment subnode, we never update
+    # it.  Any launcher that wants to assign the node to a request
+    # should simply create the node.  If another launcher races, the
+    # loser will receive a NodeExistsError.  To unassign, delete it.
+    #
+    # If the node is in the READY state, the launcher should still
+    # acquire the node lock before creating the child znode. That's
+    # because the launcher responsible for the node may race it when
+    # performing a state change to OUTDATED. Or an API user may change
+    # the state from READY to HOLD. Only in the BUILDING state should
+    # the child znode be created without holding the node lock.
+
+    def __init__(self):
+        super().__init__()
+        self._set(
+            request_id=None,
+            min_request_version=None,
+            tenant_name=None,
+            # Not serialized
+            node=None,
+        )
+
+    def getPath(self):
+        return f"{self.node.getPath()}/{self.ASSIGNMENT_PATH}"
+
+    def serialize(self, context):
+        data = dict(
+            request_id=self.request_id,
+            min_request_version=self.min_request_version,
+            tenant_name=self.tenant_name,
+        )
+        return json.dumps(data, sort_keys=True).encode("utf-8")
+
+    def _clear(self):
+        # Internal method used to reset values on deletion.
+        self._set(
+            request_id=None,
+            min_request_version=None,
+            tenant_name=None,
+        )
 
 
 class Secret(ConfigObject):
