@@ -29,7 +29,7 @@ class SubnodeProviderNode(model.ProviderNode, subclass_id="subnode"):
         # synchronize any attributes that should be copied to the
         # subnode.
         # Called with an active context
-        for k, v in self.getNodeData().items():
+        for k, v in self.getNodeData(serialize_node=True).items():
             setattr(self, k, v)
 
 
