@@ -2804,8 +2804,9 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
             # Alternate between the two dummy provider nodes classes
             node_class = DummyAProviderNode if i % 2 else DummyBProviderNode
             node = node_class.new(
-                context, request_id=request.uuid, uuid=uuid.uuid4().hex,
+                context, uuid=uuid.uuid4().hex,
                 request_time=request.request_time, label=label)
+            node.assign(context, request_id=request.uuid, tenant_name='test')
 
         # Wait for the nodes to show up in the cache
         for _ in iterate_timeout(10, "nodes to show up"):
@@ -2953,7 +2954,7 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
         node_class = DummyAProviderNode
 
         node1 = node_class.new(
-            context, request_id='1', uuid='1', quota=quota, label='foo',
+            context, uuid='1', quota=quota, label='foo',
             provider='provider', state=node_class.State.REQUESTED)
         for _ in iterate_timeout(10, "cache to sync"):
             used = self.api.nodes_cache.getQuota(provider)
@@ -2973,7 +2974,7 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
                 break
 
         node2 = node_class.new(
-            context, request_id='2', uuid='2', quota=quota, label='foo',
+            context, uuid='2', quota=quota, label='foo',
             provider='provider', state=node_class.State.BUILDING)
         for _ in iterate_timeout(10, "cache to sync"):
             used = self.api.nodes_cache.getQuota(provider)
@@ -2998,11 +2999,11 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
         node_class = DummyAProviderNode
         quota = QuotaInformation(instances=1)
         node_class.new(
-            context, request_id='1', uuid='1', quota=quota, label='foo',
+            context, uuid='1', quota=quota, label='foo',
             provider='provider', state=node_class.State.REQUESTED,
             request_time=20)
         node_class.new(
-            context, request_id='2', uuid='2', quota=quota, label='foo',
+            context, uuid='2', quota=quota, label='foo',
             provider='provider', state=node_class.State.REQUESTED,
             request_time=10)
         for _ in iterate_timeout(10, "cache to sync"):
@@ -3017,8 +3018,9 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
     def test_node_snapshot(self):
         context = ZKContext(self.zk_client, None, None, self.log)
         node = DummyAProviderNode.new(
-            context, request_id=uuid.uuid4().hex, uuid=uuid.uuid4().hex,
+            context, uuid=uuid.uuid4().hex,
             label='foo')
+        node.assign(context, request_id=uuid.uuid4().hex, tenant_name='test')
         with node.locked(context):
             # The executor copy
             node.createSnapshot(context)
@@ -3043,6 +3045,30 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
 
         self.assertFalse(self.zk_client.client.exists(node.getPath()))
         self.assertFalse(self.zk_client.client.exists(node.getLockPath()))
+
+    def test_node_assignment(self):
+        context = ZKContext(self.zk_client, None, None, self.log)
+        node = DummyAProviderNode.new(
+            context,
+            uuid=uuid.uuid4().hex,
+            label='foo')
+        node.assign(context, request_id='1234', tenant_name='tenant-one')
+
+        # Wait for the nodes to show up in the cache
+        for _ in iterate_timeout(10, "node to show up"):
+            provider_nodes = self.api.getProviderNodes()
+            if len(provider_nodes) == 1:
+                if (provider_nodes[0].request_id == '1234' and
+                    provider_nodes[0].tenant_name == 'tenant-one'):
+                    break
+
+        node.unassign(context)
+        for _ in iterate_timeout(10, "node to update"):
+            provider_nodes = self.api.getProviderNodes()
+            if len(provider_nodes) == 1:
+                if (provider_nodes[0].request_id is None and
+                    provider_nodes[0].tenant_name is None):
+                    break
 
 
 class DummyLockable(LockableZKObject):

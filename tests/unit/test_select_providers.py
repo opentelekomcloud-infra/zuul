@@ -94,8 +94,10 @@ class TestSelectProviders(LauncherBaseTestCase):
         node._set(
             uuid=uuid.uuid4().hex,
             executor_zone=None,
-            request_id=request_id,
             state=state,
+        )
+        node.assignment._set(
+            request_id=request_id,
         )
         return node
 
