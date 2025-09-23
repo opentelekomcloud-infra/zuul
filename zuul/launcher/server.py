@@ -1292,7 +1292,9 @@ class Launcher:
             # TODO: sort by age? use old nodes first? random to reduce
             # chance of thundering herd?
             for node in unassigned_for_label:
-                if node.is_locked:
+                if node.request_id:
+                    continue
+                if node.state not in node.ASSIGNABLE_STATES:
                     continue
                 if node.hasExpired():
                     continue
@@ -1319,7 +1321,10 @@ class Launcher:
                 # TODO: sort by age? use old nodes first? random to reduce
                 # chance of thundering herd?
                 for node, providers in list(unassigned_for_label.items()):
-                    if not node.acquireLock(ctx, blocking=False):
+                    # We can assign a building node without
+                    # acquiring the lock.
+                    lock_node = not (node.state == node.State.BUILDING)
+                    if lock_node and not node.acquireLock(ctx, blocking=False):
                         log.debug("Failed to lock matching unassigned node %s",
                                   node)
                         continue
@@ -1331,15 +1336,15 @@ class Launcher:
                             request_unassigned_nodes[label.name].pop(node)
                             unassigned_nodes[label.name].remove(node)
                             continue
-                        tags = provider.getNodeTags(
-                            self.system.system_id, label, node.uuid,
-                            provider, request)
-                        with self.createZKContext(node._lock, self.log) as ctx:
-                            node.updateAttributes(
+                        nearest_lock = (
+                            lock_node and node._lock or request._lock
+                        )
+                        with self.createZKContext(
+                                nearest_lock, self.log) as ctx:
+                            node.assign(
                                 ctx,
                                 request_id=request.uuid,
                                 tenant_name=request.tenant_name,
-                                tags=tags,
                             )
                         request_unassigned_nodes[label.name].pop(node)
                         unassigned_nodes[label.name].remove(node)
@@ -1350,7 +1355,8 @@ class Launcher:
                             "Faild to assign unassigned node %s", node)
                         continue
                     finally:
-                        node.releaseLock(ctx)
+                        if lock_node:
+                            node.releaseLock(ctx)
                 else:
                     # If we have not assigned any nodes to this
                     # request we don't have to proceed if there is no
@@ -1585,18 +1591,19 @@ class Launcher:
         # set on subnodes.
         subnode_args = args.copy()
         request_args = {}
+        assign_args = {}
         if request is not None:
             with trace.use_span(request._span):
                 node_span = self.tracer.start_span("ProviderNode")
             request_args['tags'] = provider.getNodeTags(
                 self.system.system_id, label, node_uuid, provider, request)
             request_args['span_info'] = tracing.getSpanInfo(node_span)
-            request_args['min_request_version'] = request.getZKVersion() + 1
-            request_args['request_id'] = request.uuid
             request_args['zuul_event_id'] = request.zuul_event_id
-            request_args['tenant_name'] = request.tenant_name
             request_args['request_time'] = request.request_time
             request_args['image_upload_uuid'] = request.image_upload_uuid
+            assign_args['request_id'] = request.uuid
+            assign_args['min_request_version'] = request.getZKVersion() + 1
+            assign_args['tenant_name'] = request.tenant_name
         else:
             # We don't pass a provider here as the node should not
             # be directly associated with a tenant or provider.
@@ -1609,6 +1616,7 @@ class Launcher:
         log.debug("Requested node %s", node)
         subnodes = []
         retnode = node
+
         if label.slots and label.slots > 1:
             for slot in range(max(label.slots, 0)):
                 if slot == 0:
@@ -1623,10 +1631,16 @@ class Launcher:
                 subnodes.append(subnode.uuid)
                 if slot == 0:
                     retnode = subnode
+                    if request is not None:
+                        # Assign the sub node
+                        subnode.assign(ctx, **assign_args)
             node.updateAttributes(
                 ctx,
                 subnodes=subnodes,
             )
+        elif request is not None:
+            # Assign the main (only) node
+            node.assign(ctx, **assign_args)
         return retnode
 
     def _createSubNode(self, context, node, args, slot):
@@ -1658,6 +1672,7 @@ class Launcher:
             for i, node in enumerate(requested_nodes):
                 label, provider = label_providers[i]
                 if (node.state in node.FAILED_STATES or
+                    node.state == node.State.HOLD or
                     provider.canonical_name != node.provider):
                     # We're either retrying this node or we're
                     # changing providers.
@@ -1781,11 +1796,7 @@ class Launcher:
             log.debug("Deallocating node %s from missing request %s",
                       node, node.request_id)
             with self.createZKContext(node._lock, self.log) as ctx:
-                node.updateAttributes(
-                    ctx,
-                    request_id=None,
-                    tenant_name=None,
-                )
+                node.unassign(ctx)
 
         # Recycle a node if the label allows reuse
         elif (node.request_id and not request
@@ -2055,9 +2066,7 @@ class Launcher:
                 state = node.State.READY
                 log.debug("Marking node %s as %s for reuse",
                           node, state)
-                node.request_id = None
-                node.tenant_name = None
-                node.nodescan_request = None
+                node.unassign(ctx)
                 node.setState(state)
 
     def _processNodeSnapshot(self, node, log):
@@ -2172,9 +2181,11 @@ class Launcher:
             request_up_to_date = False
             if request is not None:
                 request_version = request.getZKVersion()
-                if request_version is not None:
-                    if request_version >= node.min_request_version:
-                        request_up_to_date = True
+                if node.min_request_version is None:
+                    request_up_to_date = True
+                elif (request_version is not None and
+                      request_version >= node.min_request_version):
+                    request_up_to_date = True
             if (request is None or
                 (request_up_to_date and
                  node.uuid not in request.nodes)):
@@ -2289,7 +2300,9 @@ class Launcher:
         for node in self.api.getProviderNodes():
             if node.request_id is not None:
                 continue
-            if node.is_locked or node.state not in node.ASSIGNABLE_STATES:
+            if node.subnodes:
+                continue
+            if node.state not in node.ASSIGNABLE_STATES:
                 continue
             unassigned_nodes[node.label].append(node)
         # Sort by state first

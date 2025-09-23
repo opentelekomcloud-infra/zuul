@@ -2804,8 +2804,9 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
             # Alternate between the two dummy provider nodes classes
             node_class = DummyAProviderNode if i % 2 else DummyBProviderNode
             node = node_class.new(
-                context, request_id=request.uuid, uuid=uuid.uuid4().hex,
+                context, uuid=uuid.uuid4().hex,
                 request_time=request.request_time, label=label)
+            node.assign(context, request_id=request.uuid, tenant_name='test')
 
         # Wait for the nodes to show up in the cache
         for _ in iterate_timeout(10, "nodes to show up"):
@@ -3043,6 +3044,30 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
 
         self.assertFalse(self.zk_client.client.exists(node.getPath()))
         self.assertFalse(self.zk_client.client.exists(node.getLockPath()))
+
+    def test_node_assignment(self):
+        context = ZKContext(self.zk_client, None, None, self.log)
+        node = DummyAProviderNode.new(
+            context,
+            uuid=uuid.uuid4().hex,
+            label='foo')
+        node.assign(context, request_id='1234', tenant_name='tenant-one')
+
+        # Wait for the nodes to show up in the cache
+        for _ in iterate_timeout(10, "node to show up"):
+            provider_nodes = self.api.getProviderNodes()
+            if len(provider_nodes) == 1:
+                if (provider_nodes[0].request_id == '1234' and
+                    provider_nodes[0].tenant_name == 'tenant-one'):
+                    break
+
+        node.unassign(context)
+        for _ in iterate_timeout(10, "node to update"):
+            provider_nodes = self.api.getProviderNodes()
+            if len(provider_nodes) == 1:
+                if (provider_nodes[0].request_id is None and
+                    provider_nodes[0].tenant_name is None):
+                    break
 
 
 class DummyLockable(LockableZKObject):
