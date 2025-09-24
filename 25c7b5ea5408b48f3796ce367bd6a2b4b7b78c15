@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b563b512_18e3b3c2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-09-24T19:33:53Z",
+      "side": 1,
+      "message": "I manually reenqueued and promoted this into the tip of the zuul gate because the timeout appears to have been one where things were still running and not a completion of test cases then failure to exit due to the cheroot issue. That means I think this is a different type of timeout failure.",
+      "revId": "25c7b5ea5408b48f3796ce367bd6a2b4b7b78c15",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
