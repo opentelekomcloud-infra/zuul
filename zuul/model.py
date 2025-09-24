@@ -2029,8 +2029,7 @@ class ProviderConfig(ConfigObject):
             previous_section = parent_section
         inheritance_path.reverse()
 
-        root = inheritance_path[0]
-        config = copy.deepcopy(root.config)
+        config = {}
         connection = connections.get(connection_name)
         if connection is None:
             raise UnknownConnection(connection_name)
