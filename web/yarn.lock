@@ -1722,10 +1722,10 @@
     lodash "^4.17.4"
     read-pkg-up "^7.0.0"
 
-"@softwarefactory-project/re-ansi@^0.7.2":
-  version "0.7.2"
-  resolved "https://registry.yarnpkg.com/@softwarefactory-project/re-ansi/-/re-ansi-0.7.2.tgz#c381c4495f67b6349eb1be0064207cae42bb2552"
-  integrity sha512-KbI5BD71tT5qxPsQwvP947vcbT/bgDxqQico3LqeRLnaA/9ByRRtZLDWnhg5pIM0wkJVIKxnDJenfb++fV9KwA==
+"@softwarefactory-project/re-ansi@^0.7.3":
+  version "0.7.3"
+  resolved "https://registry.yarnpkg.com/@softwarefactory-project/re-ansi/-/re-ansi-0.7.3.tgz#00c26a2d132916eddc54afd9c11ea60f7b1c3b4e"
+  integrity sha512-NnJodDOieKXyKdlMpfSfOZxwGChPubAwhfUfdPAgo+YxaJ0cGi6N2rVTM333pulxYmm2T7bxqkbs06Jhc6V3xQ==
 
 "@svgr/babel-plugin-add-jsx-attribute@^4.2.0":
   version "4.2.0"
