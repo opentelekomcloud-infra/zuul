@@ -1602,18 +1602,18 @@ class TestNodepoolConfig(LauncherBaseTestCase):
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_section_inheritance(self):
-        # Verify that a section may not inherit from a section in a
+        # Verify that a section may inherit from a section in a
         # different project.
 
         in_repo_conf = textwrap.dedent(
             """
             - section:
-                name: badsection
+                name: newsection
                 parent: aws-base
             - provider:
-                name: badprovider
-                section: badsection
-                region: foo
+                name: newprovider
+                section: newsection
+                region: us-west-2
             """)
         file_dict = {'zuul.yaml': in_repo_conf}
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
@@ -1621,13 +1621,12 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
         self.assertEqual(A.reported, 1)
-        self.assertEqual(A.patchsets[-1]['approvals'][0]['value'], '-1')
-        self.assertIn('references a section', A.messages[0])
+        self.assertEqual(A.patchsets[-1]['approvals'][0]['value'], '1')
         A.setMerged()
         self.fake_gerrit.addEvent(A.getChangeMergedEvent())
         self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertFalse('badprovider' in tenant.layout.providers)
+        self.assertTrue('newprovider' in tenant.layout.providers)
 
     @simple_layout('layouts/nodepool-provider-flavors.yaml',
                    enable_nodepool=True)

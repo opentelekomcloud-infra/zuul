@@ -2930,11 +2930,6 @@ class TenantParser(object):
                 with parse_context.accumulator.catchErrors():
                     shadow_layout.addProviderConfig(provider_config)
 
-        # Verify the nodepool references in the shadow (or real) layout
-        for section in shadow_layout.sections.values():
-            with parse_context.errorContext(stanza='section', conf=section):
-                with parse_context.accumulator.catchErrors():
-                    section.validateReferences(shadow_layout)
         # Add providers to the shadow (or real) layout
         for provider_config in shadow_layout.provider_configs.values():
             with parse_context.errorContext(stanza='provider',
