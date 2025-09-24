@@ -43,6 +43,8 @@
       key-name: zuul
       volume-type: gp3
       volume-size: 10  # winner (all)
+      security-group-ids:
+        - sg1
     image-defaults:
       volume-size: 20
       iops: 20

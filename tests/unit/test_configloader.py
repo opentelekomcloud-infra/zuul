@@ -1491,6 +1491,7 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.assertEqual('debian-normal', label.name)
         self.assertEqual('debian', label.image)
         self.assertEqual('normal', label.flavor)
+
         label = layout.labels['debian-large']
         self.assertEqual('debian-large', label.name)
         self.assertEqual('debian', label.image)
@@ -1523,6 +1524,7 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.assertEqual(900, label.max_ready_age)
         self.assertEqual('required', label.imds_http_tokens)
         self.assertFalse(label.host_key_checking)
+        self.assertEqual(['sg1'], label.security_group_ids)
 
         label = provider.labels['debian-large']
         self.assertEqual('gp3', label.volume_type)
@@ -1532,6 +1534,7 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.assertEqual(300, label.max_ready_age)
         self.assertEqual('required', label.imds_http_tokens)
         self.assertFalse(label.host_key_checking)
+        self.assertEqual(['sg1'], label.security_group_ids)
 
         label = provider.labels['debian-local-normal']
         self.assertEqual('gp3', label.volume_type)
@@ -1541,6 +1544,7 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.assertEqual(900, label.max_ready_age)
         self.assertEqual('required', label.imds_http_tokens)
         self.assertFalse(label.host_key_checking)
+        self.assertEqual(['sg1'], label.security_group_ids)
 
     @simple_layout('layouts/nodepool-defaults-redefinition.yaml',
                    enable_nodepool=True)
