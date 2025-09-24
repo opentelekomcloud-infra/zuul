@@ -832,8 +832,20 @@ class Repo(object):
                 #     commit should be backed out
                 head = repo.commit("HEAD")
                 parent = head.parents[0]
-                if not any(head.diff(parent)) and \
-                        any(fetch_head.diff(fetch_head.parents[0])):
+                fetch_parent = fetch_head.parents[0]
+                head_diff = repo.git.diff(
+                    f"{parent}..{head}",
+                    name_only=True, no_color=True, z=True)
+                if not head_diff:
+                    fetch_head_diff = repo.git.diff(
+                        f"{fetch_parent}..{fetch_head}",
+                        name_only=True, no_color=True, z=True)
+                else:
+                    # We don't need to check the fetch_head diff in
+                    # this case
+                    fetch_head_diff = None
+
+                if not head_diff and fetch_head_diff:
                     log.debug("%s was already applied. Removing it", ref)
                     self._checkout(repo, None, parent)
                     op = zuul.model.MergeOp(comment=f"Already applied {ref}")
