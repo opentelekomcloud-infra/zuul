@@ -1542,7 +1542,7 @@ class ChrootedKazooFixture(fixtures.Fixture):
             # prevent any nasty hobbits^H^H^H suprises
             if 'ZUUL_ZK_HOST' in os.environ:
                 raise Exception(
-                    'Looks like tox-docker is being used but you have also '
+                    'Looks like nox-docker is being used but you have also '
                     'configured ZUUL_ZK_HOST. Either avoid using the '
                     'docker environment or unset ZUUL_ZK_HOST.')
 

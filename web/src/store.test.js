@@ -8,7 +8,7 @@ it('should fetch a build', () => {
   const store = createStore(rootReducer, initialState)
   const build = {
     uuid: '1234',
-    job_name: 'run-tox',
+    job_name: 'run-nox',
   }
 
   const action = buildActions.receiveBuild(build.uuid, build)
@@ -22,7 +22,7 @@ it('should fetch an output', () => {
   const store = createStore(rootReducer, initialState)
   const build = {
     uuid: '1234',
-    job_name: 'run-tox',
+    job_name: 'run-nox',
   }
   const output = [
     {
@@ -136,7 +136,7 @@ it('should fetch a manifest file', () => {
   const store = createStore(rootReducer, initialState)
   const build = {
     uuid: '1234',
-    job_name: 'run-tox',
+    job_name: 'run-nox',
   }
   const manifest = {
     tree: [

@@ -26,9 +26,9 @@ good features available. If you're going to hack on the Javascript, you should
 get to know them.
 
 If you don't want to hack on Javascript and just want to run Zuul's tests,
-``tox`` has been set up to handle it for you.
+``nox`` has been set up to handle it for you.
 
-If you do not have `yarn`_ installed, ``tox`` will use `nodeenv`_ to install
+If you do not have `yarn`_ installed, ``nox`` will use `nodeenv`_ to install
 node into the active python virtualenv, and then will install `yarn`_ into
 that virtualenv as well.
 
