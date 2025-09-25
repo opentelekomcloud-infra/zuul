@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f94c02d_be8af6bc",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1344,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-09-25T13:28:40Z",
+      "side": 1,
+      "message": "I think we need to handle race conditions here and continue in case we get a `NodeExistsError`.",
+      "revId": "af07e3f08cf78e17e060f93e418935d46961f97a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "efd67a3c_6a00277a",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2949,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-09-25T13:28:40Z",
+      "side": 1,
+      "message": "Would it make sense to make this idempotent?\n\n```\ntry:\n    self.assignment.delete(context)\nexcept NoNodeError:\n    pass\nself.assignment._clear()\n```",
+      "range": {
+        "startLine": 2948,
+        "startChar": 0,
+        "endLine": 2949,
+        "endChar": 39
+      },
+      "revId": "af07e3f08cf78e17e060f93e418935d46961f97a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
