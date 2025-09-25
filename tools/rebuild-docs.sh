@@ -24,7 +24,7 @@ function init () {
     cd /tmp/rebuild
     git clone https://opendev.org/zuul/zuul
     cd /tmp/rebuild/zuul
-    tox -e docs --notest
+    nox -s docs --notest
 }
 
 function build {
@@ -38,8 +38,8 @@ function build {
     cp $ZUUL_DIR/doc/source/_templates/* doc/source/_templates
     cp $ZUUL_DIR/doc/source/conf.py doc/source
     cp $ZUUL_DIR/doc/requirements.txt doc
-    cp $ZUUL_DIR/tox.ini .
-    . .tox/docs/bin/activate
+    cp $ZUUL_DIR/noxfile.py .
+    . .nox/docs/bin/activate
     sphinx-build -E -d doc/build/doctrees -b html doc/source/ doc/build/html
     mv doc/build/html /tmp/rebuild/output/$1
     rm -fr doc/build/doctrees
