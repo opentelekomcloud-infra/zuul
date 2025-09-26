@@ -29,7 +29,8 @@ function Project(props) {
 
   function renderVariantTitle (variant) {
     let title = variant.source_context.project === project.name ?
-        variant.source_context.branch : variant.source_context.project
+        variant.source_context.branch :
+          `${variant.source_context.project} (${variant.source_context.branch})`
     return title
   }
 
