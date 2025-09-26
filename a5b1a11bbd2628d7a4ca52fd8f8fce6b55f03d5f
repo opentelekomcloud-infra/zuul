@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80db1068_e261ac80",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 2307,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-09-26T09:56:54Z",
+      "side": 1,
+      "message": "I think this will always sort nodes by time and not by state. To first sort by state and then time we probably need to use a combined sort key:\n\n        def _sort_key(n):\n            return n.ASSIGNABLE_STATES[n.state], n\n        for nodes in unassigned_nodes.values():\n            nodes.sort(key\u003d_sort_key)\n            \nrelated: https://opendev.org/zuul/nodepool/src/branch/master/nodepool/launcher.py#L141-L147",
+      "range": {
+        "startLine": 2303,
+        "startChar": 0,
+        "endLine": 2307,
+        "endChar": 24
+      },
+      "revId": "a5b1a11bbd2628d7a4ca52fd8f8fce6b55f03d5f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
