@@ -9163,6 +9163,71 @@ class TestJobOutput(AnsibleZuulTestCase):
         log_output = output.getvalue()
         self.assertIn('Ansible output exceeds max. line size of', log_output)
 
+    def test_job_output_pre_timed_out_json(self):
+        self.executor_server.keep_jobdir = True
+        files = {'pretimeout': ''}
+        A = self.fake_gerrit.addFakeChange('org/project6', 'master', 'A',
+                                           files=files)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        # Failures in pre-run have a None result and then Zuul determines
+        # if they should be retried from there.
+        self.assertHistory([
+            dict(name='pre-timeout', result=None, changes='1,1'),
+        ], ordered=False)
+        j = json.loads(self._get_file(self.history[0],
+                                      'work/logs/job-output.json'))
+        self.assertEqual('pre', j[0]['phase'])
+        self.assertEqual(0, j[0]['index'])
+        expected_str = 'Dummy failure play. Playbook failed and could ' \
+                       'not record why in the json record possibly due ' \
+                       'to a timeout or Ansible error.'
+        result = j[0]['plays'][0]['play']['name']
+        self.assertEqual(expected_str, result)
+
+    def test_job_output_run_timed_out_json(self):
+        self.executor_server.keep_jobdir = True
+        files = {'runtimeout': ''}
+        A = self.fake_gerrit.addFakeChange('org/project6', 'master', 'A',
+                                           files=files)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='run-timeout', result='TIMED_OUT', changes='1,1'),
+        ], ordered=False)
+        j = json.loads(self._get_file(self.history[0],
+                                      'work/logs/job-output.json'))
+        self.assertEqual('run', j[0]['phase'])
+        self.assertEqual(0, j[0]['index'])
+        expected_str = 'Dummy failure play. Playbook failed and could ' \
+                       'not record why in the json record possibly due ' \
+                       'to a timeout or Ansible error.'
+        result = j[0]['plays'][0]['play']['name']
+        self.assertEqual(expected_str, result)
+
+    def test_job_output_post_timed_out_json(self):
+        self.executor_server.keep_jobdir = True
+        files = {'posttimeout': ''}
+        A = self.fake_gerrit.addFakeChange('org/project6', 'master', 'A',
+                                           files=files)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='post-timeout', result='POST_FAILURE', changes='1,1'),
+        ], ordered=False)
+        j = json.loads(self._get_file(self.history[0],
+                                      'work/logs/job-output.json'))
+        self.assertEqual('post', j[1]['phase'])
+        self.assertEqual(0, j[1]['index'])
+        expected_str = 'Dummy failure play. Playbook failed and could ' \
+                       'not record why in the json record possibly due ' \
+                       'to a timeout or Ansible error.'
+        result = j[1]['plays'][0]['play']['name']
+        self.assertEqual(expected_str, result)
+
 
 class TestNoLog(AnsibleZuulTestCase):
     tenant_config_file = 'config/ansible-no-log/main.yaml'

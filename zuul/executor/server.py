@@ -3819,7 +3819,76 @@ class AnsibleJob(object):
                 phase=phase or 'unknown')
 
         self.emitPlaybookBanner(playbook, 'END', phase, result=result)
+        # If we end normally with a failed result or if things exit
+        # abnormally attempt to inject minimal missing data into the
+        # job-output.json file.
+        if (result not in [self.RESULT_NORMAL, self.RESULT_ABORTED] or
+            code != 0):
+            try:
+                # TODO(clarkb) Do something with result or stop passing it.
+                self.addPlaybookToJson(playbook, phase, index, result)
+            except Exception:
+                # This is a best effort attempt at adding additional logging
+                # info when things have gone wrong. Simply ignore errors if
+                # we things are so wrong we can add more debug info.
+                self.log.exception('Unable to append dummy json data:')
         return result, code
+
+    def addPlaybookToJson(self, playbook, phase, index, result):
+        # If the index count doesn't match what is already in the json
+        # file then append a dummy playbook to the file for logging
+        # consistency. Note this needs to work in conjunction with the
+        # Ansible zuul_json callback module.
+        output_path = os.path.splitext(
+            self.jobdir.job_output_file)[0] + '.json'
+        first_time = False
+        if not os.path.exists(output_path):
+            # The first playbook failed to write. Set up json and skip
+            # counting checks
+            first_time = True
+            with open(output_path, 'w') as outfile:
+                outfile.write('[\n\n]\n')
+            self.writePlaybookJson(output_path, first_time, playbook,
+                                   phase, index, result)
+        else:
+            # TODO(clarkb) Is this going to be too slow if there are many
+            # playbooks and a lot of json content?
+            with open(output_path, 'r') as outfile:
+                playbooks = json.load(outfile)
+            counter = 0
+            for p in playbooks:
+                if p['phase'] == phase:
+                    counter = counter + 1
+            if index + 1 > counter:
+                # The previous playbook did not write json data so we need
+                # to write the dummy data
+                self.writePlaybookJson(output_path, first_time, playbook,
+                                       phase, index, result)
+
+    def writePlaybookJson(self, output_path, first_time, playbook,
+                          phase, index, result):
+        with open(output_path, 'r+') as outfile:
+            file_len = outfile.seek(0, os.SEEK_END)
+            # Remove three bytes to eat the trailing newline written by the
+            # json.dump. This puts the ',' on the end of lines.
+            outfile.seek(file_len - 3)
+            if not first_time:
+                outfile.write(',\n')
+            playbook_info = {}
+            playbook_info['playbook'] = playbook.canonical_name_and_path
+            playbook_info['branch'] = playbook.branch
+            playbook_info['phase'] = phase
+            playbook_info['index'] = index
+            playbook_info['plays'] = [{
+                'play': {
+                    'name': 'Dummy failure play. Playbook failed and could '
+                            'not record why in the json record possibly due '
+                            'to a timeout or Ansible error.'
+                }
+            }]
+            json.dump(playbook_info, outfile,
+                      indent=4, sort_keys=True, separators=(',', ': '))
+            outfile.write('\n]\n')
 
 
 class ExecutorServer(BaseMergeServer):
