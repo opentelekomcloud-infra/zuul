@@ -71,7 +71,11 @@ class SchemaWalker:
                 w = SchemaWalker(v)
                 v = w.toDict()
                 ret.append(v)
-            return dict(alts=ret, doc=self.doc)
+            islist = False
+            if len(ret) == 1 and isinstance(ret[0], list):
+                ret = ret[0]
+                islist = True
+            return dict(alts=ret, doc=self.doc, list=islist)
         if isinstance(self.schema, vs.All):
             schemas = []
             for v in self.schema.validators:
