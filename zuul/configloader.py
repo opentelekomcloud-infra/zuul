@@ -514,7 +514,7 @@ class ProviderParser(object):
     def fromYaml(self, conf):
         self.schema(conf)
 
-        if 'flavor' in conf:
+        if 'flavors' in conf:
             raise Exception("Flavor configuration not permitted in Provider, "
                             "only Section")
 

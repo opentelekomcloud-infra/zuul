@@ -1628,3 +1628,11 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         self.assertFalse('badprovider' in tenant.layout.providers)
+
+    @simple_layout('layouts/nodepool-provider-flavors.yaml',
+                   enable_nodepool=True)
+    def test_nodepool_provider_flavors(self):
+        layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
+        self.assertEquals(1, len(layout.loading_errors))
+        self.assertIn('Flavor configuration not permitted in',
+                      layout.loading_errors[0].error)
