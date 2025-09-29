@@ -1270,6 +1270,7 @@ class FakeNodepool(object):
         self.attributes = None
         self.resources = None
         self.python_path = 'auto'
+        self.override_python_path = None
         self.shell_type = None
         self.connection_port = None
         self.history = []
@@ -1429,6 +1430,12 @@ class FakeNodepool(object):
             }
             data['interface_ip'] = data['connection_port']['pod']
             data['public_ipv4'] = None
+        if not data.get('connection_type') and self.override_python_path:
+            # We aren't setting a specific connection type so will
+            # connect locally. On certain platforms (like tumbleweed)
+            # ansible auto python interpreter discovery does the wrong
+            # thing so we allow test runners to override a set value.
+            data['python_path'] = self.override_python_path
         data['tenant_name'] = request['tenant_name']
         data['requestor'] = request['requestor']
 
@@ -4102,6 +4109,18 @@ class ZuulTestCase(BaseTestCase):
 class AnsibleZuulTestCase(ZuulTestCase):
     """ZuulTestCase but with an actual ansible executor running"""
     run_ansible = True
+
+    def setUp(self):
+        super().setUp()
+
+        py = os.environ.get("ZUUL_ANSIBLE_PYTHON")
+        if py:
+            # When we actually run Ansible then either Ansible python
+            # interpreter discovery must work or we need to set a valid
+            # override. Overrides are necessary when Ansible doesn't have the
+            # platform in its discovery lookup table as is the case with
+            # OpenSUSE Tumbleweed.
+            self.fake_nodepool.override_python_path = py
 
     @contextmanager
     def jobLog(self, build):
