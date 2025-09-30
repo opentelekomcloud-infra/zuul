@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "071cba85_9731c59c",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3855,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-30T16:17:22Z",
+      "side": 1,
+      "message": "There are two situations where I know we\u0027re going to want to write data:\n\n1) Timeout\n2) Module error\n\nLet\u0027s focus on #1 right now.  We know that we have timed out, therefore we know that there will be no playbook written, and therefore we need to write our own.  In that case, we don\u0027t need to read any JSON in.\n\nI think we should do exactly what the json callback does and just blindly seek and append, without reading any JSON in.  I think it\u0027s important to keep this as fast and low-resource as possible.\n\nWhen we look at case #2, I think there are two sub-cases:\n\n2A) We have detected a syntax error and are writing the output to the job-output.txt file.  In that case, we should do the same for the .json file\n2B) There is an error and we are not writing anything to job-output.txt.  In that case, we could do nothing or emit a generic error to .json.\n\nI think for case 2B, we should be conservative for now, and also emit nothing.\n\nThe result of all this is that the job-output.json file should be at least as useful, if not moreso, than job-output.txt.\n\nThe remaining questios is whether any of the cases in #2 already output entries to the json file.  I think we should test that for some common situations (module exception on a task other than the first task, parse error, etc) and determine that.  We should try to identify those cases without reading in the json if possible so that we can avoid writing a duplicate entry.\n\nBut, in the end, if we fail, the worst that happens is that we made a duplicate entry in our log, and I think users are going to be able to get the information they need, even if the presentation isn\u0027t ideal.  So I think that\u0027s an acceptable outcome.",
+      "revId": "ad053d2699b8cb6ed53b8a0223b8fc4712e6c332",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec0929fd_e3249421",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3888,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-30T16:17:22Z",
+      "side": 1,
+      "message": "I do think we should handle the two cases above explicitly:\n\n1) For a timeout, we should emit a specific message about timing out.\n2) If we have read data into our \"syntax_buffer\" (that\u0027s what to grep for to see how we output to job-output.txt), we should output that to the json file.\n3) I don\u0027t think we should handle any other cases right now, but if you want to have a generic fallback for that, we can try it.  My opinion on this is weakly held.  :)",
+      "revId": "ad053d2699b8cb6ed53b8a0223b8fc4712e6c332",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
