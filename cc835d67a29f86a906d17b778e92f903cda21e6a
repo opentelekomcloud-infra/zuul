@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "68a6b172_19a6912d",
+        "filename": "tests/base.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1545,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-30T14:41:33Z",
+      "side": 1,
+      "message": "I don\u0027t think that\u0027s a thing.  This code is probably unused by anyone at this point, but I don\u0027t think we need to remove it, in case it is.  But we should probably leave it as \"tox-docker\".",
+      "revId": "cc835d67a29f86a906d17b778e92f903cda21e6a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "340fe9df_19fb5f73",
+        "filename": "web/src/store.test.js",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-09-30T14:41:33Z",
+      "side": 1,
+      "message": "These are just test data, it doesn\u0027t matter what the strings are.  I guess we can change them if you want, but it\u0027s just churn.",
+      "revId": "cc835d67a29f86a906d17b778e92f903cda21e6a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
