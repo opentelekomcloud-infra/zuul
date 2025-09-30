@@ -2505,12 +2505,12 @@ class TestMinReadyTenantVariant(LauncherBaseTestCase):
         # tenant-one:
         #   common-config:
         #     Provider aws-us-east-1-main
-        #       debian-normal (t3.medium)  (hash A)
+        #       debian-normal (t3.medium)  (hash A1)
         #   project1:
         #     Provider aws-eu-central-1-main
         #       debian-emea
         #     Provider aws-ca-central-1-main
-        #       debian-normal (t3.small)   (hash B)
+        #       debian-normal (t3.small)   (hash B1)
         # tenant-two:
         #   common-config:
         #     Provider aws-us-east-1-main
@@ -2540,7 +2540,7 @@ class TestMinReadyTenantVariant(LauncherBaseTestCase):
             n.label_config_hash for n in nodes_by_label['debian-normal']
         }
         # We will get 2 nodes with hash C, and then 2 nodes with hash
-        # A or B, so that's 2 or 3 hashes.
+        # A1 or B1, so that's 2 or 3 hashes.
         self.assertGreaterEqual(len(debian_normal_cfg_hashes), 2)
         self.assertLessEqual(len(debian_normal_cfg_hashes), 3)
 
@@ -2554,6 +2554,7 @@ class TestMinReadyTenantVariant(LauncherBaseTestCase):
                 '''
             )
         }
+        # This will create hashes A2 and B2
         self.addCommitToRepo('org/project1', 'Change label config', files)
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
         self.waitUntilSettled()
@@ -2574,8 +2575,11 @@ class TestMinReadyTenantVariant(LauncherBaseTestCase):
         debian_normal_cfg_hashes = {
             n.label_config_hash for n in nodes_by_label['debian-normal']
         }
+        # Hash C, and any combination of A1, A2, B1, and B2:
+        # Least case example: 2xC, 4xA1
+        # Most case example: 2xC, 1xA1, 1xA2, 1xB1, 1xB2
         self.assertGreaterEqual(len(debian_normal_cfg_hashes), 2)
-        self.assertLessEqual(len(debian_normal_cfg_hashes), 4)
+        self.assertLessEqual(len(debian_normal_cfg_hashes), 5)
 
 
 class TestNodesetRequestPriority(LauncherBaseTestCase):
