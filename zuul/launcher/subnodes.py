@@ -24,16 +24,13 @@ class SubnodeProviderNode(model.ProviderNode, subclass_id="subnode"):
                 f" label={self.label}, state={self.state},"
                 f" main_node={self.main_node_id}>")
 
-    def updateFromMainNode(self, context, node):
+    def updateFromMainNode(self, node):
         # Once the main node is finished creating, this is called to
         # synchronize any attributes that should be copied to the
         # subnode.
-        self.updateAttributes(
-            context,
-            state=node.state,
-            state_time=node.state_time,
-            **self.getNodeData(),
-        )
+        # Called with an active context
+        for k, v in self.getNodeData().items():
+            setattr(self, k, v)
 
 
 class SubnodeStateMachine(statemachine.StateMachine):
