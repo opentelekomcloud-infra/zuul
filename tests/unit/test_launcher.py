@@ -2560,22 +2560,22 @@ class TestMinReadyTenantVariant(LauncherBaseTestCase):
 
         for _ in iterate_timeout(60, "nodes to be ready"):
             nodes = self.launcher.api.nodes_cache.getItems()
-            if len(nodes) != 5:
+            if len(nodes) != 8:
                 continue
             if all(n.state == n.State.READY for n in nodes):
                 break
 
         nodes = self.launcher.api.nodes_cache.getItems()
-        self.assertEqual(5, len(nodes))
+        self.assertEqual(8, len(nodes))
 
         nodes_by_label = self._nodes_by_label()
-        self.assertEqual(1, len(nodes_by_label['debian-emea']))
-        self.assertEqual(4, len(nodes_by_label['debian-normal']))
+        self.assertEqual(2, len(nodes_by_label['debian-emea']))
+        self.assertEqual(6, len(nodes_by_label['debian-normal']))
         debian_normal_cfg_hashes = {
             n.label_config_hash for n in nodes_by_label['debian-normal']
         }
         self.assertGreaterEqual(len(debian_normal_cfg_hashes), 2)
-        self.assertLessEqual(len(debian_normal_cfg_hashes), 3)
+        self.assertLessEqual(len(debian_normal_cfg_hashes), 4)
 
 
 class TestNodesetRequestPriority(LauncherBaseTestCase):

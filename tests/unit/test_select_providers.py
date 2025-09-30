@@ -277,6 +277,7 @@ class TestSelectProviders(LauncherBaseTestCase):
 
         # 1 node with ready node in west: use west
         self.ordered_providers = ['east', 'west', 'unused']
+        west = 'review.example.com%2Forg%2Fcommon-config/west'
         request = self._makeRequest(['debian-normal'])
         node1 = self._makeNode('debian-normal')
         request.addProviderNode(node1)
@@ -288,14 +289,13 @@ class TestSelectProviders(LauncherBaseTestCase):
             connection_name='aws',
             endpoint_name='aws/aws-us-west-1',
             label_config_hash=label.config_hash,
+            provider=west,
         )
         self.launcher.api.nodes_cache._items[node1.uuid] = node1
         ready_nodes = self.launcher._getUnassignedReadyNodes()
         request_ready_nodes = self.launcher._filterReadyNodes(
             ready_nodes, request)
-        # This could be used with either west or unused since they
-        # have the same endpoint and this label.
-        self.assertEqual(2, len(request_ready_nodes['debian-normal'][node1]))
+        self.assertEqual(1, len(request_ready_nodes['debian-normal'][node1]))
         messages = []
         label_providers = self.launcher._selectProviders(
             request, request_ready_nodes, messages)

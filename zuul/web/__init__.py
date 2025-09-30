@@ -2500,12 +2500,9 @@ class ZuulWebAPI(object):
             provider_cnames = [p.canonical_name for p in providers]
             for node in sorted(self.zuulweb.nodes_cache.getItems()):
                 if node.provider in provider_cnames:
-                    if node.tenant_name == tenant.name:
+                    if (node.tenant_name == tenant.name or
+                        node.tenant_name is None):
                         ret.append(ProviderNodeConverter.toDict(node))
-                elif node.provider is None:
-                    for provider in providers:
-                        if node.isPermittedForProvider(provider):
-                            ret.append(ProviderNodeConverter.toDict(node))
         return ret
 
     @cherrypy.expose
