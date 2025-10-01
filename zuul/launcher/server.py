@@ -2004,7 +2004,7 @@ class Launcher:
                 if not snapshot.acquireLock(ctx, blocking=False):
                     log.debug("Failed to lock node %s for snapshot", node)
                     return
-                node.refresh(ctx)
+                snapshot.refresh(ctx)
 
         try:
             self._checkNodeSnapshot(node, log)
