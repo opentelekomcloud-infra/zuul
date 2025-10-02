@@ -2811,6 +2811,13 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         State.OUTDATED,
     )
 
+    # The order of preference for unassigned node states (we want
+    # ready nodes first, then building).
+    ASSIGNABLE_STATES = {
+        State.READY: 0,
+        State.BUILDING: 1,
+    }
+
     ROOT = "/zuul/nodes"
     NODES_PATH = "nodes"
     LOCKS_PATH = "locks"
