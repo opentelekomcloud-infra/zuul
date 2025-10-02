@@ -1343,6 +1343,10 @@ The following variables related to the job are available:
                      {{ zuul.resources['node-name'].pod }}:src/
                  no_log: true
 
+   .. var:: semaphores
+
+      List of :attr:`job.semaphores` acquired by the job.
+
 Working Directory
 ~~~~~~~~~~~~~~~~~
 

@@ -1419,6 +1419,7 @@ class TestWeb(BaseTestWeb):
                 'child_jobs': [],
                 'event_id': None,
                 'include_vars': [],
+                'semaphores': [],
             },
             'workspace_scheme': 'golang',
             'workspace_checkout': True,
@@ -1511,7 +1512,8 @@ class TestWeb(BaseTestWeb):
                 'pre_timeout': None,
                 'timeout': None,
                 'post_timeout': None,
-                'voting': True}}
+                'voting': True,
+                'semaphores': []}}
 
         self.assertEqual(job_params, resp.json())
 
