@@ -37,6 +37,14 @@ common_label = vs.Schema({
         """
     ): int,
     Optional(
+        'max-age', default=0,
+        doc="""\
+        The time (in seconds) since creation that a node may be
+        available for use.  Ready nodes older than this time will be
+        deleted.
+        """
+    ): int,
+    Optional(
         'snapshot-timeout', default=3600,
         doc="""The time (in seconds) to wait for a snapshot to complete."""
     ): int,

@@ -1716,7 +1716,7 @@ class Label(ConfigObject):
     """
 
     def __init__(self, name, image, flavor, description, min_ready,
-                 max_ready_age):
+                 max_ready_age, max_age):
         super().__init__()
         self.name = name
         self.image = image
@@ -1724,6 +1724,7 @@ class Label(ConfigObject):
         self.description = description
         self.min_ready = min_ready
         self.max_ready_age = max_ready_age
+        self.max_age = max_age
 
     @property
     def canonical_name(self):
@@ -1747,7 +1748,8 @@ class Label(ConfigObject):
                 self.flavor == other.flavor and
                 self.description == other.description and
                 self.min_ready == other.min_ready and
-                self.max_ready_age == other.max_ready_age)
+                self.max_ready_age == other.max_ready_age and
+                self.max_age == other.max_age)
 
     def toDict(self):
         sc = self.source_context
@@ -1759,6 +1761,7 @@ class Label(ConfigObject):
             'description': self.description,
             'min_ready': self.min_ready,
             'max_ready_age': self.max_ready_age,
+            'max_age': self.max_age,
         }
 
     def toConfig(self):
@@ -1771,6 +1774,7 @@ class Label(ConfigObject):
             'description': self.description,
             'min-ready': self.min_ready,
             'max-ready-age': self.max_ready_age,
+            'max-age': self.max_age,
         }
 
     def validateReferences(self, layout):
@@ -2822,6 +2826,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             zuul_event_id=None,
             span_info=None,
             max_ready_age=None,
+            max_age=None,
             state=self.State.REQUESTED,
             request_time=time.time(),
             state_time=time.time(),
@@ -2912,6 +2917,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             zuul_event_id=self.zuul_event_id,
             span_info=self.span_info,
             max_ready_age=self.max_ready_age,
+            max_age=self.max_age,
             request_time=self.request_time,
             state=self.state,
             state_time=self.state_time,
@@ -2939,11 +2945,13 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         self.state_time = time.time()
 
     def hasExpired(self):
-        if not self.max_ready_age:
-            return False
-        if self.state != self.State.READY:
-            return False
-        return (self.state_time + self.max_ready_age) < time.time()
+        if self.max_age:
+            if (self.request_time + self.max_age) < time.time():
+                return True
+        if self.max_ready_age and self.state == self.State.READY:
+            if (self.state_time + self.max_ready_age) < time.time():
+                return True
+        return False
 
     def hasHoldExpired(self):
         if not self.hold_expiration:
