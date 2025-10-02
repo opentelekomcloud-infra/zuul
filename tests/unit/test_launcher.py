@@ -3441,3 +3441,61 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
             nodes = self.launcher.api.nodes_cache.getItems()
             if len(nodes) == 0:
                 break
+
+    @simple_layout('layouts/nodepool-subnodes-reuse.yaml',
+                   enable_nodepool=True)
+    @okay_tracebacks('_checkNodescanRequest')
+    def test_subnodes_reuse_failure(self):
+        # Test that if we detect a failure in a subnode after it is
+        # used once that we mark it and the main node as failed for
+        # later deletion.
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.State.FULFILLED, request.state)
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(3, len(nodes))
+        # Get a list with the main node first and the subnode last
+        nodes.sort(key=lambda x: len(x.subnodes))
+        nodes.reverse()
+        main = nodes[0]
+        sub1 = nodes[1]
+        sub2 = nodes[2]
+        # Get a copy so we're not modifying the launcher's
+        main = model.ProviderNode.fromZK(ctx, path=main.getPath())
+        sub1 = model.ProviderNode.fromZK(ctx, path=sub1.getPath())
+        sub2 = model.ProviderNode.fromZK(ctx, path=sub2.getPath())
+        self.assertIsNone(main.main_node_id)
+        self.assertEqual(main.uuid, sub1.main_node_id)
+        self.assertEqual(main.uuid, sub2.main_node_id)
+        self.assertEqual(set([sub1.uuid, sub2.uuid]), set(main.subnodes))
+        self.assertEqual([], sub1.subnodes)
+        self.assertEqual([], sub2.subnodes)
+        self.assertEqual(main.State.SLOT_HOST, main.state)
+        self.assertEqual(sub1.State.READY, sub1.state)
+        self.assertEqual(sub2.State.READY, sub2.state)
+
+        def my_advance(*args, **kw):
+            raise Exception("Test exception")
+
+        with mock.patch.object(
+            zuul.launcher.server.NodescanRequest, 'advance', my_advance
+        ):
+            with sub2.locked(ctx):
+                with sub2.activeContext(ctx):
+                    sub2.request_id = "dne"
+                    sub2.setState(sub1.State.USED)
+
+            for _ in iterate_timeout(10, "nodes to be marked failed"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                states = Counter(n.state for n in nodes)
+                if states['failed'] == 2:
+                    break
+
+            # Delete the request so nodes can be deleted
+            request.delete(ctx)
+
+            for _ in iterate_timeout(10, "nodes to be deleted"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                if len(nodes) == 0:
+                    break
