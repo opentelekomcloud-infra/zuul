@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The :attr:`job.semaphores` job attribute is passed to the running job as a
+    Zuul variable :var:`zuul.semaphores`.

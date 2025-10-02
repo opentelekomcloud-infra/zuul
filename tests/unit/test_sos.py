@@ -713,6 +713,25 @@ class TestScaleOutScheduler(ZuulTestCase):
         holders = tenant.semaphore_handler.semaphoreHolders(semaphore)
         self.assertEqual(len(holders), 0)
 
+    @simple_layout('layouts/semaphores.yaml')
+    def test_semaphores(self):
+        change = self.fake_gerrit.addFakeChange('org/project', 'master',
+                                                'Subject')
+        self.fake_gerrit.addEvent(change.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        job = self.getJobFromHistory('no-semaphores')
+        self.assertEqual(job.parameters['zuul']['semaphores'], [])
+
+        job = self.getJobFromHistory('one-semaphore')
+        expected = [{'name': 'semaphore-1', 'resources_first': False}]
+        self.assertEqual(job.parameters['zuul']['semaphores'], expected)
+
+        job = self.getJobFromHistory('many-semaphores')
+        expected = [{'name': 'semaphore-1', 'resources_first': False},
+                    {'name': 'semaphore-2', 'resources_first': False}]
+        self.assertEqual(job.parameters['zuul']['semaphores'], expected)
+
     @simple_layout('layouts/two-projects-integrated.yaml')
     def test_nodepool_relative_priority_check(self):
         "Test that nodes are requested at the relative priority"
