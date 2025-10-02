@@ -279,7 +279,7 @@ pipelines may specify that items meet certain conditions in order to be
 enqueued into the pipeline.  These conditions vary according to the source
 of the project in question.  To supply requirements for changes
 from a GitLab source named ``gitlab``, create a configuration
-such as the following::
+such as the following:
 
 .. code-block:: yaml
 
