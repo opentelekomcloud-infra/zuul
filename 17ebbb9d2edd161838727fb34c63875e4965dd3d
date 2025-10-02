@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6352983c_a1a64a30",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 3445,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-10-02T15:29:42Z",
+      "side": 1,
+      "message": "If we want to do all the json editing in runAnsible() we could move the edit location from runAnsiblePlaybook() for timeouts to this location. That probably commits us to having phase and index passed into runAnsible.",
+      "revId": "17ebbb9d2edd161838727fb34c63875e4965dd3d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ec857ea5_b1ff7a99",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 3536,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-10-02T15:29:42Z",
+      "side": 1,
+      "message": "Alternatively we could add another return value for ansible_error_lines and have runAnsiblePlaybook() deal with json editing. That would require editing all the callpoints for runAnsible() to avoid the return values causing `ValueError: too many values to unpack (expected 2)`. I\u0027m not sure what we prefer from a code maintainability perspective.",
+      "revId": "17ebbb9d2edd161838727fb34c63875e4965dd3d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
