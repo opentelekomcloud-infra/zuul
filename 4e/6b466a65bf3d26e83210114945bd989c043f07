@@ -1,0 +1,9 @@
+Verified+2: Zuul
+Code-Review+2: Simon Westphahl <simon.westphahl@bmw.de>
+Workflow+1: James E. Blair <jim@acmegating.com>
+Submitted-by: Zuul
+Submitted-at: Thu, 02 Oct 2025 11:27:31 +0000
+Reviewed-on: https://review.opendev.org/c/zuul/zuul/+/962145
+Comments-Total: 8
+Project: zuul/zuul
+Branch: refs/heads/master
