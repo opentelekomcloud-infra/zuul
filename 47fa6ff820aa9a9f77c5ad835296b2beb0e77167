@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6a2e021_ea2c7dc1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-10-02T15:16:48Z",
+      "side": 1,
+      "message": "Hej @fungi@yuggoth.org, it seems I made small typo in driver docs in my previous change (https://review.opendev.org/c/zuul/zuul/+/956230) ~ do you think we can land this one to correct it?",
+      "revId": "47fa6ff820aa9a9f77c5ad835296b2beb0e77167",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
