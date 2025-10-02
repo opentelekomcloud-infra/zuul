@@ -18,6 +18,41 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "545d0f4d_6de8928e",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 3445,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-02T18:02:16Z",
+      "side": 1,
+      "message": "I think the patch as written is fine, but I also like this suggestion (and specifically, I like it more than the other one).",
+      "parentUuid": "6352983c_a1a64a30",
+      "revId": "17ebbb9d2edd161838727fb34c63875e4965dd3d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bc24097b_46ee7d44",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 3489,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-02T18:02:16Z",
+      "side": 1,
+      "message": "It might be good to append this to ansible_error_lines.\n\nAlso, perhaps we should refactor this to move all of the writing to job_output to the end, and handle it with the JSON.\n\nThe timestamps aren\u0027t important, so we can accumulate the text lines, then write them all with the same timestamp at the end.",
+      "revId": "17ebbb9d2edd161838727fb34c63875e4965dd3d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ec857ea5_b1ff7a99",
@@ -31,6 +66,58 @@
       "writtenOn": "2025-10-02T15:29:42Z",
       "side": 1,
       "message": "Alternatively we could add another return value for ansible_error_lines and have runAnsiblePlaybook() deal with json editing. That would require editing all the callpoints for runAnsible() to avoid the return values causing `ValueError: too many values to unpack (expected 2)`. I\u0027m not sure what we prefer from a code maintainability perspective.",
+      "revId": "17ebbb9d2edd161838727fb34c63875e4965dd3d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "73905979_a2439196",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 3536,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-02T18:02:16Z",
+      "side": 1,
+      "message": "I think I like your other suggestion, or doing nothing, better than this one.  Mostly because I think these things are things we would normally expect ansible to be doing for us, so having it in this method makes sense to me.  My feeling on this is not strong though.",
+      "parentUuid": "ec857ea5_b1ff7a99",
+      "revId": "17ebbb9d2edd161838727fb34c63875e4965dd3d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25de1494_8630aa01",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 3861,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-02T18:02:16Z",
+      "side": 1,
+      "message": "The comment mentions the index counting which is no longer relevant.",
+      "revId": "17ebbb9d2edd161838727fb34c63875e4965dd3d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5f7f67ab_b9928206",
+        "filename": "zuul/executor/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 3867,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-02T18:02:16Z",
+      "side": 1,
+      "message": "This one too.",
       "revId": "17ebbb9d2edd161838727fb34c63875e4965dd3d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
