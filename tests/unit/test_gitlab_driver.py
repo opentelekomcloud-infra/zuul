@@ -90,6 +90,29 @@ class TestGitlabWebhook(ZuulTestCase):
         self.assertEqual('SUCCESS',
                          self.getJobFromHistory('project-test1').result)
 
+    @simple_layout('layouts/branch-gitlab.yaml', driver='gitlab')
+    def test_webhook_different_branches(self):
+        """Test webhook events for MRs on different branches"""
+        # MR on main branch
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'main', 'A')
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent(),
+                                   use_zuulweb=False,
+                                   project='org/project')
+        self.waitUntilSettled()
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-main-test').result)
+
+        # MR on release branch
+        B = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'release-1.0', 'B')
+        self.fake_gitlab.emitEvent(B.getMergeRequestOpenedEvent(),
+                                   use_zuulweb=True,
+                                   project='org/project')
+        self.waitUntilSettled()
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-release-test').result)
+
 
 class TestGitlabDriver(ZuulTestCase):
     config_file = 'zuul-gitlab-driver.conf'
@@ -1223,6 +1246,131 @@ class TestGitlabDriver(ZuulTestCase):
         self.assertIn("can not be merged due to: blocking discussions",
                       B.notes[0]['body'])
 
+    @simple_layout('layouts/basic-gitlab.yaml', driver='gitlab')
+    def test_merge_request_branch_main(self):
+        """Test MR targeting main branch with branch-specific job"""
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'main', 'A')
+        self.fake_gitlab.emitEvent(
+            A.getMergeRequestOpenedEvent(), project='org/project')
+        self.waitUntilSettled()
+
+        # Should run both regular jobs and branch-specific job for main
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test1').result)
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test2').result)
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-branch-main-test').result)
+
+        job = self.getJobFromHistory('project-branch-main-test')
+        zuulvars = job.parameters['zuul']
+        self.assertEqual('main', zuulvars['branch'])
+
+    @simple_layout('layouts/basic-gitlab.yaml', driver='gitlab')
+    def test_merge_request_branch_feature_specific(self):
+        """Test MR targeting specific feature branch"""
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'feature-branch', 'A')
+        self.fake_gitlab.emitEvent(
+            A.getMergeRequestOpenedEvent(), project='org/project')
+        self.waitUntilSettled()
+
+        # Should run both regular jobs and branch-specific job for feature-branch
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test1').result)
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test2').result)
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-branch-feature-test').result)
+
+        job = self.getJobFromHistory('project-branch-feature-test')
+        zuulvars = job.parameters['zuul']
+        self.assertEqual('feature-branch', zuulvars['branch'])
+
+    @simple_layout('layouts/basic-gitlab.yaml', driver='gitlab')
+    def test_merge_request_branch_wildcard(self):
+        """Test MR targeting wildcard-matched branches"""
+        # Test release-* pattern
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'release-1.0', 'A')
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-branch-release-test').result)
+
+        # Test hotfix/* pattern
+        B = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'hotfix/critical', 'B')
+        self.fake_gitlab.emitEvent(B.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-branch-wildcard-test').result)
+
+    @simple_layout('layouts/basic-gitlab.yaml', driver='gitlab')
+    def test_merge_request_branch_combined_requirements(self):
+        """Test branch attribute combined with other requirements"""
+        # This should NOT trigger - matches branch but missing label
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'stable', 'A')
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # Should only run regular jobs, not branch-combined-test
+        self.assertEqual(2, len(self.history))
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test1').result)
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test2').result)
+
+        # This should trigger - matches branch AND has required label
+        B = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'stable', 'B')
+        B.labels = ['verified']
+        self.fake_gitlab.emitEvent(B.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # Should run all jobs including branch-combined-test
+        self.assertEqual(5, len(self.history))
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-branch-combined-test').result)
+
+    @simple_layout('layouts/basic-gitlab.yaml', driver='gitlab')
+    def test_merge_request_branch_reject(self):
+        """Test branch reject functionality"""
+        # This should NOT run project-test1 due to branch reject
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'wip', 'A')
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # Should only run project-test2 (not rejected) and no branch-specific jobs
+        self.assertEqual(1, len(self.history))
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test2').result)
+
+    @simple_layout('layouts/basic-gitlab.yaml', driver='gitlab')
+    def test_merge_request_change_target_branch(self):
+        """Test when MR target branch changes"""
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'some-branch', 'A')
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # Should only run regular jobs (no branch-specific jobs match)
+        initial_jobs = len(self.history)
+        self.assertEqual(2, initial_jobs)
+
+        # Change target branch to one that matches branch-specific jobs
+        A.target_branch = 'main'
+        self.fake_gitlab.emitEvent(A.getMergeRequestUpdatedEvent())
+        self.waitUntilSettled()
+
+        # Should run additional branch-specific job for main
+        self.assertEqual(initial_jobs + 3, len(self.history))
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-branch-main-test').result)
+
 
 class TestGitlabUnprotectedBranches(ZuulTestCase):
     config_file = 'zuul-gitlab-driver.conf'
@@ -1576,3 +1724,26 @@ class TestGitlabDriverNoPool(ZuulTestCase):
             A.notes[1]['body'],
             MatchesRegex(r'.*project-test2.*SUCCESS.*', re.DOTALL))
         self.assertTrue(A.approved)
+
+    @simple_layout('layouts/basic-gitlab.yaml', driver='gitlab')
+    def test_webhook_branch_specific(self):
+        """Test webhook events with branch-specific jobs"""
+        # MR on main branch
+        A = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'main', 'A')
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent(),
+                                   use_zuulweb=False,
+                                   project='org/project')
+        self.waitUntilSettled()
+
+        # Should run all jobs including branch-specific ones
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test1').result)
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test2').result)
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-branch-main-test').result)
+
+        job = self.getJobFromHistory('project-branch-main-test')
+        zuulvars = job.parameters['zuul']
+        self.assertEqual('main', zuulvars['branch'])

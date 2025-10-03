@@ -109,12 +109,44 @@
     name: project-promote
     run: playbooks/project-promote.yaml
 
+- job:
+    name: project-branch-main-test
+    run: playbooks/project-test1.yaml
+
+- job:
+    name: project-branch-feature-test
+    run: playbooks/projects-test1.yaml
+
+- job:
+    name: project-branch-release-test
+    run: playbooks/project-test1.yaml
+
+- job:
+    name: project-branch-wildcard-test
+    run: playbooks/project-test1.yaml
+
+- job:
+    name: project-branch-combined-test
+    run: playbooks/project-test1.yaml
+
 - project:
     name: org/project
     check:
       jobs:
         - project-test1
         - project-test2
+        - project-branch-main-test:
+            branch: main
+        - project-branch-feature-test:
+            branch: feature-branch
+        - project-branch-release-test:
+            branch: release-*
+        - project-branch-wildcard-test:
+            branch: hotfix/*
+        - project-branch-combined-test:
+            branch: stable
+            require:
+              - label: verified
     check-approval:
       jobs:
         - project-test-approval
