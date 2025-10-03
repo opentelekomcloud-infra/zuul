@@ -16,6 +16,23 @@
       "message": "Hej @fungi@yuggoth.org, it seems I made small typo in driver docs in my previous change (https://review.opendev.org/c/zuul/zuul/+/956230) ~ do you think we can land this one to correct it?",
       "revId": "47fa6ff820aa9a9f77c5ad835296b2beb0e77167",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f653676c_cd9d8593",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-10-03T06:31:25Z",
+      "side": 1,
+      "message": "Thanks @fungi@yuggoth.org and @jim@acmegating.com! ❤️",
+      "revId": "47fa6ff820aa9a9f77c5ad835296b2beb0e77167",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ],
   "submitRequirementResults": [
