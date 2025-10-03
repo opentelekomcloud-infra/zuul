@@ -188,6 +188,12 @@ the following options.
       match when comments containing 'retrigger' somewhere in the
       comment text are added to a merge request.
 
+   .. attr:: branch
+
+      The branch associated with the event. Example: ``master``.  This
+      field is treated as a regular expression, and multiple branches
+      may be listed. Used for ``gl_merge_request`` events.
+
    .. attr:: labels
 
       This is only used for ``gl_merge_request`` and ``labeled``

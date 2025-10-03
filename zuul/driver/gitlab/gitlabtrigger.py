@@ -32,6 +32,9 @@ class GitlabTrigger(BaseTrigger):
             with pcontext.confAttr(trigger, 'event') as attr:
                 types = [make_regex(x, pcontext)
                          for x in to_list(attr)]
+            with pcontext.confAttr(trigger, 'branch') as attr:
+                branches = [make_regex(x, pcontext)
+                            for x in to_list(attr)]
             with pcontext.confAttr(trigger, 'ref') as attr:
                 refs = [make_regex(x, pcontext)
                         for x in to_list(attr)]
@@ -44,6 +47,7 @@ class GitlabTrigger(BaseTrigger):
                 trigger=self,
                 types=types,
                 actions=to_list(trigger.get('action')),
+                branches=branches,
                 comments=comments,
                 refs=refs,
                 labels=to_list(trigger.get('labels')),
@@ -66,6 +70,7 @@ def getSchema():
                     'gl_push',
                 )),
         'action': scalar_or_list(str),
+        'branch': scalar_or_list(v.Any(ZUUL_REGEX, str)),
         'comment': scalar_or_list(v.Any(ZUUL_REGEX, str)),
         'ref': scalar_or_list(v.Any(ZUUL_REGEX, str)),
         'labels': scalar_or_list(str),

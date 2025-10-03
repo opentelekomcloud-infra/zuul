@@ -1,0 +1,51 @@
+- pipeline:
+    name: check
+    manager: independent
+    trigger:
+      gitlab:
+        - event: gl_merge_request
+          action: comment
+          comment: (?i)^\s*recheck\s*$
+          branch: master
+        - event: gl_merge_request
+          action:
+            - opened
+            - changed
+          branch: master
+    start:
+      gitlab:
+        comment: True
+        approval: False
+    success:
+      gitlab:
+        comment: True
+        approval: True
+    failure:
+      gitlab:
+        comment: True
+        approval: False
+
+- job:
+    name: project-test1
+    run: playbooks/project-test1.yaml
+
+- job:
+    name: project-test2
+    run: playbooks/project-test2.yaml
+
+- project:
+    name: org/project
+    check:
+      jobs:
+        - project-test1
+        - project-test2
+
+- playbook:
+    name: playbooks/project-test1.yaml
+    hosts: all
+    tasks: []
+
+- playbook:
+    name: playbooks/project-test2.yaml
+    hosts: all
+    tasks: []
