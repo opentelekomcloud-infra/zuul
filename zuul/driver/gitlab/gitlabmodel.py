@@ -162,7 +162,7 @@ class GitlabTriggerEvent(TriggerEvent):
 class GitlabEventFilter(EventFilter):
     def __init__(
             self, connection_name, trigger, types=None, actions=None,
-            comments=None, refs=None, labels=None, unlabels=None,
+            branches=[], comments=None, refs=None, labels=None, unlabels=None,
             ignore_deletes=True, debug=None):
         super().__init__(connection_name, trigger, debug)
 
@@ -179,6 +179,9 @@ class GitlabEventFilter(EventFilter):
         self._comments = [x.pattern for x in comments]
         self.comments = comments
 
+        self._branches = [x.pattern for x in branches]
+        self.branches = branches
+
         self.actions = actions or []
         self.labels = labels or []
         self.unlabels = unlabels or []
@@ -194,6 +197,8 @@ class GitlabEventFilter(EventFilter):
             ret += ' actions: %s' % ', '.join(self.actions)
         if self._comments:
             ret += ' comments: %s' % ', '.join(self._comments)
+        if self._branches:
+            ret += ' branches: %s' % ', '.join(self._branches)
         if self._refs:
             ret += ' refs: %s' % ', '.join(self._refs)
         if self.ignore_deletes:
@@ -215,6 +220,13 @@ class GitlabEventFilter(EventFilter):
             if etype.match(event.type):
                 matches_type = True
         if self.types and not matches_type:
+            return False
+
+        matches_branch = False
+        for branch in self.branches:
+            if branch.match(event.branch):
+                matches_branch = True
+        if self.branches and not matches_branch:
             return False
 
         matches_ref = False
