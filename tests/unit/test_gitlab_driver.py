@@ -1223,6 +1223,34 @@ class TestGitlabDriver(ZuulTestCase):
         self.assertIn("can not be merged due to: blocking discussions",
                       B.notes[0]['body'])
 
+    @simple_layout('layouts/basic-gitlab.yaml', driver='gitlab')
+    def test_merge_request_matched_branch_event(self):
+        """Test merge request targeting branch that matches pipeline config"""
+        A = self.fake_gitlab.openFakeMergeRequest('org/project', 'master', 'A')
+        self.fake_gitlab.emitEvent(A.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test1').result)
+        self.assertEqual('SUCCESS',
+                         self.getJobFromHistory('project-test2').result)
+        self.assertEqual(2, len(self.history))
+
+    @simple_layout('layouts/basic-gitlab.yaml', driver='gitlab')
+    def test_merge_request_unmatched_branch_event(self):
+        """Test merge request targeting branch that doesn't match pipeline"""
+        # Create an unmatched branch
+        self.create_branch('org/project', 'unmatched_branch')
+
+        # Create a merge request targeting the unmatched branch
+        B = self.fake_gitlab.openFakeMergeRequest(
+            'org/project', 'unmatched_branch', 'B')
+        self.fake_gitlab.emitEvent(B.getMergeRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # No jobs should run for unmatched branch
+        self.assertEqual(0, len(self.history))
+
 
 class TestGitlabUnprotectedBranches(ZuulTestCase):
     config_file = 'zuul-gitlab-driver.conf'
