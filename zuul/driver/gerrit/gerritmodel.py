@@ -163,12 +163,17 @@ class GerritChange(Change):
         self.commit_id = str(data['current_revision'])
         self.id = data['change_id']
         self.branch = data['branch']
-        self.url = '%s/%s' % (baseurl, self.number)
-        self.uris = [
-            '%s/%s' % (baseurl, self.number),
-            '%s/#/c/%s' % (baseurl, self.number),
-            '%s/c/%s/+/%s' % (baseurl, self.project.name, self.number),
-        ]
+        url1 = '%s/%s' % (baseurl, self.number)
+        url2 = '%s/#/c/%s' % (baseurl, self.number)
+        url3 = '%s/c/%s/+/%s' % (baseurl, self.project.name, self.number)
+        if connection.version >= (2, 15, 0):
+            # This is what modern Gerrit emits, and if a user
+            # navigates to it without access, it provides the best
+            # error messages and UX for logging in.
+            self.url = url3
+        else:
+            self.url = url1
+        self.uris = [url1, url2, url3]
 
         for rev_commit, revision in data['revisions'].items():
             if str(revision['_number']) == self.patchset:

@@ -723,7 +723,8 @@ class TestGerritCircularDependencies(ZuulTestCase):
 
         self.assertIn("depends on a change that failed to merge",
                       A.messages[-1])
-        self.assertTrue(re.search(r'Change http://localhost:\d+/2 is needed',
+        self.assertTrue(re.search(r'Change http://localhost:\d+/'
+                                  r'c/org/project1/\+/2 is needed',
                         A.messages[-1]))
         self.assertFalse(re.search('Change .*? can not be merged',
                          A.messages[-1]))
