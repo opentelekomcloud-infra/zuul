@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "a828a8eb9f675b88fe6beea987a4bb1d7be1c99c",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "590f3b32_adcb4bfc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 35934
+      },
+      "writtenOn": "2025-10-04T13:28:03Z",
+      "side": 1,
+      "message": "As far as I know, currently there\u0027s no way to list acquired semaphores at job\u0027s runtime. I have a scenario in which this can be useful for conditioning.",
+      "revId": "a828a8eb9f675b88fe6beea987a4bb1d7be1c99c",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
