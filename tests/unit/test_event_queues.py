@@ -117,6 +117,16 @@ class TestEventQueue(EventQueueBaseTestCase):
         self.assertEqual(list(self.queue._iterEvents()), [])
         self.assertEqual(len(self.queue), 0)
 
+    def test_overrun(self):
+        # Test that we discard events if we're at the max.
+        self.queue.MAX_QUEUE = 1
+
+        self.queue.put(DummyEvent())
+        self.assertEqual(len(self.queue), 1)
+
+        self.queue.put(DummyEvent())
+        self.assertEqual(len(self.queue), 1)
+
 
 class DummyTriggerEvent(model.TriggerEvent):
     pass
