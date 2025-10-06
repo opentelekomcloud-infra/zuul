@@ -38,12 +38,12 @@ class BaseCloudDriverTest(ZuulTestCase):
             'zuul.launcher.server.NodescanRequest.FAKE', True))
         super().setUp()
 
-    def _getEndpoint(self):
+    def _getProvider(self):
         # Use the launcher provider so that we're using the same ttl
         # method caches.
         for provider in self.launcher.tenant_providers['tenant-one']:
             if provider.name == self.cloud_test_provider_name:
-                return provider.getEndpoint()
+                return provider
 
     def _assertProviderNodeAttributes(self, pnode):
         self.assertEqual(pnode.connection_type,
@@ -57,7 +57,7 @@ class BaseCloudDriverTest(ZuulTestCase):
             if (self.scheds.first.sched.local_layout_state.get("tenant-one") ==
                 self.launcher.local_layout_state.get("tenant-one")):
                 break
-        endpoint = self._getEndpoint()
+        provider = self._getProvider()
         nodeset = model.NodeSet()
         nodeset.addNode(model.Node("node", label))
 
@@ -84,7 +84,7 @@ class BaseCloudDriverTest(ZuulTestCase):
             self._assertProviderNodeAttributes(pnode)
 
         for _ in iterate_timeout(10, "instances to appear"):
-            if len(list(endpoint.listInstances())) > 0:
+            if len(list(provider.listInstances())) > 0:
                 break
         client.useNodeset(nodeset)
         self.waitUntilSettled()
@@ -92,7 +92,7 @@ class BaseCloudDriverTest(ZuulTestCase):
         for node in nodeset.getNodes():
             pnode = node._provider_node
             self.assertTrue(pnode.hasLock())
-            self.assertTrue(pnode.state, pnode.State.IN_USE)
+            self.assertEqual(pnode.state, pnode.State.IN_USE)
 
         client.returnNodeset(nodeset)
         self.waitUntilSettled()
@@ -100,7 +100,7 @@ class BaseCloudDriverTest(ZuulTestCase):
         for node in nodeset.getNodes():
             pnode = node._provider_node
             self.assertFalse(pnode.hasLock())
-            self.assertTrue(pnode.state, pnode.State.USED)
+            self.assertEqual(pnode.state, pnode.State.USED)
 
             for _ in iterate_timeout(60, "node to be deleted"):
                 try:
@@ -111,7 +111,7 @@ class BaseCloudDriverTest(ZuulTestCase):
         # Iterate here because the aws driver (at least) performs
         # delayed async deletes.
         for _ in iterate_timeout(60, "instances to be deleted"):
-            if len(list(endpoint.listInstances())) == 0:
+            if len(list(provider.listInstances())) == 0:
                 break
 
     def _test_quota(self, label):
@@ -120,7 +120,7 @@ class BaseCloudDriverTest(ZuulTestCase):
             if (self.scheds.first.sched.local_layout_state.get("tenant-one") ==
                 self.launcher.local_layout_state.get("tenant-one")):
                 break
-        endpoint = self._getEndpoint()
+        provider = self._getProvider()
         nodeset1 = model.NodeSet()
         nodeset1.addNode(model.Node("node", label))
 
@@ -176,7 +176,7 @@ class BaseCloudDriverTest(ZuulTestCase):
         # Iterate here because the aws driver (at least) performs
         # delayed async deletes.
         for _ in iterate_timeout(60, "instances to be deleted"):
-            if len(list(endpoint.listInstances())) == 0:
+            if len(list(provider.listInstances())) == 0:
                 break
 
     def _test_diskimage(self, expected_uploads=1):
