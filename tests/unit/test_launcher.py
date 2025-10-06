@@ -53,11 +53,7 @@ from tests.base import (
     return_data,
     simple_layout,
 )
-from tests.fake_nodescan import (
-    FakeSocket,
-    FakePoll,
-    FakeTransport,
-)
+from tests.fake_nodescan import NodescanFixture
 
 
 class ImageMocksFixture(ResponsesFixture):
@@ -1478,15 +1474,9 @@ class TestLauncher(LauncherBaseTestCase):
 
     @simple_layout('layouts/nodepool-nodescan.yaml', enable_nodepool=True)
     @okay_tracebacks('_checkNodescanRequest')
-    @mock.patch('paramiko.transport.Transport')
-    @mock.patch('socket.socket')
-    @mock.patch('select.epoll')
-    def test_nodescan_failure(self, mock_epoll, mock_socket, mock_transport):
+    def test_nodescan_failure(self):
         # Test a nodescan failure
-        fake_socket = FakeSocket()
-        mock_socket.return_value = fake_socket
-        mock_epoll.return_value = FakePoll()
-        mock_transport.return_value = FakeTransport(_fail=True)
+        self.useFixture(NodescanFixture(transport_fail=True))
 
         ctx = self.createZKContext(None)
         request = self.requestNodes(["debian-normal"], timeout=30)
@@ -1512,15 +1502,9 @@ class TestLauncher(LauncherBaseTestCase):
 
     @simple_layout('layouts/nodepool-nodescan.yaml', enable_nodepool=True)
     @okay_tracebacks('_checkNodescanRequest')
-    @mock.patch('paramiko.transport.Transport')
-    @mock.patch('socket.socket')
-    @mock.patch('select.epoll')
-    def test_nodescan_success(self, mock_epoll, mock_socket, mock_transport):
+    def test_nodescan_success(self):
         # Test a normal launch with a nodescan
-        fake_socket = FakeSocket()
-        mock_socket.return_value = fake_socket
-        mock_epoll.return_value = FakePoll()
-        mock_transport.return_value = FakeTransport()
+        self.useFixture(NodescanFixture())
 
         ctx = self.createZKContext(None)
         request = self.requestNodes(["debian-normal"])
@@ -3222,6 +3206,12 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
         self.assertEqual(main.State.SLOT_HOST, main.state)
         self.assertEqual(sub1.State.READY, sub1.state)
         self.assertEqual(sub2.State.READY, sub2.state)
+        if (sub1.request_id == request.uuid):
+            self.assertIsNone(sub2.request_id)
+        elif (sub2.request_id == request.uuid):
+            self.assertIsNone(sub1.request_id)
+        else:
+            self.assertTrue(False, "one of the subnodes must be assigned")
 
         with sub1.locked(ctx):
             with sub1.activeContext(ctx):

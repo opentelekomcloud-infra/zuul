@@ -52,7 +52,6 @@ class OpenstackProviderImage(BaseProviderImage):
     openstack_cloud_schema = vs.Schema({
         Required('image-id'): str,
         Optional('config-drive', default=True): bool,
-        Required('type'): 'cloud',
     })
     cloud_schema = vs.All(
         assemble(
@@ -65,12 +64,8 @@ class OpenstackProviderImage(BaseProviderImage):
         # None is an acceptable explicit value for imds-support
         Optional('config-drive', default=True): bool,
     })
-    openstack_zuul_schema = vs.Schema({
-        Required('type'): 'zuul',
-    })
     zuul_schema = assemble(
         BaseProviderImage.zuul_schema,
-        openstack_zuul_schema,
         inheritable_openstack_image_schema,
         inheritable_openstack_zuul_schema,
     )
