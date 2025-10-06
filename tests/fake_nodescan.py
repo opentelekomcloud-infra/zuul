@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import fixtures
+
+
 class FakeSocket:
-    def __init__(self):
+    def __init__(self, *args):
         self.blocking = True
         self.fd = 1
 
@@ -34,9 +37,11 @@ class FakeSocket:
 
 
 class FakePoll:
-    def __init__(self, _fail=False):
+    _INIT_FAIL = False
+
+    def __init__(self):
         self.fds = []
-        self._fail = _fail
+        self._fail = self._INIT_FAIL
 
     def register(self, fd, bitmap):
         self.fds.append(fd)
@@ -67,9 +72,12 @@ class FakeKey:
 
 
 class FakeTransport:
-    def __init__(self, _fail=False, active=True):
-        self.active = active
-        self._fail = _fail
+    _INIT_ACTIVE = True
+    _INIT_FAIL = False
+
+    def __init__(self, *args, **kw):
+        self.active = self._INIT_ACTIVE
+        self._fail = self._INIT_FAIL
 
     def start_client(self, event=None, timeout=None):
         if not self._fail:
@@ -85,3 +93,32 @@ class FakeTransport:
 
     def get_exception(self):
         return Exception("Fake ssh error")
+
+
+class NodescanFixture(fixtures.Fixture):
+    def __init__(self, transport_active=True, transport_fail=False,
+                 poll_fail=False):
+        super().__init__()
+        self._transport_active = transport_active
+        self._transport_fail = transport_fail
+        self._poll_fail = poll_fail
+
+    def _setUp(self):
+        self.useFixture(fixtures.MonkeyPatch(
+            'zuul.launcher.server.NodescanRequest._socket_class',
+            FakeSocket))
+        self.useFixture(fixtures.MonkeyPatch(
+            'zuul.launcher.server.NodescanWorker._poll_class',
+            FakePoll))
+        self.useFixture(fixtures.MonkeyPatch(
+            'paramiko.transport.Transport',
+            FakeTransport))
+        self.useFixture(fixtures.MonkeyPatch(
+            'tests.fake_nodescan.FakeTransport._INIT_ACTIVE',
+            self._transport_active))
+        self.useFixture(fixtures.MonkeyPatch(
+            'tests.fake_nodescan.FakeTransport._INIT_FAIL',
+            self._transport_fail))
+        self.useFixture(fixtures.MonkeyPatch(
+            'tests.fake_nodescan.FakePoll._INIT_FAIL',
+            self._poll_fail))
