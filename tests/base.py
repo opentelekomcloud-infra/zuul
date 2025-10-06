@@ -2508,6 +2508,7 @@ class ZuulTestCase(BaseTestCase):
         self.config.set(
             'launcher', 'command_socket',
             os.path.join(self.test_root, 'launcher.socket'))
+        self.config.set('launcher', 'temp_dir', self.test_root)
 
         self.statsd = FakeStatsd()
         if self.config.has_section('statsd'):
