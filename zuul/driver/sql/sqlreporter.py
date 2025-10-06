@@ -217,7 +217,15 @@ class SQLReporter(BaseReporter):
             if 'metadata' in artifact:
                 artifact['metadata'] = json.dumps(
                     artifact['metadata'])
-            db_build.createArtifact(**artifact)
+            try:
+                db_build.createArtifact(**artifact)
+            except sqlalchemy.exc.DataError as e:
+                if 'value too long for type character varying' in str(e):
+                    self.log.error(
+                        DATA_LENGTH_ERROR % (
+                            "artifact field", artifact))
+                else:
+                    raise
 
         for event in build.events:
             # Reformat the event_time so it's compatible to SQL.
