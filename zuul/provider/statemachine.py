@@ -17,6 +17,7 @@ import time
 
 class StateMachine:
     START = 'start'
+    COMPLETE = 'complete'
 
     def __init__(self, initial_state):
         self.state = initial_state.get("state", self.START)
@@ -31,6 +32,10 @@ class StateMachine:
             state=self.state,
             start_time=self.start_time,
         )
+
+    def fail(self):
+        self.state = self.COMPLETE
+        self.complete = True
 
 
 class Instance:
@@ -89,7 +94,6 @@ class Instance:
         self.host_id = None
         self.metadata = {}
         self.driver_data = None
-        self.slot = None
 
     @property
     def external_id(self):
