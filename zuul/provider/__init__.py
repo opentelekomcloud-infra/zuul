@@ -379,7 +379,7 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
             'system_id': system_id,
             'zk_client': zk_client,
         }
-        obj = cls._fromRaw(raw_data, zstat, extra)
+        obj = cls._fromRaw(context, raw_data, zstat, extra)
         connection = connections.connections[obj.connection_name]
         obj._set(
             connection=connection,

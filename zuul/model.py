@@ -2941,14 +2941,22 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         self.assignment._clear()
 
     def deserialize(self, raw, context, extra=None):
-        if context is not None:
-            try:
-                self.assignment.refresh(context)
-            except NoNodeError:
-                self.assignment._clear()
+        # Update our UUID first so that our subnode paths are accurate
         data = super().deserialize(raw, context)
+        self._set(uuid=data.get('uuid'))
+        try:
+            self.assignment.refresh(context)
+        except NoNodeError:
+            self.assignment._clear()
         resources = data.get('quota') or {}
         data['quota'] = QuotaInformation(**resources)
+        # TODO: remove this backwards compat code at any time
+        min_request_version = data.pop('min_request_version', None)
+        request_id = data.pop('request_id', None)
+        tenant_name = data.pop('tenant_name', None)
+        if min_request_version or request_id or tenant_name:
+            self.assign(context, request_id, tenant_name, min_request_version)
+        # End TODO
         return data
 
     def serialize(self, context):

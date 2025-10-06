@@ -136,10 +136,11 @@ class LockableZKObjectCache(ZuulTreeCache):
             self.updated_event()
 
     def objectFromRaw(self, key, data, zstat):
-        return self.zkobject_class._fromRaw(data, zstat, None)
+        return self.zkobject_class._fromRaw(
+            self._zk_context, data, zstat, None)
 
     def updateFromRaw(self, obj, key, data, zstat):
-        obj._updateFromRaw(data, zstat, None)
+        obj._updateFromRaw(self._zk_context, data, zstat, None)
 
     def getItem(self, item_id):
         self.ensureReady()
@@ -178,7 +179,8 @@ class RequestCache(LockableZKObjectCache):
         if object_type == self.locks_path:
             request._set(is_locked=exists)
         elif data is not None:
-            request._revision._updateFromRaw(data, stat, None)
+            request._revision._updateFromRaw(
+                self._zk_context, data, stat, None)
             return self.STOP_OBJECT_UPDATE
 
 
@@ -246,7 +248,8 @@ class NodeCache(LockableZKObjectCache):
                 if not node:
                     return
                 if exists:
-                    node.assignment._updateFromRaw(data, stat, None)
+                    node.assignment._updateFromRaw(
+                        self._zk_context, data, stat, None)
                 else:
                     node.assignment._clear()
                 return self.STOP_OBJECT_UPDATE

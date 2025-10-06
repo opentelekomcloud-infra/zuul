@@ -392,7 +392,7 @@ class ZKObject:
         if path is None:
             path = self.getPath()
         compressed_data, zstat = self._loadData(context, path)
-        self._updateFromRaw(compressed_data, zstat, None, context)
+        self._updateFromRaw(context, compressed_data, zstat, None)
 
     @classmethod
     def _loadData(cls, context, path):
@@ -412,12 +412,12 @@ class ZKObject:
         return compressed_data, zstat
 
     @classmethod
-    def _fromRaw(cls, raw_data, zstat, extra, **kw):
+    def _fromRaw(cls, context, raw_data, zstat, extra, **kw):
         obj = cls()
-        obj._updateFromRaw(raw_data, zstat, extra)
+        obj._updateFromRaw(context, raw_data, zstat, extra)
         return obj
 
-    def _updateFromRaw(self, raw_data, zstat, extra, context=None):
+    def _updateFromRaw(self, context, raw_data, zstat, extra):
         try:
             self._set(_zkobject_hash=None)
             data = self._decompressData(raw_data)
@@ -695,7 +695,7 @@ class PolymorphicZKObjectMixin(abc.ABC):
     @classmethod
     def fromZK(cls, context, path, **kw):
         raw_data, zstat = cls._loadData(context, path)
-        return cls._fromRaw(raw_data, zstat, None, **kw)
+        return cls._fromRaw(context, raw_data, zstat, None, **kw)
 
     @classmethod
     def _compressData(cls, data):
@@ -708,7 +708,7 @@ class PolymorphicZKObjectMixin(abc.ABC):
         return super()._decompressData(compressed_data)
 
     @classmethod
-    def _fromRaw(cls, raw_data, zstat, extra, **kw):
+    def _fromRaw(cls, context, raw_data, zstat, extra, **kw):
         subclass_id, _, _ = raw_data.partition(b"\0")
         try:
             klass = cls._subclasses[subclass_id]
@@ -716,4 +716,4 @@ class PolymorphicZKObjectMixin(abc.ABC):
             raise RuntimeError(f"Unknown subclass id: {subclass_id}")
         return super(
             PolymorphicZKObjectMixin, klass)._fromRaw(
-                raw_data, zstat, extra, **kw)
+                context, raw_data, zstat, extra, **kw)

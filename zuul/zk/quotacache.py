@@ -78,14 +78,14 @@ class QuotaCache(ZuulTreeCache):
             resource = key[1]
         else:
             resource = None
-        obj = ZKQuotaInfo._fromRaw(data, zstat, None)
+        obj = ZKQuotaInfo._fromRaw(self._zk_context, data, zstat, None)
         obj._set(endpoint=self.endpoint,
                  kind=key[0],
                  resource=resource)
         return obj
 
     def updateFromRaw(self, obj, key, data, zstat):
-        obj._updateFromRaw(data, zstat, None)
+        obj._updateFromRaw(self._zk_context, data, zstat, None)
 
     def _makeKey(self, kind, resource=None):
         if kind == QuotaCache.Kind.RESOURCE:

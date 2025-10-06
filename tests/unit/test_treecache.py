@@ -37,7 +37,7 @@ class SimpleTreeCacheObject:
         self.path = '/'.join((root.rstrip("/"), *key))
         self.children = {}
 
-    def _updateFromRaw(self, data, zstat, context=None):
+    def _updateFromRaw(self, context, data, zstat, extra):
         self.data = json.loads(data)
         self._zstat = zstat
 
@@ -47,7 +47,7 @@ class SimpleTreeCache(ZuulTreeCache):
         return SimpleTreeCacheObject(self.root, key, data, zstat)
 
     def updateFromRaw(self, obj, key, data, zstat):
-        obj._updateFromRaw(data, zstat, None)
+        obj._updateFromRaw(None, data, zstat, None)
 
     def parsePath(self, path):
         object_path = path[len(self.root):].strip("/")
