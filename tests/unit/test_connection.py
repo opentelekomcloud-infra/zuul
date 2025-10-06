@@ -475,6 +475,7 @@ class TestSQLReporterLongValues(AnsibleZuulTestCase):
 
         def check_results():
             looong_log = "http://logs.example.com/l" + ("o" * 271) + "ng"
+            looong_artifact_name = "tarball_l" + ("o" * 239) + "ong_name"
             # Grab the sa tables
             connection = self.scheds.first.connections.getSqlConnection()
             with connection.getSession() as db:
@@ -484,6 +485,11 @@ class TestSQLReporterLongValues(AnsibleZuulTestCase):
                     if build.job_name == 'project-test1':
                         self.assertTrue(
                             DATA_LENGTH_ERROR % ("log URL", looong_log) in
+                            build.error_detail,
+                            build.error_detail)
+                        self.assertTrue(
+                            DATA_LENGTH_ERROR % ("artifact name",
+                                                 looong_artifact_name) in
                             build.error_detail,
                             build.error_detail)
                         self.assertEqual(
