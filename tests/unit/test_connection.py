@@ -22,7 +22,7 @@ import types
 import sqlalchemy as sa
 
 import zuul
-from zuul.driver.sql.sqlreporter import DATA_LENGTH_ERROR
+from zuul.driver.sql.sqlreporter import DATA_LENGTH_ERROR, SQL_MAX_STRING_LENGTH
 from zuul.lib import yamlutil
 from tests.base import (
     AnsibleZuulTestCase,
@@ -475,6 +475,7 @@ class TestSQLReporterLongValues(AnsibleZuulTestCase):
 
         def check_results():
             looong_log = "http://logs.example.com/l" + ("o" * 271) + "ng"
+            looong_artifact_name = "tarball_l" + ("o" * 239) + "ong_name"
             # Grab the sa tables
             connection = self.scheds.first.connections.getSqlConnection()
             with connection.getSession() as db:
@@ -489,6 +490,18 @@ class TestSQLReporterLongValues(AnsibleZuulTestCase):
                         self.assertEqual(
                             None,
                             build.log_url)
+                        # Check if the artifact name was correctly truncated
+                        self.assertEqual(
+                            (looong_artifact_name[:SQL_MAX_STRING_LENGTH - 15] +
+                             '... (truncated)'),
+                            build.artifacts[0].name)
+                        # Also check if the error was recorded with the original
+                        # artifact name
+                        self.assertTrue(
+                            DATA_LENGTH_ERROR % ("artifact name",
+                                                 looong_artifact_name) in
+                            build.error_detail,
+                            build.error_detail)
                         return
                     jobs.append(build.job_name)
                 raise Exception(
