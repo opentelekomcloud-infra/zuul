@@ -16,6 +16,24 @@
       "message": "With this test case we\u0027re exercising the backward compat code wrapped in the TODO comments since we set the three attributes above and at least one is not None. That will assign the node under the hood through the compat code. Then we unassign the node and ensure that whole lifecycle works before deleting the node entirely. Do we need to check the underlying data structures at all or consider the higher level process sufficient for exercising this code path?",
       "revId": "0bfda8763e9ce69dfc86fd8b59b0c488269a14cc",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3fed1997_b49bbfa1",
+        "filename": "tests/unit/test_zk.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3105,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-06T16:58:10Z",
+      "side": 1,
+      "message": "I think the high-level test is sufficient.  It would also be hard to test the low-level structures here, since we\u0027re overriding the serialize method -- so this will erroneously write out the old data, which won\u0027t happen in reality.",
+      "parentUuid": "bf221ca0_6196016d",
+      "revId": "0bfda8763e9ce69dfc86fd8b59b0c488269a14cc",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
