@@ -55,12 +55,14 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
     cloud_schema = assemble(
         provider_schema.common_image,
         provider_schema.base_image,
+        vs.Schema({Required('type'): 'cloud'}),
         doc="These are the attributes available for a Cloud image.",
     )
     zuul_schema = assemble(
         provider_schema.common_image,
         provider_schema.common_image_zuul,
         provider_schema.base_image,
+        vs.Schema({Required('type'): 'zuul'}),
         doc="These are the attributes available for a Zuul image.",
     )
     schema = vs.Union(
@@ -333,6 +335,7 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
 
     def __init__(self, *args):
         super().__init__()
+        self._set(nodes=[])
         if args:
             (driver, zk_client, connection, tenant_name,
              canonical_name, config, system_id) = args
@@ -418,6 +421,9 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         connection = connections.connections[data['connection_name']]
         data['connection'] = connection
         data['driver'] = connection.driver
+        self._set(
+            canonical_name=data['canonical_name'],
+        )
         data.update(self.parseConfig(data['config'], connection))
         return data
 
@@ -812,6 +818,20 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         if update:
             for label in self.labels.values():
                 self.refreshQuotaForLabel(label, update)
+
+    def canReuseNode(self, node):
+        """The provider can veto the reuse of a node
+
+        If the provider decides that a node should not be reused,
+        return False here.  This will only be called if the launcher
+        has decided that it should be reused (so label configuration
+        will already have been checked).
+
+        :param ProviderNode node: The node
+        """
+        if node.state == node.State.FAILED:
+            return False
+        return True
 
 
 class EndpointCacheMixin:
