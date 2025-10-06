@@ -5,6 +5,11 @@
         data:
           zuul:
             log_url: "http://logs.example.com/looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong"
+          artifacts:
+            - name: tarball_loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong_name
+              url: http://example.com/path/to/package.tar.gz
+              metadata:
+                version: 3.0
     - name: debug message
       ansible.builtin.debug:
         msg: debug
