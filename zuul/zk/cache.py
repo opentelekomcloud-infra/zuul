@@ -29,6 +29,7 @@ from kazoo.protocol.states import (
 )
 
 from zuul.zk.vendor.states import AddWatchMode
+from zuul.zk.zkobject import ZKContext
 
 
 class CacheSyncSentinel:
@@ -85,6 +86,7 @@ class ZuulTreeCache(abc.ABC):
         self._event_worker = None
         self._playback_worker = None
         self._async_worker = async_worker
+        self._zk_context = ZKContext(self.zk_client, None, None, self.log)
 
         self.client.add_listener(self._sessionListener)
         self._start()

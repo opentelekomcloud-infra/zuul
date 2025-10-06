@@ -209,7 +209,7 @@ class EventWatcher(ZooKeeperSimpleBase):
             self.tenant_state[tenant_name].reset()
         else:
             self.tenant_state[tenant_name]._updateFromRaw(
-                data, stat, None, None)
+                None, data, stat, None)
             if self.callback:
                 self.callback()
 

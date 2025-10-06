@@ -3070,6 +3070,42 @@ class TestLauncherApi(ZooKeeperBaseTestCase):
                     provider_nodes[0].tenant_name is None):
                     break
 
+    def test_node_assignment_upgrade(self):
+        context = ZKContext(self.zk_client, None, None, self.log)
+
+        class DummyUpgradeProviderNode(
+                model.ProviderNode, subclass_id="dummy-upgrade-node"):
+            def serialize(self, context):
+                data = super().serialize(context)
+                data = json.loads(data)
+                data['min_request_version'] = None
+                data['request_id'] = '1234'
+                data['tenant_name'] = 'tenant-one'
+                return json.dumps(data, sort_keys=True).encode("utf-8")
+
+        node = DummyUpgradeProviderNode.new(
+            context,
+            uuid=uuid.uuid4().hex,
+            label='foo')
+
+        # Wait for the nodes to show up in the cache
+        for _ in iterate_timeout(10, "node to show up"):
+            provider_nodes = self.api.getProviderNodes()
+            if len(provider_nodes) == 1:
+                if (provider_nodes[0].request_id == '1234' and
+                    provider_nodes[0].tenant_name == 'tenant-one'):
+                    break
+
+        node.unassign(context)
+        for _ in iterate_timeout(10, "node to update"):
+            provider_nodes = self.api.getProviderNodes()
+            if len(provider_nodes) == 1:
+                if (provider_nodes[0].request_id is None and
+                    provider_nodes[0].tenant_name is None):
+                    break
+
+        node.delete(context)
+
 
 class DummyLockable(LockableZKObject):
     ROOT = "/test/dummy"
