@@ -217,6 +217,16 @@ class SQLReporter(BaseReporter):
             if 'metadata' in artifact:
                 artifact['metadata'] = json.dumps(
                     artifact['metadata'])
+            if artifact['name'] is not None:
+                if len(artifact['name']) > SQL_MAX_STRING_LENGTH:
+                    db_build.error_detail = db_build.error_detail or "" + (
+                        DATA_LENGTH_ERROR % ("artifact name", artifact['name'])
+                    )
+
+                    artifact['name'] = (
+                        artifact['name'][:SQL_MAX_STRING_LENGTH - 15] +
+                        '... (truncated)'
+                    )
             db_build.createArtifact(**artifact)
 
         for event in build.events:
