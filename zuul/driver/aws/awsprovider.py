@@ -71,7 +71,6 @@ class AwsProviderImage(BaseProviderImage):
         vs.Exclusive(
             Required('image-filters'), 'spec'
         ): AsList(aws_image_filters),
-        Required('type'): 'cloud',
     })
     cloud_schema = vs.All(
         assemble(
@@ -93,12 +92,8 @@ class AwsProviderImage(BaseProviderImage):
         Optional('architecture', default='x86_64'): str,
         Optional('ena-support', default=True): bool,
     })
-    aws_zuul_schema = vs.Schema({
-        Required('type'): 'zuul',
-    })
     zuul_schema = assemble(
         BaseProviderImage.zuul_schema,
-        aws_zuul_schema,
         inheritable_aws_image_schema,
         inheritable_aws_zuul_schema,
     )

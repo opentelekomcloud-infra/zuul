@@ -19,6 +19,7 @@ import textwrap
 
 from zuul.driver.openstack import openstackprovider
 from zuul.driver.aws import awsprovider
+from zuul.driver.static import staticprovider
 from zuul.lib.voluputil import AsList, Nullable, Constant
 
 import voluptuous as vs
@@ -210,6 +211,8 @@ if __name__ == '__main__':
         ps = awsprovider.AwsProviderSchema()
     elif args.driver == 'openstack':
         ps = openstackprovider.OpenstackProviderSchema()
+    elif args.driver == 'static':
+        ps = staticprovider.StaticProviderSchema()
     else:
         raise Exception("Unknown driver")
     s = ps.getProviderSchema()
