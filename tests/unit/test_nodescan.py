@@ -31,6 +31,7 @@ from tests.fake_nodescan import (
     FakeSocket,
     FakePoll,
     FakeTransport,
+    NodescanFixture,
 )
 
 
@@ -44,15 +45,9 @@ class TestNodescanWorker(BaseTestCase):
         return zkobject.ZKContext(self.zk_client, lock,
                                   None, self.log)
 
-    @patch('paramiko.transport.Transport')
-    @patch('socket.socket')
-    @patch('select.epoll')
-    def test_nodescan(self, mock_epoll, mock_socket, mock_transport):
+    def test_nodescan(self):
         # Test the nodescan worker
-        fake_socket = FakeSocket()
-        mock_socket.return_value = fake_socket
-        mock_epoll.return_value = FakePoll()
-        mock_transport.return_value = FakeTransport()
+        self.useFixture(NodescanFixture())
         worker = NodescanWorker()
         node = DummyProviderNode()
         node._set(
@@ -73,16 +68,9 @@ class TestNodescanWorker(BaseTestCase):
         worker.stop()
         worker.join()
 
-    @patch('paramiko.transport.Transport')
-    @patch('socket.socket')
-    @patch('select.epoll')
-    def test_nodescan_connection_timeout(
-            self, mock_epoll, mock_socket, mock_transport):
+    def test_nodescan_connection_timeout(self):
         # Test a timeout during socket connection
-        fake_socket = FakeSocket()
-        mock_socket.return_value = fake_socket
-        mock_epoll.return_value = FakePoll(_fail=True)
-        mock_transport.return_value = FakeTransport()
+        self.useFixture(NodescanFixture(poll_fail=True))
         worker = NodescanWorker()
         node = DummyProviderNode()
         node._set(
@@ -104,16 +92,9 @@ class TestNodescanWorker(BaseTestCase):
         worker.stop()
         worker.join()
 
-    @patch('paramiko.transport.Transport')
-    @patch('socket.socket')
-    @patch('select.epoll')
-    def test_nodescan_ssh_timeout(
-            self, mock_epoll, mock_socket, mock_transport):
+    def test_nodescan_ssh_timeout(self):
         # Test a timeout during ssh connection
-        fake_socket = FakeSocket()
-        mock_socket.return_value = fake_socket
-        mock_epoll.return_value = FakePoll()
-        mock_transport.return_value = FakeTransport(_fail=True)
+        self.useFixture(NodescanFixture(transport_fail=True))
         worker = NodescanWorker()
         node = DummyProviderNode()
         node._set(
@@ -135,17 +116,10 @@ class TestNodescanWorker(BaseTestCase):
         worker.stop()
         worker.join()
 
-    @patch('paramiko.transport.Transport')
-    @patch('socket.socket')
-    @patch('select.epoll')
     @okay_tracebacks('Fake ssh error')
-    def test_nodescan_ssh_error(
-            self, mock_epoll, mock_socket, mock_transport):
+    def test_nodescan_ssh_error(self):
         # Test an ssh error
-        fake_socket = FakeSocket()
-        mock_socket.return_value = fake_socket
-        mock_epoll.return_value = FakePoll()
-        mock_transport.return_value = FakeTransport(active=False)
+        self.useFixture(NodescanFixture(transport_active=False))
         worker = NodescanWorker()
         node = DummyProviderNode()
         node._set(
@@ -168,8 +142,8 @@ class TestNodescanWorker(BaseTestCase):
         worker.join()
 
     @patch('paramiko.transport.Transport')
-    @patch('socket.socket')
-    @patch('select.epoll')
+    @patch('zuul.launcher.server.NodescanRequest._socket_class')
+    @patch('zuul.launcher.server.NodescanWorker._poll_class')
     def test_nodescan_queue(self, mock_epoll, mock_socket, mock_transport):
         # Test the max_requests queing function
         fake_socket1 = FakeSocket()
