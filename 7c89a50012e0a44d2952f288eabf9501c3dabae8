@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b216e47_1db31fdc",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-10-07T14:36:45Z",
+      "side": 1,
+      "message": "The following shall be added:\n- tests covering the implemented feature,\n- an entry to release notes (https://zuul-ci.org/docs/zuul/latest/developer/releasenotes.html)",
+      "parentUuid": "c2147b60_be271972",
+      "revId": "7c89a50012e0a44d2952f288eabf9501c3dabae8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "31a2c781_a167deb4",
