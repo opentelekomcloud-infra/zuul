@@ -176,10 +176,18 @@
         path: "{{ testfile }}"
         state: absent
     # Test large output
-    - name: Output 70KB each to stdout and stderr
+    - name: Output 70KB each to stdout and stderr using shell
       # We use print (as opposed to write) so this uses buffered
       # output in order to encourage a deadlock.
-      command: python3 -c 'import sys; print("x" * 70000, file=sys.stdout); print("x" * 70000, file=sys.stderr)'
+      shell: python3 -c 'import sys; print("x" * 70000, file=sys.stdout); print("x" * 70000, file=sys.stderr)'
+    - name: Output 70KB each to stdout and stderr using command
+      command: python3 -c "import sys; print('x' * 70000, file=sys.stdout); print('x' * 70000, file=sys.stderr)"
+    - name: Output 128KiB each to stdout and stderr using shell under no_log
+      no_log: true
+      shell: python3 -c "import sys; print('x' * 135000, file=sys.stdout); print('x' * 135000, file=sys.stderr)"
+    - name: Output 128KiB each to stdout and stderr using command under no_log
+      no_log: true
+      command: python3 -c "import sys; print('x' * 135000, file=sys.stdout); print('x' * 135000, file=sys.stderr)"
 
 - hosts: localhost
   gather_facts: no

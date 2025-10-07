@@ -170,10 +170,18 @@
       # win_file may not be idempotent
       failed_when: false
     # Test large output
-    - name: Output 70KB each to stdout and stderr
+    - name: Output 70KB each to stdout and stderr using shell
       # We use print (as opposed to write) so this uses buffered
       # output in order to encourage a deadlock.
       win_shell: python -c "import sys; print('x' * 70000, file=sys.stdout); print('x' * 70000, file=sys.stderr)"
+    - name: Output 70KB each to stdout and stderr using command
+      win_command: cmd /c python -c "import sys; print('x' * 70000, file=sys.stdout); print('x' * 70000, file=sys.stderr)"
+    - name: Output 128KiB each to stdout and stderr using shell under no_log
+      no_log: true
+      win_shell: python -c "import sys; print('x' * 135000, file=sys.stdout); print('x' * 135000, file=sys.stderr)"
+    - name: Output 128KiB each to stdout and stderr using command under no_log
+      no_log: true
+      win_command: cmd /c python -c "import sys; print('x' * 135000, file=sys.stdout); print('x' * 135000, file=sys.stderr)"
 
 - hosts: localhost
   gather_facts: no
