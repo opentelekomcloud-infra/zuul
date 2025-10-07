@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2147b60_be271972",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-10-07T14:35:50Z",
+      "side": 1,
+      "message": "To be honest, for me it sounds like a duplication of https://zuul-ci.org/docs/zuul/latest/config/project.html#attr-project.branches that really already gave precise control over branch-specific behavior (i.e. when adding a project to a pipeline under specific branches condition one may for example set some job variables, which is not possible on the pipeline level).\n\nHowever, I see similar already exists for GitHub and Gerrit, so I am not really against it (more configuration options, matching with other drivers, are welcome, e.g. for users relying on multiple backends):\n- https://zuul-ci.org/docs/zuul/latest/drivers/github.html#attr-pipeline.trigger.%3Cgithub%20source%3E.branch\n- https://zuul-ci.org/docs/zuul/latest/drivers/gerrit.html#attr-pipeline.trigger.%3Cgerrit%20source%3E.branch",
+      "revId": "7c89a50012e0a44d2952f288eabf9501c3dabae8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "31a2c781_a167deb4",
@@ -82,6 +99,23 @@
       "writtenOn": "2025-10-05T03:23:06Z",
       "side": 1,
       "message": "recheck",
+      "revId": "7c89a50012e0a44d2952f288eabf9501c3dabae8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8db95bf6_cc4d91c3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 18551
+      },
+      "writtenOn": "2025-10-07T14:35:50Z",
+      "side": 1,
+      "message": "The following shall be added:\n- tests covering the implemented feature,\n- an entry to release notes (https://zuul-ci.org/docs/zuul/latest/developer/releasenotes.html)",
       "revId": "7c89a50012e0a44d2952f288eabf9501c3dabae8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
