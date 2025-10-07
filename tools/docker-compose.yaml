@@ -16,7 +16,7 @@ services:
 
   postgres:
     container_name: zuul-test-postgres
-    image: postgres
+    image: postgres:17
     environment:
       - POSTGRES_USER=openstack_citest
       - POSTGRES_PASSWORD=openstack_citest
