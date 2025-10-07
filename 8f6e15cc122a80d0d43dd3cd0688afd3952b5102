@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0158962b_a80acf18",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-10-07T16:16:45Z",
+      "side": 1,
+      "message": "note to reviewers: very much shooting from the hip here, please review with extreme prejudice.",
+      "revId": "8f6e15cc122a80d0d43dd3cd0688afd3952b5102",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
