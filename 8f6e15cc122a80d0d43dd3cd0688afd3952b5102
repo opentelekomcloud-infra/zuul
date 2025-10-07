@@ -16,6 +16,29 @@
       "message": "note to reviewers: very much shooting from the hip here, please review with extreme prejudice.",
       "revId": "8f6e15cc122a80d0d43dd3cd0688afd3952b5102",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3c9343d9_1755296d",
+        "filename": "tests/fixtures/config/remote-action-modules/git/org_project/playbooks/command-no-log.yaml",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-10-07T19:55:13Z",
+      "side": 1,
+      "message": "think also .stderr needs to be checked.",
+      "range": {
+        "startLine": 16,
+        "startChar": 16,
+        "endLine": 16,
+        "endChar": 42
+      },
+      "revId": "8f6e15cc122a80d0d43dd3cd0688afd3952b5102",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
