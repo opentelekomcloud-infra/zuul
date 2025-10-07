@@ -545,13 +545,18 @@ def zuul_run_command(self, args, zuul_log_id, zuul_ansible_split_streams, zuul_o
             os.umask(umask)
 
     # ZUUL: merge stdout/stderr depending on config
-    stderr = subprocess.PIPE if zuul_ansible_split_streams else subprocess.STDOUT
+    if self.no_log:
+        stderr = subprocess.DEVNULL
+        stdout = subprocess.DEVNULL
+    else:
+        stderr = subprocess.PIPE if zuul_ansible_split_streams else subprocess.STDOUT
+        stdout = subprocess.PIPE
     kwargs = dict(
         executable=executable,
         shell=shell,
         close_fds=close_fds,
         stdin=st_in,
-        stdout=subprocess.PIPE,
+        stdout=stdout,
         stderr=stderr,
         preexec_fn=preexec,
         env=env,
@@ -594,8 +599,6 @@ def zuul_run_command(self, args, zuul_log_id, zuul_ansible_split_streams, zuul_o
                 data += '\n'
             if isinstance(data, text_type):
                 data = to_bytes(data)
-            cmd.stdin.write(data)
-            cmd.stdin.close()
 
         # ZUUL: If the console log follow thread *is* stuck in readline,
         # we can't close stdout (attempting to do so raises an
@@ -603,7 +606,10 @@ def zuul_run_command(self, args, zuul_log_id, zuul_ansible_split_streams, zuul_o
         # cmd.stdout.close()
         # cmd.stderr.close()
 
-        rc = cmd.wait()
+        # See the notes about deadlocks in the subprocess module docs:
+        # https://docs.python.org/3/library/subprocess.html
+        _, _ = cmd.communicate(input=data)
+        rc = cmd.returncode
 
         # ZUUL: Give the thread that is writing the console log up to
         # 10 seconds to catch up and exit.  If it hasn't done so by
