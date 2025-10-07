@@ -317,7 +317,7 @@ class Console:
 
 
 class StreamFollower:
-    def __init__(self, cmd, log_uuid, output_max_bytes):
+    def __init__(self, cmd, log_uuid, output_max_bytes, no_log):
         self.cmd = cmd
         self.log_uuid = log_uuid
         self.exception = None
@@ -329,6 +329,7 @@ class StreamFollower:
         self.stderr_thread = None
         # Total size in bytes of all log and stderr_log lines
         self.log_size = 0
+        self.no_log = no_log
 
     def join(self):
         if self.exception:
@@ -370,6 +371,9 @@ class StreamFollower:
             self.exception = e
 
     def follow_inner(self, fd, log_bytes):
+        if self.no_log:
+            _ = fd.read()
+            return
         newline_warning = False
         while True:
             line = fd.readline()
@@ -581,11 +585,8 @@ def zuul_run_command(self, args, zuul_log_id, zuul_ansible_split_streams, zuul_o
         if before_communicate_callback:
             before_communicate_callback(cmd)
 
-        if self.no_log:
-            follower = None
-        else:
-            follower = StreamFollower(cmd, zuul_log_id, zuul_output_max_bytes)
-            follower.follow()
+        follower = StreamFollower(cmd, zuul_log_id, zuul_output_max_bytes, no_log=self.no_log)
+        follower.follow()
 
         # ZUUL: Our log thread will catch the output so don't do that here.
 
@@ -602,6 +603,8 @@ def zuul_run_command(self, args, zuul_log_id, zuul_ansible_split_streams, zuul_o
         # exception) , so this is disabled.
         # cmd.stdout.close()
         # cmd.stderr.close()
+        # See https://docs.python.org/3/library/subprocess.html for
+        # sharp edges.
 
         rc = cmd.wait()
 
@@ -609,15 +612,11 @@ def zuul_run_command(self, args, zuul_log_id, zuul_ansible_split_streams, zuul_o
         # 10 seconds to catch up and exit.  If it hasn't done so by
         # then, it is very likely stuck in readline() because it
         # spawed a child that is holding stdout or stderr open.
-        if follower:
-            follower.join()
-            # ZUUL: stdout and stderr are in the console log file
-            # ZUUL: return the saved log lines so we can ship them back
-            stdout = follower.log_bytes.getvalue()
-            stderr = follower.stderr_log_bytes.getvalue()
-        else:
-            stdout = b('')
-            stderr = b('')
+        follower.join()
+        # ZUUL: stdout and stderr are in the console log file
+        # ZUUL: return the saved log lines so we can ship them back
+        stdout = follower.log_bytes.getvalue()
+        stderr = follower.stderr_log_bytes.getvalue()
 
     except (OSError, IOError) as e:
         self.log("Error Executing CMD:%s Exception:%s" % (self._clean_args(args), to_native(e)))

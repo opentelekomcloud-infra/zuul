@@ -77,6 +77,9 @@ class FunctionalActionModulesMixIn:
     def test_command_module(self):
         self._run_job('command-good', 'SUCCESS')
 
+    def test_command_module_no_log(self):
+        self._run_job('command-no-log', 'SUCCESS')
+
     def test_zuul_return_module(self):
         self._run_job('zuul_return-good', 'SUCCESS')
 
