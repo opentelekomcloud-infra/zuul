@@ -39,6 +39,30 @@
       },
       "revId": "75da0c5b953adc951e2421b84ba1031a877d1c67",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aaa7a619_1c6da865",
+        "filename": "tests/fixtures/config/remote-action-modules/git/org_project/playbooks/command-no-log.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-10-07T21:50:31Z",
+      "side": 1,
+      "message": "see also comments in https://review.opendev.org/c/zuul/zuul/+/841418",
+      "parentUuid": "9ffcaa03_64b39f19",
+      "range": {
+        "startLine": 23,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 42
+      },
+      "revId": "75da0c5b953adc951e2421b84ba1031a877d1c67",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
