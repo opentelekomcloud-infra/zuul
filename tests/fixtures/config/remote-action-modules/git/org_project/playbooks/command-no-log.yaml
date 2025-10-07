@@ -1,0 +1,16 @@
+- hosts: all
+  tasks:
+    - name: Test that no_log correctly flushes input buffers
+      no_log: true
+      command:
+        argv:
+          - python3
+          - -c
+          - 'import sys;print(("x"*256+"\n")*512);print(("x"*256+"\n")*512,file=sys.stderr)'
+      register: _run_command_result
+
+    - assert:
+        that:
+          - _run_command_result is success
+          - _run_command_result.rc == 0
+          - not _run_command_result.stdout
