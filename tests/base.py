@@ -2868,6 +2868,7 @@ class ZuulTestCase(BaseTestCase):
             if 'tenant' not in tenant.keys():
                 continue
             sources = tenant['tenant']['source']
+            self.setupTenantKeys(tenant['tenant']['name'])
             for source, conf in sources.items():
                 for project in conf.get('config-projects', []):
                     self.setupProjectKeys(source, project)
@@ -2891,7 +2892,24 @@ class ZuulTestCase(BaseTestCase):
             import_keys[path] = json.load(i)
 
         # ssh key
-        path = keystore.getSSHKeysPath(source, project)
+        path = keystore.getProjectSSHKeysPath(source, project)
+        with open(os.path.join(FIXTURE_DIR, 'ssh.json'), 'rb') as i:
+            import_keys[path] = json.load(i)
+
+        keystore.importKeys(import_data, False)
+        keystore.stop()
+
+    def setupTenantKeys(self, tenant_name):
+        # Make sure we set up an RSA key for the tenant so that we
+        # don't spend time generating one:
+        password = self.config.get("keystore", "password")
+        keystore = zuul.lib.keystorage.KeyStorage(
+            self.zk_client, password=password, start_cache=False)
+        import_keys = {}
+        import_data = {'keys': import_keys}
+
+        # ssh key
+        path = keystore.getTenantSSHKeysPath(tenant_name)
         with open(os.path.join(FIXTURE_DIR, 'ssh.json'), 'rb') as i:
             import_keys[path] = json.load(i)
 
