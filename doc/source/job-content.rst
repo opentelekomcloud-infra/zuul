@@ -1504,6 +1504,21 @@ or a static host), the use of the `add-build-sshkey
 <https://zuul-ci.org/docs/zuul-jobs/general-roles.html#role-add-build-sshkey>`_
 role is recommended.
 
+Tenant Key
+~~~~~~~~~~
+
+Each tenant in Zuul has its own SSH keypair.  This key is added to the
+SSH agent for all jobs running in that tenant.  Note this differs from
+the project key in that it is available for all pipelines.  This may
+be useful to restrict access to certain nodes to certain tenants.  The
+systems may be added to the inventory using the ``add_host`` Ansible
+module, or they may be supplied by static nodes in Nodepool.
+
+Zuul serves each tenant's public SSH key using its build-in webserver.
+They can be fetched at the path
+``/api/tenant/<tenant>/tenant-ssh-key/ssh.pub`` where ``<tenant>`` is
+the name of the tenant.
+
 Project Key
 ~~~~~~~~~~~
 
