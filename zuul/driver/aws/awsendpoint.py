@@ -596,14 +596,15 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             aws_access_key_id=self.connection.access_key_id,
             aws_secret_access_key=self.connection.secret_access_key,
             profile_name=self.connection.profile,
-            region_name=self.region,
         )
-        self.ec2_client = self.aws.client("ec2")
-        self.s3 = self.aws.resource('s3')
-        self.s3_client = self.aws.client('s3')
-        self.aws_quotas = self.aws.client("service-quotas")
-        self.ebs_client = self.aws.client('ebs')
-        self.sts_client = self.aws.client('sts')
+        self.ec2_client = self.aws.client("ec2", region_name=self.region)
+        self.s3 = self.aws.resource('s3', region_name=self.region)
+        self.s3_client = self.aws.client('s3', region_name=self.region)
+        self.s3_global_client = self.aws.client('s3')
+        self.aws_quotas = self.aws.client("service-quotas",
+                                          region_name=self.region)
+        self.ebs_client = self.aws.client('ebs', region_name=self.region)
+        self.sts_client = self.aws.client('sts', region_name=self.region)
 
     def startEndpoint(self):
         self._running = True
@@ -879,7 +880,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                         self.quota_cache.setResource(key, quota)
 
     def _getBucketRegion(self, bucket_name):
-        data = self.s3_client.get_bucket_location(Bucket=bucket_name)
+        data = self.s3_global_client.get_bucket_location(Bucket=bucket_name)
         # None means us-east-1 for s3 buckets
         return data['LocationConstraint'] or 'us-east-1'
 
