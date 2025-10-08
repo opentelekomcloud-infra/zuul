@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8d4006c8_aabfec89",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-10-08T20:40:05Z",
+      "side": 1,
+      "message": "unrelated failure due to test_subnodes_reuse_failure - not rechecking.\n\nWould anyone be able to point me to a test rig for the windows section? My suspicion is that zuul log streaming on windows will not be affected by no_log",
+      "revId": "78f3cefff97700903cd819c03fd45ba095d78cf5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
