@@ -16,6 +16,7 @@ import copy
 import os
 
 from zuul.lib import strings
+from zuul.zk.components import COMPONENT_REGISTRY
 
 
 def make_src_dir(canonical_hostname, name, scheme):
@@ -116,6 +117,13 @@ def construct_build_params(uuid, connections, job, item, pipeline,
     params['repo_state_keys'] = item.current_build_set.repo_state_keys
 
     params['ssh_keys'] = []
+    if COMPONENT_REGISTRY.model_api >= 36:
+        if redact_secrets_and_keys:
+            params['ssh_keys'].append("REDACTED")
+        else:
+            params['ssh_keys'].append(
+                dict(tenant_name=tenant.name)
+            )
     if pipeline.post_review:
         if redact_secrets_and_keys:
             params['ssh_keys'].append("REDACTED")

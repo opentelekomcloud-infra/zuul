@@ -13,6 +13,7 @@
 # under the License.
 
 import io
+import itertools
 import json
 import logging
 import time
@@ -206,6 +207,8 @@ class KeyStorage(ZooKeeperBase):
     PROJECT_PATH = PREFIX_PATH + "/{}"
     SECRETS_PATH = PROJECT_PATH + "/secrets"
     SSH_PATH = PROJECT_PATH + "/ssh"
+    # TODO: migrate existing keystorage to keystorage2
+    TENANT_SSH_PATH = "/keystorage2/tenant/{}/ssh"
 
     def __init__(self, zookeeper_client, password, backup=None,
                  start_cache=True):
@@ -248,13 +251,17 @@ class KeyStorage(ZooKeeperBase):
 
     def exportKeys(self):
         keys = {}
-        for (path, data) in self._walk('/keystorage'):
+        for (path, data) in itertools.chain(
+                self._walk('/keystorage'),
+                self._walk('/keystorage2'),
+        ):
             self.log.info(f"Exported: {path}")
             keys[path] = data
         return {'keys': keys}
 
     def importKeys(self, import_data, overwrite):
         for path, data in import_data['keys'].items():
+            # This includes /keystorage2
             if not path.startswith('/keystorage'):
                 self.log.error(f"Invalid path: {path}")
                 return
@@ -269,14 +276,14 @@ class KeyStorage(ZooKeeperBase):
                 else:
                     self.log.warning(f"Not overwriting existing key at {path}")
 
-    def getSSHKeysPath(self, connection_name, project_name):
+    def getProjectSSHKeysPath(self, connection_name, project_name):
         prefix, name = strings.unique_project_name(project_name)
         key_path = self.SSH_PATH.format(connection_name, prefix, name)
         return key_path
 
     def getProjectSSHKeys(self, connection_name, project_name):
         """Return the public and private keys"""
-        key = self._getSSHKey(connection_name, project_name)
+        key = self._getProjectSSHKey(connection_name, project_name)
         if key is None:
             self.log.info("Generating a new SSH key for %s/%s",
                           connection_name, project_name)
@@ -285,12 +292,12 @@ class KeyStorage(ZooKeeperBase):
             key_created = int(time.time())
 
             try:
-                self._storeSSHKey(connection_name, project_name, key,
-                                  key_version, key_created)
+                self._storeProjectSSHKey(connection_name, project_name, key,
+                                         key_version, key_created)
             except kazoo.exceptions.NodeExistsError:
                 # Handle race condition between multiple schedulers
                 # creating the same SSH key.
-                key = self._getSSHKey(connection_name, project_name)
+                key = self._getProjectSSHKey(connection_name, project_name)
 
         with io.StringIO() as o:
             key.write_private_key(o)
@@ -301,7 +308,7 @@ class KeyStorage(ZooKeeperBase):
 
     def loadProjectSSHKeys(self, connection_name, project_name):
         """Return the complete internal data structure"""
-        key_path = self.getSSHKeysPath(connection_name, project_name)
+        key_path = self.getProjectSSHKeysPath(connection_name, project_name)
         try:
             data, _ = self.kazoo_client.get(key_path)
             return json.loads(data)
@@ -310,17 +317,17 @@ class KeyStorage(ZooKeeperBase):
 
     def saveProjectSSHKeys(self, connection_name, project_name, keydata):
         """Store the complete internal data structure"""
-        key_path = self.getSSHKeysPath(connection_name, project_name)
+        key_path = self.getProjectSSHKeysPath(connection_name, project_name)
         data = json.dumps(keydata, sort_keys=True).encode("utf-8")
         self.kazoo_client.create(key_path, value=data, makepath=True)
 
     def deleteProjectSSHKeys(self, connection_name, project_name):
         """Delete the complete internal data structure"""
-        key_path = self.getSSHKeysPath(connection_name, project_name)
+        key_path = self.getProjectSSHKeysPath(connection_name, project_name)
         with suppress(kazoo.exceptions.NoNodeError):
             self.kazoo_client.delete(key_path)
 
-    def _getSSHKey(self, connection_name, project_name):
+    def _getProjectSSHKey(self, connection_name, project_name):
         """Load and return the public and private keys"""
         keydata = self.loadProjectSSHKeys(connection_name, project_name)
         if keydata is None:
@@ -329,8 +336,8 @@ class KeyStorage(ZooKeeperBase):
         with io.StringIO(encrypted_key) as o:
             return paramiko.RSAKey.from_private_key(o, self.password)
 
-    def _storeSSHKey(self, connection_name, project_name, key,
-                     version, created):
+    def _storeProjectSSHKey(self, connection_name, project_name, key,
+                            version, created):
         """Create the internal data structure from the key and store it"""
         # key is an rsa key object
         with io.StringIO() as o:
@@ -346,6 +353,84 @@ class KeyStorage(ZooKeeperBase):
             'keys': keys
         }
         self.saveProjectSSHKeys(connection_name, project_name, keydata)
+
+    def getTenantSSHKeysPath(self, tenant_name):
+        name = strings.safe_tenant_name(tenant_name)
+        key_path = self.TENANT_SSH_PATH.format(name)
+        return key_path
+
+    def getTenantSSHKeys(self, tenant_name):
+        """Return the public and private keys"""
+        key = self._getTenantSSHKey(tenant_name)
+        if key is None:
+            self.log.info("Generating a new SSH key for %s",
+                          tenant_name)
+            key = paramiko.RSAKey.generate(bits=RSA_KEY_SIZE)
+            key_version = 0
+            key_created = int(time.time())
+
+            try:
+                self._storeTenantSSHKey(tenant_name, key,
+                                        key_version, key_created)
+            except kazoo.exceptions.NodeExistsError:
+                # Handle race condition between multiple schedulers
+                # creating the same SSH key.
+                key = self._getTenantSSHKey(tenant_name)
+
+        with io.StringIO() as o:
+            key.write_private_key(o)
+            private_key = o.getvalue()
+        public_key = "ssh-rsa {}".format(key.get_base64())
+
+        return private_key, public_key
+
+    def loadTenantSSHKeys(self, tenant_name):
+        """Return the complete internal data structure"""
+        key_path = self.getTenantSSHKeysPath(tenant_name)
+        try:
+            data, _ = self.kazoo_client.get(key_path)
+            return json.loads(data)
+        except kazoo.exceptions.NoNodeError:
+            return None
+
+    def saveTenantSSHKeys(self, tenant_name, keydata):
+        """Store the complete internal data structure"""
+        key_path = self.getTenantSSHKeysPath(tenant_name)
+        data = json.dumps(keydata, sort_keys=True).encode("utf-8")
+        self.kazoo_client.create(key_path, value=data, makepath=True)
+
+    def deleteTenantSSHKeys(self, tenant_name):
+        """Delete the complete internal data structure"""
+        key_path = self.getTenantSSHKeysPath(tenant_name)
+        with suppress(kazoo.exceptions.NoNodeError):
+            self.kazoo_client.delete(key_path)
+
+    def _getTenantSSHKey(self, tenant_name):
+        """Load and return the public and private keys"""
+        keydata = self.loadTenantSSHKeys(tenant_name)
+        if keydata is None:
+            return None
+        encrypted_key = keydata['keys'][0]["private_key"]
+        with io.StringIO(encrypted_key) as o:
+            return paramiko.RSAKey.from_private_key(o, self.password)
+
+    def _storeTenantSSHKey(self, tenant_name, key,
+                           version, created):
+        """Create the internal data structure from the key and store it"""
+        # key is an rsa key object
+        with io.StringIO() as o:
+            key.write_private_key(o, self.password)
+            private_key = o.getvalue()
+        keys = [{
+            "version": version,
+            "created": created,
+            "private_key": private_key,
+        }]
+        keydata = {
+            'schema': 1,
+            'keys': keys
+        }
+        self.saveTenantSSHKeys(tenant_name, keydata)
 
     def getProjectSecretsKeysPath(self, connection_name, project_name):
         prefix, name = strings.unique_project_name(project_name)
