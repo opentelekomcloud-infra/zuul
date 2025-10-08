@@ -80,6 +80,47 @@
       "message": "This could end up using a lot of memory; I think it would be better to use the same code as below but just avoid concatenating.",
       "revId": "75da0c5b953adc951e2421b84ba1031a877d1c67",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "81694b18_4dacf2d6",
+        "filename": "zuul/ansible/9/library/command.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-10-08T18:18:31Z",
+      "side": 1,
+      "message": "My kingdom for a flush that also works on input! Nice spot, thanks!",
+      "parentUuid": "9b738db8_975e4d48",
+      "revId": "75da0c5b953adc951e2421b84ba1031a877d1c67",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dd440554_9d9f9dcd",
+        "filename": "zuul/ansible/base/library/module_utils/Ansible.Zuul.Win.Shell.Process.cs",
+        "patchSetId": 6
+      },
+      "lineNbr": 468,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-10-08T18:18:31Z",
+      "side": 1,
+      "message": "On the face of it, it looks like win_command and win_shell does not behave differently with no_log: True ? Honestly, I\u0027m not confident enough to predict the behaviour just from this code snippet, - I\u0027ll extend the test case to check.",
+      "range": {
+        "startLine": 466,
+        "startChar": 12,
+        "endLine": 468,
+        "endChar": 22
+      },
+      "revId": "75da0c5b953adc951e2421b84ba1031a877d1c67",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
