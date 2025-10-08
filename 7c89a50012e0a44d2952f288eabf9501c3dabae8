@@ -38,6 +38,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "62849a01_551d7aaa",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 37666
+      },
+      "writtenOn": "2025-10-08T09:15:21Z",
+      "side": 1,
+      "message": "Hi Szymon,\nThanks for the review! I’ll update the patch to include tests and an entry in the release notes.",
+      "parentUuid": "5b216e47_1db31fdc",
+      "revId": "7c89a50012e0a44d2952f288eabf9501c3dabae8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "31a2c781_a167deb4",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 1
