@@ -28,8 +28,7 @@ def make_src_dir(canonical_hostname, name, scheme):
 
 
 def construct_build_params(uuid, connections, job, item, pipeline,
-                           dependent_changes=[], merger_items=[],
-                           redact_secrets_and_keys=True):
+                           dependent_changes=[], merger_items=[]):
     """Returns a list of all the parameters needed to build a job.
 
     These parameters may be passed to zuul-executors (via ZK) to perform
@@ -118,19 +117,13 @@ def construct_build_params(uuid, connections, job, item, pipeline,
 
     params['ssh_keys'] = []
     if COMPONENT_REGISTRY.model_api >= 36:
-        if redact_secrets_and_keys:
-            params['ssh_keys'].append("REDACTED")
-        else:
-            params['ssh_keys'].append(
-                dict(tenant_name=tenant.name)
-            )
+        params['ssh_keys'].append(
+            dict(tenant_name=tenant.name)
+        )
     if pipeline.post_review:
-        if redact_secrets_and_keys:
-            params['ssh_keys'].append("REDACTED")
-        else:
-            params['ssh_keys'].append(dict(
-                connection_name=change.project.connection_name,
-                project_name=change.project.name))
+        params['ssh_keys'].append(dict(
+            connection_name=change.project.connection_name,
+            project_name=change.project.name))
     params['pipeline_builds_images'] = pipeline.builds_images
     params['zuul'] = zuul_params
     projects = set()

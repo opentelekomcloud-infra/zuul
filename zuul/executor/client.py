@@ -74,8 +74,7 @@ class ExecutorClient(object):
 
         params = zuul.executor.common.construct_build_params(
             uuid, self.sched.connections,
-            job, item, pipeline, dependent_changes, merger_items,
-            redact_secrets_and_keys=False)
+            job, item, pipeline, dependent_changes, merger_items)
 
         # Pass webroot to the executor for generating oidc token
         web_root = manager.tenant.web_root
