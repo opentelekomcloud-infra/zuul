@@ -2955,7 +2955,11 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         request_id = data.pop('request_id', None)
         tenant_name = data.pop('tenant_name', None)
         if min_request_version or request_id or tenant_name:
-            self.assign(context, request_id, tenant_name, min_request_version)
+            try:
+                self.assign(
+                    context, request_id, tenant_name, min_request_version)
+            except NodeExistsError:
+                pass
         # End TODO
         return data
 
