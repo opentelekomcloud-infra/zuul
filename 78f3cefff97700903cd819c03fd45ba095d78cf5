@@ -33,6 +33,52 @@
       "message": "recheck (idle time)",
       "revId": "78f3cefff97700903cd819c03fd45ba095d78cf5",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08e2528e_4d2718cc",
+        "filename": "tests/fixtures/config/remote-zuul-stream/git/org_project/playbooks/win-command.yaml",
+        "patchSetId": 7
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-10-09T09:30:07Z",
+      "side": 1,
+      "message": "note to reviewers: I don\u0027t know if this is correct syntax. Anyone willing to collaborate on this it would be much appreciated!",
+      "range": {
+        "startLine": 175,
+        "startChar": 6,
+        "endLine": 175,
+        "endChar": 122
+      },
+      "revId": "78f3cefff97700903cd819c03fd45ba095d78cf5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "68a1d672_6c279fae",
+        "filename": "tests/fixtures/config/remote-zuul-stream/git/org_project/playbooks/win-command.yaml",
+        "patchSetId": 7
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-10-09T09:30:07Z",
+      "side": 1,
+      "message": "I have a strong suspicion that this will trip in the current win_command/win_shell module.",
+      "range": {
+        "startLine": 184,
+        "startChar": 10,
+        "endLine": 185,
+        "endChar": 36
+      },
+      "revId": "78f3cefff97700903cd819c03fd45ba095d78cf5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
