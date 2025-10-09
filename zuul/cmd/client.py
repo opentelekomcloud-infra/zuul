@@ -35,7 +35,12 @@ import urllib.parse
 import zuul.cmd
 from zuul.lib.config import get_default
 from zuul.model import (
-    SystemAttributes, Pipeline, PipelineState, PipelineChangeList
+    ImageBuildArtifact,
+    ImageUpload,
+    Pipeline,
+    PipelineChangeList,
+    PipelineState,
+    SystemAttributes,
 )
 from zuul.zk import ZooKeeperClient
 from zuul.lib.keystorage import KeyStorage
@@ -43,8 +48,12 @@ from zuul.manager.independent import IndependentPipelineManager
 from zuul.zk.locks import tenant_read_lock, pipeline_lock
 from zuul.zk.zkobject import ZKContext
 from zuul.zk.components import COMPONENT_REGISTRY
+from zuul.zk.image_registry import (
+    ImageBuildRegistry,
+    ImageUploadRegistry,
+)
 
-from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NoNodeError, NodeExistsError
 
 
 def parse_cutoff(now, before, older_than):
@@ -504,6 +513,37 @@ class Client(zuul.cmd.ZuulApp):
             'algorithm', type=str, help='algorithm name')
         cmd_delete_oidc_signing_keys.set_defaults(
             func=self.delete_oidc_signing_keys)
+
+        # image storage
+        cmd_import_images = subparsers.add_parser(
+            'import-images',
+            help='import images to ZooKeeper',
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=textwrap.dedent('''\
+            Import previously exported images to ZooKeeper
+
+            Given a file with previously exported images, this
+            command will import them into ZooKeeper.  Existing images
+            will not be overwritten.'''))
+        cmd_import_images.set_defaults(command='import-images')
+        cmd_import_images.add_argument('path', type=str,
+                                       help='image export file path')
+        cmd_import_images.set_defaults(func=self.import_images)
+
+        cmd_export_images = subparsers.add_parser(
+            'export-images',
+            help='export images from ZooKeeper',
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=textwrap.dedent('''\
+            Export images from ZooKeeper
+
+            This command exports images from ZooKeeper
+            and writes them to a file which is suitable for backing
+            up and later use with the import-images command.'''))
+        cmd_export_images.set_defaults(command='export-images')
+        cmd_export_images.add_argument('path', type=str,
+                                       help='image export file path')
+        cmd_export_images.set_defaults(func=self.export_images)
 
         # ZK Maintenance
         cmd_delete_state = subparsers.add_parser(
@@ -1077,6 +1117,51 @@ class Client(zuul.cmd.ZuulApp):
         algorithm = self.args.algorithm
         keystore.deleteOidcSigningKeys(algorithm)
         self.log.info("Delete OIDC signing keys for %s", algorithm)
+        sys.exit(0)
+
+    def export_images(self):
+        logging.basicConfig(level=logging.INFO)
+
+        zk_client = ZooKeeperClient.fromConfig(self.config)
+        zk_client.connect()
+        image_build_registry = ImageBuildRegistry(zk_client)
+        image_build_registry.waitForSync()
+        image_upload_registry = ImageUploadRegistry(zk_client)
+        image_upload_registry.waitForSync()
+        artifacts = [
+            x.toDict() for x in image_build_registry.getAllArtifacts()]
+        uploads = [
+            x.toDict() for x in image_upload_registry.getAllUploads()]
+        export = dict(
+            artifacts=artifacts,
+            uploads=uploads,
+        )
+
+        with open(os.open(self.args.path,
+                          os.O_CREAT | os.O_WRONLY, 0o600), 'w') as f:
+            json.dump(export, f)
+        sys.exit(0)
+
+    def import_images(self):
+        logging.basicConfig(level=logging.INFO)
+
+        zk_client = ZooKeeperClient.fromConfig(self.config)
+        zk_client.connect()
+        with open(self.args.path, 'r') as f:
+            import_data = json.load(f)
+        with ZKContext(zk_client, None, None, self.log) as context:
+            for upload in import_data['uploads']:
+                try:
+                    ImageUpload.new(context, **upload)
+                except NodeExistsError:
+                    self.log.debug("Upload already exists %s", upload['uuid'])
+            for artifact in import_data['artifacts']:
+                try:
+                    ImageBuildArtifact.new(context, **artifact)
+                except NodeExistsError:
+                    self.log.debug("Artifact already exists %s",
+                                   artifact['uuid'])
+
         sys.exit(0)
 
     def delete_state(self):
