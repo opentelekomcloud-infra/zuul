@@ -56,6 +56,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "a35a0d53_a8a4ee7c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 37666
+      },
+      "writtenOn": "2025-10-12T00:30:52Z",
+      "side": 1,
+      "message": "Hi Szymon, I have added the release more entry and tests covering the feature implemented.",
+      "parentUuid": "62849a01_551d7aaa",
+      "revId": "7c89a50012e0a44d2952f288eabf9501c3dabae8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "31a2c781_a167deb4",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 1
