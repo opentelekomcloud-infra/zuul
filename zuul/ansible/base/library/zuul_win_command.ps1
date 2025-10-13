@@ -18,8 +18,9 @@ $spec = @{
         removes = @{ type = "path" }
         stdin = @{ type = "str" }
         output_encoding_override = @{ type = "str" }
-	zuul_log_id = @{ type = "str" }
-	zuul_output_max_bytes = @{ type = "int" }
+        zuul_log_id = @{ type = "str" }
+        zuul_output_max_bytes = @{ type = "int" }
+        zuul_no_log = @{ type = "bool" }
     }
     required_one_of = @(
         , @('_raw_params', 'argv', 'cmd')
@@ -38,6 +39,7 @@ $stdin = $module.Params.stdin
 $output_encoding_override = $module.Params.output_encoding_override
 $zuul_log_id = $module.Params.zuul_log_id
 $zuul_output_max_bytes = $module.Params.zuul_output_max_bytes
+$zuul_no_log = $module.Params.zuul_no_log
 
 <#
 There are 3 ways a command can be specified with win_command:
@@ -102,6 +104,7 @@ $commandParams = @{
     ZuulLogId = $zuul_log_id
     ZuulLogPath = "C:/ProgramData/Zuul/Zuul/console-$zuul_log_id.log"
     ZuulOutputMaxBytes = $zuul_output_max_bytes
+    ZuulNoLog = $zuul_no_log
 }
 if ($filePath) {
     $commandParams.FilePath = $filePath

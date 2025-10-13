@@ -32,6 +32,7 @@ def stream_setup_run(module, task_vars):
     # having to modify the library command.py too much.  Both
     # of these below stop the creation of the files on disk
     # for situations where they won't be read and cleaned-up.
+    module._task.args['zuul_no_log'] = module._task.no_log
     skip = zuul_console_disabled(module)
     if skip:
         module._task.args['zuul_log_id'] = 'skip'

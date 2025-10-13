@@ -680,6 +680,7 @@ def main():
             zuul_log_id=dict(type='str'),
             zuul_ansible_split_streams=dict(type='bool'),
             zuul_output_max_bytes=dict(type='int'),
+            zuul_no_log=dict(type='bool'),
         ),
         supports_check_mode=True,
     )

@@ -153,6 +153,7 @@ namespace Ansible.Zuul.Win.Common
         private StreamReader outStream;
         private StreamReader errStream;
         private UInt32 outputMaxBytes;
+        private bool noLog;
         // Lists to save stdout/stderr log lines in as we collect them
         public StringBuilder outLogBytes;
         public StringBuilder errLogBytes;
@@ -165,7 +166,8 @@ namespace Ansible.Zuul.Win.Common
 
         public StreamFollower(SafeHandle process, StreamReader outStream,
                               StreamReader errStream, string zuulLogId,
-                              string zuulLogPath, UInt32 outputMaxBytes)
+                              string zuulLogPath, UInt32 outputMaxBytes,
+                              bool noLog)
         {
             this.process = process;
             this.zuulLogId = zuulLogId;
@@ -175,6 +177,7 @@ namespace Ansible.Zuul.Win.Common
             this.outStream = outStream;
             this.errStream = errStream;
             this.outputMaxBytes = outputMaxBytes;
+            this.noLog = noLog;
             this.logSize = 0;
         }
 
@@ -222,6 +225,10 @@ namespace Ansible.Zuul.Win.Common
                 if (line == null)
                 {
                     break;
+                }
+                if (noLog)
+                {
+                    continue;
                 }
 
                 logSize += (UInt32) line.Length;

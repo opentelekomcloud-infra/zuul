@@ -81,7 +81,8 @@ Function Run-Command {
         [string]$output_encoding_override = $null,
         [String]$zuul_log_id,
         [String]$zuul_log_path,
-        [UInt32]$zuul_output_max_bytes
+        [UInt32]$zuul_output_max_bytes,
+        [bool]$zuul_no_log
     )
 
     # need to validate the working directory if it is set
@@ -98,7 +99,7 @@ Function Run-Command {
     $executable = Get-ExecutablePath -executable $arguments[0] -directory $working_directory
 
     # run the command and get the results
-    $command_result = [Ansible.Zuul.Win.Shell.Process.ProcessUtil]::CreateProcess($executable, $command, $working_directory, $environment, $stdin, $output_encoding_override, $zuul_log_id, $zuul_log_path, $zuul_output_max_bytes)
+    $command_result = [Ansible.Zuul.Win.Shell.Process.ProcessUtil]::CreateProcess($executable, $command, $working_directory, $environment, $stdin, $output_encoding_override, $zuul_log_id, $zuul_log_path, $zuul_output_max_bytes, $zuul_no_log)
 
     return , @{
         executable = $executable

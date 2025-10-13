@@ -291,7 +291,8 @@ namespace Ansible.Zuul.Win.Shell.Process
 
         public static Result CreateProcess(string lpApplicationName, string lpCommandLine, string lpCurrentDirectory,
             IDictionary environment, string stdin, string outputEncoding,
-            string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes)
+            string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes,
+            bool zuulNoLog)
         {
             byte[] stdinBytes;
             if (String.IsNullOrEmpty(stdin))
@@ -302,7 +303,7 @@ namespace Ansible.Zuul.Win.Shell.Process
                     stdin += Environment.NewLine;
                 stdinBytes = new UTF8Encoding(false).GetBytes(stdin);
             }
-            return CreateProcess(lpApplicationName, lpCommandLine, lpCurrentDirectory, environment, stdinBytes, outputEncoding, zuulLogId, zuulLogPath, zuulOutputMaxBytes);
+            return CreateProcess(lpApplicationName, lpCommandLine, lpCurrentDirectory, environment, stdinBytes, outputEncoding, zuulLogId, zuulLogPath, zuulOutputMaxBytes, zuulNoLog);
         }
 
         /// <summary>
@@ -317,7 +318,7 @@ namespace Ansible.Zuul.Win.Shell.Process
         /// <returns>Result object that contains the command output and return code</returns>
         public static Result CreateProcess(string lpApplicationName, string lpCommandLine, string lpCurrentDirectory,
                                            IDictionary environment, byte[] stdin, string outputEncoding,
-                                           string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes)
+                                           string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes, bool zuulNoLog)
         {
             NativeHelpers.ProcessCreationFlags creationFlags = NativeHelpers.ProcessCreationFlags.CREATE_UNICODE_ENVIRONMENT |
                 NativeHelpers.ProcessCreationFlags.EXTENDED_STARTUPINFO_PRESENT;
@@ -379,7 +380,7 @@ namespace Ansible.Zuul.Win.Shell.Process
             }
 
             return WaitProcess(stdoutRead, stdoutWrite, stderrRead, stderrWrite, stdinStream, stdin, pi.hProcess,
-                outputEncoding, zuulLogId, zuulLogPath, zuulOutputMaxBytes);
+            outputEncoding, zuulLogId, zuulLogPath, zuulOutputMaxBytes, zuulNoLog);
         }
 
         internal static void CreateStdioPipes(NativeHelpers.STARTUPINFOEX si, out SafeFileHandle stdoutRead,
@@ -426,7 +427,7 @@ namespace Ansible.Zuul.Win.Shell.Process
 
         internal static Result WaitProcess(SafeFileHandle stdoutRead, SafeFileHandle stdoutWrite, SafeFileHandle stderrRead,
                                            SafeFileHandle stderrWrite, FileStream stdinStream, byte[] stdin, IntPtr hProcess, string outputEncoding,
-                                           string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes)
+                                           string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes, bool zuulNoLog)
         {
             // Default to using UTF-8 as the output encoding, this should be a logical default for most scenarios.
             outputEncoding = String.IsNullOrEmpty(outputEncoding) ? "utf-8" : outputEncoding;
@@ -448,7 +449,7 @@ namespace Ansible.Zuul.Win.Shell.Process
             // Zuul: We add the hProcess argument here so that our
             // follower can kill the process if it emits too much
             // output.
-            GetProcessOutput(stdout, stderr, hProcess, zuulLogId, zuulLogPath, zuulOutputMaxBytes, out stdoutStr, out stderrStr);
+            GetProcessOutput(stdout, stderr, hProcess, zuulLogId, zuulLogPath, zuulOutputMaxBytes, zuulNoLog, out stdoutStr, out stderrStr);
             UInt32 rc = GetProcessExitCode(hProcess);
 
             return new Result
@@ -460,10 +461,10 @@ namespace Ansible.Zuul.Win.Shell.Process
         }
 
         // Zuul: This method replaces the original
-        internal static void GetProcessOutput(StreamReader stdoutStream, StreamReader stderrStream, IntPtr hProcess, string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes, out string stdout, out string stderr)
+        internal static void GetProcessOutput(StreamReader stdoutStream, StreamReader stderrStream, IntPtr hProcess, string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes, bool zuulNoLog, out string stdout, out string stderr)
         {
             SafeWaitHandle process = new SafeWaitHandle(hProcess, true);
-            StreamFollower sf = new StreamFollower(process, stdoutStream, stderrStream, zuulLogId, zuulLogPath, zuulOutputMaxBytes);
+            StreamFollower sf = new StreamFollower(process, stdoutStream, stderrStream, zuulLogId, zuulLogPath, zuulOutputMaxBytes, zuulNoLog);
             sf.Follow();
             sf.Join();
             stdout = sf.outLogBytes.ToString();

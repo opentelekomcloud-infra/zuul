@@ -504,7 +504,7 @@ namespace Ansible.Zuul.Win.Command.Process
         public static Result CreateProcess(
             string lpApplicationName, string lpCommandLine, string lpCurrentDirectory,
             IDictionary environment, byte[] stdin, string outputEncoding,
-            bool waitChildren, string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes)
+            bool waitChildren, string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes, bool zuulNoLog)
         {
             ProcessCreationFlags creationFlags = ProcessCreationFlags.CreateSuspended |
                 ProcessCreationFlags.CreateUnicodeEnvironment;
@@ -559,7 +559,7 @@ namespace Ansible.Zuul.Win.Command.Process
                 using (pi)
                 {
                     return WaitProcess(stdoutRead, stdoutWrite, stderrRead, stderrWrite, stdinStream, stdin, pi,
-                                       outputEncoding, waitChildren, zuulLogId, zuulLogPath, zuulOutputMaxBytes);
+                                       outputEncoding, waitChildren, zuulLogId, zuulLogPath, zuulOutputMaxBytes, zuulNoLog);
                 }
             }
         }
@@ -767,7 +767,7 @@ namespace Ansible.Zuul.Win.Command.Process
         internal static Result WaitProcess(
             SafeFileHandle stdoutRead, SafeFileHandle stdoutWrite, SafeFileHandle stderrRead,
             SafeFileHandle stderrWrite, FileStream stdinStream, byte[] stdin, ProcessInformation pi,
-            string outputEncoding, bool waitChildren, string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes)
+            string outputEncoding, bool waitChildren, string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes, bool zuulNoLog)
         {
             // Default to using UTF-8 as the output encoding, this should be a sane default for most scenarios.
             outputEncoding = String.IsNullOrEmpty(outputEncoding) ? "utf-8" : outputEncoding;
@@ -826,7 +826,7 @@ namespace Ansible.Zuul.Win.Command.Process
                 // Zuul: We add the process argument here so that our
                 // follower can kill the process if it emits too much
                 // output.
-                GetProcessOutput(stdout, stderr, pi.Process, zuulLogId, zuulLogPath, zuulOutputMaxBytes, out stdoutStr, out stderrStr);
+                GetProcessOutput(stdout, stderr, pi.Process, zuulLogId, zuulLogPath, zuulOutputMaxBytes, zuulNoLog, out stdoutStr, out stderrStr);
                 UInt32 rc = GetProcessExitCode(pi.Process);
 
                 if (waitChildren)
@@ -851,9 +851,9 @@ namespace Ansible.Zuul.Win.Command.Process
         }
 
         // Zuul: This method replaces the original
-        internal static void GetProcessOutput(StreamReader stdoutStream, StreamReader stderrStream, SafeNativeHandle process, string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes, out string stdout, out string stderr)
+        internal static void GetProcessOutput(StreamReader stdoutStream, StreamReader stderrStream, SafeNativeHandle process, string zuulLogId, string zuulLogPath, UInt32 zuulOutputMaxBytes, bool zuulNoLog, out string stdout, out string stderr)
         {
-            StreamFollower sf = new StreamFollower(process, stdoutStream, stderrStream, zuulLogId, zuulLogPath, zuulOutputMaxBytes);
+            StreamFollower sf = new StreamFollower(process, stdoutStream, stderrStream, zuulLogId, zuulLogPath, zuulOutputMaxBytes, zuulNoLog);
             sf.Follow();
             sf.Join();
             stdout = sf.outLogBytes.ToString();

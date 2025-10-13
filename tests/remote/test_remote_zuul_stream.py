@@ -187,6 +187,22 @@ class FunctionalZuulStreamMixIn:
                              create2_task['task']['name'])
             self.assertLogLine(r'compute1 \| ok: Runtime: None', text)
 
+            # Test no_log for command
+            nolog_task = data[0]['plays'][1]['tasks'][15]
+            self.assertEqual("Test no_log command",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+            self.assertNotIn('This task should not log', text)
+
+            # Test no_log for shell
+            nolog_task = data[0]['plays'][1]['tasks'][16]
+            self.assertEqual("Test no_log shell",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+            self.assertNotIn('This task should not log', text)
+
             self.assertLogLine(
                 r'RUN START: \[untrusted : review.example.com/org/project/'
                 r'playbooks/command.yaml@master\]', text)
@@ -311,6 +327,22 @@ class FunctionalZuulStreamMixIn:
             self.assertEqual("Creates file that already exists",
                              create2_task['task']['name'])
             self.assertLogLine(r'compute1 \| ok: Runtime: None', text)
+
+            # Test no_log for command
+            nolog_task = data[0]['plays'][1]['tasks'][15]
+            self.assertEqual("Test no_log command",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+            self.assertNotIn('This task should not log', text)
+
+            # Test no_log for shell
+            nolog_task = data[0]['plays'][1]['tasks'][16]
+            self.assertEqual("Test no_log shell",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+            self.assertNotIn('This task should not log', text)
 
             self.assertLogLine(
                 r'RUN START: \[untrusted : review.example.com/org/project/'
@@ -516,6 +548,22 @@ class FunctionalZuulStreamMixIn:
             # get a result linee
             # self.assertLogLine(r'compute1 \| ok: Runtime: None', text)
 
+            # Test no_log for win_command
+            nolog_task = data[0]['plays'][1]['tasks'][14]
+            self.assertEqual("Test no_log command",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+            self.assertNotIn('This task should not log', text)
+
+            # Test no_log for win_shell
+            nolog_task = data[0]['plays'][1]['tasks'][15]
+            self.assertEqual("Test no_log shell",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+            self.assertNotIn('This task should not log', text)
+
             self.assertLogLine(
                 r'RUN START: \[untrusted : review.example.com/org/project/'
                 r'playbooks/win-command.yaml@master\]', text)
@@ -648,6 +696,22 @@ class FunctionalZuulStreamMixIn:
             # There is no "delta" returned in this case, so we don't
             # get a result linee
             # self.assertLogLine(r'compute1 \| ok: Runtime: None', text)
+
+            # Test no_log for win_command
+            nolog_task = data[0]['plays'][1]['tasks'][14]
+            self.assertEqual("Test no_log command",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+            self.assertNotIn('This task should not log', text)
+
+            # Test no_log for win_shell
+            nolog_task = data[0]['plays'][1]['tasks'][15]
+            self.assertEqual("Test no_log shell",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+            self.assertNotIn('This task should not log', text)
 
             self.assertLogLine(
                 r'RUN START: \[untrusted : review.example.com/org/project/'

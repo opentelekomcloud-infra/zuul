@@ -57,6 +57,7 @@ $no_profile = Get-AnsibleParam -obj $params -name "no_profile" -type "bool" -def
 $output_encoding_override = Get-AnsibleParam -obj $params -name "output_encoding_override" -type "str"
 $zuul_log_id = Get-AnsibleParam -obj $params -name "zuul_log_id" -type "str"
 $zuul_output_max_bytes = Get-AnsibleParam -obj $params -name "zuul_output_max_bytes" -type "int"
+$zuul_no_log = Get-AnsibleParam -obj $params -name "zuul_no_log" -type "bool"
 
 $raw_command_line = $raw_command_line.Trim()
 
@@ -109,6 +110,7 @@ $run_command_arg = @{
     zuul_log_id = $zuul_log_id
     zuul_log_path = "C:/ProgramData/Zuul/Zuul/console-$zuul_log_id.log"
     zuul_output_max_bytes = $zuul_output_max_bytes
+    zuul_no_log = $zuul_no_log
 }
 if ($chdir) {
     $run_command_arg['working_directory'] = $chdir

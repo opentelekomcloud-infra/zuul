@@ -196,7 +196,10 @@ Function Start-AnsibleWindowsProcess {
         $ZuulLogPath,
 
         [UInt32]
-        $ZuulOutputMaxBytes
+        $ZuulOutputMaxBytes,
+
+        [Bool]
+        $ZuulNoLog
     )
 
     if ($WorkingDirectory) {
@@ -238,7 +241,7 @@ Function Start-AnsibleWindowsProcess {
         }
     }
 
-    $res = [Ansible.Zuul.Win.Command.Process.ProcessUtil]::CreateProcess($applicationName, $CommandLine, $WorkingDirectory, $Environment, $stdin, $OutputEncodingOverride, $WaitChildren, $ZuulLogId, $ZuulLogPath, $ZuulOutputMaxBytes)
+    $res = [Ansible.Zuul.Win.Command.Process.ProcessUtil]::CreateProcess($applicationName, $CommandLine, $WorkingDirectory, $Environment, $stdin, $OutputEncodingOverride, $WaitChildren, $ZuulLogId, $ZuulLogPath, $ZuulOutputMaxBytes, $ZuulNoLog)
 
     [PSCustomObject]@{
         PSTypeName = 'Ansible.Zuul.Win.Command.Process.Info'
