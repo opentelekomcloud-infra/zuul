@@ -3407,13 +3407,12 @@ class Scheduler(threading.Thread):
                         iba.state = iba.State.READY
 
     def validateImageUpload(self, image_upload_uuid):
-        with self.createZKContext(None, self.log) as ctx:
-            upload = ImageUpload()
-            upload._set(uuid=image_upload_uuid)
-            upload.refresh(ctx)
+        upload = ImageUpload()
+        upload._set(uuid=image_upload_uuid)
         with self.createZKContext(None, self.log) as outer_ctx:
-            with upload.locked(outer_ctx, blocking=True) as lock:
+            with upload.locked(outer_ctx, blocking=True, timeout=30) as lock:
                 with self.createZKContext(lock, self.log) as ctx:
+                    upload.refresh(ctx)
                     upload.updateAttributes(
                         ctx,
                         validated=True,
