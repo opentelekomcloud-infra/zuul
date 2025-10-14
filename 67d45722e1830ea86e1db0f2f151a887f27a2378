@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e7511ea8_aa02ba97",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-14T16:39:40Z",
+      "side": 1,
+      "message": "I don\u0027t think we should change this log line.  It\u0027s matched to the one on line 283, and the new text is misleading.  This is a single \"Upload job\", which launches X \"Endpoint upload jobs\".  The endpoint upload jobs are handled below, and they have their own matching log lines for \"Starting upload X\" and \"Finished upload X\" (I think it\u0027d be okay to change those to \"endpoint upload\", but they\u0027re still at least distinct from what we have here).\n\nYou\u0027re adding the extra information of how many endpoint upload jobs were processed -- that is currently available by counting the log lines from the endpoint upload jobs, but that\u0027s not convenient.\n\nI think we can add that here if you want, but let\u0027s just try to be precise in the phrasing.  So maybe:\n\n\"Finished upload job for %s with %s uploads.\"  or \"Finished upload job for %s with %s endpoint uploads.\"",
+      "revId": "67d45722e1830ea86e1db0f2f151a887f27a2378",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "299733be_056c51ad",
+        "filename": "zuul/scheduler.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3413,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-14T16:39:40Z",
+      "side": 1,
+      "message": "We rarely set timeouts for things like this -- can you elaborate on your reasoning here?  Because my understanding is that this is called after the completion of validation jobs, which would only be triggered after the upload, so there should be nothing in contention with this (except as you note, the case where everything is really fast and the pipeline somehow completes between lines 356 and 362 of the launcher server -- which are basically two immediately successive instructions, so with the rest of this change, that seems really unlikely).  I suspect you were more likely to observe this issue with the *old* code (which held the lock longer) than the new code which releases locks immediately.\n\nI guess my worry is that with a 30 second timeout, we\u0027re more likely to hit that due to a very slow scheduler or zookeeper, or perhaps a zookeeper connectivity issue rather than any actual contention.\n\nI think our normal expectation would be not to have a timeout here.  We didn\u0027t before, and we also don\u0027t on the IBA.  I don\u0027t think it\u0027s necessary, and I think in the case where we somehow manage to not acquire the lock for 30s due to system slowness, having the scheduler wait is probably good.\n\nIf you would like to change our practice and start to add timeouts for unexpected situations, maybe it should be very long?  Like 3-5 minutes rather than 30 seconds?\n\nI prefer no timeout, but if you feel strongly about adding them, then I\u0027d like longer ones and also we should add it to the IBA in the method above this one.",
+      "revId": "67d45722e1830ea86e1db0f2f151a887f27a2378",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
