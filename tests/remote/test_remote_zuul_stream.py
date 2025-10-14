@@ -203,6 +203,24 @@ class FunctionalZuulStreamMixIn:
             self.assertNotIn("This task should not log", nolog_json_as_str)
             self.assertNotIn('This task should not log', text)
 
+            # Test it does not appear in the registered output from command
+            # NOTE: This isn't necessarily a desired behavior, but it is
+            # a side effect of how we prevent output in the JSON log; we
+            # could consider changing it, but we include assertions so that
+            # we know that the behavior is consistent over time.
+            nolog_task = data[0]['plays'][1]['tasks'][17]
+            self.assertEqual("Inspect command_no_log_result",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+
+            # Test it does not appear in the registered output from shell
+            nolog_task = data[0]['plays'][1]['tasks'][18]
+            self.assertEqual("Inspect shell_no_log_result",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+
             self.assertLogLine(
                 r'RUN START: \[untrusted : review.example.com/org/project/'
                 r'playbooks/command.yaml@master\]', text)
@@ -343,6 +361,20 @@ class FunctionalZuulStreamMixIn:
             nolog_json_as_str = json.dumps(nolog_task)
             self.assertNotIn("This task should not log", nolog_json_as_str)
             self.assertNotIn('This task should not log', text)
+
+            # Test it does not appear in the registered output from command
+            nolog_task = data[0]['plays'][1]['tasks'][17]
+            self.assertEqual("Inspect command_no_log_result",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+
+            # Test it does not appear in the registered output from shell
+            nolog_task = data[0]['plays'][1]['tasks'][18]
+            self.assertEqual("Inspect shell_no_log_result",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
 
             self.assertLogLine(
                 r'RUN START: \[untrusted : review.example.com/org/project/'
@@ -563,6 +595,20 @@ class FunctionalZuulStreamMixIn:
             nolog_json_as_str = json.dumps(nolog_task)
             self.assertNotIn("This task should not log", nolog_json_as_str)
             self.assertNotIn('This task should not log', text)
+
+            # Test it does not appear in the registered output from command
+            nolog_task = data[0]['plays'][1]['tasks'][16]
+            self.assertEqual("Inspect command_no_log_result",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
+
+            # Test it does not appear in the registered output from shell
+            nolog_task = data[0]['plays'][1]['tasks'][17]
+            self.assertEqual("Inspect shell_no_log_result",
+                             nolog_task['task']['name'])
+            nolog_json_as_str = json.dumps(nolog_task)
+            self.assertNotIn("This task should not log", nolog_json_as_str)
 
             self.assertLogLine(
                 r'RUN START: \[untrusted : review.example.com/org/project/'
