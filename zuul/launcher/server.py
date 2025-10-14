@@ -277,6 +277,7 @@ class UploadJob:
     def _run(self):
         path = None
         uploads = []
+        futures = {}
         with self.launcher.createZKContext(None, self.log) as ctx:
             try:
                 self.log.debug("Starting upload job for %s",
@@ -292,15 +293,13 @@ class UploadJob:
                     pending_uploads, self.all_uploads)
                 planner.plan()
 
-                futures = collections.deque()
-
                 for upload, job in planner.import_jobs:
                     self.log.debug("Scheduling import for %s", upload)
                     future = self.launcher.endpoint_import_executor.submit(
                         EndpointUploadJob(
                             self.launcher, upload, job, futures).run
                     )
-                    futures.append((upload, future))
+                    futures[future] = upload
 
                 # Copy jobs for completed uploads can run now:
                 for upload, job, external_id in planner.copy_jobs:
@@ -310,7 +309,7 @@ class UploadJob:
                             self.launcher, upload, job, futures,
                             external_id).run
                     )
-                    futures.append((upload, future))
+                    futures[future] = upload
 
                 # Any uploads remaining need to be handled by
                 # downloading the artifact and uploading.
@@ -327,60 +326,76 @@ class UploadJob:
                             EndpointUploadJob(
                                 self.launcher, upload, job, futures, path).run
                         )
-                        futures.append((upload, future))
+                        futures[future] = upload
 
-                while True:
-                    try:
-                        upload, future = futures.popleft()
-                    except IndexError:
-                        break
-                    try:
-                        self.log.debug("Waiting for upload %s", upload)
-                        future.result()
-                    except Exception:
-                        self.log.exception("Unable to upload image %s", upload)
             finally:
-                self.log.debug("Finalizing upload job for %s",
-                               self.image_build_artifact)
-                for upload in uploads:
-                    try:
-                        with upload.activeContext(ctx):
-                            if upload.external_id:
-                                self.log.debug(
-                                    "Marking upload %s ready", upload)
-                                upload.state = upload.State.READY
-                            else:
-                                # Make 3 total attempts
-                                if upload.attempt < 2:
-                                    new_upload = upload.copy(ctx)
-                                    self.log.debug(
-                                        "Replacing upload %s with %s",
-                                        upload, new_upload)
-                                    self.log.debug(
-                                        "Marking upload %s deleting", upload)
-                                    upload.state = upload.State.DELETING
-                                    self.launcher.upload_deleted_event.set()
-                                else:
-                                    self.log.debug(
-                                        "Marking upload %s failed", upload)
-                                    upload.state = upload.State.FAILED
-                    except Exception:
-                        self.log.exception("Unable to update state for %s",
-                                           upload)
-                    try:
-                        upload.releaseLock(ctx)
-                        self.log.debug("Released upload lock for %s", upload)
-                    except Exception:
-                        self.log.exception("Unable to release lock for %s",
-                                           upload)
+                while futures:
+                    done, _ = concurrent.futures.wait(
+                        set(futures.keys()),
+                        return_when=concurrent.futures.FIRST_COMPLETED
+                    )
+
+                    for future in done:
+                        upload = futures.pop(future)
+                        try:
+                            self.log.debug("Upload %s finished", upload)
+                            future.result()
+                        except Exception:
+                            self.log.exception("Unable to upload image %s",
+                                               upload)
+                        try:
+                            self.finalizeUpload(upload, ctx)
+                            # We are sending the image validate event
+                            # here while still holding the upload lock.
+                            # This shouldn't be an issue as we release
+                            # the lock immediately afterwards. The
+                            # pipeline will only need to acquire the
+                            # lock when reporting the buildset.
+                            if (not upload.validated
+                                    and upload.state == upload.State.READY):
+                                self.launcher.addImageValidateEvent(upload)
+                        except Exception:
+                            self.log.exception("Unable to update state for %s",
+                                               upload)
+                        finally:
+                            try:
+                                upload.releaseLock(ctx)
+                                self.log.debug("Released upload lock for %s",
+                                               upload)
+
+                            except Exception:
+                                self.log.exception(
+                                    "Unable to release lock for %s", upload)
                 if path:
                     try:
                         os.unlink(path)
                         self.log.info("Deleted %s", path)
                     except Exception:
                         self.log.exception("Unable to delete %s", path)
-                self.log.debug("Finished upload job for %s",
-                               self.image_build_artifact)
+                self.log.debug("Finished upload job for %s with %s uploads",
+                               self.image_build_artifact, len(uploads))
+
+    def finalizeUpload(self, upload, ctx):
+        with upload.activeContext(ctx):
+            if upload.external_id:
+                self.log.debug(
+                    "Marking upload %s ready", upload)
+                upload.state = upload.State.READY
+            else:
+                # Make 3 total attempts
+                if upload.attempt < 2:
+                    new_upload = upload.copy(ctx)
+                    self.log.debug(
+                        "Replacing upload %s with %s",
+                        upload, new_upload)
+                    self.log.debug(
+                        "Marking upload %s deleting", upload)
+                    upload.state = upload.State.DELETING
+                    self.launcher.upload_deleted_event.set()
+                else:
+                    self.log.debug(
+                        "Marking upload %s failed", upload)
+                    upload.state = upload.State.FAILED
 
 
 class EndpointUploadJob:
@@ -417,10 +432,7 @@ class EndpointUploadJob:
                 EndpointUploadJob(self.launcher, dep_upload, dep_job,
                                   self.futures, external_id).run,
             )
-            self.futures.append((dep_upload, future))
-
-        if not self.upload.validated:
-            self.launcher.addImageValidateEvent(self.upload)
+            self.futures[future] = dep_upload
 
 
 class NodescanRequest:
