@@ -81,6 +81,23 @@
       "message": "FWIW This should work on CentOS 9 and 10",
       "revId": "112c43e620015b24bc8c2dfc4090964facd61fb8",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f957085b_c55087ec",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 12898
+      },
+      "writtenOn": "2025-10-14T02:56:53Z",
+      "side": 1,
+      "message": "recheck to get logs",
+      "revId": "112c43e620015b24bc8c2dfc4090964facd61fb8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
