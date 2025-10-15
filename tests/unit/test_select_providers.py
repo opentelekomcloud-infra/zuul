@@ -12,7 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import collections
 import math
 import time
 import uuid
@@ -155,7 +154,7 @@ class TestSelectProviders(LauncherBaseTestCase):
         # 1 node: use first available provider
         self.ordered_providers = ['east', 'west', 'unused']
         request = self._makeRequest(['debian-normal'])
-        ready_nodes = collections.defaultdict(list)
+        ready_nodes = zuul.launcher.server.LabelNodeMapping()
         request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
@@ -170,7 +169,7 @@ class TestSelectProviders(LauncherBaseTestCase):
         # it's second.
         self.ordered_providers = ['unused', 'east', 'west']
         request = self._makeRequest(['debian-normal', 'debian-normal'])
-        ready_nodes = collections.defaultdict(list)
+        ready_nodes = zuul.launcher.server.LabelNodeMapping()
         request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
@@ -191,7 +190,7 @@ class TestSelectProviders(LauncherBaseTestCase):
         # 2 node split: 1 from east, 1 from west
         self.ordered_providers = ['east', 'west', 'unused']
         request = self._makeRequest(['debian-small', 'debian-large'])
-        ready_nodes = collections.defaultdict(list)
+        ready_nodes = zuul.launcher.server.LabelNodeMapping()
         request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
@@ -219,7 +218,7 @@ class TestSelectProviders(LauncherBaseTestCase):
         self.launcher.api.nodes_cache._items[node2.uuid] = node2
         request.updateProviderNode(0, node1, add_failed_provider=east)
         request.updateProviderNode(0, node1, add_failed_provider=east)
-        ready_nodes = collections.defaultdict(list)
+        ready_nodes = zuul.launcher.server.LabelNodeMapping()
         request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
@@ -240,7 +239,7 @@ class TestSelectProviders(LauncherBaseTestCase):
         node1._set(state=node1.State.TEMPFAILED,
                    provider=east)
         self.launcher.api.nodes_cache._items[node1.uuid] = node1
-        ready_nodes = collections.defaultdict(list)
+        ready_nodes = zuul.launcher.server.LabelNodeMapping()
         request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
@@ -265,7 +264,7 @@ class TestSelectProviders(LauncherBaseTestCase):
         node2._set(state=node1.State.BUILDING,
                    provider=east)
         self.launcher.api.nodes_cache._items[node2.uuid] = node2
-        ready_nodes = collections.defaultdict(list)
+        ready_nodes = zuul.launcher.server.LabelNodeMapping()
         request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
         messages = []
@@ -297,7 +296,8 @@ class TestSelectProviders(LauncherBaseTestCase):
         ready_nodes = self.launcher._getUnassignedNodes()
         request_ready_nodes = self.launcher._filterUnassignedNodes(
             ready_nodes, request)
-        self.assertEqual(1, len(request_ready_nodes['debian-normal'][node1]))
+        self.assertEqual(1, len(request_ready_nodes.getNodesForLabel(
+            'debian-normal')))
         messages = []
         label_providers = self.launcher._selectProviders(
             request, request_ready_nodes, messages)
