@@ -2842,6 +2842,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             state_time=time.time(),
             label="",
             label_config_hash=None,
+            label_aliases=[],
             tags={},
             connection_name="",
             endpoint_name=None,
@@ -2910,6 +2911,10 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         return f"{self.ROOT}/{self.LOCKS_PATH}/{self.uuid}"
 
     @property
+    def all_labels(self):
+        return [self.label] + self.label_aliases
+
+    @property
     def request_id(self):
         if self.assignment.getZKVersion() is not None:
             return self.assignment.request_id
@@ -2960,6 +2965,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         if min_request_version or request_id or tenant_name:
             self.assign(context, request_id, tenant_name, min_request_version)
         # End TODO
+        data.setdefault('label_aliases', [])
         return data
 
     def serialize(self, context):
@@ -2978,6 +2984,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             state_time=self.state_time,
             label=self.label,
             label_config_hash=self.label_config_hash,
+            label_aliases=self.label_aliases,
             tags=self.tags,
             connection_name=self.connection_name,
             endpoint_name=self.endpoint_name,
