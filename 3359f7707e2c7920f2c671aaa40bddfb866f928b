@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f629cdf6_162b01e5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-10-15T11:08:25Z",
+      "side": 1,
+      "message": "lgtm, though I think there are two things that we want to consider:\n1. using images/flavors for static nodes feels a bit weird, so we might want to think about how we could make those optional\n2. from the spec it looks like we can assign multiple labels to a single node and we also use this today with the static driver in Nodepool. To be feature complete we should probably find a way to allow something like that\n\nWe\u0027ve already discussed this out-of-band (also with possible solutions), but just wanted to mention them here as well.",
+      "revId": "3359f7707e2c7920f2c671aaa40bddfb866f928b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
