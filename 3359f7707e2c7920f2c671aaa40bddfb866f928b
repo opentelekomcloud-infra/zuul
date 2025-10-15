@@ -16,6 +16,24 @@
       "message": "lgtm, though I think there are two things that we want to consider:\n1. using images/flavors for static nodes feels a bit weird, so we might want to think about how we could make those optional\n2. from the spec it looks like we can assign multiple labels to a single node and we also use this today with the static driver in Nodepool. To be feature complete we should probably find a way to allow something like that\n\nWe\u0027ve already discussed this out-of-band (also with possible solutions), but just wanted to mention them here as well.",
       "revId": "3359f7707e2c7920f2c671aaa40bddfb866f928b",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "414ab217_f75c61b8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-15T18:18:26Z",
+      "side": 1,
+      "message": "Indeed.  I also agree that images especially (and maybe flavors too) are weird -- but there are a couple of reasons to keep them: it normalizes where some configuration settings come from, and it makes config error checking easier.  I think we could make them optional, but for the moment, maybe we should leave them as-is and see how weird it ends up being.\n\nFor the multiple labels, I\u0027ll work on that in a followup.",
+      "parentUuid": "f629cdf6_162b01e5",
+      "revId": "3359f7707e2c7920f2c671aaa40bddfb866f928b",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
