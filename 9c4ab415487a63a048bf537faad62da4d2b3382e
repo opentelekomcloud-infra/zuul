@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6e4a277_e15bc6cd",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 3329,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-10-16T10:54:18Z",
+      "side": 1,
+      "message": "nit: maybe we can remove the \"tenant-\" prefix here as this is probably clear from the URL already, e.g. `/api/tenant/foo/ssh-key/ssh.pub`",
+      "range": {
+        "startLine": 3329,
+        "startChar": 27,
+        "endLine": 3329,
+        "endChar": 33
+      },
+      "revId": "9c4ab415487a63a048bf537faad62da4d2b3382e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
