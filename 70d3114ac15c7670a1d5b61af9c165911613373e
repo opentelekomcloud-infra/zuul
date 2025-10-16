@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "715976e0_cc2fddff",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-10-16T11:13:22Z",
+      "side": 1,
+      "message": "I think this can be removed as it\u0027s not doing anything. `label_to_nodes` is a dict with labels as keys, so this will never be true for a node.\n\nSince we are using a dict for the mapping of node UUID to node we don\u0027t have to worry about duplicates in the for-loop below.",
+      "range": {
+        "startLine": 134,
+        "startChar": 0,
+        "endLine": 135,
+        "endChar": 18
+      },
+      "revId": "70d3114ac15c7670a1d5b61af9c165911613373e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
