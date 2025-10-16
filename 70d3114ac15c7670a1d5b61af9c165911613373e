@@ -22,6 +22,24 @@
       },
       "revId": "70d3114ac15c7670a1d5b61af9c165911613373e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c25ee64_064f3200",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-16T14:41:29Z",
+      "side": 1,
+      "message": "Fixed!  (This method looked a little different originally, and I didn\u0027t rethink that part, sorry!)",
+      "parentUuid": "715976e0_cc2fddff",
+      "revId": "70d3114ac15c7670a1d5b61af9c165911613373e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
