@@ -16,7 +16,7 @@
 import logging
 
 
-def get_annotated_logger(logger, event, build=None, request=None):
+def get_annotated_logger(logger, event=None, request=None, **annotations):
     # Note(tobiash): When running with python 3.5 log adapters cannot be
     # stacked. We need to detect this case and modify the original one.
     if isinstance(logger, EventIdLogAdapter):
@@ -26,15 +26,12 @@ def get_annotated_logger(logger, event, build=None, request=None):
 
     if event is not None:
         if hasattr(event, 'zuul_event_id'):
-            extra['event_id'] = event.zuul_event_id
+            extra['e'] = event.zuul_event_id
         else:
-            extra['event_id'] = event
-
-    if build is not None:
-        extra['build'] = build
-
+            extra['e'] = event
     if request is not None:
-        extra['request'] = request
+        extra['req'] = request
+    extra.update(annotations)
 
     if isinstance(logger, EventIdLogAdapter):
         return logger
@@ -46,18 +43,9 @@ class EventIdLogAdapter(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         msg, kwargs = super().process(msg, kwargs)
         extra = kwargs.get('extra', {})
-        event_id = extra.get('event_id')
-        build = extra.get('build')
-        request = extra.get('request')
-        new_msg = []
-        if event_id is not None:
-            new_msg.append('[e: %s]' % event_id)
-        if build is not None:
-            new_msg.append('[build: %s]' % build)
-        if request is not None:
-            new_msg.append('[req: %s]' % request)
-        new_msg.append(msg)
-        msg = ' '.join(new_msg)
+        annotations = (f"[{k}: {v}]" for k, v in extra.items()
+                       if v is not None)
+        msg = ' '.join((*annotations, msg))
         return msg, kwargs
 
     def addHandler(self, *args, **kw):

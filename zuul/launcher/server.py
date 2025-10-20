@@ -127,6 +127,7 @@ class DeleteJob:
     log = logging.getLogger("zuul.Launcher")
 
     def __init__(self, launcher, image_build_artifact, upload):
+        self.log = get_annotated_logger(self.log, upload=upload.uuid)
         self.launcher = launcher
         self.image_build_artifact = image_build_artifact
         self.upload = upload
@@ -169,6 +170,7 @@ class UploadJob:
     log = logging.getLogger("zuul.Launcher")
 
     def __init__(self, launcher, image_build_artifact, uploads, all_uploads):
+        self.log = get_annotated_logger(self.log, ba=image_build_artifact.uuid)
         self.launcher = launcher
         self.image_build_artifact = image_build_artifact
         # All pending uploads for this artifact.  The uploads may have
@@ -294,19 +296,21 @@ class UploadJob:
                 planner.plan()
 
                 for upload, job in planner.import_jobs:
-                    self.log.debug("Scheduling import for %s", upload)
+                    log = get_annotated_logger(self.log, upload=upload.uuid)
+                    log.debug("Scheduling import for %s", upload)
                     future = self.launcher.endpoint_import_executor.submit(
                         EndpointUploadJob(
-                            self.launcher, upload, job, futures).run
+                            self.launcher, upload, job, futures, log).run
                     )
                     futures[future] = upload
 
                 # Copy jobs for completed uploads can run now:
                 for upload, job, external_id in planner.copy_jobs:
-                    self.log.debug("Scheduling copy for %s", upload)
+                    log = get_annotated_logger(self.log, upload=upload.uuid)
+                    log.debug("Scheduling copy for %s", upload)
                     future = self.launcher.endpoint_import_executor.submit(
                         EndpointUploadJob(
-                            self.launcher, upload, job, futures,
+                            self.launcher, upload, job, futures, log,
                             external_id).run
                     )
                     futures[future] = upload
@@ -321,10 +325,13 @@ class UploadJob:
                     path = self._handleCompression(path)
                     self._validateChecksum(path)
                     for upload, job in planner.upload_jobs:
-                        self.log.debug("Scheduling upload for %s", upload)
+                        log = get_annotated_logger(
+                            self.log, upload=upload.uuid)
+                        log.debug("Scheduling upload for %s", upload)
                         future = self.launcher.endpoint_upload_executor.submit(
                             EndpointUploadJob(
-                                self.launcher, upload, job, futures, path).run
+                                self.launcher, upload, job, futures, log, path
+                            ).run
                         )
                         futures[future] = upload
 
@@ -337,14 +344,15 @@ class UploadJob:
 
                     for future in done:
                         upload = futures.pop(future)
+                        log = get_annotated_logger(
+                            self.log, upload=upload.uuid)
                         try:
-                            self.log.debug("Upload %s finished", upload)
+                            log.debug("Upload %s finished", upload)
                             future.result()
                         except Exception:
-                            self.log.exception("Unable to upload image %s",
-                                               upload)
+                            log.exception("Unable to upload image %s", upload)
                         try:
-                            self.finalizeUpload(upload, ctx)
+                            self.finalizeUpload(upload, ctx, log)
                             # We are sending the image validate event
                             # here while still holding the upload lock.
                             # This shouldn't be an issue as we release
@@ -355,16 +363,16 @@ class UploadJob:
                                     and upload.state == upload.State.READY):
                                 self.launcher.addImageValidateEvent(upload)
                         except Exception:
-                            self.log.exception("Unable to update state for %s",
-                                               upload)
+                            log.exception("Unable to update state for %s",
+                                          upload)
                         finally:
                             try:
                                 upload.releaseLock(ctx)
-                                self.log.debug("Released upload lock for %s",
-                                               upload)
+                                log.debug("Released upload lock for %s",
+                                          upload)
 
                             except Exception:
-                                self.log.exception(
+                                log.exception(
                                     "Unable to release lock for %s", upload)
                 if path:
                     try:
@@ -375,33 +383,29 @@ class UploadJob:
                 self.log.debug("Finished upload job for %s with %s uploads",
                                self.image_build_artifact, len(uploads))
 
-    def finalizeUpload(self, upload, ctx):
+    def finalizeUpload(self, upload, ctx, log):
         with upload.activeContext(ctx):
             if upload.external_id:
-                self.log.debug(
-                    "Marking upload %s ready", upload)
+                log.debug("Marking upload %s ready", upload)
                 upload.state = upload.State.READY
             else:
                 # Make 3 total attempts
                 if upload.attempt < 2:
                     new_upload = upload.copy(ctx)
-                    self.log.debug(
-                        "Replacing upload %s with %s",
-                        upload, new_upload)
-                    self.log.debug(
-                        "Marking upload %s deleting", upload)
+                    log.debug("Replacing upload %s with %s",
+                              upload, new_upload)
+                    log.debug("Marking upload %s deleting", upload)
                     upload.state = upload.State.DELETING
                     self.launcher.upload_deleted_event.set()
                 else:
-                    self.log.debug(
-                        "Marking upload %s failed", upload)
+                    log.debug("Marking upload %s failed", upload)
                     upload.state = upload.State.FAILED
 
 
 class EndpointUploadJob:
-    log = logging.getLogger("zuul.Launcher")
 
-    def __init__(self, launcher, upload, job, futures, *args):
+    def __init__(self, launcher, upload, job, futures, log, *args):
+        self.log = log
         self.launcher = launcher
         self.upload = upload
         self.job = job
@@ -426,11 +430,12 @@ class EndpointUploadJob:
                 external_id=external_id)
 
         for (dep_upload, dep_job) in self.job.dependents:
+            log = get_annotated_logger(self.log, upload=dep_upload.uuid)
             # The only dependent jobs right now are copy jobs
-            self.log.debug("Scheduling copy for %s", dep_upload)
+            log.debug("Scheduling copy for %s", dep_upload)
             future = self.launcher.endpoint_import_executor.submit(
                 EndpointUploadJob(self.launcher, dep_upload, dep_job,
-                                  self.futures, external_id).run,
+                                  self.futures, log, external_id).run,
             )
             self.futures[future] = dep_upload
 
