@@ -3390,6 +3390,42 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
             except NoNodeError:
                 break
 
+    @simple_layout('layouts/nodepool-reuse.yaml', enable_nodepool=True)
+    def test_min_retention_time(self):
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(['macos14-m2'])
+        self.assertEqual(request.State.FULFILLED, request.state)
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(1, len(nodes))
+        node = nodes[0]
+        # Get a copy so we're not modifying the launcher's
+        node = model.ProviderNode.fromZK(ctx, path=node.getPath())
+
+        with node.locked(ctx):
+            with node.activeContext(ctx):
+                node.unassign(ctx)
+                node.assign(ctx, request_id="dne", tenant_name="test")
+                # Node exceeding max-age should not impact the reuse.
+                node.request_time -= 1200
+                node.setState(node.State.USED)
+
+        for _ in iterate_timeout(10, "node to be recycled"):
+            node.refresh(ctx)
+            if node.state == node.State.READY:
+                break
+
+        # Exceeding the min-retention time should cause it to be deleted,
+        # since also max-age is exceeded.
+        with node.locked(ctx):
+            node.updateAttributes(ctx, request_time=node.request_time - 3600 * 24)
+
+        for _ in iterate_timeout(10, "node to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
+                break
+
     @simple_layout('layouts/nodepool-subnodes-reuse.yaml',
                    enable_nodepool=True)
     def test_subnodes_reuse(self):

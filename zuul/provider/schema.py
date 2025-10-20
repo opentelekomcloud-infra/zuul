@@ -45,6 +45,17 @@ common_label = vs.Schema({
         """
     ): int,
     Optional(
+        'min-retention-time', default=0,
+        doc="""\
+        The time (in seconds) since an instance was launched, during
+        which a node will not be deleted. For node resources with
+        minimum billing times, this can be used to ensure that the
+        instance is retained for at least the minimum billing interval.
+
+        This setting takes precedence over `max-[ready-]age`.
+        """
+    ): int,
+    Optional(
         'snapshot-timeout', default=3600,
         doc="""The time (in seconds) to wait for a snapshot to complete."""
     ): int,

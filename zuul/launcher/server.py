@@ -1593,6 +1593,7 @@ class Launcher:
             label_config_hash=label.config_hash,
             max_ready_age=label.max_ready_age,
             max_age=label.max_age,
+            min_retention_time=label.min_retention_time,
             host_key_checking=label.host_key_checking,
             boot_timeout=label.boot_timeout,
             snapshot_timeout=label.snapshot_timeout,
