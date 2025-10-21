@@ -4324,6 +4324,17 @@ class FunctionalAnsibleMixIn(object):
             post_flag_path = os.path.join(
                 self.jobdir_root, build_timeout.uuid + '.post.flag')
             self.assertTrue(os.path.exists(post_flag_path))
+        build_multiple_run_timeout = self.getJobFromHistory(
+            'multiple-run-timeout', result='TIMED_OUT')
+        with self.jobLog(build_multiple_run_timeout):
+            post_flag_path = os.path.join(
+                self.jobdir_root,
+                build_multiple_run_timeout.uuid + '.post.flag')
+            self.assertTrue(os.path.exists(post_flag_path))
+            post_zuul_success_flag_path = os.path.join(
+                self.jobdir_root,
+                build_multiple_run_timeout.uuid + '.post-zuul-success.flag')
+            self.assertFalse(os.path.exists(post_zuul_success_flag_path))
         build_pre_timeout = self.getJobFromHistory('pre-timeout')
         with self.jobLog(build_pre_timeout):
             # Failures in pre-run have a None result and then Zuul determines
