@@ -2099,6 +2099,10 @@ class AnsibleJob(object):
             # At this point, we have gone all the way down.
             nesting_level_achieved = None
             for index, playbook in enumerate(self.jobdir.playbooks):
+                # We need all run playbooks to succeed in order to
+                # consider the job successful, hence we need to reset
+                # the flag here before each playbook execution.
+                success = False
                 ansible_timeout = self.getAnsibleTimeout(
                     time_started, job_timeout)
                 job_status, job_code = self.runAnsiblePlaybook(

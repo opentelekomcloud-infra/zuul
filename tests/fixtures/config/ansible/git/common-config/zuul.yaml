@@ -102,6 +102,14 @@
     timeout: 20
 
 - job:
+    parent: timeout
+    name: multiple-run-timeout
+    run:
+      - playbooks/noop.yaml
+      - playbooks/timeout.yaml
+    post-run: playbooks/multiple-run-timeout-post.yaml
+
+- job:
     parent: python27
     name: pre-timeout
     pre-run: playbooks/timeout.yaml
