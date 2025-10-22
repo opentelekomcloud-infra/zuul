@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e22fb8e5_f3ec2e7d",
+        "filename": "zuul/model.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 3011,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-22T18:24:30Z",
+      "side": 1,
+      "message": "I\u0027m not 100% sure this is what we want, but it seems like it may be potentially useful to be able to set max-age to 12h at a high level, then min-retention-time to 24h at a lower level.  If we\u0027re wrong, I think we can change it in the future to raise an error.",
+      "revId": "b120fcaf728ab5168d7c856ee6e85c07f1661b06",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
