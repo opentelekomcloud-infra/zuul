@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "13c165ca_6dbc550d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-22T21:10:37Z",
+      "side": 1,
+      "message": "I have two concerns about this that I\u0027d like your thoughts on:\n\n1) By using named parameters in the annotation method, we standardize on the extra attributes.  That way we don\u0027t accidentally set \"ba: foobar\" in one place and \"iba: foobar\" in another.  (Side note: you used \"ba\", I tend to use \"iba\".)\n2) This changes the metadata used for structured loggers (like logstash/elasticsearch/opensearch).  While we use \"e: foobar\" in the text logs, the structured logs get {\"event_id\": \"foobar\"}.  This will change the structured logs to get {\"e\": \"foobar\"}.  That might be disruptive if people have existing queries, dashboards, etc using the old names.  Should we change them?  If we do, should that get a release note?\n\nI think the \"simple\" version of this change, where we just add some more specific arguments (like \"upload\" and \"artifact\", probably even as objects like we do for build and request) and then annotate them with {\"image_build_artifact\": ..., \"image_upload\": ...} in JSON and \"iba\" and \"upload\" in text) dodges those issues.  I\u0027m open to the refactoring in this change, but I think we need to resolve the above questions.",
+      "revId": "dec14e25ef801c1fa16b97dbf3757bca0841ef35",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "f362bbb9_901aad35",
