@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "98e56d27_1a7afca3",
+        "filename": "tests/fixtures/config/remote-zuul-stream/git/org_project/playbooks/command.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-10-22T16:32:10Z",
+      "side": 1,
+      "message": "Small nit that just occurred to me. Since the command and shell tasks are both only writing to stdout not stderr we aren\u0027t really checking that stderr isn\u0027t included. We probably need to have content written to both streams to make these test cases fully effective.",
+      "revId": "ef4caeb90e44bf9234e3ea2c5e41e9ff3415a7af",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
