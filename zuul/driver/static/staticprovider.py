@@ -97,6 +97,13 @@ class StaticNodeConfig:
     def __init__(self, node_config):
         self.__dict__.update(self.schema(node_config))
 
+    def inheritFrom(self, image, flavor):
+        for attr in ['username', 'connection_port']:
+            if getattr(self, attr, None) is None:
+                setattr(self, attr,
+                        getattr(flavor, attr, None) or
+                        getattr(image, attr, None))
+
 
 class StaticProviderSchema(BaseProviderSchema):
     def getLabelSchema(self):
@@ -155,15 +162,15 @@ class StaticProvider(BaseProvider, subclass_id='static'):
         for node in config['nodes']:
             label = ret['labels'][node['label']]
             image = ret['images'][label.image]
-            port = node.get('connection-port', image.connection_port)
-            username = node.get('username', image.username)
+            flavor = ret['flavors'][label.flavor]
+            node = self.parseNodeConfig(node, config, connection)
+            node.inheritFrom(image, flavor)
             key = ' '.join([
                 self.canonical_name,
-                node['name'],
-                str(port),
-                str(username),
+                node.name,
+                str(node.connection_port),
+                str(node.username),
             ])
-            node = self.parseNodeConfig(node, config, connection)
             node_id = uuid.uuid5(NODE_NAMESPACE, key).hex
             node.node_id = node_id
             nodes[node_id] = node

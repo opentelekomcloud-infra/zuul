@@ -22,7 +22,7 @@ class StaticProviderNode(model.ProviderNode, subclass_id="static"):
 
 
 class StaticInstance(statemachine.Instance):
-    def __init__(self, name, quota):
+    def __init__(self, node_config, quota):
         super().__init__()
         self.quota = quota
         self.metadata = {}
@@ -31,7 +31,7 @@ class StaticInstance(statemachine.Instance):
         self.public_ipv4 = None
         self.public_ipv6 = None
         self.cloud = None
-        self.interface_ip = name
+        self.interface_ip = node_config.name
 
     @property
     def external_id(self):
