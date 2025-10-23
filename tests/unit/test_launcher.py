@@ -2337,6 +2337,8 @@ class TestLauncherUpload(LauncherBaseTestCase):
                 self.assertEqual('ready', uploads[0].state)
             self.assertTrue(uploads[0].validated)
 
+        # This is for ubuntu-local
+        oldest_artifact_uuid = artifacts[0].uuid
         # At this point, we have:
         # debian-local: 1 artifact, 1 ready upload
         # ubuntu-local: 1 artifact, 1 failed upload
@@ -2357,7 +2359,7 @@ class TestLauncherUpload(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
-        artifacts = self.waitForArtifacts(image_cname, 2, format='raw')
+        artifacts = self.waitForArtifacts(image_cname, 1, format='raw')
         uploads = self._waitForUploads(
             image_cname, 1,
             states=(model.ImageUpload.State.READY,))
@@ -2367,7 +2369,6 @@ class TestLauncherUpload(LauncherBaseTestCase):
         # debian-local: 1 artifact, 1 ready upload
         # ubuntu-local: 1 artifacts, 1 ready upload
         self.assertEqual('ready', uploads[0].state)
-        oldest_artifact_uuid = artifacts[0].uuid
 
         # Run another build event manually
         driver = self.launcher.connections.drivers['zuul']
