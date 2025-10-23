@@ -89,6 +89,15 @@ DOWNLOAD_BLOCK_SIZE = 1024 * 64
 DOWNLOAD_CHUNK_SIZE = DOWNLOAD_BLOCK_SIZE * 1525
 
 
+def _normalize_statsd_name(name):
+    # In the launcher we also want to relace the '/', but since we have
+    # existing metrics using the below helper method, we can't change
+    # it directly in there at the moment.
+    name = normalize_statsd_name(name)
+    name = name.replace('/', '_')
+    return name
+
+
 def scores_for_label(label_cname, candidate_names):
     return {
         mmh3.hash(f"{n}-{label_cname}", signed=False): n
@@ -407,8 +416,8 @@ class EndpointUploadJob:
         self.job = job
         self.futures = futures
         self.args = args
-        safe_iname = normalize_statsd_name(upload.canonical_name)
-        safe_ename = normalize_statsd_name(upload.endpoint_name)
+        safe_iname = _normalize_statsd_name(upload.canonical_name)
+        safe_ename = _normalize_statsd_name(upload.endpoint_name)
         self.stats_key = f"zuul.image.{safe_iname}.upload.{safe_ename}"
 
     def run(self):
@@ -3136,7 +3145,7 @@ class Launcher:
             for tenant_provider in tenant_providers:
                 providers[tenant_provider.canonical_name] = tenant_provider
         for provider in providers.values():
-            safe_pname = normalize_statsd_name(provider.canonical_name)
+            safe_pname = _normalize_statsd_name(provider.canonical_name)
             quota = self.getEndpointLimits(provider).copy()
             # Restrict quota limits based on our provider limits
             provider_limits = model.QuotaInformation(
@@ -3146,13 +3155,13 @@ class Launcher:
             limits = quota.getResources()
             # zuul.provider.<provider>.limit.<resource> gauge
             for res, value in limits.items():
-                safe_res = normalize_statsd_name(res)
+                safe_res = _normalize_statsd_name(res)
                 self.statsd.gauge(
                     f'zuul.provider.{safe_pname}.limit.{safe_res}',
                     value)
             usage = self.api.nodes_cache.getQuota(provider).getResources()
             for res, value in usage.items():
-                safe_res = normalize_statsd_name(res)
+                safe_res = _normalize_statsd_name(res)
                 self.statsd.gauge(
                     f'zuul.provider.{safe_pname}.usage.{safe_res}',
                     value)
@@ -3165,7 +3174,7 @@ class Launcher:
             # zuul.provider.<provider>.label.<label>.nodes.state.<state> gauge
             for label, label_nodes in provider_label_nodes[
                     provider.canonical_name].items():
-                safe_label = normalize_statsd_name(label)
+                safe_label = _normalize_statsd_name(label)
                 for state, value in label_nodes.items():
                     self.statsd.gauge(
                         f'zuul.provider.{safe_pname}.label.{safe_label}.'
@@ -3185,7 +3194,7 @@ class Launcher:
         uploads_by_image = collections.defaultdict(list)
         for upload in self.image_upload_registry.getItems():
             uploads_by_image[
-                normalize_statsd_name(upload.canonical_name)].append(upload)
+                _normalize_statsd_name(upload.canonical_name)].append(upload)
 
         upload_states = collections.Counter()
         # zuul.image.<image>.upload.<endpoint>.state.<state> gauge
@@ -3193,7 +3202,7 @@ class Launcher:
             for state in model.ImageUpload.STATES:
                 in_state = len([u for u in uploads if u.state == state])
                 upload_states[state] += in_state
-                safe_ename = normalize_statsd_name(upload.endpoint_name)
+                safe_ename = _normalize_statsd_name(upload.endpoint_name)
                 self.statsd.gauge(
                     f'zuul.image.{image_cname}.upload.{safe_ename}'
                     f'.state.{state}', in_state)
