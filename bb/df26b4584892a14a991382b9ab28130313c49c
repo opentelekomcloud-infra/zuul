@@ -1,0 +1,9 @@
+Verified+2: Zuul
+Workflow+1: James E. Blair <jim@acmegating.com>
+Code-Review+2: James E. Blair <jim@acmegating.com>
+Submitted-by: Zuul
+Submitted-at: Thu, 23 Oct 2025 20:26:56 +0000
+Reviewed-on: https://review.opendev.org/c/zuul/zuul/+/962449
+Comments-Total: 10
+Project: zuul/zuul
+Branch: refs/heads/master
