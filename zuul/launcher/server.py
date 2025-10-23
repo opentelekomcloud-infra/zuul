@@ -407,10 +407,15 @@ class EndpointUploadJob:
         self.job = job
         self.futures = futures
         self.args = args
+        safe_iname = normalize_statsd_name(upload.canonical_name)
+        safe_ename = normalize_statsd_name(upload.endpoint_name)
+        self.stats_key = f"zuul.image.{safe_iname}.upload.{safe_ename}"
 
     def run(self):
         try:
-            self._run()
+            # zuul.image.<image>.upload.<endpoint>.duration timer
+            with self.launcher.statsd_timer(f"{self.stats_key}.duration"):
+                self._run()
         except Exception:
             self.log.exception("Error in endpoint upload job")
 
@@ -3176,3 +3181,23 @@ class Launcher:
             self.statsd.gauge(
                 f'zuul.nodeset_requests.state.{state.value}',
                 value)
+
+        uploads_by_image = collections.defaultdict(list)
+        for upload in self.image_upload_registry.getItems():
+            uploads_by_image[
+                normalize_statsd_name(upload.canonical_name)].append(upload)
+
+        upload_states = collections.Counter()
+        # zuul.image.<image>.upload.<endpoint>.state.<state> gauge
+        for image_cname, uploads in uploads_by_image.items():
+            for state in model.ImageUpload.STATES:
+                in_state = len([u for u in uploads if u.state == state])
+                upload_states[state] += in_state
+                safe_ename = normalize_statsd_name(upload.endpoint_name)
+                self.statsd.gauge(
+                    f'zuul.image.{image_cname}.upload.{safe_ename}'
+                    f'.state.{state}', in_state)
+
+        # zuul.uploads.state.<state> gauge
+        for state, count in upload_states.items():
+            self.statsd.gauge(f'zuul.uploads.state.{state}', count)

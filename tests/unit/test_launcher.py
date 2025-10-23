@@ -346,6 +346,26 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(
             'ubuntu-local', build.parameters['zuul']['image_build_name'])
 
+        repo_name = 'review_example_com%2Forg%2Fcommon-config'
+        endpoint = 'aws/aws-us-east-1'
+        image_names = ['debian-local', 'ubuntu-local']
+        for image in image_names:
+            self.assertReportedStat(
+                f'zuul.image.{repo_name}/{image}.upload'
+                f'.{endpoint}.duration', kind='ms')
+
+        for image in image_names:
+            self.assertReportedStat(
+                f'zuul.image.{repo_name}/{image}.upload'
+                f'.{endpoint}.state.ready', kind='g', value='1')
+            for state in model.ImageUpload.STATES:
+                self.assertReportedStat(
+                    f'zuul.image.{repo_name}/{image}.upload'
+                    f'.{endpoint}.state.{state}', kind='g')
+
+        self.assertReportedStat(
+            f'zuul.uploads.state.ready', kind='g', value='2')
+
     @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @return_data(
         'build-debian-local-image',
