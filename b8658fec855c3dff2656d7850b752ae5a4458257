@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "b8658fec855c3dff2656d7850b752ae5a4458257",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "223a17b4_fa90cb77",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-23T13:04:18Z",
+      "side": 1,
+      "message": "Nit: we can probably drop the \"for %s\" now?  (And same for items below.)",
+      "revId": "b8658fec855c3dff2656d7850b752ae5a4458257",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
