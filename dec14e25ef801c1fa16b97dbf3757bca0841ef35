@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "3edd9d09_fbbc9706",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-10-23T06:35:18Z",
+      "side": 1,
+      "message": "I think you have a point here.\n\nre. 1) I think that makes sense especially since I\u0027ve proven that myself by making a typo (\"ba\" instead of \"iba\") 😄\n\nre. 2) tbh I did not think of the use case, but since the extra dict is also merged into the `LogRecord` I think we should keep using the current keys to not break backward compat.\n\nI\u0027ve updated the change to use the extra keys you proposed. Since we don\u0027t pass the build and request objects, but rather the UUIDs, I also kept it that way for the upload and IBA. This keeps it more explicit instead of extracting some attributes in the method itself.\n\nI also tried to clean up the method signature a bit by making event default to `None` as we don\u0027t always have an event (especially in the upload/iba contexts), but still allow it as a positional argument. The remaining keyword args are now keyword-only, so we don\u0027t allow them as positional args anymore, just to tighten down the acceptable usage of that method a bit.\n\nHope that works for you :)",
+      "parentUuid": "13c165ca_6dbc550d",
+      "revId": "dec14e25ef801c1fa16b97dbf3757bca0841ef35",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "f362bbb9_901aad35",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 1
