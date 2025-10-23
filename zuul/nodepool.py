@@ -136,6 +136,12 @@ class Nodepool(object):
                 raise
 
     def emitStats(self, request):
+        try:
+            return self._emitStats(request)
+        except Exception:
+            self.log.exception("Failed to emit stats:")
+
+    def _emitStats(self, request):
         # Implements the following :
         #  counter zuul.nodepool.requests.<state>.total
         #  counter zuul.nodepool.requests.<state>.label.<label>
