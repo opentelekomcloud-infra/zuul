@@ -34,13 +34,25 @@
     name: debian
     type: cloud
 
+- image:
+    name: macos14
+    type: cloud
+
 - flavor:
     name: normal
+
+- flavor:
+    name: mac-m2
 
 - label:
     name: debian-normal
     image: debian
     flavor: normal
+
+- label:
+    name: macos14-m2
+    image: macos14
+    flavor: mac-m2
 
 - section:
     name: aws-base
@@ -55,8 +67,13 @@
     flavors:
       - name: normal
         instance-type: t3.medium
+      - name: mac-m2
+        instance-type: mac2-m2.metal
+        dedicated-host: true
     images:
       - name: debian
+        image-id: ami-1e749f67
+      - name: macos14
         image-id: ami-1e749f67
 
 - section:
@@ -71,3 +88,8 @@
       - name: debian-normal
         reuse: true
         max-age: 600
+      - name: macos14-m2
+        az: "us-east-1a"  # Required, since this is a dedicated host
+        reuse: true
+        max-age: 600  # no effect until min-retention-time expired
+        min-retention-time: 86400  # 24h
