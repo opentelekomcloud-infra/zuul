@@ -30,6 +30,7 @@ from zuul import model
 import zuul.driver.aws.awsendpoint
 from zuul.launcher.client import LauncherClient
 import zuul.launcher.server
+from zuul.lib.statsd import normalize_statsd_name
 from zuul.zk.event_queues import PipelineResultEventQueue
 from zuul.zk.locks import pipeline_lock
 
@@ -346,8 +347,9 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(
             'ubuntu-local', build.parameters['zuul']['image_build_name'])
 
-        repo_name = 'review_example_com%2Forg%2Fcommon-config'
-        endpoint = 'aws/aws-us-east-1'
+        repo_name = normalize_statsd_name(
+            'review_example_com%2Forg%2Fcommon-config')
+        endpoint = normalize_statsd_name('aws/aws-us-east-1')
         image_names = ['debian-local', 'ubuntu-local']
         for image in image_names:
             self.assertReportedStat(
@@ -854,7 +856,8 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(A.reported, 2)
         self.assertEqual(self.getJobFromHistory('check-job').node,
                          'debian-normal')
-        pname = 'review_example_com%2Forg%2Fcommon-config/aws-us-east-1-main'
+        pname = normalize_statsd_name(
+            'review_example_com%2Forg%2Fcommon-config/aws-us-east-1-main')
         self.assertReportedStat(
             f'zuul.provider.{pname}.nodes.state.in-use',
             kind='g')
@@ -2457,7 +2460,8 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
         # Make sure the ready nodes show up in stats, even though they
         # are not on a provider.
         self.launcher._runStats()
-        pname = 'review_example_com%2Fcommon-config/aws-us-east-1-main'
+        pname = normalize_statsd_name(
+            'review_example_com%2Fcommon-config/aws-us-east-1-main')
         self.assertReportedStat(
             f'zuul.provider.{pname}.label.debian-normal.nodes.state.ready',
             value='2',

@@ -26,6 +26,7 @@ def get_statsd_config(config):
 def normalize_statsd_name(name):
     name = name.replace('.', '_')
     name = name.replace(':', '_')
+    name = name.replace('/', '_')
     # Statsd doesn't support non-ascii chars
     name = name.encode('ascii', 'replace').decode()
     return name
