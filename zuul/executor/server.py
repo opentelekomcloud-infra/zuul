@@ -3259,7 +3259,8 @@ class AnsibleJob(object):
                 self.log.exception("Exception while killing ansible process:")
 
     def runAnsible(self, cmd, timeout, playbook, ansible_version,
-                   allow_pre_fail, wrapped=True, cleanup=False):
+                   allow_pre_fail, wrapped=True, cleanup=False,
+                   phase=None, index=None):
         config_file = playbook.ansible_config
         env_copy = {key: value
                     for key, value in os.environ.copy().items()
@@ -3446,7 +3447,17 @@ class AnsibleJob(object):
             self.proc_cleanup = False
 
         if timeout and watchdog.timed_out:
+            try:
+                message = 'This playbook timed out.'
+                self.addPlaybookToJson(playbook, phase, index, message)
+            except Exception:
+                # This is a best effort attempt at adding additional logging
+                # info when things have gone wrong. Simply ignore errors if
+                # things are so wrong we can't add more debug info.
+                self.log.exception('Unable to append timeout json data:')
             return (self.RESULT_TIMED_OUT, None)
+
+        ansible_error_lines = []
         # Note: Unlike documented ansible currently wrongly returns 4 on
         # unreachable so we have the zuul_unreachable callback module that
         # creates the file nodes.unreachable in case there were
@@ -3464,16 +3475,14 @@ class AnsibleJob(object):
             # Received abort request.
             return (self.RESULT_ABORTED, None)
         elif ret == 1:
-            with open(self.jobdir.job_output_file, 'a') as job_output:
-                found_marker = False
-                for line in syntax_buffer:
-                    if line.startswith(b'ERROR!'):
-                        found_marker = True
-                    if not found_marker:
-                        continue
-                    job_output.write("{now} | {line}\n".format(
-                        now=datetime.datetime.now(),
-                        line=line.decode('utf-8').rstrip()))
+            found_marker = False
+            for line in syntax_buffer:
+                if line.startswith(b'ERROR!'):
+                    found_marker = True
+                if not found_marker:
+                    continue
+                line = line.decode('utf-8').rstrip()
+                ansible_error_lines.append(line)
         elif ret == 4:
             # Ansible could not parse the yaml.
             self.log.debug("Ansible parse error")
@@ -3482,49 +3491,56 @@ class AnsibleJob(object):
             # this is what we need to do.
             # TODO(mordred) We probably want to put this into the json output
             # as well.
-            with open(self.jobdir.job_output_file, 'a') as job_output:
-                job_output.write("{now} | ANSIBLE PARSE ERROR\n".format(
-                    now=datetime.datetime.now()))
-                for line in syntax_buffer:
-                    job_output.write("{now} | {line}\n".format(
-                        now=datetime.datetime.now(),
-                        line=line.decode('utf-8').rstrip()))
+            ansible_error_lines.append('ANSIBLE PARSE ERROR')
+            for line in syntax_buffer:
+                line = line.decode('utf-8').rstrip()
+                ansible_error_lines.append(line)
         elif ret == 250:
             # Unexpected error from ansible
-            with open(self.jobdir.job_output_file, 'a') as job_output:
-                job_output.write("{now} | UNEXPECTED ANSIBLE ERROR\n".format(
-                    now=datetime.datetime.now()))
-                found_marker = False
-                for line in syntax_buffer:
-                    if line.startswith(b'ERROR! Unexpected Exception'):
-                        found_marker = True
-                    if not found_marker:
-                        continue
-                    job_output.write("{now} | {line}\n".format(
-                        now=datetime.datetime.now(),
-                        line=line.decode('utf-8').rstrip()))
+            ansible_error_lines.append('UNEXPECTED ANSIBLE ERROR')
+            found_marker = False
+            for line in syntax_buffer:
+                if line.startswith(b'ERROR! Unexpected Exception'):
+                    found_marker = True
+                if not found_marker:
+                    continue
+                line = line.decode('utf-8').rstrip()
+                ansible_error_lines.append(line)
         elif ret == 2:
-            with open(self.jobdir.job_output_file, 'a') as job_output:
-                found_marker = False
-                for line in syntax_buffer:
-                    # This is a workaround to detect winrm connection failures
-                    # that are not detected by ansible. These can be detected
-                    # if the string 'FATAL ERROR DURING FILE TRANSFER' is in
-                    # the ansible output. In this case we should treat the
-                    # host as unreachable and retry the job.
-                    if b'FATAL ERROR DURING FILE TRANSFER' in line:
-                        return self.RESULT_UNREACHABLE, None
+            found_marker = False
+            for line in syntax_buffer:
+                # This is a workaround to detect winrm connection failures
+                # that are not detected by ansible. These can be detected
+                # if the string 'FATAL ERROR DURING FILE TRANSFER' is in
+                # the ansible output. In this case we should treat the
+                # host as unreachable and retry the job.
+                if b'FATAL ERROR DURING FILE TRANSFER' in line:
+                    return self.RESULT_UNREACHABLE, None
 
-                    # Extract errors for special cases that are treated like
-                    # task errors by Ansible (e.g. missing role when using
-                    # 'include_role').
-                    if line.startswith(b'ERROR!'):
-                        found_marker = True
-                    if not found_marker:
-                        continue
+                # Extract errors for special cases that are treated like
+                # task errors by Ansible (e.g. missing role when using
+                # 'include_role').
+                if line.startswith(b'ERROR!'):
+                    found_marker = True
+                if not found_marker:
+                    continue
+                line = line.decode('utf-8').rstrip()
+                ansible_error_lines.append(line)
+        if ansible_error_lines:
+            with open(self.jobdir.job_output_file, 'a') as job_output:
+                for line in ansible_error_lines:
                     job_output.write("{now} | {line}\n".format(
                         now=datetime.datetime.now(),
-                        line=line.decode('utf-8').rstrip()))
+                        line=line))
+        if ansible_error_lines and phase and index is not None:
+            try:
+                message = ' '.join(ansible_error_lines)
+                self.addPlaybookToJson(playbook, phase, index, message)
+            except Exception:
+                # This is a best effort attempt at adding additional logging
+                # info when things have gone wrong. Simply ignore errors if
+                # things are so wrong we can't add more debug info.
+                self.log.exception('Unable to append Ansible error json data:')
 
         if self.aborted:
             return (self.RESULT_ABORTED, None)
@@ -3800,7 +3816,9 @@ class AnsibleJob(object):
                 # Don't allow pre fail to reset things if the job will be
                 # retried anyway.
                 allow_pre_fail=phase in ('run', 'post') and not will_retry,
-                cleanup=phase == 'cleanup')
+                cleanup=phase == 'cleanup',
+                phase=phase,
+                index=index)
         self.log.debug("Ansible complete, result %s code %s" % (
             self.RESULT_MAP[result], code))
 
@@ -3824,6 +3842,44 @@ class AnsibleJob(object):
 
         self.emitPlaybookBanner(playbook, 'END', phase, result=result)
         return result, code
+
+    def addPlaybookToJson(self, playbook, phase, index, message):
+        # Append debug info to the job-output.json file. Note this needs to
+        # work in conjunction with the Ansible zuul_json callback module.
+        output_path = os.path.splitext(
+            self.jobdir.job_output_file)[0] + '.json'
+        first_time = False
+        if not os.path.exists(output_path):
+            # The first playbook failed to write. Set up json then append.
+            first_time = True
+            with open(output_path, 'w') as outfile:
+                outfile.write('[\n\n]\n')
+        self.writePlaybookJson(output_path, first_time, playbook,
+                               phase, index, message)
+
+    def writePlaybookJson(self, output_path, first_time, playbook,
+                          phase, index, message):
+        with open(output_path, 'r+') as outfile:
+            file_len = outfile.seek(0, os.SEEK_END)
+            # Remove three bytes to eat the trailing newline written by the
+            # json.dump. This puts the ',' on the end of lines.
+            outfile.seek(file_len - 3)
+            if not first_time:
+                outfile.write(',\n')
+            playbook_info = {}
+            playbook_info['playbook'] = playbook.canonical_name_and_path
+            playbook_info['branch'] = playbook.branch
+            playbook_info['phase'] = phase
+            playbook_info['index'] = index
+            playbook_info['plays'] = [{
+                'play': {
+                    'name': message
+                },
+                'tasks': []
+            }]
+            json.dump(playbook_info, outfile,
+                      indent=4, sort_keys=True, separators=(',', ': '))
+            outfile.write('\n]\n')
 
 
 class ExecutorServer(BaseMergeServer):
