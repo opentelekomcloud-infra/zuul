@@ -1656,9 +1656,13 @@ class Launcher:
             # Set any node attributes we already know here
             connection_port=connection_port,
             connection_type=image.connection_type,
+            username=image.username,
+            python_path=image.python_path,
+            shell_type=image.shell_type,
             quota=label_quota,
             provider=provider.canonical_name,
         )
+
         # Save a copy of the args here since nothing below should be
         # set on subnodes.
         subnode_args = args.copy()
