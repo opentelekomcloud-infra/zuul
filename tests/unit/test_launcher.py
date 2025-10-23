@@ -347,20 +347,20 @@ class TestLauncher(LauncherBaseTestCase):
             'ubuntu-local', build.parameters['zuul']['image_build_name'])
 
         repo_name = 'review_example_com%2Forg%2Fcommon-config'
-        endpoint = 'aws/aws-us-east-1'
+        endpoint = 'aws_aws-us-east-1'
         image_names = ['debian-local', 'ubuntu-local']
         for image in image_names:
             self.assertReportedStat(
-                f'zuul.image.{repo_name}/{image}.upload'
+                f'zuul.image.{repo_name}_{image}.upload'
                 f'.{endpoint}.duration', kind='ms')
 
         for image in image_names:
             self.assertReportedStat(
-                f'zuul.image.{repo_name}/{image}.upload'
+                f'zuul.image.{repo_name}_{image}.upload'
                 f'.{endpoint}.state.ready', kind='g', value='1')
             for state in model.ImageUpload.STATES:
                 self.assertReportedStat(
-                    f'zuul.image.{repo_name}/{image}.upload'
+                    f'zuul.image.{repo_name}_{image}.upload'
                     f'.{endpoint}.state.{state}', kind='g')
 
         self.assertReportedStat(
@@ -854,7 +854,7 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(A.reported, 2)
         self.assertEqual(self.getJobFromHistory('check-job').node,
                          'debian-normal')
-        pname = 'review_example_com%2Forg%2Fcommon-config/aws-us-east-1-main'
+        pname = 'review_example_com%2Forg%2Fcommon-config_aws-us-east-1-main'
         self.assertReportedStat(
             f'zuul.provider.{pname}.nodes.state.in-use',
             kind='g')
@@ -2457,7 +2457,7 @@ class TestMinReadyLauncher(LauncherBaseTestCase):
         # Make sure the ready nodes show up in stats, even though they
         # are not on a provider.
         self.launcher._runStats()
-        pname = 'review_example_com%2Fcommon-config/aws-us-east-1-main'
+        pname = 'review_example_com%2Fcommon-config_aws-us-east-1-main'
         self.assertReportedStat(
             f'zuul.provider.{pname}.label.debian-normal.nodes.state.ready',
             value='2',
