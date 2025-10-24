@@ -97,3 +97,9 @@ class ImageUploadRegistry(LockableZKObjectCache):
         uploads = [u for u in uploads if u is not None]
         uploads = sorted(uploads, key=lambda x: x.timestamp)
         return uploads
+
+    def getAllUploads(self):
+        ret = []
+        for image_canonical_name in self.uploads_by_image_name:
+            ret.extend(self.getUploadsForImage(image_canonical_name))
+        return ret

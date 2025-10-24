@@ -1469,8 +1469,9 @@ class ImageBuildArtifact(zkobject.LockableZKObject):
     def getLockPath(self):
         return f"{self.ROOT}/{self.LOCKS_PATH}/{self.uuid}"
 
-    def serialize(self, context):
-        data = dict(
+    def toDict(self):
+        # This is used by the export command
+        return dict(
             uuid=self.uuid,
             name=self.name,
             canonical_name=self.canonical_name,
@@ -1487,6 +1488,9 @@ class ImageBuildArtifact(zkobject.LockableZKObject):
             _state=self._state,
             state_time=self.state_time,
         )
+
+    def serialize(self, context):
+        data = self.toDict()
         return json.dumps(data, sort_keys=True).encode("utf-8")
 
 
@@ -1575,8 +1579,9 @@ class ImageUpload(zkobject.LockableZKObject):
     def getLockPath(self):
         return f"{self.ROOT}/{self.LOCKS_PATH}/{self.uuid}"
 
-    def serialize(self, context):
-        data = dict(
+    def toDict(self):
+        # This is used by the export command
+        return dict(
             uuid=self.uuid,
             canonical_name=self.canonical_name,
             artifact_uuid=self.artifact_uuid,
@@ -1590,6 +1595,9 @@ class ImageUpload(zkobject.LockableZKObject):
             _state=self._state,
             state_time=self.state_time,
         )
+
+    def serialize(self, context):
+        data = self.toDict()
         return json.dumps(data, sort_keys=True).encode("utf-8")
 
     def isPermittedForProvider(self, image, provider):

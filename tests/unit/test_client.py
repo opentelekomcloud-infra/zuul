@@ -22,6 +22,7 @@ import configparser
 import datetime
 import dateutil.tz
 import uuid
+from unittest import mock
 
 import fixtures
 import jwt
@@ -34,8 +35,14 @@ from zuul.zk import ZooKeeperClient
 from zuul.zk.locks import SessionAwareLock
 from zuul.cmd.client import parse_cutoff
 
+from tests.unit.test_launcher import LauncherBaseTestCase
 from tests.base import BaseTestCase, ZuulTestCase
-from tests.base import FIXTURE_DIR, iterate_timeout
+from tests.base import (
+    FIXTURE_DIR,
+    iterate_timeout,
+    return_data,
+    simple_layout,
+)
 
 from kazoo.exceptions import NoNodeError
 
@@ -826,3 +833,82 @@ class TestDBPruneMysql(DBPruneTestCase):
 
 class TestDBPrunePostgres(DBPruneTestCase):
     config_file = 'zuul-sql-driver-postgres.conf'
+
+
+class TestImageOperations(LauncherBaseTestCase):
+    config_file = 'zuul-connections-nodepool.conf'
+    tenant_config_file = 'config/multi-tenant-provider/main.yaml'
+
+    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @return_data(
+        'build-ubuntu-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.ubuntu_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="test_external_id")
+    def test_image_export_import(self, mock_image_upload_run):
+        # Test a round trip export/import of images
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+        ], ordered=False)
+
+        export_root = os.path.join(self.test_root, 'export')
+        config_file = os.path.join(self.test_root, 'zuul.conf')
+        with open(config_file, 'w') as f:
+            self.config.write(f)
+
+        # Save a copy of ZK (only the data, not the locks dirs)
+        old_images = self.getZKTree('/zuul/images/artifacts')
+        old_uploads = self.getZKTree('/zuul/image-uploads/uploads')
+
+        # Stop the launcher so we don't touch ZK
+        self.launcher.stop()
+        self.launcher.join()
+
+        # Export images
+        p = subprocess.Popen(
+            [os.path.join(sys.prefix, 'bin/zuul-admin'),
+             '-c', config_file,
+             'export-images', export_root],
+            stdout=subprocess.PIPE)
+        out, _ = p.communicate()
+        self.log.debug(out.decode('utf8'))
+        self.assertEqual(p.returncode, 0)
+
+        # Delete images from ZK
+        self.zk_client.client.delete('/zuul/images', recursive=True)
+        self.zk_client.client.delete('/zuul/image-uploads', recursive=True)
+
+        # Make sure it's really gone
+        with testtools.ExpectedException(NoNodeError):
+            self.getZKTree('/zuul/images')
+        with testtools.ExpectedException(NoNodeError):
+            self.getZKTree('/zuul/image-uploads')
+
+        # Import keys
+        p = subprocess.Popen(
+            [os.path.join(sys.prefix, 'bin/zuul-admin'),
+             '-c', config_file,
+             'import-images', export_root],
+            stdout=subprocess.PIPE)
+        out, _ = p.communicate()
+        self.log.debug(out.decode('utf8'))
+        self.assertEqual(p.returncode, 0)
+
+        # Make sure the new data matches the original
+        new_images = self.getZKTree('/zuul/images/artifacts')
+        self.assertEqual(old_images, new_images)
+        new_uploads = self.getZKTree('/zuul/image-uploads/uploads')
+        self.assertEqual(old_uploads, new_uploads)
+
+        # Restart the launcher for graceful test shutdown
+        self.launcher = self.createLauncher()
+        self.waitUntilSettled()
