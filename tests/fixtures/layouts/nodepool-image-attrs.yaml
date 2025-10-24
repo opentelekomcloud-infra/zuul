@@ -96,34 +96,37 @@
     image: debian
     flavor: normal
 
-- label:
-    name: special-hardware
-    image: debian
-    flavor: normal
-
 - section:
-    name: static-base
+    name: aws-base
     abstract: true
-    connection: static
-
-- section:
-    name: static
-    parent: static-base
+    connection: aws
+    launch-timeout: 600
+    launch-attempts: 2
+    object-storage:
+      bucket-name: zuul
+    label-defaults:
+      host-key-checking: false
+      boot-timeout: 120
+      key-name: zuul
     flavors:
       - name: normal
-
-- provider:
-    name: static-main
-    section: static
-    nodes:
-      - name: '198.51.100.1'
-        label: debian-normal
-        aliases:
-          - special-hardware
-    labels:
-      - name: debian-normal
-      - name: special-hardware
+        instance-type: t3.medium
     images:
       - name: debian
-        connection-port: 22
+        image-id: ami-1e749f67
+        connection-port: 8080
+        connection-type: winrm
         username: vinz
+        python-path: /bin/python1
+        shell-type: fish
+
+- section:
+    name: aws-us-east-1
+    parent: aws-base
+    region: us-east-1
+
+- provider:
+    name: aws-us-east-1-main
+    section: aws-us-east-1
+    labels:
+      - name: debian-normal

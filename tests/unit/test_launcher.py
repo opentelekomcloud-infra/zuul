@@ -868,6 +868,37 @@ class TestLauncher(LauncherBaseTestCase):
         self._waitForNoChildren('/zuul/nodes/locks')
         self._waitForNoChildren('/zuul/nodes/nodes')
 
+    @simple_layout('layouts/nodepool-image-attrs.yaml', enable_nodepool=True)
+    def test_node_image_attributes(self):
+        # Test that we supply node attributes from the image
+        # configuration (assuming the cloud does not override these).
+        self.executor_server.hold_jobs_in_build = True
+
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        node = nodes[0]
+        self.assertEqual([], node.host_keys)
+        self.assertEqual(8080, node.connection_port)
+        self.assertEqual('winrm', node.connection_type)
+        self.assertEqual('vinz', node.username)
+        self.assertEqual('/bin/python1', node.python_path)
+        self.assertEqual('fish', node.shell_type)
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(self.getJobFromHistory('check-job').result,
+                         'SUCCESS')
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(A.reported, 2)
+        self.assertEqual(self.getJobFromHistory('check-job').node,
+                         'debian-normal')
+
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     def test_canceled_request(self):
         # Test that a canceled request is cleaned up

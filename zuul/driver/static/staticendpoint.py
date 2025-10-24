@@ -68,7 +68,7 @@ class StaticCreateStateMachine(statemachine.StateMachine):
         self.complete = True
         node_config = provider.nodes[node.uuid]
         quota = self.provider.getQuotaForLabel(label)
-        self.instance = StaticInstance(node_config.name, quota)
+        self.instance = StaticInstance(node_config, quota)
 
     def advance(self):
         return self.instance

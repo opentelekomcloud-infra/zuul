@@ -2121,13 +2121,15 @@ class Node(ConfigObject):
         self.private_ipv6 = None
         self.connection_port = 22
         self.connection_type = None
+        self.username = None
+        self.python_path = None
+        self.shell_type = None
         self.slot = None
         self._keys = []
         self.az = None
         self.cloud = None
         self.provider = None
         self.region = None
-        self.username = None
         self.hold_expiration = None
         self.resources = None
         self.allocated_to = None
@@ -2878,12 +2880,14 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             private_ipv6=None,
             connection_port=22,
             connection_type=None,
+            username=None,
+            python_path=None,
+            shell_type=None,
             slot=None,
             az=None,
             cloud=None,
             provider=None,
             region=None,
-            username=None,
             hold_expiration=None,
             attributes={},
             host_keys=[],
@@ -3061,6 +3065,9 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             cloud=self.cloud,
             connection_port=self.connection_port,
             connection_type=self.connection_type,
+            username=self.username,
+            python_path=self.python_path,
+            shell_type=self.shell_type,
             hold_expiration=self.hold_expiration,
             host_id=self.host_id,
             host_key_checking=self.host_key_checking,
@@ -3074,7 +3081,6 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             region=self.region,
             resources=None,
             slot=self.slot,
-            username=self.username,
             node_properties=self.node_properties,
         )
         if not serialize_node:

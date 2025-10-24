@@ -36,6 +36,7 @@ class TestStaticDriver(ZuulTestCase):
 
     def _assertProviderNodeAttributes(self, pnode):
         self.assertEqual(pnode.connection_type, 'ssh')
+        self.assertEqual(pnode.username, 'vinz')
         self.assertIsNotNone(pnode.interface_ip)
         self.assertIsNone(pnode.cloud)
         self.assertIsNone(pnode.region)
