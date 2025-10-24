@@ -18,6 +18,7 @@ import uuid
 
 import zuul.provider.schema as provider_schema
 from zuul.lib.voluputil import (
+    AsList,
     Nullable,
     Optional,
     Required,
@@ -89,6 +90,7 @@ class StaticNodeConfig:
         Optional('connection-port'): Nullable(int),
         Optional('username'): Nullable(str),
         Required('label'): str,
+        Optional('aliases', default=[]): AsList(str),
         Optional('host-key'): Nullable(str),
     })
 

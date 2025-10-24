@@ -96,12 +96,15 @@
     image: debian
     flavor: normal
 
+- label:
+    name: special-hardware
+    image: debian
+    flavor: normal
+
 - section:
     name: static-base
     abstract: true
     connection: static
-    #label-defaults:
-    #  host-key-checking: false
 
 - section:
     name: static
@@ -115,8 +118,11 @@
     nodes:
       - name: '198.51.100.1'
         label: debian-normal
+        aliases:
+          - special-hardware
     labels:
       - name: debian-normal
+      - name: special-hardware
     images:
       - name: debian
         connection-port: 22

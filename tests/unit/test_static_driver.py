@@ -61,10 +61,8 @@ class TestStaticDriver(ZuulTestCase):
                     for n in nodes)):
                 break
 
-    @simple_layout('layouts/static/nodepool.yaml', enable_nodepool=True)
-    def test_static_node_lifecycle(self):
+    def _test_static_node_lifecycle(self, label):
         # Similar to the cloud test, but we don't deal with "instances"
-        label = 'debian-normal'
         self._waitForRegistration()
         for _ in iterate_timeout(
                 30, "scheduler and launcher to have the same layout"):
@@ -122,6 +120,10 @@ class TestStaticDriver(ZuulTestCase):
         request = self.requestNodes([label])
         self.assertEqual(request.state, model.NodesetRequest.State.FULFILLED)
         self.assertEqual(len(request.nodes), 1)
+
+    @simple_layout('layouts/static/nodepool.yaml', enable_nodepool=True)
+    def test_static_node_lifecycle(self):
+        self._test_static_node_lifecycle('debian-normal')
 
     @simple_layout('layouts/static/nodepool.yaml', enable_nodepool=True)
     @okay_tracebacks('_checkNodescanRequest')
@@ -451,3 +453,7 @@ class TestStaticDriver(ZuulTestCase):
             nodes = self.launcher.api.nodes_cache.getItems()
             if not len(nodes):
                 break
+
+    @simple_layout('layouts/static/nodepool.yaml', enable_nodepool=True)
+    def test_static_node_aliases(self):
+        self._test_static_node_lifecycle('special-hardware')

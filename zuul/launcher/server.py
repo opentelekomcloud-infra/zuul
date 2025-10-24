@@ -123,6 +123,25 @@ class LauncherStatsElection(SessionAwareElection):
         super().__init__(client.client, self.election_root)
 
 
+class LabelNodeMapping:
+    def __init__(self):
+        self.label_to_nodes = collections.defaultdict(lambda: {})
+
+    def __repr__(self):
+        return repr(self.label_to_nodes)
+
+    def addNode(self, node):
+        for label in node.all_labels:
+            self.label_to_nodes[label][node.uuid] = node
+
+    def removeNode(self, node):
+        for label in node.all_labels:
+            self.label_to_nodes[label].pop(node.uuid, None)
+
+    def getNodesForLabel(self, label):
+        return self.label_to_nodes[label].values()
+
+
 class DeleteJob:
     log = logging.getLogger("zuul.Launcher")
 
@@ -1302,10 +1321,7 @@ class Launcher:
         )
 
     def _filterUnassignedNodes(self, unassigned_nodes, request):
-        # This returns a nested defaultdict like:
-        # {label_name: {node: [node_providers]}}
-        request_unassigned_nodes = collections.defaultdict(
-            lambda: collections.defaultdict(list))
+        request_unassigned_nodes = LabelNodeMapping()
         if request.image_upload_uuid:
             # This is a request for an image validation job.
             # Don't use any unassigned nodes for that.
@@ -1316,7 +1332,8 @@ class Launcher:
             return request_unassigned_nodes
         label_names = set(request.labels)
         for label_name in label_names:
-            unassigned_for_label = list(unassigned_nodes.get(label_name, []))
+            unassigned_for_label = unassigned_nodes.getNodesForLabel(
+                label_name)
             if not unassigned_for_label:
                 continue
             # TODO: sort by age? use old nodes first? random to reduce
@@ -1329,17 +1346,18 @@ class Launcher:
                 if node.hasExpired():
                     continue
                 # Check to see if this node is valid in this tenant
-                if provider := providers.get(node.provider):
-                    request_unassigned_nodes[label_name][node].append(provider)
+                if node.provider in providers:
+                    request_unassigned_nodes.addNode(node)
         return request_unassigned_nodes
 
     def _assignUnassignedNode(self, ctx, unassigned_nodes,
                               request_unassigned_nodes, request,
                               label, log):
-        unassigned_for_label = request_unassigned_nodes[label.name]
+        unassigned_for_label = request_unassigned_nodes.getNodesForLabel(
+            label.name)
         # TODO: sort by age? use old nodes first? random to reduce
         # chance of thundering herd?
-        for node, providers in list(unassigned_for_label.items()):
+        for node in unassigned_for_label:
             # We can assign a building node without
             # acquiring the lock.
             lock_node = not (node.state == node.State.BUILDING)
@@ -1352,8 +1370,8 @@ class Launcher:
                 # Double check if it's still available
                 if (node.request_id or
                     node.state not in node.ASSIGNABLE_STATES):
-                    request_unassigned_nodes[label.name].pop(node)
-                    unassigned_nodes[label.name].remove(node)
+                    request_unassigned_nodes.getNode(node)
+                    unassigned_nodes.getNode(node)
                     continue
                 nearest_lock = (
                     lock_node and node._lock or request._lock
@@ -1368,8 +1386,8 @@ class Launcher:
                         )
                     except NodeExistsError:
                         continue
-                request_unassigned_nodes[label.name].pop(node)
-                unassigned_nodes[label.name].remove(node)
+                request_unassigned_nodes.removeNode(node)
+                unassigned_nodes.removeNode(node)
                 log.debug("Assigned unassigned node %s", node.uuid)
                 return node
             except Exception:
@@ -1457,14 +1475,12 @@ class Launcher:
             # provider -> total unassigned nodes
             usable_provider_unassigned_nodes = collections.Counter()
             for label_name in set(request.labels):
-                for node, node_providers in request_unassigned_nodes[
-                        label_name].items():
-                    for node_provider in node_providers:
-                        usable_provider_unassigned_nodes[
-                            node_provider.canonical_name] += 1
-                        messages.append(
-                            f"Found usable unassigned node {node} "
-                            f"in {node_provider}")
+                for node in request_unassigned_nodes.getNodesForLabel(
+                        label_name):
+                    usable_provider_unassigned_nodes[node.provider] += 1
+                    messages.append(
+                        f"Found usable unassigned node {node} "
+                        f"in {node.provider}")
             providers.sort(
                 key=lambda p: usable_provider_unassigned_nodes[
                     p.canonical_name],
@@ -1640,16 +1656,18 @@ class Launcher:
             node_uuid = static_node.node_id
             connection_port = static_node.connection_port
             state = model.ProviderNode.State.BUILDING
+            label_aliases = static_node.aliases
         else:
             node_uuid = uuid.uuid4().hex
             connection_port = image.connection_port
             state = model.ProviderNode.State.REQUESTED
-
+            label_aliases = []
         args = dict(
             uuid=node_uuid,
             state=state,
             label=label.name,
             label_config_hash=label.config_hash,
+            label_aliases=label_aliases,
             max_ready_age=label.max_ready_age,
             max_age=label.max_age,
             min_retention_time=label.min_retention_time,
@@ -2407,7 +2425,8 @@ class Launcher:
         # Get unassigned ready nodes and also building nodes.  We can
         # have unassigned building nodes if a request is canceled, or
         # in the case of subnodes.
-        unassigned_nodes = collections.defaultdict(list)
+        unassigned_nodes = LabelNodeMapping()
+        nodes = []
         for node in self.api.getProviderNodes():
             if node.request_id is not None:
                 continue
@@ -2415,13 +2434,18 @@ class Launcher:
                 continue
             if node.state not in node.ASSIGNABLE_STATES:
                 continue
-            unassigned_nodes[node.label].append(node)
+            nodes.append(node)
 
-        # Sort by state first, then time
+        # Sort by state first, then time.  We will add these to the
+        # LabelNodeMapping in this order, so it will be sorted as
+        # well.
         def _sort_key(n):
             return n.ASSIGNABLE_STATES[n.state], n
-        for nodes in unassigned_nodes.values():
-            nodes.sort(key=_sort_key)
+        nodes.sort(key=_sort_key)
+
+        for node in nodes:
+            unassigned_nodes.addNode(node)
+
         return unassigned_nodes
 
     def _getProviderForNode(self, node, ignore_label=False):
