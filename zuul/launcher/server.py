@@ -460,6 +460,8 @@ class NodescanRequest:
     CONNECTING_KEY = 'connecting key'
     NEGOTIATING_KEY = 'negotiating key'
     COMPLETE = 'complete'
+    # This is for unit tests to override
+    _socket_class = socket.socket
 
     def __init__(self, node, log):
         self.state = self.START
@@ -565,7 +567,7 @@ class NodescanRequest:
     def _connect(self):
         if self.sock:
             self.worker.unRegisterDescriptor(self.sock)
-        self.sock = socket.socket(self.family, socket.SOCK_STREAM)
+        self.sock = self._socket_class(self.family, socket.SOCK_STREAM)
         # Set nonblocking so we can poll for connection completion
         self.sock.setblocking(False)
         try:
@@ -747,6 +749,8 @@ class NodescanWorker:
     # Simultaneous requests higher than this value will be queued.
     MAX_REQUESTS = 100
     TIMEOUT = 1
+    # For unit tests to override
+    _poll_class = select.epoll
 
     def __init__(self):
         # Remember to close all pipes to prevent leaks in tests.
@@ -755,7 +759,7 @@ class NodescanWorker:
         self._running = False
         self._active_requests = []
         self._pending_requests = []
-        self.poll = select.epoll()
+        self.poll = self._poll_class()
         self.poll.register(self.wake_read, select.EPOLLIN)
 
     def start(self):
@@ -1266,7 +1270,7 @@ class Launcher:
             if request.state == model.NodesetRequest.State.REQUESTED:
                 self._acceptRequest(request, log, unassigned_nodes)
             elif request.state == model.NodesetRequest.State.ACCEPTED:
-                self._checkRequest(request, log)
+                self._checkRequest(request, log, unassigned_nodes)
         except NodesetRequestError as err:
             state = model.NodesetRequest.State.FAILED
             log.error("Marking request %s as %s: %s",
@@ -1329,6 +1333,54 @@ class Launcher:
                     request_unassigned_nodes[label_name][node].append(provider)
         return request_unassigned_nodes
 
+    def _assignUnassignedNode(self, ctx, unassigned_nodes,
+                              request_unassigned_nodes, request,
+                              label, log):
+        unassigned_for_label = request_unassigned_nodes[label.name]
+        # TODO: sort by age? use old nodes first? random to reduce
+        # chance of thundering herd?
+        for node, providers in list(unassigned_for_label.items()):
+            # We can assign a building node without
+            # acquiring the lock.
+            lock_node = not (node.state == node.State.BUILDING)
+            if lock_node and not node.acquireLock(ctx, blocking=False):
+                log.debug("Failed to lock matching unassigned node %s",
+                          node)
+                continue
+            try:
+                node.refresh(ctx)
+                # Double check if it's still available
+                if (node.request_id or
+                    node.state not in node.ASSIGNABLE_STATES):
+                    request_unassigned_nodes[label.name].pop(node)
+                    unassigned_nodes[label.name].remove(node)
+                    continue
+                nearest_lock = (
+                    lock_node and node._lock or request._lock
+                )
+                with self.createZKContext(
+                        nearest_lock, self.log) as ctx:
+                    try:
+                        node.assign(
+                            ctx,
+                            request_id=request.uuid,
+                            tenant_name=request.tenant_name,
+                        )
+                    except NodeExistsError:
+                        continue
+                request_unassigned_nodes[label.name].pop(node)
+                unassigned_nodes[label.name].remove(node)
+                log.debug("Assigned unassigned node %s", node.uuid)
+                return node
+            except Exception:
+                log.exception(
+                    "Faild to assign unassigned node %s", node)
+                continue
+            finally:
+                if lock_node:
+                    node.releaseLock(ctx)
+        return None
+
     def _acceptRequest(self, request, log, unassigned_nodes):
         messages = []
         request_unassigned_nodes = self._filterUnassignedNodes(
@@ -1343,50 +1395,13 @@ class Launcher:
                 # a node for this slot.
                 if i < len(request.provider_node_data):
                     continue
-                unassigned_for_label = request_unassigned_nodes[label.name]
-                # TODO: sort by age? use old nodes first? random to reduce
-                # chance of thundering herd?
-                for node, providers in list(unassigned_for_label.items()):
-                    # We can assign a building node without
-                    # acquiring the lock.
-                    lock_node = not (node.state == node.State.BUILDING)
-                    if lock_node and not node.acquireLock(ctx, blocking=False):
-                        log.debug("Failed to lock matching unassigned node %s",
-                                  node)
-                        continue
-                    try:
-                        node.refresh(ctx)
-                        # Double check if it's still available
-                        if (node.request_id or
-                            node.state not in node.ASSIGNABLE_STATES):
-                            request_unassigned_nodes[label.name].pop(node)
-                            unassigned_nodes[label.name].remove(node)
-                            continue
-                        nearest_lock = (
-                            lock_node and node._lock or request._lock
-                        )
-                        with self.createZKContext(
-                                nearest_lock, self.log) as ctx:
-                            try:
-                                node.assign(
-                                    ctx,
-                                    request_id=request.uuid,
-                                    tenant_name=request.tenant_name,
-                                )
-                            except NodeExistsError:
-                                continue
-                        request_unassigned_nodes[label.name].pop(node)
-                        unassigned_nodes[label.name].remove(node)
-                        log.debug("Assigned unassigned node %s", node.uuid)
-                        break
-                    except Exception:
-                        log.exception(
-                            "Faild to assign unassigned node %s", node)
-                        continue
-                    finally:
-                        if lock_node:
-                            node.releaseLock(ctx)
-                else:
+                node = self._assignUnassignedNode(
+                    ctx, unassigned_nodes, request_unassigned_nodes,
+                    request, label, log)
+                if node is None:
+                    # We need to request a new node
+                    if provider.driver.name == 'static':
+                        return
                     # If we have not assigned any nodes to this
                     # request we don't have to proceed if there is no
                     # quota.
@@ -1403,7 +1418,7 @@ class Launcher:
                         if not has_quota:
                             # TODO: We may want to consider all the
                             # labels at once so that if we can
-                            # fulfilly any label immediately, we
+                            # fulfill any label immediately, we
                             # accept the request; currently this will
                             # happen only if we can fulfill the first
                             # label immediately.
@@ -1591,15 +1606,48 @@ class Launcher:
 
         return label_providers
 
-    def _requestNode(self, label, request, provider, log, ctx):
-        # Create a deterministic node UUID by using
-        # the request UUID as namespace.
-        node_uuid = uuid.uuid4().hex
+    def _registerStaticNodes(self, provider):
+        # Register static nodes; we do this here rather than the
+        # driver so that we can reuse _requestNode.
+        with self.createZKContext(None, self.log) as ctx:
+            for static_node in provider.nodes.values():
+                node = self.api.getProviderNode(static_node.node_id)
+                if node:
+                    continue
+                label = provider.labels[static_node.label]
+                try:
+                    self._requestNode(label, None, provider, self.log, ctx,
+                                      static_node)
+                except NodeExistsError:
+                    pass
+
+    def _deRegisterStaticNodes(self, provider):
+        with self.createZKContext(None, self.log) as ctx:
+            for node in self.api.getProviderNodes():
+                if provider.canonical_name != node.provider:
+                    continue
+                if node.uuid in provider.nodes:
+                    continue
+                self.log.info("Deregistering %s", node)
+                self._bestEffortLockAndSetNodeState(
+                    ctx, node, node.State.DEREGISTER, self.log)
+
+    def _requestNode(self, label, request, provider, log, ctx,
+                     static_node=None):
         image = provider.images[label.image]
         label_quota = provider.getQuotaForLabel(label)
+        if static_node:
+            node_uuid = static_node.node_id
+            connection_port = static_node.connection_port
+            state = model.ProviderNode.State.BUILDING
+        else:
+            node_uuid = uuid.uuid4().hex
+            connection_port = image.connection_port
+            state = model.ProviderNode.State.REQUESTED
 
         args = dict(
             uuid=node_uuid,
+            state=state,
             label=label.name,
             label_config_hash=label.config_hash,
             max_ready_age=label.max_ready_age,
@@ -1612,7 +1660,7 @@ class Launcher:
             executor_zone=label.executor_zone,
             connection_name=provider.connection_name,
             # Set any node attributes we already know here
-            connection_port=image.connection_port,
+            connection_port=connection_port,
             connection_type=image.connection_type,
             quota=label_quota,
             provider=provider.canonical_name,
@@ -1635,8 +1683,6 @@ class Launcher:
             assign_args['min_request_version'] = request.getZKVersion() + 1
             assign_args['tenant_name'] = request.tenant_name
         else:
-            # We don't pass a provider here as the node should not
-            # be directly associated with a tenant or provider.
             args['tags'] = provider.getNodeTags(
                 self.system.system_id, label, node_uuid)
         if not (label.slots and label.slots > 1):
@@ -1678,9 +1724,9 @@ class Launcher:
         args['uuid'] = uuid.uuid4().hex
         # Subnodes use no quota
         args['quota'] = model.QuotaInformation()
+        args['state'] = node.state
         subnode = SubnodeProviderNode.new(
             context,
-            state=node.state,
             state_time=node.state_time,
             slot=slot,
             main_node_id=node.uuid,
@@ -1691,14 +1737,17 @@ class Launcher:
         )
         return subnode
 
-    def _checkRequest(self, request, log):
+    def _checkRequest(self, request, log, unassigned_nodes):
         messages = []
         requested_nodes = [self.api.getProviderNode(node_id) for
                            node_id in request.nodes]
+        request_unassigned_nodes = self._filterUnassignedNodes(
+            unassigned_nodes, request)
         if any(n.state in n.FAILED_STATES for n in requested_nodes):
             # If any nodes failed, see if we need to change providers
             # for any or all of them.
-            label_providers = self._selectProviders(request, None, messages)
+            label_providers = self._selectProviders(
+                request, request_unassigned_nodes, messages)
             for i, node in enumerate(requested_nodes):
                 label, provider = label_providers[i]
                 if (node.state in node.FAILED_STATES or
@@ -1715,9 +1764,16 @@ class Launcher:
                             add_failed_provider = node.provider
                         else:
                             add_failed_provider = None
-                        node = self._requestNode(
-                            label, request, provider, log, ctx)
-                        requested_nodes[i] = node
+
+                        node = self._assignUnassignedNode(
+                            ctx, unassigned_nodes, request_unassigned_nodes,
+                            request, label, log)
+                        if node is None:
+                            if provider.driver.name == 'static':
+                                return
+                            node = self._requestNode(
+                                label, request, provider, log, ctx)
+                            requested_nodes[i] = node
                         # if this was a tempfail, retry again as
                         # normal; otherwise, add to the failed
                         # providers list in the request
@@ -1833,7 +1889,7 @@ class Launcher:
                 and node.state == node.State.USED):
             if provider := self._getProviderForNode(node):
                 if label := provider.labels.get(node.label):
-                    if label.reuse:
+                    if self._canReuseNode(provider, node, label):
                         self._checkNodeReuse(node, log)
                         if node.state == node.State.USED:
                             # If we haven't changed state, keep the
@@ -1846,10 +1902,13 @@ class Launcher:
             # longer exists
             (node.request_id is not None and not request)
             # ... it is failed/outdated
-            or node.state in (node.State.FAILED,
-                              node.State.TEMPFAILED,
-                              node.State.SLOT_HOST,
-                              node.State.OUTDATED)
+            or node.state in (
+                node.State.FAILED,
+                node.State.TEMPFAILED,
+                node.State.SLOT_HOST,
+                node.State.OUTDATED,
+                node.State.DEREGISTER,
+            )
         ):
             # Safety check to make sure we don't delete main nodes if
             # subnodes are in use.
@@ -2001,6 +2060,7 @@ class Launcher:
         if not node.subnodes:
             return
         state = state or node.state
+        new_state = state
         for subnode_id in node.subnodes:
             if subnode := self.api.getProviderNode(subnode_id):
                 with subnode.activeContext(node._active_context):
@@ -2008,8 +2068,8 @@ class Launcher:
                         # This is the initial creation, so we copy
                         # data and set the state to READY.
                         subnode.updateFromMainNode(node)
-                        state = node.State.READY
-                    subnode.setState(state)
+                        new_state = node.State.READY
+                    subnode.setState(new_state)
                 log.debug("Marking subnode %s as %s",
                           subnode, subnode.state)
 
@@ -2035,7 +2095,7 @@ class Launcher:
         # state, but we ignore lock errors.
         if node.hasLock():
             # This node is assigned to this launcher and we have the lock.
-            lock_mgr = nullcontext
+            lock_mgr = nullcontext()
         else:
             lock_mgr = node.locked(context, blocking=False)
         try:
@@ -2069,6 +2129,17 @@ class Launcher:
                 "Can't scan key for %s" % (node,))
         if keys:
             node.host_keys = keys
+        return True
+
+    def _canReuseNode(self, provider, node, label):
+        if not label.reuse:
+            return False
+        if node.main_node_id:
+            main_node = self.api.getProviderNode(node.main_node_id)
+        else:
+            main_node = node
+        if not provider.canReuseNode(main_node):
+            return False
         return True
 
     def _checkNodeReuse(self, node, log):
@@ -2179,11 +2250,13 @@ class Launcher:
 
                 if not node.delete_state_machine:
                     log.debug("Cleaning up node %s", node)
-                    if isinstance(node, SubnodeProviderNode):
+                    provider = self._getProviderForNode(
+                        node, ignore_label=True)
+                    # The static driver may choose to reuse the node
+                    if (provider.driver.name != 'static' and
+                        isinstance(node, SubnodeProviderNode)):
                         node.delete_state_machine = SubnodeStateMachine()
                     else:
-                        provider = self._getProviderForNode(
-                            node, ignore_label=True)
                         node.delete_state_machine =\
                             provider.getDeleteStateMachine(node, log)
 
@@ -2193,9 +2266,7 @@ class Launcher:
                 if (now - node.delete_state_machine.start_time >
                     self.DELETE_TIMEOUT):
                     log.error("Timeout deleting node %s", node)
-                    node.delete_state_machine.state =\
-                        node.delete_state_machine.COMPLETE
-                    node.delete_state_machine.complete = True
+                    node.delete_state_machine.fail()
 
                 if not node.delete_state_machine.complete:
                     try:
@@ -2206,13 +2277,16 @@ class Launcher:
                                       node, old_state, new_state)
                     except Exception:
                         log.exception("Error in delete state machine:")
-                        node.delete_state_machine.state =\
-                            node.delete_state_machine.COMPLETE
-                        node.delete_state_machine.complete = True
+                        node.delete_state_machine.fail()
 
-            if not node.delete_state_machine.complete:
-                self.wake_event.set()
-                return
+                if not node.delete_state_machine.complete:
+                    self.wake_event.set()
+                    return
+
+                if node.state == node.State.BUILDING:
+                    # Static node going back into the pool
+                    node.delete_state_machine = None
+                    return
 
             request = self.api.getNodesetRequest(node.request_id)
             request_up_to_date = False
@@ -2388,7 +2462,6 @@ class Launcher:
         node.region = instance.region
         node.az = instance.az
         node.driver_data = instance.driver_data
-        node.slot = instance.slot
 
         # If we did not know the resource information before
         # launching, update it now.
@@ -2610,6 +2683,16 @@ class Launcher:
                         self.log.exception("Error in postconfig for %s:",
                                            provider)
             self.endpoints = endpoints
+            for providers in self.tenant_providers.values():
+                for provider in providers:
+                    if (self.connection_filter and
+                        provider.connection_name not in
+                        self.connection_filter):
+                        continue
+                    if provider.driver.name != 'static':
+                        continue
+                    self._registerStaticNodes(provider)
+                    self._deRegisterStaticNodes(provider)
         return updated
 
     def _updateTenantProviders(self, tenant_name):

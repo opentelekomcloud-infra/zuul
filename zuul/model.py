@@ -2775,6 +2775,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         IN_USE = "in-use"
         USED = "used"
         OUTDATED = "outdated"
+        DEREGISTER = "deregister"
         HOLD = "hold"
         SNAPSHOT = "snapshot"
         SLOT_HOST = "slot-host"
@@ -2786,6 +2787,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         State.IN_USE,
         State.USED,
         State.OUTDATED,
+        State.DEREGISTER,
         State.HOLD,
         State.SNAPSHOT,
         State.SLOT_HOST,
@@ -2813,6 +2815,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         State.FAILED,
         State.USED,
         State.OUTDATED,
+        State.DEREGISTER,
     )
 
     # The order of preference for unassigned node states (we want

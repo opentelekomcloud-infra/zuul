@@ -53,11 +53,7 @@ from tests.base import (
     return_data,
     simple_layout,
 )
-from tests.fake_nodescan import (
-    FakeSocket,
-    FakePoll,
-    FakeTransport,
-)
+from tests.fake_nodescan import NodescanFixture
 
 
 class ImageMocksFixture(ResponsesFixture):
@@ -1498,15 +1494,9 @@ class TestLauncher(LauncherBaseTestCase):
 
     @simple_layout('layouts/nodepool-nodescan.yaml', enable_nodepool=True)
     @okay_tracebacks('_checkNodescanRequest')
-    @mock.patch('paramiko.transport.Transport')
-    @mock.patch('socket.socket')
-    @mock.patch('select.epoll')
-    def test_nodescan_failure(self, mock_epoll, mock_socket, mock_transport):
+    def test_nodescan_failure(self):
         # Test a nodescan failure
-        fake_socket = FakeSocket()
-        mock_socket.return_value = fake_socket
-        mock_epoll.return_value = FakePoll()
-        mock_transport.return_value = FakeTransport(_fail=True)
+        self.useFixture(NodescanFixture(transport_fail=True))
 
         ctx = self.createZKContext(None)
         request = self.requestNodes(["debian-normal"], timeout=30)
@@ -1532,15 +1522,9 @@ class TestLauncher(LauncherBaseTestCase):
 
     @simple_layout('layouts/nodepool-nodescan.yaml', enable_nodepool=True)
     @okay_tracebacks('_checkNodescanRequest')
-    @mock.patch('paramiko.transport.Transport')
-    @mock.patch('socket.socket')
-    @mock.patch('select.epoll')
-    def test_nodescan_success(self, mock_epoll, mock_socket, mock_transport):
+    def test_nodescan_success(self):
         # Test a normal launch with a nodescan
-        fake_socket = FakeSocket()
-        mock_socket.return_value = fake_socket
-        mock_epoll.return_value = FakePoll()
-        mock_transport.return_value = FakeTransport()
+        self.useFixture(NodescanFixture())
 
         ctx = self.createZKContext(None)
         request = self.requestNodes(["debian-normal"])
@@ -3242,6 +3226,12 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
         self.assertEqual(main.State.SLOT_HOST, main.state)
         self.assertEqual(sub1.State.READY, sub1.state)
         self.assertEqual(sub2.State.READY, sub2.state)
+        if (sub1.request_id == request.uuid):
+            self.assertIsNone(sub2.request_id)
+        elif (sub2.request_id == request.uuid):
+            self.assertIsNone(sub1.request_id)
+        else:
+            self.assertTrue(False, "one of the subnodes must be assigned")
 
         with sub1.locked(ctx):
             with sub1.activeContext(ctx):
@@ -3566,21 +3556,24 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
         nodes.sort(key=lambda x: len(x.subnodes))
         nodes.reverse()
         main = nodes[0]
-        sub1 = nodes[1]
-        sub2 = nodes[2]
+        self.assertIsNone(main.main_node_id)
+        subnodes = {x.uuid: x for x in nodes[1:]}
+        sub1 = subnodes[main.subnodes[0]]
+        sub2 = subnodes[main.subnodes[1]]
         # Get a copy so we're not modifying the launcher's
         main = model.ProviderNode.fromZK(ctx, path=main.getPath())
         sub1 = model.ProviderNode.fromZK(ctx, path=sub1.getPath())
         sub2 = model.ProviderNode.fromZK(ctx, path=sub2.getPath())
-        self.assertIsNone(main.main_node_id)
         self.assertEqual(main.uuid, sub1.main_node_id)
         self.assertEqual(main.uuid, sub2.main_node_id)
-        self.assertEqual(set([sub1.uuid, sub2.uuid]), set(main.subnodes))
+        self.assertEqual([sub1.uuid, sub2.uuid], main.subnodes)
         self.assertEqual([], sub1.subnodes)
         self.assertEqual([], sub2.subnodes)
         self.assertEqual(main.State.SLOT_HOST, main.state)
         self.assertEqual(sub1.State.READY, sub1.state)
         self.assertEqual(sub2.State.READY, sub2.state)
+        self.assertIsNotNone(sub1.request_id)
+        self.assertIsNone(sub2.request_id)
 
         def my_advance(*args, **kw):
             raise Exception("Test exception")
@@ -3597,10 +3590,13 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
             for _ in iterate_timeout(10, "nodes to be marked failed"):
                 nodes = self.launcher.api.nodes_cache.getItems()
                 states = Counter(n.state for n in nodes)
-                if states['failed'] == 2:
+                if states['failed'] == 1:
                     break
 
             # Delete the request so nodes can be deleted
+            with sub1.locked(ctx):
+                with sub1.activeContext(ctx):
+                    sub1.setState(sub2.State.USED)
             request.delete(ctx)
 
             for _ in iterate_timeout(10, "nodes to be deleted"):
