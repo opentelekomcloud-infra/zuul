@@ -1083,6 +1083,11 @@ class TestWeb(BaseTestWeb):
         self.assertEqual(resp.content, public_ssh)
         self.assertIn('text/plain', resp.headers.get('Content-Type'))
 
+        resp = self.get_url("api/tenant/tenant-one/tenant-ssh-key/"
+                            "ssh.pub")
+        self.assertEqual(resp.content, public_ssh)
+        self.assertIn('text/plain', resp.headers.get('Content-Type'))
+
     def test_web_404_on_unknown_tenant(self):
         resp = self.get_url("api/tenant/non-tenant/status")
         self.assertEqual(404, resp.status_code)
@@ -1354,7 +1359,7 @@ class TestWeb(BaseTestWeb):
             'pipeline_builds_images': False,
             'pre_playbooks': [],
             'post_playbooks': [],
-            'ssh_keys': [],
+            'ssh_keys': ['REDACTED'],
             'vars': {},
             'extra_vars': {},
             'host_vars': {},
@@ -1454,7 +1459,7 @@ class TestWeb(BaseTestWeb):
             'projects': [],
             'repo_state_keys': [],
             'secret_vars': None,
-            'ssh_keys': [],
+            'ssh_keys': ['REDACTED'],
             'timeout': None,
             'vars': {},
             'workspace_scheme': 'golang',

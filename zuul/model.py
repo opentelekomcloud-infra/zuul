@@ -10685,6 +10685,8 @@ class Tenant(object):
         self.allowed_triggers = None
         self.allowed_reporters = None
         self.use_nodepool = True
+        self.private_ssh_key = None
+        self.public_ssh_key = None
         # The unparsed configuration from the main zuul config for
         # this tenant.
         self.unparsed_config = None

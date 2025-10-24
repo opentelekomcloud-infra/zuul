@@ -1735,6 +1735,8 @@ class ZuulWebAPI(object):
             'key': '/api/tenant/{tenant}/key/{project:.*}.pub',
             'project_ssh_key': '/api/tenant/{tenant}/project-ssh-key/'
                                '{project:.*}.pub',
+            'tenant_ssh_key': '/api/tenant/{tenant}/tenant-ssh-key/'
+                               'ssh.pub',
             'console_stream': '/api/tenant/{tenant}/console-stream',
             'badge': '/api/tenant/{tenant}/badge',
             'builds': '/api/tenant/{tenant}/builds',
@@ -2614,6 +2616,26 @@ class ZuulWebAPI(object):
         resp.headers['Content-Type'] = 'text/plain'
         return key
 
+    @cherrypy.expose
+    @cherrypy.tools.save_params()
+    @cherrypy.tools.handle_options()
+    @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='text/plain',
+        description=('Returns the tenant public key that executor '
+                     'adds to SSH agent'),
+        example='ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACA',
+        schema=Prop('The tenant public key '
+                    'in SSH2 format', str),
+    )
+    @openapi_response(404, 'Tenant or Project not found')
+    def tenant_ssh_key(self, tenant_name, tenant, auth):
+        key = f"{tenant.public_ssh_key}\n"
+        resp = cherrypy.response
+        resp.headers['Content-Type'] = 'text/plain'
+        return key
+
     def _get_connection(self):
         return self.zuulweb.connections.connections['database']
 
@@ -3303,6 +3325,9 @@ class ZuulWeb(object):
         route_map.connect('api', '/api/tenant/{tenant_name}/'
                           'project-ssh-key/{project_name:.*}.pub',
                           controller=api, action='project_ssh_key')
+        route_map.connect('api', '/api/tenant/{tenant_name}/'
+                          'tenant-ssh-key/ssh.pub',
+                          controller=api, action='tenant_ssh_key')
         route_map.connect('api', '/api/tenant/{tenant_name}/console-stream',
                           controller=api, action='console_stream_get',
                           conditions=dict(method=['GET']))

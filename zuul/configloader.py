@@ -2006,6 +2006,8 @@ class TenantParser(object):
         # TODO: switch default value after nodepool transition
         tenant.use_nodepool = conf.get('use-nodepool', True)
 
+        keys_future = executor.submit(self._loadTenantKeys, tenant)
+
         tenant.unparsed_config = conf
         # tpcs is TenantProjectConfigs
         for tpc in abide.getAllTPCs(tenant.name):
@@ -2060,6 +2062,7 @@ class TenantParser(object):
             self.zk_client, self.statsd, tenant.name, tenant.layout, abide,
             read_only=(not bool(self.scheduler))
         )
+        keys_future.result()
         if self.scheduler:
             # Only call the postConfig hook if we have a scheduler as this will
             # change data in ZooKeeper. In case we are in a zuul-web context,
@@ -2119,6 +2122,11 @@ class TenantParser(object):
 
         project.private_ssh_key, project.public_ssh_key = (
             self.keystorage.getProjectSSHKeys(connection_name, project.name)
+        )
+
+    def _loadTenantKeys(self, tenant):
+        tenant.private_ssh_key, tenant.public_ssh_key = (
+            self.keystorage.getTenantSSHKeys(tenant.name)
         )
 
     @staticmethod

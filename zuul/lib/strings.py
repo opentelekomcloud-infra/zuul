@@ -26,6 +26,10 @@ def unique_project_name(project_name):
     return (prefix, name)
 
 
+def safe_tenant_name(tenant_name):
+    return quote_plus(tenant_name)
+
+
 def workspace_project_path(hostname, project_name, scheme):
     """Return the project path based on the specified scheme"""
     if scheme == zuul.model.SCHEME_UNIQUE:
