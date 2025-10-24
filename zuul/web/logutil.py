@@ -27,7 +27,7 @@ class ZuulCherrypyLogManager(LogManager):
         request = cherrypy.serving.request
         if not hasattr(request, 'zuul_request_id'):
             request.zuul_request_id = uuid.uuid4().hex
-        return get_annotated_logger(self._access_log, None,
+        return get_annotated_logger(self._access_log,
                                     request=request.zuul_request_id)
 
     @access_log.setter
@@ -39,7 +39,7 @@ class ZuulCherrypyLogManager(LogManager):
         request = cherrypy.serving.request
         if not hasattr(request, 'zuul_request_id'):
             request.zuul_request_id = uuid.uuid4().hex
-        return get_annotated_logger(self._error_log, None,
+        return get_annotated_logger(self._error_log,
                                     request=request.zuul_request_id)
 
     @error_log.setter

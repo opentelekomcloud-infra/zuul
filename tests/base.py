@@ -3328,9 +3328,7 @@ class ZuulTestCase(BaseTestCase):
         # job_workers present on the executor.
         for build_uuid in self.executor_server.job_workers.keys():
             if build_uuid not in seen_builds:
-                log = get_annotated_logger(
-                    self.log, event=None, build=build_uuid
-                )
+                log = get_annotated_logger(self.log, build=build_uuid)
                 log.debug("Build is not finalized")
                 return False
         return True

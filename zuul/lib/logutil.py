@@ -16,7 +16,8 @@
 import logging
 
 
-def get_annotated_logger(logger, event, build=None, request=None):
+def get_annotated_logger(logger, event=None, *, build=None, request=None,
+                         upload=None, iba=None):
     # Note(tobiash): When running with python 3.5 log adapters cannot be
     # stacked. We need to detect this case and modify the original one.
     if isinstance(logger, EventIdLogAdapter):
@@ -36,6 +37,12 @@ def get_annotated_logger(logger, event, build=None, request=None):
     if request is not None:
         extra['request'] = request
 
+    if upload is not None:
+        extra['image_upload'] = upload
+
+    if iba is not None:
+        extra['image_build_artifact'] = iba
+
     if isinstance(logger, EventIdLogAdapter):
         return logger
 
@@ -46,16 +53,24 @@ class EventIdLogAdapter(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         msg, kwargs = super().process(msg, kwargs)
         extra = kwargs.get('extra', {})
-        event_id = extra.get('event_id')
-        build = extra.get('build')
-        request = extra.get('request')
         new_msg = []
+
+        event_id = extra.get('event_id')
         if event_id is not None:
             new_msg.append('[e: %s]' % event_id)
+        build = extra.get('build')
         if build is not None:
             new_msg.append('[build: %s]' % build)
+        request = extra.get('request')
         if request is not None:
             new_msg.append('[req: %s]' % request)
+        upload = extra.get('image_upload')
+        if upload is not None:
+            new_msg.append('[upload: %s]' % upload)
+        iba = extra.get('image_build_artifact')
+        if iba is not None:
+            new_msg.append('[iba: %s]' % iba)
+
         new_msg.append(msg)
         msg = ' '.join(new_msg)
         return msg, kwargs

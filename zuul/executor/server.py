@@ -4491,8 +4491,7 @@ class ExecutorServer(BaseMergeServer):
 
     def _runBuildWorker(self, build_request: BuildRequest):
         log = get_annotated_logger(
-            self.log, event=None, build=build_request.uuid
-        )
+            self.log, event=build_request.event_id, build=build_request.uuid)
         # Lock and update the build request
         if not self.executor_api.lock(build_request, blocking=False):
             return False
