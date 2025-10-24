@@ -121,6 +121,11 @@
     src: ../../doc/source/examples/zuul-config/zuul.d/projects.yaml
     dest: "{{ workspace }}/zuul-config/zuul.d/"
 
+- name: Make initial change in zuul-config
+  copy:
+    src: ../../doc/source/examples/zuul-config/zuul.d/providers.yaml
+    dest: "{{ workspace }}/zuul-config/zuul.d/"
+
 - name: Copy basic base job definition
   copy:
     src: ../../doc/source/examples/zuul-config/zuul.d/jobs.yaml
