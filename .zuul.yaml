@@ -213,10 +213,6 @@
     vars:
       zuul_api_url: https://zuul.opendev.org
 
-# This job is run on changes to both Zuul and Nodepool; any changes to
-# the other project will be picked up via image builds which appear in
-# the buildset registry.  It includes zuul as a required project
-# because that is where the docker-compose file is located.
 - job:
     name: zuul-quick-start
     parent: opendev-buildset-registry-consumer
@@ -224,8 +220,6 @@
     pre-run: playbooks/tutorial/pre.yaml
     run: playbooks/tutorial/run.yaml
     post-run: playbooks/tutorial/post.yaml
-    required-projects:
-      - zuul/zuul
     nodeset: ubuntu-noble
 
 # Image building jobs
@@ -411,7 +405,6 @@
         - zuul-stream-functional-11
         - zuul-nox-remote
         - zuul-quick-start:
-            requires: nodepool-container-image
             dependencies: zuul-build-image
         - zuul-nox-zuul-client
         - zuul-build-python-release
@@ -444,7 +437,6 @@
         - zuul-stream-functional-11
         - zuul-nox-remote
         - zuul-quick-start:
-            requires: nodepool-container-image
             dependencies: zuul-upload-image
         - zuul-nox-zuul-client
         - zuul-build-python-release
