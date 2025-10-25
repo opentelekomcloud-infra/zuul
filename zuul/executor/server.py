@@ -3455,7 +3455,13 @@ class AnsibleJob(object):
         if timeout and watchdog.timed_out:
             try:
                 message = 'This playbook timed out.'
-                self.addPlaybookToJson(playbook, phase, index, message)
+                start = None
+                end = None
+                if watchdog.end != 0:
+                    start = watchdog.end - timeout
+                    end = time.time()
+                self.addPlaybookToJson(playbook, phase, index,
+                                       message, start, end)
             except Exception:
                 # This is a best effort attempt at adding additional logging
                 # info when things have gone wrong. Simply ignore errors if
@@ -3541,7 +3547,13 @@ class AnsibleJob(object):
         if ansible_error_lines and phase and index is not None:
             try:
                 message = ' '.join(ansible_error_lines)
-                self.addPlaybookToJson(playbook, phase, index, message)
+                start = None
+                end = None
+                if timeout and watchdog.end != 0:
+                    start = watchdog.end - timeout
+                    end = time.time()
+                self.addPlaybookToJson(playbook, phase, index,
+                                       message, start, end)
             except Exception:
                 # This is a best effort attempt at adding additional logging
                 # info when things have gone wrong. Simply ignore errors if
@@ -3849,7 +3861,7 @@ class AnsibleJob(object):
         self.emitPlaybookBanner(playbook, 'END', phase, result=result)
         return result, code
 
-    def addPlaybookToJson(self, playbook, phase, index, message):
+    def addPlaybookToJson(self, playbook, phase, index, message, start, end):
         # Append debug info to the job-output.json file. Note this needs to
         # work in conjunction with the Ansible zuul_json callback module.
         output_path = os.path.splitext(
@@ -3861,10 +3873,10 @@ class AnsibleJob(object):
             with open(output_path, 'w') as outfile:
                 outfile.write('[\n\n]\n')
         self.writePlaybookJson(output_path, first_time, playbook,
-                               phase, index, message)
+                               phase, index, message, start, end)
 
     def writePlaybookJson(self, output_path, first_time, playbook,
-                          phase, index, message):
+                          phase, index, message, start, end):
         with open(output_path, 'r+') as outfile:
             file_len = outfile.seek(0, os.SEEK_END)
             # Remove three bytes to eat the trailing newline written by the
@@ -3876,13 +3888,23 @@ class AnsibleJob(object):
             playbook_info['playbook'] = playbook.canonical_name_and_path
             playbook_info['branch'] = playbook.branch
             playbook_info['phase'] = phase
-            playbook_info['index'] = index
+            # Index is a string for some reason
+            playbook_info['index'] = str(index)
+            playbook_info['stats'] = {}
+            playbook_info['trusted'] = playbook.trusted
             playbook_info['plays'] = [{
                 'play': {
                     'name': message
                 },
                 'tasks': []
             }]
+            if start and end:
+                playbook_info['plays'][0]['play']['duration'] = {
+                    'start': datetime.datetime.fromtimestamp(
+                        start, tz=datetime.timezone.utc).isoformat(),
+                    'end': datetime.datetime.fromtimestamp(
+                        end, tz=datetime.timezone.utc).isoformat(),
+                }
             json.dump(playbook_info, outfile,
                       indent=4, sort_keys=True, separators=(',', ': '))
             outfile.write('\n]\n')
