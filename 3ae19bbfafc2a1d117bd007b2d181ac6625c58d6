@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bfc51abb_fc84d345",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-10-25T20:53:13Z",
+      "side": 1,
+      "message": "recheck one test case failure in each job due to zookeeper problems",
+      "revId": "3ae19bbfafc2a1d117bd007b2d181ac6625c58d6",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
