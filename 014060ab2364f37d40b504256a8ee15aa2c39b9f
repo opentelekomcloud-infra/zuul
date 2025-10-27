@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9c68c9a7_745f1ff6",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2163,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-10-27T16:40:34Z",
+      "side": 1,
+      "message": "This check should be redundant due to the condition in the list comprehension on the line above.",
+      "range": {
+        "startLine": 2163,
+        "startChar": 20,
+        "endLine": 2163,
+        "endChar": 43
+      },
+      "revId": "014060ab2364f37d40b504256a8ee15aa2c39b9f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7c8cc283_35deec2d",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2173,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-10-27T16:40:34Z",
+      "side": 1,
+      "message": "See above.",
+      "range": {
+        "startLine": 2173,
+        "startChar": 20,
+        "endLine": 2173,
+        "endChar": 43
+      },
+      "revId": "014060ab2364f37d40b504256a8ee15aa2c39b9f",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
