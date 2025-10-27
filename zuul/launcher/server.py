@@ -1795,7 +1795,7 @@ class Launcher:
                                 return
                             node = self._requestNode(
                                 label, request, provider, log, ctx)
-                            requested_nodes[i] = node
+                        requested_nodes[i] = node
                         # if this was a tempfail, retry again as
                         # normal; otherwise, add to the failed
                         # providers list in the request
