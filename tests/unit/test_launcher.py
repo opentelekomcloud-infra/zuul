@@ -2124,6 +2124,63 @@ class TestLauncher(LauncherBaseTestCase):
                 if (node.request_id == request2.uuid):
                     break
 
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_failed_node_reassignment(self):
+        # Test that a request with a failed node can get an unassigned
+        # node assigned to it.
+        ctx = self.createZKContext(None)
+
+        # Create a node that will be used later as our unassigned
+        # node.  For the moment though, it will be assigned to
+        # request1.
+        request1 = self.requestNodes(['debian-normal'])
+        self.assertEqual(request1.State.FULFILLED, request1.state)
+        nodes = self.launcher.api.nodes_cache.getItems()
+        node1 = nodes[0]
+        self.assertEqual(request1.uuid, node1.request_id)
+
+        with mock.patch(
+            'zuul.driver.aws.awsendpoint.AwsProviderEndpoint._refresh'
+        ) as refresh_mock:
+            # Patch 'endpoint._refresh()' to return w/o updating
+            refresh_mock.side_effect = lambda o: o
+            request2 = self.requestNodes(['debian-normal'], timeout=0)
+            for _ in iterate_timeout(10, "node is building"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                if len(nodes) != 2:
+                    continue
+                node2 = nodes[1]
+                if node2.state == node2.State.BUILDING:
+                    break
+            self.assertEqual(request2.uuid, node2.request_id)
+
+            self.log.debug("Delete original request")
+            request1.delete(ctx)
+
+            for _ in iterate_timeout(60, "node is unassigned"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                node = [n for n in nodes if n.uuid == node1.uuid][0]
+                if (node.uuid == node1.uuid and
+                    node.request_id is None):
+                    break
+
+            # Stop the launcher so we avoid racing updates of the node
+            with self.launcher._test_lock:
+                with node2.activeContext(ctx):
+                    node2.setState(node2.State.FAILED)
+
+            for _ in iterate_timeout(60, "node is reassigned"):
+                nodes = self.launcher.api.nodes_cache.getItems()
+                node = [n for n in nodes if n.uuid == node1.uuid][0]
+                if (node.uuid == node1.uuid and
+                    node.request_id == request2.uuid):
+                    break
+
+            for _ in iterate_timeout(60, "request is fulfilled"):
+                request2.refresh(ctx)
+                if request2.state == request2.State.FULFILLED:
+                    break
+
 
 class TestLauncherLocality(LauncherBaseTestCase):
     # We use a multi-tenant config here to make sure we don't end up
