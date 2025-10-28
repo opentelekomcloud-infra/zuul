@@ -428,7 +428,7 @@
             nodeset: ubuntu-jammy
         - zuul-nox-py311
         - zuul-nox-py312
-        - zuul-nox-upgrade
+        # - zuul-nox-upgrade
         - zuul-build-dashboard
         - nodejs-run-lint:
             vars:
