@@ -204,6 +204,7 @@ class TestStaticDriver(ZuulTestCase):
         self.assertEqual(sub2.State.READY, sub2.state)
 
         with sub1.locked(ctx):
+            sub1.refresh(ctx)
             with sub1.activeContext(ctx):
                 sub1.assign(ctx, request_id="dne", tenant_name="test")
                 sub1.setState(sub1.State.USED)
@@ -218,6 +219,7 @@ class TestStaticDriver(ZuulTestCase):
         sub2.refresh(ctx)
 
         with sub2.locked(ctx):
+            sub2.refresh(ctx)
             with sub2.activeContext(ctx):
                 sub2.unassign(ctx)
                 sub2.assign(ctx, request_id="dne", tenant_name="test")
@@ -346,6 +348,7 @@ class TestStaticDriver(ZuulTestCase):
             zuul.launcher.server.NodescanRequest, 'advance', my_advance
         ):
             with sub_used.locked(ctx):
+                sub_used.refresh(ctx)
                 with sub_used.activeContext(ctx):
                     sub_used.unassign(ctx)
                     sub_used.assign(ctx, request_id="dne", tenant_name="test")
@@ -400,6 +403,7 @@ class TestStaticDriver(ZuulTestCase):
         main = model.ProviderNode.fromZK(ctx, path=main.getPath())
 
         with main.locked(ctx):
+            main.refresh(ctx)
             with main.activeContext(ctx):
                 main.assign(ctx, request_id="dne", tenant_name="test")
                 main.setState(main.State.USED)
@@ -441,6 +445,7 @@ class TestStaticDriver(ZuulTestCase):
         # Get a copy so we don't share the lock with the launcher
         sub1 = model.ProviderNode.fromZK(ctx, path=sub1.getPath())
         with sub1.locked(ctx):
+            sub1.refresh(ctx)
             with sub1.activeContext(ctx):
                 sub1.assign(ctx, request_id="dne", tenant_name="test")
                 sub1.setState(sub1.State.USED)
