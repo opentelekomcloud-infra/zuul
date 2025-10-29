@@ -33,6 +33,29 @@
       "message": "recheck",
       "revId": "20f2f9a1c9118465a7a5251645c15f8b5a1d043d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d3156dff_467f7f1f",
+        "filename": "zuul/driver/gitlab/gitlabmodel.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-10-29T10:27:40Z",
+      "side": 1,
+      "message": "nit: mutable defaults are usually a bad idea as they will be shared between instances of the class. Though, in this particular case with the current code they are not a problem.",
+      "range": {
+        "startLine": 165,
+        "startChar": 12,
+        "endLine": 165,
+        "endChar": 23
+      },
+      "revId": "20f2f9a1c9118465a7a5251645c15f8b5a1d043d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
