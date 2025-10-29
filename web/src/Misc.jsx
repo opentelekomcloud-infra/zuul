@@ -196,8 +196,8 @@ const NODE_STYLES = {
     color: '',
   },
   building: {
-    variant: 'warning',
-    color: 'var(--pf-global--warning-color--100)',
+    variant: 'active',
+    color: 'var(--zuul-color-active)',
   },
   ready: {
     variant: 'success',

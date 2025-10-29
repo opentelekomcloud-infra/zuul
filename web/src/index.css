@@ -10,6 +10,9 @@
     --zuul-color-warning: #f0ab00; /* --pf-global--warning-color--100 */
     --zuul-color-info: #2b9af3; /* --pf-global--info-color--100 */
     --zuul-color-disabled: #8a8d90; /* --pf-global--palette--black-500 */
+
+    --zuul-color-active: #2cb9c8;
+    --zuul-color-active-dark: #136068;
 }
 
 :root:where(.pf-theme-dark) {
@@ -392,6 +395,12 @@ a.refresh {
 }
 .zuul-item-square-pending svg:hover {
     color: var(--pf-global--palette--black-800) !important;
+}
+.zuul-item-square-active {
+    color: var(--zuul-color-active) !important;
+}
+.zuul-item-square-active svg:hover {
+    color: var(--zuul-color-active-dark) !important;
 }
 
 .zuul-change-queue .pf-c-card__title.zuul-change-queue-name {
