@@ -9190,10 +9190,15 @@ class TestJobOutput(AnsibleZuulTestCase):
         j = json.loads(self._get_file(self.history[0],
                                       'work/logs/job-output.json'))
         self.assertEqual('pre', j[0]['phase'])
-        self.assertEqual(0, j[0]['index'])
+        self.assertEqual('0', j[0]['index'])
+        self.assertEqual(True, j[0]['trusted'])
+        self.assertEqual({}, j[0]['stats'])
         expected_str = 'This playbook timed out.'
         result = j[0]['plays'][0]['play']['name']
         self.assertEqual(expected_str, result)
+        self.assertIn('duration', j[0]['plays'][0]['play'])
+        self.assertIn('start', j[0]['plays'][0]['play']['duration'])
+        self.assertIn('end', j[0]['plays'][0]['play']['duration'])
 
     def test_job_output_run_timed_out_json(self):
         self.executor_server.keep_jobdir = True
@@ -9209,10 +9214,15 @@ class TestJobOutput(AnsibleZuulTestCase):
         j = json.loads(self._get_file(self.history[0],
                                       'work/logs/job-output.json'))
         self.assertEqual('run', j[0]['phase'])
-        self.assertEqual(0, j[0]['index'])
+        self.assertEqual('0', j[0]['index'])
+        self.assertEqual(True, j[0]['trusted'])
+        self.assertEqual({}, j[0]['stats'])
         expected_str = 'This playbook timed out.'
         result = j[0]['plays'][0]['play']['name']
         self.assertEqual(expected_str, result)
+        self.assertIn('duration', j[0]['plays'][0]['play'])
+        self.assertIn('start', j[0]['plays'][0]['play']['duration'])
+        self.assertIn('end', j[0]['plays'][0]['play']['duration'])
 
     def test_job_output_post_timed_out_json(self):
         self.executor_server.keep_jobdir = True
@@ -9228,10 +9238,15 @@ class TestJobOutput(AnsibleZuulTestCase):
         j = json.loads(self._get_file(self.history[0],
                                       'work/logs/job-output.json'))
         self.assertEqual('post', j[1]['phase'])
-        self.assertEqual(0, j[1]['index'])
+        self.assertEqual('0', j[1]['index'])
+        self.assertEqual(True, j[1]['trusted'])
+        self.assertEqual({}, j[1]['stats'])
         expected_str = 'This playbook timed out.'
         result = j[1]['plays'][0]['play']['name']
         self.assertEqual(expected_str, result)
+        self.assertIn('duration', j[1]['plays'][0]['play'])
+        self.assertIn('start', j[1]['plays'][0]['play']['duration'])
+        self.assertIn('end', j[1]['plays'][0]['play']['duration'])
 
     def test_job_output_pre_syntax_error_json(self):
         self.executor_server.keep_jobdir = True
@@ -9249,7 +9264,9 @@ class TestJobOutput(AnsibleZuulTestCase):
         j = json.loads(self._get_file(self.history[0],
                                       'work/logs/job-output.json'))
         self.assertEqual('pre', j[0]['phase'])
-        self.assertEqual(0, j[0]['index'])
+        self.assertEqual('0', j[0]['index'])
+        self.assertEqual(True, j[0]['trusted'])
+        self.assertEqual({}, j[0]['stats'])
         expected_str = 'ERROR! A playbook must be a list of plays'
         result = j[0]['plays'][0]['play']['name']
         self.assertIn(expected_str, result)
@@ -9268,7 +9285,9 @@ class TestJobOutput(AnsibleZuulTestCase):
         j = json.loads(self._get_file(self.history[0],
                                       'work/logs/job-output.json'))
         self.assertEqual('run', j[0]['phase'])
-        self.assertEqual(0, j[0]['index'])
+        self.assertEqual('0', j[0]['index'])
+        self.assertEqual(True, j[0]['trusted'])
+        self.assertEqual({}, j[0]['stats'])
         expected_str = 'ERROR! A playbook must be a list of plays'
         result = j[0]['plays'][0]['play']['name']
         self.assertIn(expected_str, result)
@@ -9287,7 +9306,9 @@ class TestJobOutput(AnsibleZuulTestCase):
         j = json.loads(self._get_file(self.history[0],
                                       'work/logs/job-output.json'))
         self.assertEqual('post', j[1]['phase'])
-        self.assertEqual(0, j[1]['index'])
+        self.assertEqual('0', j[1]['index'])
+        self.assertEqual(True, j[1]['trusted'])
+        self.assertEqual({}, j[1]['stats'])
         expected_str = 'ERROR! A playbook must be a list of plays'
         result = j[1]['plays'][0]['play']['name']
         self.assertIn(expected_str, result)
