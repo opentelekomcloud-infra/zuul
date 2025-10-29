@@ -41,10 +41,16 @@
     cmd: podman-compose -p zuul-tutorial-tracing up -d
     chdir: ../../doc/source/examples/tracing
 
+# In case ZK is shutdown first, allow the locks to expire.
+- name: Delay for ZK lock expiration
+  wait_for:
+    timeout: 30
+  delegate_to: localhost
+
 # Verify that Zuul runs with the new config
 - name: Wait for Zuul
   uri:
-    url: http://localhost:9000/api/tenant/example-tenant/status
+    url: http://localhost:9000/api/components
     method: GET
     return_content: true
     status_code: 200
@@ -52,14 +58,8 @@
   register: result
   retries: 30
   delay: 10
-  until: result.status == 200 and result.json["zuul_version"] is defined
+  until: result.status == 200 and (result.json["scheduler"]|length == 1) and result.json["scheduler"][0]['state'] == 'running'
   changed_when: false
-
-# In case ZK is shutdown first, allow the locks to expire.
-- name: Delay for ZK lock expiration
-  wait_for:
-    timeout: 30
-  delegate_to: localhost
 
 - name: Verify that old builds are available
   uri:
