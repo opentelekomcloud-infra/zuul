@@ -97,7 +97,7 @@
   register: result
   retries: 30
   delay: 10
-  until: result.status == 200 and result.json["zuul_version"] is defined
+  until: result.status == 200 and (result.json["scheduler"]|length == 1) and result.json["scheduler"][0]['state'] == 'running'
   changed_when: false
 
 # Quick-Start tutorial begin
