@@ -18,6 +18,7 @@ from collections import defaultdict
 from zuul import model
 from zuul.lib import tracing
 from zuul.lib.logutil import get_annotated_logger
+from zuul.lib.statsd import normalize_statsd_name
 from zuul.zk.event_queues import (
     PipelineResultEventQueue,
     NodepoolEventElection
@@ -136,6 +137,12 @@ class Nodepool(object):
                 raise
 
     def emitStats(self, request):
+        try:
+            return self._emitStats(request)
+        except Exception:
+            self.log.exception("Failed to emit stats:")
+
+    def _emitStats(self, request):
         # Implements the following :
         #  counter zuul.nodepool.requests.<state>.total
         #  counter zuul.nodepool.requests.<state>.label.<label>
@@ -160,9 +167,10 @@ class Nodepool(object):
         if dt:
             pipe.timing(key, dt)
         for label in request.labels:
-            pipe.incr(key + '.label.%s' % label)
+            safe_label = normalize_statsd_name(label)
+            pipe.incr(key + '.label.%s' % safe_label)
             if dt:
-                pipe.timing(key + '.label.%s' % label, dt)
+                pipe.timing(key + '.label.%s' % safe_label, dt)
         pipe.incr(key + '.size.%s' % len(request.labels))
         if dt:
             pipe.timing(key + '.size.%s' % len(request.labels), dt)
