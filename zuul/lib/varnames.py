@@ -24,7 +24,7 @@ def check_varnames(var):
         if not VARNAME_RE.match(varname):
             raise VariableNameError(
                 "Variable names may only contain letters, "
-                "numbers, and underscores")
+                f"numbers, and underscores: '{varname}'")
     reserved_vars = [
         # We block these in configloader, but block it here too to make
         # sure that a job doesn't pass variables named zuul or nodepool.
