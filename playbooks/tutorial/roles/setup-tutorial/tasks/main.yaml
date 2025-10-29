@@ -89,7 +89,7 @@
 
 - name: Wait for zuul
   uri:
-    url: http://localhost:9000/api/tenant/example-tenant/status
+    url: http://zuul.opendev.org/api/components
     method: GET
     return_content: true
     status_code: 200
@@ -97,7 +97,7 @@
   register: result
   retries: 30
   delay: 10
-  until: result.status == 200 and result.json["zuul_version"] is defined
+  until: result.status == 200 and (result.json["scheduler"]|length == 1) and result.json["scheduler"][0]['state'] == 'running'
   changed_when: false
 
 # Quick-Start tutorial begin
