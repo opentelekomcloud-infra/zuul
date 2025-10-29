@@ -6,10 +6,12 @@
         - event: gl_merge_request
           action: comment
           comment: (?i)^\s*recheck\s*$
+          branch: master
         - event: gl_merge_request
           action:
             - opened
             - changed
+          branch: master
     start:
       gitlab:
         comment: True
