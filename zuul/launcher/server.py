@@ -2855,6 +2855,17 @@ class Launcher:
     def checkOldImages(self):
         self.log.debug("Checking for old images")
         self.upload_deleted_event.clear()
+        # Get the list of ibas for which we could consider uploads
+        # first (to make sure that we don't race the creation of
+        # uploads and setting the iba to ready).
+        active_ibas = [iba for iba in self.image_build_registry.getItems()
+                       if iba.state in
+                       (iba.State.DELETING, iba.State.READY)]
+
+        # Make sure that the upload registry is up to date after the
+        # IBA registry so that we know about any uploads referencing
+        # our active ibas.
+        self.image_upload_registry.waitForSync()
         keep_uploads = set()
         known_uploads = set(self.image_upload_registry.getItems())
         known_providers = set()
@@ -2865,13 +2876,6 @@ class Launcher:
                     if image.type == 'zuul':
                         self.checkOldImage(tenant_name, provider, image,
                                            keep_uploads)
-
-        # Get the list of ibas for which we could consider uploads
-        # first (to make sure that we don't race the creation of
-        # uploads and setting the iba to ready).
-        active_ibas = [iba for iba in self.image_build_registry.getItems()
-                       if iba.state in
-                       (iba.State.DELETING, iba.State.READY)]
 
         uploads_by_artifact = collections.defaultdict(list)
         latest_upload_timestamp = 0
@@ -2960,8 +2964,8 @@ class Launcher:
                 continue
             iba = self.image_build_registry.getItem(upload.artifact_uuid)
             if not iba:
-                self.log.warning("Unable to find artifact for upload %s",
-                                 upload.artifact_uuid)
+                self.log.warning("Unable to find artifact %s for upload %s",
+                                 upload.artifact_uuid, upload.uuid)
                 continue
             if iba.state == iba.State.DELETING:
                 continue
