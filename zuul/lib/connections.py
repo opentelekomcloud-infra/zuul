@@ -41,6 +41,8 @@ from zuul.driver import (
     SourceInterface,
     TriggerInterface,
 )
+# Force subclass registration as a side-effect of importing it
+from zuul.launcher.subnodes import SubnodeProviderNode  # noqa
 
 
 class DefaultConnection(BaseConnection):
