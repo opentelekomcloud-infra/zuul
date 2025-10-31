@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "644af986_7ce86e28",
+        "filename": "doc/source/developer/specs/init-jobs.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-10-31T06:48:25Z",
+      "side": 1,
+      "message": "I think there will be a practical restriction in that init jobs can not depend on non-init jobs as those have an implicit dependency on all init jobs.\n\nSo having an init job depend on a non-init job will create a dependency cycle that Zuul will complain about.",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 81,
+        "endChar": 33
+      },
+      "revId": "d1a19bb015359ae9e6f710d9c65b0cb422b83347",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
