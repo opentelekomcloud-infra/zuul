@@ -209,6 +209,45 @@ class BaseProviderEndpoint(metaclass=abc.ABCMeta):
         """
         pass
 
+    def listInstances(self):
+        """Return an iterator of instances accessible to this endpoint.
+
+        The yielded values should represent all instances accessible
+        to this endpoint, not only those under the control of Zuul,
+        but all visible instances in order to achive accurate quota
+        calculation.
+
+        :returns: A generator of :py:class:`Instance` objects.
+
+        """
+        raise NotImplementedError()
+
+    def listResources(self, providers):
+        """Return a list of resources accessible to this endpoint.
+
+        The yielded values should represent all resources accessible
+        to this endpoint, not only those under the control of Zuul,
+        but all visible instances in order for the driver to identify
+        leaked resources and instruct the endpoint to remove them.
+
+        :param list providers: A list of providers that share this endpoint.
+
+        :returns: A generator of :py:class:`Resource` objects.
+
+        """
+        raise NotImplementedError()
+
+    def deleteResource(self, resource):
+        """Delete the supplied resource
+
+        The driver has identified a leaked resource and the adapter
+        should delete it.
+
+        :param Resource resource: A Resource object previously
+            returned by 'listResources'.
+        """
+        raise NotImplementedError()
+
 
 class BaseProviderSchema(metaclass=abc.ABCMeta):
     def getLabelSchema(self):
@@ -568,42 +607,6 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         :param node ProviderNode: The node that should be deleted.
         :param log Logger: A logger instance for emitting annotated
             logs related to the request.
-        """
-        raise NotImplementedError()
-
-    def listInstances(self):
-        """Return an iterator of instances accessible to this provider.
-
-        The yielded values should represent all instances accessible
-        to this provider, not only those under the control of this
-        adapter, but all visible instances in order to achive accurate
-        quota calculation.
-
-        :returns: A generator of :py:class:`Instance` objects.
-        """
-        raise NotImplementedError()
-
-    def listResources(self):
-        """Return a list of resources accessible to this provider.
-
-        The yielded values should represent all resources accessible
-        to this provider, not only those under the control of this
-        adapter, but all visible instances in order for the driver to
-        identify leaked resources and instruct the adapter to remove
-        them.
-
-        :returns: A generator of :py:class:`Resource` objects.
-        """
-        raise NotImplementedError()
-
-    def deleteResource(self, resource):
-        """Delete the supplied resource
-
-        The driver has identified a leaked resource and the adapter
-        should delete it.
-
-        :param Resource resource: A Resource object previously
-            returned by 'listResources'.
         """
         raise NotImplementedError()
 

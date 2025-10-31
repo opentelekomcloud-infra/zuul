@@ -97,3 +97,9 @@ class StaticProviderEndpoint(BaseProviderEndpoint):
         limits = QuotaInformation()
         self.quota_cache.setLimits(limits)
         return True
+
+    def listInstances(self):
+        return []
+
+    def listResources(self, providers):
+        return []

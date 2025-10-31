@@ -184,9 +184,6 @@ class StaticProvider(BaseProvider, subclass_id='static'):
     def getDeleteStateMachine(self, node, log):
         return StaticDeleteStateMachine(self, node, log)
 
-    def listInstances(self):
-        return []
-
     def getEndpointLimits(self):
         return QuotaInformation(default=math.inf)
 
