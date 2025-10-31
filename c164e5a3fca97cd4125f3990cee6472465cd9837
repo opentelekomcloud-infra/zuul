@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de451586_960b7eda",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-10-31T14:25:17Z",
+      "side": 1,
+      "message": "I have three general concerns:\n\n1) This is not an out of memory indication, it\u0027s a \"the remote Ansible was killed\" indication.  It may be that in your environment, that\u0027s where you see it the most, but I\u0027m not convinced we should extrapolate that to all environments.  So this should probably generally indicate that the remote ansible process was killed rather than OOMed.  I\u0027d be okay with an error message that suggested that an oom condition was a possible cause.\n\n2) I\u0027m not sure we should retry these builds.  If a job causes a pod to exceed its memory limit, then that seems very likely to be repeatable, and something that the job author should address (rather than try to sneak the change through).  It\u0027s likely to cause unecessary churn.  Your original patchset did not retry (and, indeed, the wording in the comment at the end of this patchset still says we don\u0027t retry and explains why).  Can you explain why that initial idea was wrong?  Have you discovered that OOM kills in your environment are not repeatable and are somehow one-off events?\n\nAnother question: do you set k8s resource limits for pod jobs?  Do you oversubscribe your nodes?\n\n3) One motivating factor in your commit message was notification to users.  Clark just made some changes to add error information to the job-output.json file so that it appears in the console tab (and can also appear in the summary tab) on the build page.  When you have seen these killed processes, does that appear as a failed task in the console tab and on the summary page?  We *just* merged the change that would add the error information for this case, so I\u0027m sure you haven\u0027t seen whether the updated Zuul logs that.  I think it would be useful to know if, under the current code in of Zuul, you see information about the error as a failed task.\n\nNote that your change, since you have rebased it, bypasses that facility and would serve to hide the information from the user, so I\u0027m asking you to test the current master branch without this change.",
+      "revId": "c164e5a3fca97cd4125f3990cee6472465cd9837",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
