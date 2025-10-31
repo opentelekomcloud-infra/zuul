@@ -3321,13 +3321,19 @@ class Launcher:
         upload_states = collections.Counter()
         # zuul.image.<image>.upload.<endpoint>.state.<state> gauge
         for image_cname, uploads in uploads_by_image.items():
-            for state in model.ImageUpload.STATES:
-                in_state = len([u for u in uploads if u.state == state])
-                upload_states[state] += in_state
-                safe_ename = _normalize_statsd_name(upload.endpoint_name)
-                self.statsd.gauge(
-                    f'zuul.image.{image_cname}.upload.{safe_ename}'
-                    f'.state.{state}', in_state)
+            upload_states_by_endpoint = collections.defaultdict(
+                collections.Counter)
+            upload_states_by_endpoint[upload.endpoint_name].update(
+                u.state for u in uploads)
+
+            for endpoint_name, state_counter in (
+                    upload_states_by_endpoint.items()):
+                safe_ename = _normalize_statsd_name(endpoint_name)
+                upload_states.update(state_counter)
+                for state in model.ImageUpload.STATES:
+                    self.statsd.gauge(
+                        f'zuul.image.{image_cname}.upload.{safe_ename}'
+                        f'.state.{state}', state_counter[state])
 
         # zuul.uploads.state.<state> gauge
         for state, count in upload_states.items():
