@@ -33,7 +33,7 @@ ws4py
 routes
 jsonpath-rw
 urllib3!=1.25.4,!=1.25.5  # https://github.com/urllib3/urllib3/pull/1684
-cheroot!=11.0.0 # https://github.com/cherrypy/cheroot/issues/769
+cheroot<11.0.0 # https://github.com/cherrypy/cheroot/issues/769
 elasticsearch<8.0.0
 PyMySQL
 psycopg2-binary
