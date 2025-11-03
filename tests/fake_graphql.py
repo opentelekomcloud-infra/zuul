@@ -25,13 +25,13 @@ from graphene import (
 )
 
 
-class ID(String):
+class GHID(String):
     """Github global object ids are strings"""
     pass
 
 
 class Node(Interface):
-    id = ID(required=True)
+    id = GHID(required=True)
 
     @classmethod
     def resolve_type(cls, instance, info):
@@ -84,7 +84,7 @@ class BranchProtectionRule(ObjectType):
     class Meta:
         interfaces = (Node, )
 
-    id = ID(required=True)
+    id = GHID(required=True)
     pattern = String()
     requiredStatusCheckContexts = List(String)
     requiresApprovingReviews = Boolean()
@@ -173,7 +173,7 @@ class CheckRun(ObjectType):
     class Meta:
         interfaces = (Node, )
 
-    id = ID(required=True)
+    id = GHID(required=True)
     name = String()
     conclusion = String()
 
@@ -207,7 +207,7 @@ class CheckSuite(ObjectType):
     class Meta:
         interfaces = (Node, )
 
-    id = ID(required=True)
+    id = GHID(required=True)
     app = Field(App)
     checkRuns = Field(CheckRuns, first=Int(), after=String())
 
@@ -255,7 +255,7 @@ class Commit(ObjectType):
     class Meta:
         interfaces = (Node, )
 
-    id = ID(required=True)
+    id = GHID(required=True)
     status = Field(Status)
     checkSuites = Field(CheckSuites, first=Int(), after=String())
 
@@ -305,7 +305,7 @@ class PullRequest(ObjectType):
     class Meta:
         interfaces = (Node, )
 
-    id = ID(required=True)
+    id = GHID(required=True)
     isDraft = Boolean()
     reviewDecision = String()
     mergeable = String()
@@ -391,7 +391,7 @@ class Repository(ObjectType):
 class FakeGithubQuery(ObjectType):
     repository = Field(Repository, owner=String(required=True),
                        name=String(required=True))
-    node = Field(Node, id=ID(required=True))
+    node = Field(Node, id=GHID(required=True))
 
     def resolve_repository(root, info, owner, name):
         return info.context._data.repos.get((owner, name))
@@ -413,4 +413,4 @@ class FakeGithubQuery(ObjectType):
 
 
 def getGrapheneSchema():
-    return Schema(query=FakeGithubQuery, types=[ID])
+    return Schema(query=FakeGithubQuery, types=[GHID])
