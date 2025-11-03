@@ -2339,6 +2339,45 @@ class TestLauncherLocality(LauncherBaseTestCase):
             if all(n.state == n.State.READY for n in nodes):
                 break
 
+    @driver_config('test_launcher', quotas={
+        'instances': 2,
+    })
+    def test_provider_selection_locality_multi_ready(self):
+        # Test that we use the same provider when multiple ready nodes
+        # from different providers are available.
+        self.waitUntilSettled()
+
+        request1 = self.requestNodes(["debian-normal"])
+        nodes1 = self.getNodes(request1)
+        self.assertEqual(1, len(nodes1))
+
+        request2 = self.requestNodes(["debian-normal"])
+        nodes2 = self.getNodes(request2)
+        self.assertEqual(1, len(nodes2))
+
+        self.assertNotEqual(nodes1[0].provider, nodes2[0].provider)
+
+        ctx = self.createZKContext(None)
+        request1.delete(ctx)
+        request2.delete(ctx)
+        self.waitUntilSettled()
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        for node in nodes:
+            if not len(nodes) == 2:
+                continue
+            for _ in iterate_timeout(60, "node to be deallocated"):
+                node.refresh(ctx)
+                if node.request_id is None:
+                    break
+        self.assertTrue(all(n.state == n.State.READY for n in nodes))
+
+        self.log.debug("Starting third request")
+        request3 = self.requestNodes(["debian-normal", "debian-normal"])
+        nodes3 = self.getNodes(request3)
+        self.assertEqual(2, len(nodes3))
+        self.assertEqual(nodes3[0].provider, nodes3[1].provider)
+
 
 class TestLauncherUpload(LauncherBaseTestCase):
 
