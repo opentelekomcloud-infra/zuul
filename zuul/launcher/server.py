@@ -1361,12 +1361,14 @@ class Launcher:
 
     def _assignUnassignedNode(self, ctx, unassigned_nodes,
                               request_unassigned_nodes, request,
-                              label, log):
+                              label, provider, log):
         unassigned_for_label = request_unassigned_nodes.getNodesForLabel(
             label.name)
         # TODO: sort by age? use old nodes first? random to reduce
         # chance of thundering herd?
         for node in unassigned_for_label:
+            if node.provider != provider.canonical_name:
+                continue
             # We can assign a building node without
             # acquiring the lock.
             lock_node = not (node.state == node.State.BUILDING)
@@ -1424,7 +1426,7 @@ class Launcher:
                     continue
                 node = self._assignUnassignedNode(
                     ctx, unassigned_nodes, request_unassigned_nodes,
-                    request, label, log)
+                    request, label, provider, log)
                 if node is None:
                     # We need to request a new node
                     if provider.driver.name == 'static':
@@ -1456,6 +1458,7 @@ class Launcher:
                     log.debug("Requested node %s", node.uuid)
                 request.addProviderNode(node)
             if request.provider_node_data:
+                self._emitMessages(log, messages)
                 log.debug("Accepting request %s", request)
                 request.state = model.NodesetRequest.State.ACCEPTED
 
@@ -1798,7 +1801,7 @@ class Launcher:
 
                         node = self._assignUnassignedNode(
                             ctx, unassigned_nodes, request_unassigned_nodes,
-                            request, label, log)
+                            request, label, provider, log)
                         if node is None:
                             if provider.driver.name == 'static':
                                 return
