@@ -18,6 +18,11 @@ from zuul.provider import statemachine
 
 
 class SubnodeProviderNode(model.ProviderNode, subclass_id="subnode"):
+    SUBNODE_ATTRIBUTES = (
+        'uuid',
+        'slot',
+    )
+
     def __repr__(self):
         # Override the repr method to include the main node id
         return (f"<{self.__class__.__name__} uuid={self.uuid},"
@@ -30,7 +35,7 @@ class SubnodeProviderNode(model.ProviderNode, subclass_id="subnode"):
         # subnode.
         # Called with an active context
         for k, v in node.getNodeData(serialize_node=True).items():
-            if k == 'uuid':
+            if k in self.SUBNODE_ATTRIBUTES:
                 continue
             setattr(self, k, v)
 
