@@ -87,6 +87,7 @@ class Instance:
         self.public_ipv4 = None
         self.public_ipv6 = None
         self.private_ipv4 = None
+        self.private_ipv6 = None
         self.interface_ip = None
         self.cloud = None
         self.az = None
