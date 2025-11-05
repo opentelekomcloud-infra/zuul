@@ -1074,6 +1074,8 @@ class Launcher:
     CACHE_SYNC_TIMEOUT = 10
     # Max. time the main event loop is allowed to sleep
     MAX_SLEEP = 1
+    # Min. interval to wake up the main event loop
+    MIN_INTERVAL = 60
     DELETE_TIMEOUT = 600
     MAX_QUOTA_AGE = 5 * 60  # How long to keep the quota information cached
     _stats_interval = 30
@@ -1238,7 +1240,7 @@ class Launcher:
                 self.log.exception("Error in main thread:")
             loop_duration = time.monotonic() - loop_start
             time.sleep(max(0, self.MAX_SLEEP - loop_duration))
-            self.wake_event.wait()
+            self.wake_event.wait(timeout=self.MIN_INTERVAL)
             self.wake_event.clear()
 
     def _run(self):
