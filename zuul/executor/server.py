@@ -2893,7 +2893,7 @@ class AnsibleJob(object):
             if node.connection_type in (
                     'namespace', 'project', 'kubectl'):
                 # TODO: decrypt resource data using scheduler key
-                data = node.connection_port
+                data = node.connection_port or node.kubernetes_connection
                 # Setup kube/config file
                 self.prepareKubeConfig(self.jobdir, data)
                 # Convert connection_port in kubectl connection parameters

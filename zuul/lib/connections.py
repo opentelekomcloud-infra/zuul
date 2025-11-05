@@ -34,6 +34,7 @@ import zuul.driver.elasticsearch
 import zuul.driver.aws
 import zuul.driver.openstack
 import zuul.driver.static
+import zuul.driver.kubernetes
 from zuul.connection import BaseConnection
 from zuul.driver import (
     ProviderInterface,
@@ -73,6 +74,7 @@ class ConnectionRegistry(object):
         self.registerDriver(zuul.driver.aws.AwsDriver())
         self.registerDriver(zuul.driver.openstack.OpenstackDriver())
         self.registerDriver(zuul.driver.static.StaticDriver())
+        self.registerDriver(zuul.driver.kubernetes.KubernetesDriver())
 
     def registerDriver(self, driver):
         if driver.name in self.drivers:

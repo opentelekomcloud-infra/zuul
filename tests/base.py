@@ -90,6 +90,7 @@ from zuul.driver.elasticsearch import ElasticsearchDriver
 from zuul.driver.aws import AwsDriver
 from zuul.driver.openstack import OpenstackDriver
 from zuul.driver.static import StaticDriver
+from zuul.driver.kubernetes import KubernetesDriver
 from zuul.lib.collections import DefaultKeyDict
 from zuul.lib.connections import ConnectionRegistry
 from zuul.zk import zkobject, ZooKeeperClient
@@ -494,6 +495,7 @@ class TestConnectionRegistry(ConnectionRegistry):
         self.registerDriver(AwsDriver())
         self.registerDriver(OpenstackDriver())
         self.registerDriver(StaticDriver())
+        self.registerDriver(KubernetesDriver())
 
 
 class FakeAnsibleManager(zuul.lib.ansible.AnsibleManager):
