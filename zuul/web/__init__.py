@@ -1123,12 +1123,14 @@ class LogStreamHandler(WebSocket):
     def received_message(self, message):
         if message.is_text:
             req = json.loads(message.data.decode('utf-8'))
+
+            token = req.pop('token', None)
+
             self.log.debug("Websocket request: %s", req)
             if self.streamer:
                 self.log.debug("Ignoring request due to existing streamer")
                 return
 
-            token = req.get('token')
             try:
                 self.auth_context.validate(token=token)
             except APIError as e:
