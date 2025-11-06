@@ -675,7 +675,7 @@ class SecretParser(object):
             # not be obvious to users, but it's also probably not
             # something we need to immediately solve.  It probably
             # would be fixed by a full reconfiguration.
-            glbl = self.pcontext.scheduler.globals
+            glbl = self.pcontext.globals
             if conf['oidc'] is None:
                 conf['oidc'] = {}
             algorithm = conf['oidc'].get('algorithm')
@@ -1776,9 +1776,9 @@ class ApiRootParser(object):
 class ParseContext(object):
     """Hold information about a particular run of the parser"""
 
-    def __init__(self, connections, scheduler, system, ansible_manager):
+    def __init__(self, connections, zuul_globals, system, ansible_manager):
         self.connections = connections
-        self.scheduler = scheduler
+        self.globals = zuul_globals
         self.system = system
         self.ansible_manager = ansible_manager
         self.pragma_parser = PragmaParser(self)
@@ -1962,7 +1962,7 @@ class TenantParser(object):
         # happen.
         self.getSchema()(conf)
         tenant = model.Tenant(conf['name'])
-        pcontext = ParseContext(self.connections, self.scheduler,
+        pcontext = ParseContext(self.connections, self.globals,
                                 system, ansible_manager)
         if conf.get('max-changes-per-pipeline') is not None:
             tenant.max_changes_per_pipeline = conf['max-changes-per-pipeline']
@@ -3108,16 +3108,16 @@ class TenantParser(object):
     def createManager(self, parse_context, pipeline, tenant):
         if pipeline.manager_name == 'dependent':
             manager = zuul.manager.dependent.DependentPipelineManager(
-                parse_context.scheduler, pipeline, tenant)
+                self.scheduler, pipeline, tenant)
         elif pipeline.manager_name == 'independent':
             manager = zuul.manager.independent.IndependentPipelineManager(
-                parse_context.scheduler, pipeline, tenant)
+                self.scheduler, pipeline, tenant)
         elif pipeline.manager_name == 'serial':
             manager = zuul.manager.serial.SerialPipelineManager(
-                parse_context.scheduler, pipeline, tenant)
+                self.scheduler, pipeline, tenant)
         elif pipeline.manager_name == 'supercedent':
             manager = zuul.manager.supercedent.SupercedentPipelineManager(
-                parse_context.scheduler, pipeline, tenant)
+                self.scheduler, pipeline, tenant)
         return manager
 
 
