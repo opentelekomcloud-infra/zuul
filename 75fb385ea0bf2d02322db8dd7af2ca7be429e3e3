@@ -51,6 +51,24 @@
       "message": "Is this something that opendev should be using too? I guess podman will automatically use it to wrap the container processes?",
       "revId": "75fb385ea0bf2d02322db8dd7af2ca7be429e3e3",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eb7871b7_162c4309",
+        "filename": "playbooks/tutorial/run-tutorial.yaml",
+        "patchSetId": 15
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-07T17:16:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1ee5c09d_e1731e07",
+      "revId": "75fb385ea0bf2d02322db8dd7af2ca7be429e3e3",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }

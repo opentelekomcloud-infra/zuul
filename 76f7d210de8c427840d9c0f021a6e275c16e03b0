@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8a970947_88891b48",
+        "filename": "doc/source/tutorials/quick-start.rst",
+        "patchSetId": 27
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-07T17:16:42Z",
+      "side": 1,
+      "message": "docker-compose-v2 now only recommends docker.io if installed via noble updates. I don\u0027t know if that means we won\u0027t get the `docker` base command installed or if this will just work. I think that tonyb discovered we need to install docker.io and disable the daemon to have a working `docker` base command in opendev.\n\nI think the way the actual test playbooks run we\u0027re fine in CI. This is just a matter of sufficiently documenting the human steps when done locally.",
+      "revId": "76f7d210de8c427840d9c0f021a6e275c16e03b0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0225b8c5_7635ef14",
+        "filename": "playbooks/tutorial/roles/setup-tutorial/tasks/main.yaml",
+        "patchSetId": 27
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-07T17:16:42Z",
+      "side": 1,
+      "message": "According to the commit message it seems like we expect to have people use docker proper on their local machines. I think that means we need to drop this environment block in the `when: local` case.",
+      "revId": "76f7d210de8c427840d9c0f021a6e275c16e03b0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "03ba0a9b_fee25d0c",
+        "filename": "playbooks/tutorial/tracing.yaml",
+        "patchSetId": 27
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-07T17:16:42Z",
+      "side": 1,
+      "message": "According to the commit message it seems like we expect to have people use docker proper on their local machines. I think that means we need to drop this environment block in the `when: local` case.\n\nNote this same update needs to be made a couple of times below as well.",
+      "revId": "76f7d210de8c427840d9c0f021a6e275c16e03b0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
