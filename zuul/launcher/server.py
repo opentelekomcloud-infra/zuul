@@ -1896,6 +1896,16 @@ class Launcher:
                         # of the create state machine.
                         pass
 
+        # Another launcher may have assigned our node to a request we
+        # haven't seen yet; make sure the request cache is up to date.
+        if (node.request_id and
+            request is None and
+            node.state in node.ASSIGNABLE_STATES):
+            self.log.debug("Waiting for request cache to sync "
+                           "for request %s and node %s", request, node)
+            self.api.requests_cache.waitForSync()
+            request = self.api.getNodesetRequest(node.request_id)
+
         # Mark outdated nodes w/o a request for cleanup when ...
         if not request and (
                 # ... it expired
