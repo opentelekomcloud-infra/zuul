@@ -1942,6 +1942,7 @@ class Launcher:
                 node.State.SLOT_HOST,
                 node.State.OUTDATED,
                 node.State.DEREGISTER,
+                node.State.USED,
             )
         ):
             # Safety check to make sure we don't delete main nodes if
