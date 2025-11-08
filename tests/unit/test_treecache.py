@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import threading
 import json
 
 from zuul.zk import ZooKeeperClient
@@ -239,3 +240,49 @@ class TestTreeCache(BaseTestCase):
                     found_playback_warning = True
             self.assertTrue(found_event_warning)
             self.assertTrue(found_playback_warning)
+
+    def test_wait_for_sync(self):
+        # Test that waitForSync works during a crash
+        client = self.zk_client.client
+        data = b'{}'
+        client.create('/test', data)
+        client.create('/test/foo', data)
+        cache = SimpleTreeCache(self.zk_client, "/test",
+                                async_worker=True)
+        self.waitForCache(cache, {
+            '/test/foo': {},
+        })
+
+        waiting_event = threading.Event()
+        go_event = threading.Event()
+        go_event.set()
+        orig_wait = cache.waitForSync
+
+        def wait(*args, **kw):
+            waiting_event.set()
+            go_event.wait()
+            return orig_wait(*args, **kw)
+        self.patch(cache, 'waitForSync', wait)
+
+        # Prevent waitForSync from running
+        go_event.clear()
+
+        def waiter():
+            self.log.debug("Wait for sync")
+            cache.waitForSync()
+            self.log.debug("Done wait for sync")
+
+        waiter_thread = threading.Thread(target=waiter)
+        waiter_thread.start()
+        client.create('/test/bar', data)
+        cache._sessionListener(KazooState.LOST)
+        cache._sessionListener(KazooState.CONNECTED)
+
+        # Allow waitForSync to run
+        go_event.set()
+        self.waitForCache(cache, {
+            '/test/foo': {},
+            '/test/bar': {},
+        })
+
+        waiter_thread.join()

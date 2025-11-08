@@ -17,6 +17,7 @@ import itertools
 import logging
 import math
 import os
+import queue
 import re
 import textwrap
 import threading
@@ -1232,6 +1233,93 @@ class TestLauncher(LauncherBaseTestCase):
                 node.refresh(ctx)
             except NoNodeError:
                 break
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_multi_launcher_assignment(self):
+        # Test that if a node is assigned to a request and our request
+        # cache is not up to date, that we will wait for the cache
+        # update and not deallocate the node.
+
+        # Make the request cache event queue lockable
+        lock = threading.Lock()
+        orig_queue = self.launcher.api.requests_cache._event_queue
+        orig_get = self.launcher.api.requests_cache._event_queue.get
+
+        def get():
+            with lock:
+                try:
+                    return orig_get(timeout=0.1)
+                except queue.Empty:
+                    pass
+            # Yield to other threads (ie, this test)
+            time.sleep(0.1)
+            orig_queue.put(None)
+            return orig_get()
+        self.patch(self.launcher.api.requests_cache._event_queue,
+                   'get', get)
+
+        # Make the request cache waitForSync method controllable
+        waiting_event = threading.Event()
+        go_event = threading.Event()
+        go_event.set()
+        orig_wait = self.launcher.api.requests_cache.waitForSync
+
+        def wait(*args, **kw):
+            waiting_event.set()
+            go_event.wait()
+            return orig_wait(*args, **kw)
+        self.patch(self.launcher.api.requests_cache,
+                   'waitForSync', wait)
+
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(["debian-normal"])
+        self.log.debug("Original request is %s", request.id)
+
+        node_id = request.nodes[0]
+        node = model.ProviderNode.fromZK(
+            ctx, path=model.ProviderNode._getPath(node_id))
+
+        request.delete(ctx)
+        self.waitUntilSettled()
+
+        with testtools.ExpectedException(NoNodeError):
+            # Request should be gone
+            request.refresh(ctx)
+
+        for _ in iterate_timeout(10, "node to be deallocated"):
+            node.refresh(ctx)
+            if node.request_id is None:
+                break
+
+        # Lock request cache
+        with lock:
+            # Pause the launcher
+            with self.launcher._run_lock:
+                request = self.requestNodes(["debian-normal"], timeout=None)
+                self.log.debug("Second request is %s", request.id)
+                # Assign node to new request (unseen by launcher)
+                with node.locked(ctx):
+                    with node.activeContext(ctx):
+                        node.assign(ctx,
+                                    request_id=request.id,
+                                    tenant_name=request.tenant_name)
+                # Wait for launcher node cache to update
+                for _ in iterate_timeout(10, "node to update"):
+                    request_ids = [n.request_id for n in
+                                   self.launcher.api.nodes_cache.getItems()]
+                    if request_ids == [request.id]:
+                        break
+                # Stop the launcher in waitForSync
+                waiting_event.clear()
+                go_event.clear()
+            # Release launcher lock, advance to waitForSync
+            waiting_event.wait()
+            # At this point we know the launcher loop is running and waiting
+        # Release cache lock and allow the launcher to finish waiting
+        go_event.set()
+        # The launcher will resume; ensure node is still assigned
+        node.refresh(ctx)
+        self.assertEqual(request.id, node.request_id)
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     @okay_tracebacks('getResource')
