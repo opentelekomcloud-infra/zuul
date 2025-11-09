@@ -3353,6 +3353,8 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
         self.assertEqual(set([sub1.uuid, sub2.uuid]), set(main.subnodes))
         self.assertEqual([], sub1.subnodes)
         self.assertEqual([], sub2.subnodes)
+        self.assertEqual(main.subnodes.index(sub1.uuid), sub1.slot)
+        self.assertEqual(main.subnodes.index(sub2.uuid), sub2.slot)
         self.assertEqual(main.State.SLOT_HOST, main.state)
         self.assertEqual(sub1.State.READY, sub1.state)
         self.assertEqual(sub2.State.READY, sub2.state)
