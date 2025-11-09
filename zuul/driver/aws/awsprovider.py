@@ -316,9 +316,6 @@ class AwsProvider(BaseProvider, subclass_id='aws'):
     def getSnapshotStateMachine(self, node, log):
         return AwsSnapshotStateMachine(self.endpoint, node, log)
 
-    def listInstances(self):
-        return self.endpoint.listInstances()
-
     def getEndpointLimits(self):
         # Get the instance and volume types that this provider handles
         limits = self.endpoint.quota_cache.getLimits()

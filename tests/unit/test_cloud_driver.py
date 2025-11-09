@@ -84,7 +84,7 @@ class BaseCloudDriverTest(ZuulTestCase):
             self._assertProviderNodeAttributes(pnode)
 
         for _ in iterate_timeout(10, "instances to appear"):
-            if len(list(provider.listInstances())) > 0:
+            if len(list(provider.endpoint.listInstances())) > 0:
                 break
         client.useNodeset(nodeset)
         self.waitUntilSettled()
@@ -111,7 +111,7 @@ class BaseCloudDriverTest(ZuulTestCase):
         # Iterate here because the aws driver (at least) performs
         # delayed async deletes.
         for _ in iterate_timeout(60, "instances to be deleted"):
-            if len(list(provider.listInstances())) == 0:
+            if len(list(provider.endpoint.listInstances())) == 0:
                 break
 
     def _test_quota(self, label):
@@ -176,7 +176,7 @@ class BaseCloudDriverTest(ZuulTestCase):
         # Iterate here because the aws driver (at least) performs
         # delayed async deletes.
         for _ in iterate_timeout(60, "instances to be deleted"):
-            if len(list(provider.listInstances())) == 0:
+            if len(list(provider.endpoint.listInstances())) == 0:
                 break
 
     def _test_diskimage(self, expected_uploads=1):

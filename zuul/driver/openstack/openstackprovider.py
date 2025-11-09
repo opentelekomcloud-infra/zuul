@@ -243,9 +243,6 @@ class OpenstackProvider(BaseProvider, subclass_id='openstack'):
     def getDeleteStateMachine(self, node, log):
         return OpenstackDeleteStateMachine(self.endpoint, node, log)
 
-    def listInstances(self):
-        return self.endpoint.listInstances()
-
     def getEndpointLimits(self):
         limits = self.endpoint.quota_cache.getLimits()
         if limits is None:
