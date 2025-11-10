@@ -12,6 +12,7 @@
 # under the License.
 
 from kazoo.exceptions import (
+    AuthFailedError,
     EXCEPTIONS,
     NoNodeError,
 )
@@ -23,6 +24,9 @@ from kazoo.protocol.connection import (
     CHANGED_EVENT,
     CHILD_EVENT,
     CLOSE_RESPONSE,
+    WATCH_XID,
+    PING_XID,
+    AUTH_XID,
 )
 from kazoo.protocol.serialization import (
     Close,
@@ -34,13 +38,14 @@ from kazoo.protocol.serialization import (
 )
 from kazoo.protocol.states import (
     Callback,
-    WatchedEvent,
+    KeeperState,
     EVENT_TYPE_MAP,
 )
 
 from zuul.zk.vendor.states import (
     AddWatchMode,
     WatcherType,
+    WatchedEvent,
 )
 from zuul.zk.vendor.serialization import (
     AddWatch,
@@ -62,7 +67,7 @@ class ZuulConnectionHandler(ConnectionHandler):
             )
         return watchers
 
-    def _read_watch_event(self, buffer, offset):
+    def _read_watch_event(self, buffer, offset, zxid):
         client = self.client
         watch, offset = Watch.deserialize(buffer, offset)
         path = watch.path
@@ -88,7 +93,8 @@ class ZuulConnectionHandler(ConnectionHandler):
 
         # Strip the chroot if needed
         path = client.unchroot(path)
-        ev = WatchedEvent(EVENT_TYPE_MAP[watch.type], client._state, path)
+        ev = WatchedEvent(EVENT_TYPE_MAP[watch.type], client._state, path,
+                          zxid)
 
         # Last check to ignore watches if we've been stopped
         if client._stopped.is_set():
@@ -184,3 +190,27 @@ class ZuulConnectionHandler(ConnectionHandler):
         if isinstance(request, Close):
             self.logger.log(BLATHER, "Read close response")
             return CLOSE_RESPONSE
+
+    def _read_socket(self, read_timeout):
+        """Called when there's something to read on the socket"""
+        client = self.client
+
+        header, buffer, offset = self._read_header(read_timeout)
+        if header.xid == PING_XID:
+            self.logger.log(BLATHER, "Received Ping")
+            self.ping_outstanding.clear()
+        elif header.xid == AUTH_XID:
+            self.logger.log(BLATHER, "Received AUTH")
+
+            request, async_object, xid = client._pending.popleft()
+            if header.err:
+                async_object.set_exception(AuthFailedError())
+                client._session_callback(KeeperState.AUTH_FAILED)
+            else:
+                async_object.set(True)
+        elif header.xid == WATCH_XID:
+            self._read_watch_event(buffer, offset, header.zxid)
+        else:
+            self.logger.log(BLATHER, "Reading for header %r", header)
+
+            return self._read_response(header, buffer, offset)

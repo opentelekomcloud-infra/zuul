@@ -11,6 +11,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from collections import namedtuple
+
+
 class AddWatchMode(object):
     """Modes for use with :meth:`~kazoo.client.KazooClient.add_watch`
 
@@ -50,3 +53,43 @@ class WatcherType(object):
     CHILDREN = 1
     DATA = 2
     ANY = 3
+
+
+class WatchedEvent(namedtuple("WatchedEvent",
+                              ("type", "state", "path", "zxid"))):
+    """A change on ZooKeeper that a Watcher is able to respond to.
+
+    The :class:`WatchedEvent` includes exactly what happened, the
+    current state of ZooKeeper, and the path of the node that was
+    involved in the event. An instance of :class:`WatchedEvent` will be
+    passed to registered watch functions.
+
+    .. attribute:: type
+
+        A :class:`EventType` attribute indicating the event type.
+
+    .. attribute:: state
+
+        A :class:`KeeperState` attribute indicating the Zookeeper
+        state.
+
+    .. attribute:: path
+
+        The path of the node for the watch event.
+
+    .. attribute:: zxid
+
+        The zxid of the transaction that triggered this watch if it is
+        of one of the following types:
+
+        * EventType.CREATED
+        * EventType.DELETED
+        * EventType.CHANGED
+        * EventType.CHILD
+
+        Otherwise, returns WatchedEvent.NO_ZXID. Note that NO_ZXID is also
+        returned by old servers that do not support this feature.
+
+    """
+
+    NO_ZXID = -1
