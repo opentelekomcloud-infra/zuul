@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7bd1b3da_5f00df44",
+        "filename": "web/package.json",
+        "patchSetId": 1
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-11-10T18:19:03Z",
+      "side": 1,
+      "message": "these were manually reordered. using yarn moves this up because the packages now start with \u0027@\u0027",
+      "range": {
+        "startLine": 41,
+        "startChar": 0,
+        "endLine": 44,
+        "endChar": 28
+      },
+      "revId": "3f57b3bb7a3b307b2aed1e8155f93dd74fa67223",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
