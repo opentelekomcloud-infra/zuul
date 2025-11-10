@@ -318,90 +318,37 @@ class QueryHistory:
 
 class PeekQueue:
     # If we see events whose timestamp is this long since an event
-    # we're waiting for, give up the wait.  This is a 10 second propogation
-    # delay. Replication timeouts are handled separately and are operator
-    # configurable.
-    timeout = 10
+    # we're waiting for, give up the wait.  This is an extra 10
+    # seconds beyond the 10 second propagation delay.
+    timeout = 20
 
-    def __init__(self, handler, replication_timeout):
+    def __init__(self, handler):
         self.queue = collections.deque()
         self.handler = handler
-        self.replication_timeout = replication_timeout
         self.change_merged_cache = cachetools.LRUCache(128)
 
     def append(self, event):
         self.queue.append(event)
 
-    def _getProjectAndRef(self, data):
-        # We need to match up ref-updated, change-merged, and patchset-created
-        # events to various replication events based on project, ref tuples.
-        # Unfortunately gerrit events don't use consistent data structures to
-        # present this data across the events. Pull the required info out
-        # based on the event type with fallback.
-        kind = data.get('type')
-        if kind == 'ref-updated':
-            refupdate = data.get('refUpdate', {})
-            return refupdate.get('project'), refupdate.get('refName')
-        elif kind == 'patchset-created':
-            change = data.get('change', {})
-            patchset = data.get('patchSet', {})
-            return change.get('project'), patchset.get('ref')
-        elif kind == 'change-merged':
-            change = data.get('change', {})
-            # change-merged events need to match up the branch name to
-            # replication events and not the change ref (it is already
-            # replicated and captured by patchset-created events).
-            return change.get('project'), data.get('refName')
-        elif (project := data.get('project')) and (ref := data.get('ref')):
-            return project, ref
-        else:
-            return None, None
-
-    def run(self):
+    def run(self, end=False):
         if not self.queue:
             return
 
-        # Try to do two things:
-        # Hold events until they have replicated and
         # Attempt to match ref-updated events with change-merged
         # events.
-        ref_replication = collections.defaultdict(list)
         ref_updates = {}
         new_event_list = collections.deque()
+        latest_time = 0
         for event in self.queue:
             data = event["payload"]
             kind = data.get('type')
             refupdate = data.get('refUpdate', {})
             ref = refupdate.get('refName')
+            latest_time = max(event["timestamp"], latest_time)
             inserted = False
-            if kind == 'ref-replication-scheduled':
-                # Note we can get many ref-replication-scheduled events for
-                # a single ref-replication-done event. We can also get
-                # overlapping ref-replication-scheduled events for the same
-                # ref. For this reason we don't use the -done events and
-                # instead rely on counting matching pairs of -scheduled and
-                # ref-replicated events. When all have paired up or we timeout
-                # the related events are considered valid.
-                #
-                # Replication events don't use the same refUpdate and refName
-                # conventions...
-                ref = data.get('ref')
-                project = data.get('project')
-                ref_replication[(project, ref)].append(event)
-            elif kind == 'ref-replicated':
-                ref = data.get('ref')
-                project = data.get('project')
-                replication_events = ref_replication[(project, ref)]
-                # TODO(clarkb) Is it necessary to wait for success?
-                if (len(replication_events) and
-                    data.get("status") == "succeeded"):
-                    # Its possible we start listening when things have already
-                    # started replicating. In that case we'll empty the
-                    # replication events list early.
-                    replication_events.pop()
-            elif (kind == 'ref-updated' and
-                  ((not ref.startswith('refs/')) or
-                    ref.startswith('refs/heads/'))):
+            if (kind == 'ref-updated' and
+                ((not ref.startswith('refs/')) or
+                 ref.startswith('refs/heads/'))):
                 # This is a ref-updated event for a branch, we
                 # want to find its change-merged event.
                 newrev = refupdate.get('newRev')
@@ -433,59 +380,37 @@ class PeekQueue:
         while new_event_list:
             event = new_event_list.popleft()
             data = event["payload"]
-            project, ref = self._getProjectAndRef(data)
-            ok = False
-            delay = None
-            now = time.time()
-            time_since_event = now - event["timestamp"]
-
-            # First check if replication is up to date.
-            if self.replication_timeout <= 0:
-                # We are not configured to look at Gerrit replication
-                # targets. Ignore replication status.
-                ok = True
-            elif ref and project and ref_replication[(project, ref)]:
-                if time_since_event >= self.replication_timeout:
-                    # Waited long enough for replication
-                    del ref_replication[(project, ref)]
-                    ok = True
-                else:
-                    # If replication hasn't completed wait longer
-                    ok = False
-                    # Wait max one second for replication to complete.
-                    delay = min(self.replication_timeout - time_since_event, 1)
-            else:
-                # We have replicated or don't have replication events
-                # corresponding to our project,ref. Proceed.
-                ok = True
-            if not ok:
-                return delay
-
-            # Now check if ref-updated and change-merged events need to be
-            # reordered
             kind = data.get('type')
+            ok = False
             if kind == 'ref-updated':
-                refupdate = data.get('refUpdate', {})
+                refupdate = data.get('refUpdate')
                 newrev = refupdate.get('newRev')
                 if newrev in ref_updates:
                     # We're waiting on data for this one
-                    if time_since_event >= self.timeout:
-                        # It's been 10 seconds since we saw
+                    if end:
+                        # It's been more than 10 seconds (gerrit
+                        # event delay) since we saw the
+                        # ref-updated event, and we're at the end
+                        # of the list of events in zk, so it's
+                        # probably not going to show up.  Release
+                        # it.
+                        ok = True
+                    elif latest_time - event["timestamp"] >= self.timeout:
+                        # It's been a further 10 seconds since we saw
                         # the event, so it may be missing at this
                         # point; release it.
                         ok = True
-                    else:
-                        # Otherwise, we're still waiting
-                        ok = False
-                        delay = min(self.timeout - time_since_event, 1)
+                    # Otherwise, we're still waiting
                 else:
                     # Not a branch ref-update
                     ok = True
             else:
-                # Not a ref-update and not waiting for replication
+                # Not a ref-update at all
                 ok = True
             if not ok:
-                return delay
+                # if we're still waiting for an event, don't send
+                # any more so that we preserve the order.
+                return
 
             self.queue.remove(event)
             self.handler(event)
@@ -498,23 +423,39 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
         'cache-eviction',  # evict-cache plugin
         'fetch-ref-replicated',
         'fetch-ref-replication-scheduled',
+        'ref-replicated',
+        'ref-replication-scheduled',
         'ref-replication-done'
     )
 
     log = logging.getLogger("zuul.GerritEventConnector")
 
-    def __init__(self, connection, replication_timeout):
+    def __init__(self, connection):
         super().__init__(connection)
-        self.replication_timeout = replication_timeout
-        self._peek_queue = PeekQueue(
-            self._peekQueueHandler, replication_timeout)
+        self._peek_queue = PeekQueue(self._peekQueueHandler)
 
     def _getEventProcessor(self, event):
         return GerritEventProcessor(self, event).run
 
+    def _calculateDelay(self, connection_event):
+        timestamp = connection_event["timestamp"]
+        now = time.time()
+        delay = max((timestamp + GerritEventProcessor.delay) - now, 0.0)
+        # Gerrit can produce inconsistent data immediately after an
+        # event, So ensure that we do not deliver the event to Zuul
+        # until at least a certain amount of time has passed.  Note
+        # that if we receive several events in succession, we will
+        # only need to delay for the first event.  In essence, Zuul
+        # should always be a constant number of seconds behind Gerrit.
+
+        self.log.debug("Handling event received %ss ago, delaying %ss",
+                       now - timestamp, delay)
+        time.sleep(delay)
+        return delay
+
     def _dispatchEvents(self):
         # This is the first half of the event dispatcher.  It reads
-        # events from the ssh stream event queue and passes them to a
+        # events from the webhook event queue and passes them to a
         # concurrent executor for pre-processing.
 
         # This overrides the superclass in order to add the peek queue.
@@ -527,16 +468,17 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
         except ValueError:
             event_id_offset = None
 
-        delay = None
         for event in self.event_queue.iter(event_id_offset):
             if self._shouldStop():
                 break
 
-            self._peek_queue.append(event)
-            delay = self._peek_queue.run()
+            delay = self._calculateDelay(event)
             if delay:
                 return delay
-        return self._peek_queue.run()
+
+            self._peek_queue.append(event)
+            self._peek_queue.run()
+        self._peek_queue.run(end=True)
 
     def _peekQueueHandler(self, event):
         # Called when the peek queue has decided an event should be processed
@@ -552,6 +494,7 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
 class GerritEventProcessor:
     tracer = trace.get_tracer("zuul")
+    delay = 10.0
 
     def __init__(self, connector, connection_event):
         self.connector = connector
@@ -587,13 +530,6 @@ class GerritEventProcessor:
         data = connection_event["payload"]
         event = GerritTriggerEvent.fromGerritEventDict(
             data, timestamp, self.connection, self.zuul_event_id)
-        event_type = data.get("type")
-        # Recheck events as we may have only cared about replication events
-        # in preprocessing.
-        if not self.connection.shouldProcessEvent(event_type, event, False):
-            self.log.debug("Event did not match pre-filters after "
-                           "preprocessing %s", event)
-            return []
         min_change_ltime = self.zk_client.getCurrentLtime()
 
         # In order to perform connection hygene actions like those
@@ -673,7 +609,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
     refname_bad_sequences = re2.compile(
         r"[ \\*\[?:^~\x00-\x1F\x7F]|"  # Forbidden characters
         r"@{|\.\.|\.$|^@$|/$|^/|//+")  # everything else we can check with re2
-    is_merged_replication_timeout = 300
+    replication_timeout = 300
     replication_retry_interval = 5
     _poller_class = GerritChecksPoller
     _ref_watcher_class = GitWatcher
@@ -722,8 +658,6 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
             self.event_source = self.EVENT_SOURCE_KINESIS
         elif self.connection_config.get('gcloud_pubsub_project', None):
             self.event_source = self.EVENT_SOURCE_GCLOUD_PUBSUB
-        self.replication_timeout = int(self.connection_config.get(
-            'replication_timeout', 0))
 
         # Thread for whatever event source we use
         self.event_thread = None
@@ -1296,7 +1230,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                        ref: str, old_sha: str='') -> bool:
         # Wait for the ref to show up in the repo
         start = time.time()
-        while time.time() - start < self.is_merged_replication_timeout:
+        while time.time() - start < self.replication_timeout:
             sha = self.getRefSha(project, ref)
             if old_sha != sha:
                 return True
@@ -1433,38 +1367,18 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         # with user-specific branches.
         return True
 
-    def shouldProcessEvent(self, event_type, event, replication):
-        valid_events = event._branch_ref_update or \
-            event.default_branch_changed or \
-            event.change_number
-        if replication:
-            valid_events = valid_events or \
-                event_type == "ref-replication-scheduled" or \
-                event_type == "ref-replicated"
-        if not (valid_events):
-            # Check if the events match specific filters and are
-            # valid.
-            for event_filter in self.watched_event_filters:
-                r = event_filter.preFilter(event)
-                if r:
-                    break
-            else:
-                return False
-        return True
-
     def addEvent(self, data):
         # NOTE(mnaser): Certain plugins fire events which end up causing
         #               an unrecognized event log *and* a traceback if they
         #               do not contain full project information, we skip them
         #               here to keep logs clean.
-        event_type = data.get('type')
-        if event_type in GerritEventConnector.IGNORED_EVENTS:
+        if data.get('type') in GerritEventConnector.IGNORED_EVENTS:
             return
         # Due to notedb, an high percentage of all events Zuul
         # processes are ref-updated of the /meta ref, and that is
         # unlikely to be used in Zuul.  Skip those here so that we
         # reduce traffic on the event queue.
-        if event_type == 'ref-updated':
+        if data.get('type') == 'ref-updated':
             refname = data.get('refUpdate', {}).get('refName', '')
             if (refname.startswith('refs/changes/') and
                 refname.endswith('/meta')):
@@ -1475,12 +1389,20 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         event = GerritTriggerEvent.fromGerritEventDict(
             data, None, self, None)
 
-        # If the event communicates replication info or might trigger
-        # reconfiguration actions we keep it; otherwise check to see if
-        # it matches our pre-filters:
-        if not self.shouldProcessEvent(event_type, event, True):
-            self.log.debug("Event did not match pre-filters %s", event)
-            return
+        # If the event might trigger Zuul reconfiguration actions, we
+        # keep it; otherwise check to see if it matches our
+        # pre-filters:
+        if not (
+                event._branch_ref_update or
+                event.default_branch_changed or
+                event.change_number):
+            for event_filter in self.watched_event_filters:
+                r = event_filter.preFilter(event)
+                if r:
+                    break
+            else:
+                self.log.debug("Event did not match pre-filters %s", event)
+                return
 
         event_uuid = uuid4().hex
         attributes = {
@@ -2167,8 +2089,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         self.ref_watcher_thread.start()
 
     def startEventConnector(self):
-        self.gerrit_event_connector = GerritEventConnector(
-            self, self.replication_timeout)
+        self.gerrit_event_connector = GerritEventConnector(self)
         self.gerrit_event_connector.start()
 
     def stopEventConnector(self):

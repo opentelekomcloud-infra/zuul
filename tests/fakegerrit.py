@@ -302,52 +302,6 @@ class FakeGerritChange(object):
             comment['range'] = comment_range
         self.comments.append(comment)
 
-    def getPatchsetReplicationStartedEvent(self, patchset):
-        ref = "refs/changes/%s/%s/%s" % \
-            (str(self.number).zfill(2)[-2:], self.number, patchset)
-        event = {"type": "ref-replication-scheduled",
-                 "project": self.project,
-                 "ref": ref,
-                 "targetNode": "git@gitserver:22",
-                 "targetUri": "ssh://git@gitserver:22/%s" % self.project,
-                 "eventCreatedOn": int(time.time())}
-        return event
-
-    def getPatchsetReplicatedEvent(self, patchset):
-        ref = "refs/changes/%s/%s/%s" % \
-            (str(self.number).zfill(2)[-2:], self.number, patchset)
-        event = {"type": "ref-replicated",
-                 "project": self.project,
-                 "refStatus": "OK",
-                 "status": "succeeded",
-                 "ref": ref,
-                 "targetNode": "git@gitserver:22",
-                 "targetUri": "ssh://git@gitserver:22/%s" % self.project,
-                 "eventCreatedOn": int(time.time())}
-        return event
-
-    def getChangeMergedReplicationStartedEvent(self):
-        ref = "refs/heads/%s" % self.branch
-        event = {"type": "ref-replication-scheduled",
-                 "project": self.project,
-                 "ref": ref,
-                 "targetNode": "git@gitserver:22",
-                 "targetUri": "ssh://git@gitserver:22/%s" % self.project,
-                 "eventCreatedOn": int(time.time())}
-        return event
-
-    def getChangeMergedReplicatedEvent(self):
-        ref = "refs/heads/%s" % self.branch
-        event = {"type": "ref-replicated",
-                 "project": self.project,
-                 "refStatus": "OK",
-                 "status": "succeeded",
-                 "ref": ref,
-                 "targetNode": "git@gitserver:22",
-                 "targetUri": "ssh://git@gitserver:22/%s" % self.project,
-                 "eventCreatedOn": int(time.time())}
-        return event
-
     def getPatchsetCreatedEvent(self, patchset):
         event = {"type": "patchset-created",
                  "change": {"project": self.project,
@@ -429,7 +383,6 @@ class FakeGerritChange(object):
                  "patchSet": self.patchsets[-1],
                  "change": self.data,
                  "type": "change-merged",
-                 "refName": "refs/heads/%s" % self.branch,
                  "eventCreatedOn": 1487613810}
         return event
 

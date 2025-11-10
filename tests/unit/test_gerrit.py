@@ -37,6 +37,7 @@ from zuul.driver.gerrit import GerritDriver
 from zuul.driver.gerrit.gerritconnection import (
     ChangeNetworkConflict,
     GerritConnection,
+    GerritEventProcessor,
     PeekQueue,
 )
 
@@ -1344,6 +1345,7 @@ class TestGerritConnection(ZuulTestCase):
         # Gerrit emits change-merged events after ref-updated events for the
         # change; make sure that job configuration changes take effect
         # for post pipelines that trigger off of ref-updated.
+        GerritEventProcessor.delay = 10.0
         in_repo_conf = textwrap.dedent(
             """
             - job:
@@ -1365,7 +1367,6 @@ class TestGerritConnection(ZuulTestCase):
         self.assertHistory([
             dict(name='project-post', result='SUCCESS'),
             dict(name='new-post-job', result='SUCCESS'),
-            dict(name='project-promote', result='SUCCESS'),
         ], ordered=False)
 
 
@@ -1450,184 +1451,6 @@ class TestGerritConnectionPreFilter(ZuulTestCase):
 
         self.fake_gerrit.startEventConnector()
         self.waitUntilSettled()
-
-
-class TestGerritConnectionReplication(ZuulTestCase):
-    config_file = 'zuul-gerrit-replication.conf'
-    tenant_config_file = 'config/single-tenant/main.yaml'
-
-    def test_replication_new_patchset(self):
-        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
-        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
-        self.fake_gerrit.addEvent(A.getPatchsetReplicationStartedEvent(1))
-        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
-        old_wait_timeout = self.wait_timeout
-        self.wait_timeout = 10
-        with testtools.ExpectedException(Exception,
-                                         "Timeout waiting for Zuul to settle"):
-            # We expect this exception because ZK queues won't empty until
-            # we either timeout waiting for the replication event or get
-            # the replication event which happens below.
-            self.waitUntilSettled()
-        # In addition to checking that we have inflight items above we
-        # also ensure that we haven't run any jobs yet.
-        self.assertHistory([])
-        self.wait_timeout = old_wait_timeout
-        # Add a second patchset created event to ensure that we're not going
-        # to wait for that one to replicate.
-        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
-        # Finally complete replication and ensure everything settles out.
-        self.fake_gerrit.addEvent(A.getPatchsetReplicatedEvent(1))
-        self.waitUntilSettled()
-
-        self.assertHistory([
-            dict(name='project-merge', result='SUCCESS', changes='1,1'),
-            dict(name='project-test1', result='SUCCESS', changes='1,1'),
-            dict(name='project-test2', result='SUCCESS', changes='1,1'),
-            dict(name='project-merge', result='SUCCESS', changes='2,1'),
-            dict(name='project-test1', result='SUCCESS', changes='2,1'),
-            dict(name='project-test2', result='SUCCESS', changes='2,1'),
-            dict(name='project1-project2-integration',
-                 result='SUCCESS', changes='2,1'),
-        ], ordered=False)
-
-    def test_replication_change_merged(self):
-        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
-        A.setMerged()
-        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
-        B.setMerged()
-        self.fake_gerrit.addEvent(A.getChangeMergedReplicationStartedEvent())
-        self.fake_gerrit.addEvent(A.getChangeMergedEvent())
-        old_wait_timeout = self.wait_timeout
-        self.wait_timeout = 10
-        with testtools.ExpectedException(Exception,
-                                         "Timeout waiting for Zuul to settle"):
-            # We expect this exception because ZK queues won't empty until
-            # we either timeout waiting for the replication event or get
-            # the replication event which happens below.
-            self.waitUntilSettled()
-        # In addition to checking that we have inflight items above we
-        # also ensure that we haven't run any jobs yet.
-        self.assertHistory([])
-        self.wait_timeout = old_wait_timeout
-        # Add a second merged change event to ensure that we're not going
-        # to wait for that one to replicate
-        self.fake_gerrit.addEvent(B.getChangeMergedEvent())
-        # Finally complete replication and ensure everything settles out.
-        self.fake_gerrit.addEvent(A.getChangeMergedReplicatedEvent())
-        self.waitUntilSettled()
-
-        self.assertHistory([
-            dict(name='project-promote', result='SUCCESS', changes='1,1'),
-            dict(name='project-promote', result='SUCCESS', changes='2,1'),
-        ], ordered=False)
-
-    def test_replication_ref_updated(self):
-        # This test is admittedly a bit contrived but is a good exercise of
-        # the ref updated without change merged event combo alongside our
-        # wait for replication to complete.
-        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
-        A.setMerged()
-        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
-        B.setMerged()
-
-        self.fake_gerrit.addEvent(A.getChangeMergedReplicationStartedEvent())
-        # Change merged and ref updated events share the same replication
-        # events.
-        self.fake_gerrit.addEvent(A.getRefUpdatedEvent())
-        old_wait_timeout = self.wait_timeout
-        self.wait_timeout = 10
-        with testtools.ExpectedException(Exception,
-                                         "Timeout waiting for Zuul to settle"):
-            # We expect this exception because ZK queues won't empty until
-            # we either timeout waiting for the replication event or get
-            # the replication event which happens below.
-            self.waitUntilSettled()
-        # In addition to checking that we have inflight items above we
-        # also ensure that we haven't run any jobs yet.
-        self.assertHistory([])
-        self.wait_timeout = old_wait_timeout
-        # Add a second ref updated event to ensure that we're not going
-        # to wait for that one to replicate
-        self.fake_gerrit.addEvent(B.getRefUpdatedEvent())
-        # Finally complete replication and ensure everything settles out.
-        self.fake_gerrit.addEvent(A.getChangeMergedReplicatedEvent())
-        self.waitUntilSettled()
-
-        self.assertHistory([
-            dict(name='project-post', result='SUCCESS',
-                 ref='refs/heads/master'),
-            dict(name='project-post', result='SUCCESS',
-                 ref='refs/heads/master'),
-        ], ordered=False)
-
-    def test_replication_change_merged_combo(self):
-        # This test tests the combo of ref updated and change merged events
-        # which occurs when gerrit merges changes.
-        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
-        A.setMerged()
-        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
-        B.setMerged()
-
-        self.fake_gerrit.addEvent(A.getChangeMergedReplicationStartedEvent())
-        # Change merged and ref updated events share the same replication
-        # events.
-        self.fake_gerrit.addEvent(A.getRefUpdatedEvent())
-        self.fake_gerrit.addEvent(A.getChangeMergedEvent())
-        old_wait_timeout = self.wait_timeout
-        self.wait_timeout = 10
-        with testtools.ExpectedException(Exception,
-                                         "Timeout waiting for Zuul to settle"):
-            # We expect this exception because ZK queues won't empty until
-            # we either timeout waiting for the replication event or get
-            # the replication event which happens below.
-            self.waitUntilSettled()
-        # In addition to checking that we have inflight items above we
-        # also ensure that we haven't run any jobs yet.
-        self.assertHistory([])
-        self.wait_timeout = old_wait_timeout
-        # Add a second ref updated event to ensure that we're not going
-        # to wait for that one to replicate
-        self.fake_gerrit.addEvent(B.getRefUpdatedEvent())
-        self.fake_gerrit.addEvent(B.getChangeMergedEvent())
-        # Finally complete replication and ensure everything settles out.
-        self.fake_gerrit.addEvent(A.getChangeMergedReplicatedEvent())
-        self.waitUntilSettled()
-
-        self.assertHistory([
-            dict(name='project-promote', result='SUCCESS', changes='1,1'),
-            dict(name='project-post', result='SUCCESS',
-                 ref='refs/heads/master'),
-            dict(name='project-promote', result='SUCCESS', changes='2,1'),
-            dict(name='project-post', result='SUCCESS',
-                 ref='refs/heads/master'),
-        ], ordered=False)
-
-
-class TestGerritConnectionReplicationTimeout(ZuulTestCase):
-    config_file = 'zuul-gerrit-replication-timeout.conf'
-    tenant_config_file = 'config/single-tenant/main.yaml'
-
-    def test_new_patchset_replication_timeout(self):
-        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
-        B = self.fake_gerrit.addFakeChange('org/project1', 'master', 'B')
-        self.fake_gerrit.addEvent(A.getPatchsetReplicationStartedEvent(1))
-        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
-        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
-        self.waitUntilSettled()
-
-        # We configure a 10 second timeout. Without replication completion
-        # events we know that we timed out if the jobs run.
-        self.assertHistory([
-            dict(name='project-merge', result='SUCCESS', changes='1,1'),
-            dict(name='project-test1', result='SUCCESS', changes='1,1'),
-            dict(name='project-test2', result='SUCCESS', changes='1,1'),
-            dict(name='project-merge', result='SUCCESS', changes='2,1'),
-            dict(name='project-test1', result='SUCCESS', changes='2,1'),
-            dict(name='project-test2', result='SUCCESS', changes='2,1'),
-            dict(name='project1-project2-integration',
-                 result='SUCCESS', changes='2,1'),
-        ], ordered=False)
 
 
 class TestGerritUnicodeRefs(ZuulTestCase):
@@ -2034,42 +1857,7 @@ class TestGerritPeekQueue(BaseTestCase):
                     "branch": "master",
                     "number": number,
                 },
-                "refName": "ref/heads/master",
                 "type": "change-merged",
-            }
-        })
-        e.zuul_event_ltime = ltime
-        return e
-
-    def make_replication_scheduled_event(self, ref, ltime):
-        e = zuul.model.ConnectionEvent({
-            "timestamp": time.time(),
-            "payload": {
-                "type": "ref-replication-scheduled",
-                "project": "org/project",
-                "ref": ref,
-                "refStatus": "OK",
-                "status": "succeeded",
-                "targetNode": "git@gitserver:22",
-                "targetUri": "ssh://git@gitserver:22/org/project",
-                "eventCreatedOn": int(time.time()),
-            }
-        })
-        e.zuul_event_ltime = ltime
-        return e
-
-    def make_replicated_event(self, ref, ltime):
-        e = zuul.model.ConnectionEvent({
-            "timestamp": time.time(),
-            "payload": {
-                "type": "ref-replicated",
-                "project": "org/project",
-                "ref": ref,
-                "refStatus": "OK",
-                "status": "succeeded",
-                "targetNode": "git@gitserver:22",
-                "targetUri": "ssh://git@gitserver:22/org/project",
-                "eventCreatedOn": int(time.time()),
             }
         })
         e.zuul_event_ltime = ltime
@@ -2081,7 +1869,7 @@ class TestGerritPeekQueue(BaseTestCase):
         def handler(x):
             handled.append(x)
 
-        q = PeekQueue(handler, 0)
+        q = PeekQueue(handler)
 
         # Check noop
         q.run()
@@ -2147,15 +1935,12 @@ class TestGerritPeekQueue(BaseTestCase):
         self.assertEqual([], handled)
 
         # This is what the loop will acutally do
-        q.timeout = 0
-        delay = q.run()
-        self.assertEqual(delay, None)
         q.run()
+        q.run(end=True)
         expected = [orig[0], orig[1]]
         self.assertEqual(expected, handled)
         self.assertEqual(1, handled[0].zuul_event_ltime)
         self.assertEqual(2, handled[1].zuul_event_ltime)
-        q.timeout = 10
 
         # Check if Gerrit changes the event order; it doesn't do this
         # today, but we want to defend against that.
@@ -2183,77 +1968,6 @@ class TestGerritPeekQueue(BaseTestCase):
         self.assertEqual(2, handled[1].zuul_event_ltime)
         self.assertEqual(3, handled[2].zuul_event_ltime)
 
-    def test_peek_queue_with_replication(self):
-        handled = []
-
-        def handler(x):
-            handled.append(x)
-
-        q = PeekQueue(handler, 0)
-        q.replication_timeout = 5
-
-        # Check noop
-        q.run()
-        self.assertEqual([], handled)
-
-        # Check one at a time (typical case)
-        handled.clear()
-        orig = [
-            self.make_replication_scheduled_event('refs/heads/master', 1),
-            self.make_ref_updated_event('refs/heads/master', 'new1', 2),
-            self.make_change_merged_event(1, 'new1', 3),
-            self.make_replicated_event('refs/heads/master', 4),
-        ]
-        q.append(orig[0])
-        q.run()
-        self.assertEqual([], handled)
-
-        q.append(orig[1])
-        q.run()
-        self.assertEqual([], handled)
-
-        q.append(orig[2])
-        q.run()
-        self.assertEqual([], handled)
-
-        q.append(orig[3])
-        q.run()
-        expected = [orig[0], orig[2], orig[1], orig[3]]
-        self.assertEqual(expected, handled)
-        self.assertEqual(1, handled[0].zuul_event_ltime)
-        self.assertEqual(2, handled[1].zuul_event_ltime)
-        self.assertEqual(2, handled[2].zuul_event_ltime)
-        self.assertEqual(4, handled[3].zuul_event_ltime)
-
-        # Check with replication timeout
-        handled.clear()
-        q.replication_timeout = 1
-        orig = [
-            self.make_replication_scheduled_event('refs/heads/master', 1),
-            self.make_ref_updated_event('refs/heads/master', 'new1', 2),
-            self.make_change_merged_event(1, 'new1', 3),
-        ]
-        q.append(orig[0])
-        q.run()
-        self.assertEqual([], handled)
-
-        q.append(orig[1])
-        q.run()
-        self.assertEqual([], handled)
-
-        q.append(orig[2])
-        q.run()
-        self.assertEqual([], handled)
-
-        # Longer than our timeout
-        time.sleep(2)
-        q.run()
-        expected = [orig[0], orig[2], orig[1]]
-        self.assertEqual(expected, handled)
-        self.assertEqual(1, handled[0].zuul_event_ltime)
-        self.assertEqual(2, handled[1].zuul_event_ltime)
-        self.assertEqual(2, handled[2].zuul_event_ltime)
-
     def test_peek_queue_busy_timeout(self):
         # Our last line of defense on a busy system is the extra 10
         # second timeout -- if we see an event that's 10 seconds later
@@ -2265,7 +1979,7 @@ class TestGerritPeekQueue(BaseTestCase):
         def handler(x):
             handled.append(x)
 
-        q = PeekQueue(handler, 0)
+        q = PeekQueue(handler)
 
         orig = [
             self.make_ref_updated_event('refs/heads/master', 'new1', 1),

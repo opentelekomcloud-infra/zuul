@@ -44,14 +44,6 @@
     precedence: low
 
 - pipeline:
-    name: promote
-    manager: supercedent
-    trigger:
-      gerrit:
-        - event: change-merged
-    precedence: low
-
-- pipeline:
     name: periodic
     manager: independent
     trigger:
@@ -100,14 +92,6 @@
     run: playbooks/project-post.yaml
 
 - job:
-    name: project-promote
-    nodeset:
-      nodes:
-        - name: static
-          label: ubuntu-xenial
-    run: playbooks/project-promote.yaml
-
-- job:
     name: project-test2
     nodeset:
       nodes:
@@ -150,9 +134,6 @@
     post:
       jobs:
         - project-post
-    promote:
-      jobs:
-        - project-promote
 
 - project:
     name: org/project1
@@ -178,9 +159,6 @@
     post:
       jobs:
         - project-post
-    promote:
-      jobs:
-        - project-promote
 
 - project:
     name: org/project2
