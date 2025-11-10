@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "14db9b96_4edc4501",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2025-11-10T19:24:46Z",
+      "side": 1,
+      "message": "as an aside, here is the progress/diff: https://imgur.com/a/QBtbAss",
+      "revId": "0c9396c2ef6df6a1ef5c7df0cc18011c9e40aa41",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2b6f29d1_fc436360",
@@ -14,6 +31,24 @@
       "writtenOn": "2025-11-10T19:17:30Z",
       "side": 1,
       "message": "we might want to follow the wcag 2.1 spec here\n\nhttps://www.w3.org/TR/WCAG21/#text-spacing\n\nLine height (line spacing) to at least 1.5 times the font size;\n\nthere is no minium font size recomndation that i can find but 12pt is pretty standard\n\n\"the 18 and 14 point sizes for roman texts are taken from the minimum size for large print (14pt) and the larger standard font size (18pt)\"\n\nbased on ^ 14 and above would be the base line for large text sizes to keeping at 12 seems fine although 14pt font may be ok too.",
+      "revId": "0c9396c2ef6df6a1ef5c7df0cc18011c9e40aa41",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b8db51b8_7f5cfcd8",
+        "filename": "web/src/pages/Stream.jsx",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2025-11-10T19:24:46Z",
+      "side": 1,
+      "message": "1.2 vs 1.5\n\nhttps://imgur.com/a/HpC9iRH\n\nI do feel like with 1.5 it is a bit too spaced out.",
+      "parentUuid": "2b6f29d1_fc436360",
       "revId": "0c9396c2ef6df6a1ef5c7df0cc18011c9e40aa41",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
