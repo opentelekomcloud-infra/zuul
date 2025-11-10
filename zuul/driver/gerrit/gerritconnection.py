@@ -317,15 +317,14 @@ class QueryHistory:
 
 
 class PeekQueue:
-    # If we see events whose timestamp is this long since an event
-    # we're waiting for, give up the wait.  This is an extra 10
-    # seconds beyond the 10 second propagation delay.
-    timeout = 20
-
-    def __init__(self, handler):
+    def __init__(self, handler, replication_delay):
         self.queue = collections.deque()
         self.handler = handler
         self.change_merged_cache = cachetools.LRUCache(128)
+        # If we see events whose timestamp is this long since an event
+        # we're waiting for, give up the wait.  This is an extra 10
+        # seconds beyond the replication delay.
+        self.timeout = replication_delay + 10
 
     def append(self, event):
         self.queue.append(event)
@@ -432,7 +431,8 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
     def __init__(self, connection):
         super().__init__(connection)
-        self._peek_queue = PeekQueue(self._peekQueueHandler)
+        self._peek_queue = PeekQueue(self._peekQueueHandler,
+                                     self.connection.replication_delay)
 
     def _getEventProcessor(self, event):
         return GerritEventProcessor(self, event).run
@@ -440,7 +440,7 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
     def _calculateDelay(self, connection_event):
         timestamp = connection_event["timestamp"]
         now = time.time()
-        delay = max((timestamp + GerritEventProcessor.delay) - now, 0.0)
+        delay = max((timestamp + self.connection.replication_delay) - now, 0.0)
         # Gerrit can produce inconsistent data immediately after an
         # event, So ensure that we do not deliver the event to Zuul
         # until at least a certain amount of time has passed.  Note
@@ -609,7 +609,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
     refname_bad_sequences = re2.compile(
         r"[ \\*\[?:^~\x00-\x1F\x7F]|"  # Forbidden characters
         r"@{|\.\.|\.$|^@$|/$|^/|//+")  # everything else we can check with re2
-    replication_timeout = 300
+    is_merged_replication_timeout = 300
     replication_retry_interval = 5
     _poller_class = GerritChecksPoller
     _ref_watcher_class = GitWatcher
@@ -658,6 +658,8 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
             self.event_source = self.EVENT_SOURCE_KINESIS
         elif self.connection_config.get('gcloud_pubsub_project', None):
             self.event_source = self.EVENT_SOURCE_GCLOUD_PUBSUB
+        self.replication_delay = int(self.connection_config.get(
+            'replication_delay', 0))
 
         # Thread for whatever event source we use
         self.event_thread = None
@@ -1230,7 +1232,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                        ref: str, old_sha: str='') -> bool:
         # Wait for the ref to show up in the repo
         start = time.time()
-        while time.time() - start < self.replication_timeout:
+        while time.time() - start < self.is_merged_replication_timeout:
             sha = self.getRefSha(project, ref)
             if old_sha != sha:
                 return True
