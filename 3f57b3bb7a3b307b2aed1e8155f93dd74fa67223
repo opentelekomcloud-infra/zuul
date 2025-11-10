@@ -3,6 +3,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "e8f23550_4ddbe3f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 25733
+      },
+      "writtenOn": "2025-11-10T18:23:01Z",
+      "side": 1,
+      "message": "Yeah, this will require some porting. https://github.com/xtermjs/xterm.js/releases",
+      "revId": "3f57b3bb7a3b307b2aed1e8155f93dd74fa67223",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "7bd1b3da_5f00df44",
         "filename": "web/package.json",
         "patchSetId": 1
