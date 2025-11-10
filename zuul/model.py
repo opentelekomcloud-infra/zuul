@@ -2944,6 +2944,17 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         return None
 
     @property
+    def min_request_zxid(self):
+        # The request is always updated after assignment, therefore,
+        # the request mzxid will be greater than the assigment czxid.
+        # Therefore, it is sufficient to wait for the assignment czxid
+        # to know that the request request will exist; it may have
+        # been updated, but min_request_version can be used for that.
+        if (r := self.assignment.getZKczxid()) is not None:
+            return r
+        return None
+
+    @property
     def tenant_name(self):
         if self.assignment.getZKVersion() is not None:
             return self.assignment.tenant_name

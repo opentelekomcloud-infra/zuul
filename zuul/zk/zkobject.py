@@ -358,6 +358,30 @@ class ZKObject:
             return None
         return zstat.version
 
+    def getZKczxid(self):
+        """Return the ZK create transaction id of the object.
+
+        Returns None if the object is newly created.
+        """
+        zstat = getattr(self, '_zstat', None)
+        # If zstat is None, we created the object
+        if zstat is None:
+            return None
+        return zstat.czxid
+
+    def getZKmzxid(self):
+        """Return the ZK last modified transaction id of the object as
+        of the last load/refresh.
+
+        Returns None if the object is newly created.
+
+        """
+        zstat = getattr(self, '_zstat', None)
+        # If zstat is None, we created the object
+        if zstat is None:
+            return None
+        return zstat.mzxid
+
     # Private methods below
 
     @classmethod
