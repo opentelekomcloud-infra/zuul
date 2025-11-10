@@ -51,6 +51,24 @@
       "parentUuid": "2b6f29d1_fc436360",
       "revId": "0c9396c2ef6df6a1ef5c7df0cc18011c9e40aa41",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "98d5d1fe_8eb20ec0",
+        "filename": "web/src/pages/Stream.jsx",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 11604
+      },
+      "writtenOn": "2025-11-10T19:32:30Z",
+      "side": 1,
+      "message": "ya its perhasp ok for paragraphs but i agree 1.2 is better for back to back console lines",
+      "parentUuid": "b8db51b8_7f5cfcd8",
+      "revId": "0c9396c2ef6df6a1ef5c7df0cc18011c9e40aa41",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
