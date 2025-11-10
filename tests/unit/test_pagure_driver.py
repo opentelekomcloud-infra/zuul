@@ -52,7 +52,7 @@ class TestPagureDriver(ZuulTestCase):
         self.assertEqual(str(A.commit_stop), zuulvars['patchset'])
         self.assertEqual(str(A.commit_stop), zuulvars['commit_id'])
         self.assertEqual('master', zuulvars['branch'])
-        self.assertEquals('https://pagure/org/project/pull-request/1',
+        self.assertEqual('https://pagure/org/project/pull-request/1',
                           zuulvars['items'][0]['change_url'])
         self.assertEqual(zuulvars["message"],
                          strings.b64encode(initial_comment))

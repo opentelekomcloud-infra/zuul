@@ -772,15 +772,15 @@ class TestMQTTConnection(ZuulTestCase):
         success_event_check = self.mqtt_messages.pop()
         start_event_check = self.mqtt_messages.pop()
 
-        self.assertEquals(start_event_check.get('topic'),
+        self.assertEqual(start_event_check.get('topic'),
                           'tenant-one/zuul_start/check/org/project/master')
         mqtt_payload = start_event_check['msg']
-        self.assertEquals(mqtt_payload['project'], 'org/project')
+        self.assertEqual(mqtt_payload['project'], 'org/project')
         self.assertEqual(len(mqtt_payload['commit_id']), 40)
-        self.assertEquals(mqtt_payload['owner'], 'username')
-        self.assertEquals(mqtt_payload['branch'], 'master')
-        self.assertEquals(mqtt_payload['buildset']['result'], None)
-        self.assertEquals(mqtt_payload['buildset']['builds'][0]['job_name'],
+        self.assertEqual(mqtt_payload['owner'], 'username')
+        self.assertEqual(mqtt_payload['branch'], 'master')
+        self.assertEqual(mqtt_payload['buildset']['result'], None)
+        self.assertEqual(mqtt_payload['buildset']['builds'][0]['job_name'],
                           'test')
         self.assertNotIn('result', mqtt_payload['buildset']['builds'][0])
         self.assertNotIn('artifacts', mqtt_payload['buildset']['builds'][0])
@@ -788,28 +788,28 @@ class TestMQTTConnection(ZuulTestCase):
         test_job = [b for b in builds if b['job_name'] == 'test'][0]
         self.assertNotIn('returned_data', test_job)
 
-        self.assertEquals(success_event_check.get('topic'),
+        self.assertEqual(success_event_check.get('topic'),
                           'tenant-one/zuul_buildset/check/org/project/master')
         mqtt_payload = success_event_check['msg']
-        self.assertEquals(mqtt_payload['project'], 'org/project')
-        self.assertEquals(mqtt_payload['pipeline'], 'check')
-        self.assertEquals(mqtt_payload['queue'], '')
-        self.assertEquals(mqtt_payload['branch'], 'master')
-        self.assertEquals(mqtt_payload['buildset']['result'], 'SUCCESS')
+        self.assertEqual(mqtt_payload['project'], 'org/project')
+        self.assertEqual(mqtt_payload['pipeline'], 'check')
+        self.assertEqual(mqtt_payload['queue'], '')
+        self.assertEqual(mqtt_payload['branch'], 'master')
+        self.assertEqual(mqtt_payload['buildset']['result'], 'SUCCESS')
         builds = mqtt_payload['buildset']['builds']
         test_job = [b for b in builds if b['job_name'] == 'test'][0]
         dependent_test_job = [
             b for b in builds if b['job_name'] == 'dependent-test'
         ][0]
-        self.assertEquals(test_job['job_name'], 'test')
-        self.assertEquals(test_job['result'], 'SUCCESS')
-        self.assertEquals(test_job['dependencies'], [])
-        self.assertEquals(test_job['job_dependencies'], {})
-        self.assertEquals(test_job['artifacts'], [artifact])
-        self.assertEquals(test_job['log_url'], 'some-log-url/')
-        self.assertEquals(test_job['returned_data'], {'foo': 'bar'})
+        self.assertEqual(test_job['job_name'], 'test')
+        self.assertEqual(test_job['result'], 'SUCCESS')
+        self.assertEqual(test_job['dependencies'], [])
+        self.assertEqual(test_job['job_dependencies'], {})
+        self.assertEqual(test_job['artifacts'], [artifact])
+        self.assertEqual(test_job['log_url'], 'some-log-url/')
+        self.assertEqual(test_job['returned_data'], {'foo': 'bar'})
         build_id = test_job["uuid"]
-        self.assertEquals(
+        self.assertEqual(
             test_job["web_url"],
             "https://tenant.example.com/t/tenant-one/build/{}".format(
                 build_id
@@ -821,12 +821,12 @@ class TestMQTTConnection(ZuulTestCase):
         self.assertIn('trigger_time', mqtt_payload)
         self.assertIn('zuul_event_id', mqtt_payload)
         self.assertIn('uuid', mqtt_payload)
-        self.assertEquals(dependent_test_job['dependencies'], ['test'])
+        self.assertEqual(dependent_test_job['dependencies'], ['test'])
         self.assertIn('test', dependent_test_job['job_dependencies'])
 
         changes = mqtt_payload['changes']
-        self.assertEquals(len(changes), 1)
-        self.assertEquals(changes[0]['topic'], 'fake/topic')
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]['topic'], 'fake/topic')
 
         A.addApproval("Code-Review", 2)
         self.fake_gerrit.addEvent(A.addApproval("Approved", 1))
@@ -834,9 +834,9 @@ class TestMQTTConnection(ZuulTestCase):
 
         success_event_gate = self.mqtt_messages.pop()
         mqtt_payload = success_event_gate['msg']
-        self.assertEquals(mqtt_payload['project'], 'org/project')
-        self.assertEquals(mqtt_payload['pipeline'], 'gate')
-        self.assertEquals(mqtt_payload['queue'], 'integrated')
+        self.assertEqual(mqtt_payload['project'], 'org/project')
+        self.assertEqual(mqtt_payload['pipeline'], 'gate')
+        self.assertEqual(mqtt_payload['queue'], 'integrated')
 
     @okay_tracebacks('Connection refused')
     def test_mqtt_paused_job(self):
@@ -861,19 +861,19 @@ class TestMQTTConnection(ZuulTestCase):
         success_event = self.mqtt_messages.pop()
 
         mqtt_payload = success_event["msg"]
-        self.assertEquals(mqtt_payload["project"], "org/project")
+        self.assertEqual(mqtt_payload["project"], "org/project")
         builds = mqtt_payload["buildset"]["builds"]
         paused_job = [b for b in builds if b["job_name"] == "test"][0]
-        self.assertEquals(len(paused_job["events"]), 2)
+        self.assertEqual(len(paused_job["events"]), 2)
 
         pause_event = paused_job["events"][0]
-        self.assertEquals(pause_event["event_type"], "paused")
+        self.assertEqual(pause_event["event_type"], "paused")
         self.assertGreater(
             pause_event["event_time"], paused_job["start_time"])
         self.assertLess(pause_event["event_time"], paused_job["end_time"])
 
         resume_event = paused_job["events"][1]
-        self.assertEquals(resume_event["event_type"], "resumed")
+        self.assertEqual(resume_event["event_type"], "resumed")
         self.assertGreater(
             resume_event["event_time"], paused_job["start_time"])
         self.assertLess(resume_event["event_time"], paused_job["end_time"])

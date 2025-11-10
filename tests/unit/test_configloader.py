@@ -678,7 +678,7 @@ class TestTenantExcludeAll(TenantParserTestCase):
         # The config in org/project5 depends on config in org/project1 so
         # validate that there are no config errors in that tenant.
         tenant_two = self.scheds.first.sched.abide.tenants.get('tenant-two')
-        self.assertEquals(
+        self.assertEqual(
             len(tenant_two.layout.loading_errors), 0,
             "No error should have been accumulated")
 
@@ -689,7 +689,7 @@ class TestTenantConfigBranches(ZuulTestCase):
     def _validate_job(self, job, branch):
         tenant_one = self.scheds.first.sched.abide.tenants.get('tenant-one')
         jobs = tenant_one.layout.getJobs(job)
-        self.assertEquals(len(jobs), 1)
+        self.assertEqual(len(jobs), 1)
         self.assertIn(jobs[0].source_context.branch, branch)
 
     def test_tenant_config_load_branch(self):
@@ -778,7 +778,7 @@ class TestSplitConfig(ZuulTestCase):
 
         # This check ensures the .zuul.ignore flag file is working in
         # the config directory.
-        self.assertEquals(
+        self.assertEqual(
             len(tenant.layout.loading_errors), 0)
 
     def test_dynamic_split_config(self):
@@ -1567,7 +1567,7 @@ class TestNodepoolConfig(LauncherBaseTestCase):
                    enable_nodepool=True)
     def test_nodepool_config_defaults_redefinition_final(self):
         layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
-        self.assertEquals(1, len(layout.loading_errors))
+        self.assertEqual(1, len(layout.loading_errors))
         self.assertIn('redefine final flavor', layout.loading_errors[0].error)
 
     @simple_layout('layouts/nodepool-defaults-inheritance.yaml',
@@ -1632,6 +1632,6 @@ class TestNodepoolConfig(LauncherBaseTestCase):
                    enable_nodepool=True)
     def test_nodepool_provider_flavors(self):
         layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
-        self.assertEquals(1, len(layout.loading_errors))
+        self.assertEqual(1, len(layout.loading_errors))
         self.assertIn('Flavor configuration not permitted in',
                       layout.loading_errors[0].error)

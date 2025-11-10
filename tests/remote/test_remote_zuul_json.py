@@ -98,7 +98,7 @@ class FunctionalZuulJSONMixIn:
             ]
             for i, expected in enumerate(expected_actions):
                 host_result = tasks[i]['hosts']['controller']
-                self.assertEquals(expected, host_result['action'])
+                self.assertEqual(expected, host_result['action'])
 
     def test_json_role_log(self):
         job = self._run_job('json-role')

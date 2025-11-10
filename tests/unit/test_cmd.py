@@ -39,4 +39,4 @@ class TestCmd(testtools.TestCase):
             app = zuul.cmd.ZuulApp()
             app.parseArguments(['-c', test_config.name])
             app.readConfig()
-            self.assertEquals('baz', app.config.get('DEFAULT', 'foo'))
+            self.assertEqual('baz', app.config.get('DEFAULT', 'foo'))

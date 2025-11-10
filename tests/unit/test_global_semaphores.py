@@ -81,9 +81,9 @@ class TestGlobalSemaphoresConfig(ZuulTestCase):
 
         # We should have a config error in tenant1 due to the
         # redefinition.
-        self.assertEquals(len(tenant1.layout.loading_errors), 1)
-        self.assertEquals(len(tenant2.layout.loading_errors), 0)
-        self.assertEquals(len(tenant3.layout.loading_errors), 0)
+        self.assertEqual(len(tenant1.layout.loading_errors), 1)
+        self.assertEqual(len(tenant2.layout.loading_errors), 0)
+        self.assertEqual(len(tenant3.layout.loading_errors), 0)
 
         A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
         B = self.fake_gerrit.addFakeChange('org/project2', 'master', 'B')

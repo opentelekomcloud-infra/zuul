@@ -1770,7 +1770,7 @@ class TestGerritDriver(ZuulTestCase):
         self.assertEqual(str(A.patchsets[-1]['revision']),
                          zuulvars['commit_id'])
         self.assertEqual('master', zuulvars['branch'])
-        self.assertEquals('https://review.example.com/1',
+        self.assertEqual('https://review.example.com/1',
                           zuulvars['items'][0]['change_url'])
         self.assertEqual(zuulvars["message"], strings.b64encode('A'))
         self.assertEqual(1, len(self.history))

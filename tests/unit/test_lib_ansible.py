@@ -45,12 +45,12 @@ class TestLibAnsibleManager(BaseTestCase):
             am.validate(),
             'A valid ansible should not mask a previous failure')
 
-        self.assertEquals(
+        self.assertEqual(
             [mock.call('1.0'),
              mock.call('2.8')
             ],
             mock_validate_ansible.mock_calls)
 
-        self.assertEquals(
+        self.assertEqual(
             [mock.call('2.8')],
             mock_validate_packages.mock_calls)

@@ -4682,7 +4682,7 @@ class TestScheduler(ZuulTestCase):
         ):
             if job.payload["items"][0]["project"] == "org/project1":
                 merge_count_project1 += 1
-        self.assertEquals(merge_count_project1, 0,
+        self.assertEqual(merge_count_project1, 0,
                           "project1 shouldn't have any refstate call")
 
         self.executor_server.hold_jobs_in_build = False
@@ -7088,7 +7088,7 @@ class TestChangeQueues(ZuulTestCase):
             self.fake_gerrit.getFakeBranchCreatedEvent(project, 'stable'))
         self.waitUntilSettled()
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEquals(
+        self.assertEqual(
             len(tenant.layout.loading_errors), 1,
             "No error should have been accumulated")
         # This error is expected and unrelated to this test (the
@@ -8526,7 +8526,7 @@ class TestSemaphore(ZuulTestCase):
             len(tenant.semaphore_handler.semaphoreHolders("test-semaphore")),
             0)
 
-        self.assertEquals(1, A.reported)
+        self.assertEqual(1, A.reported)
         self.assertTrue(re.search('semaphore-one-test3 .* NODE_FAILURE',
                                   A.messages[0]))
 
@@ -8608,7 +8608,7 @@ class TestSemaphore(ZuulTestCase):
         # that it still has not locked a semaphore.
         self.assertEqual(len(tenant.semaphore_handler.semaphoreHolders(
             "test-semaphore")), 0)
-        self.assertEquals(1, A.reported)
+        self.assertEqual(1, A.reported)
         self.assertTrue(
             re.search('semaphore-one-test1-resources-first .* NODE_FAILURE',
                       A.messages[0]))
