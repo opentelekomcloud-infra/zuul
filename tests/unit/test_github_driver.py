@@ -82,8 +82,8 @@ class TestGithubDriver(ZuulTestCase):
         self.assertEqual(str(A.head_sha), zuulvars['patchset'])
         self.assertEqual(str(A.head_sha), zuulvars['commit_id'])
         self.assertEqual('master', zuulvars['branch'])
-        self.assertEquals('https://github.com/org/project/pull/1',
-                          zuulvars['items'][0]['change_url'])
+        self.assertEqual('https://github.com/org/project/pull/1',
+                         zuulvars['items'][0]['change_url'])
         expected = "A\n\n{}".format(body)
         self.assertEqual(zuulvars["message"],
                          strings.b64encode(expected))
@@ -1398,10 +1398,10 @@ class TestGithubDriver(ZuulTestCase):
         # check that change_url is correct
         job1_params = self.getJobFromHistory('project-test1').parameters
         job2_params = self.getJobFromHistory('project-test2').parameters
-        self.assertEquals('https://github.com/org/project/pull/1',
-                          job1_params['zuul']['items'][0]['change_url'])
-        self.assertEquals('https://github.com/org/project/pull/1',
-                          job2_params['zuul']['items'][0]['change_url'])
+        self.assertEqual('https://github.com/org/project/pull/1',
+                         job1_params['zuul']['items'][0]['change_url'])
+        self.assertEqual('https://github.com/org/project/pull/1',
+                         job2_params['zuul']['items'][0]['change_url'])
 
     @simple_layout('layouts/basic-github.yaml', driver='github')
     def test_pull_commit_race(self):
@@ -1462,8 +1462,8 @@ class TestGithubDriver(ZuulTestCase):
         # Merge should have failed because cherry-pick is not supported
         self.assertEqual(2, len(A.comments))
         self.assertFalse(A.is_merged)
-        self.assertEquals(A.comments[1],
-                          'Merge mode cherry-pick not supported by Github')
+        self.assertEqual(A.comments[1],
+                         'Merge mode cherry-pick not supported by Github')
 
     @simple_layout('layouts/gate-github-rebase.yaml', driver='github')
     def test_merge_method_rebase(self):
@@ -1580,7 +1580,7 @@ class TestGithubDriver(ZuulTestCase):
 
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         loading_errors = tenant.layout.loading_errors
-        self.assertEquals(
+        self.assertEqual(
             len(tenant.layout.loading_errors), 1,
             "An error should have been stored")
         self.assertIn(
@@ -3000,7 +3000,7 @@ class TestGithubSchemaWarnings(ZuulTestCase):
     @simple_layout('layouts/github-schema.yaml', driver='github')
     def test_broken_config_on_startup_warnings(self):
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
-        self.assertEquals(
+        self.assertEqual(
             len(tenant.layout.loading_errors), 9,
             "An error should have been stored")
         self.assertIn(

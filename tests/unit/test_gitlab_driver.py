@@ -116,9 +116,9 @@ class TestGitlabDriver(ZuulTestCase):
         self.assertEqual(str(A.sha), zuulvars['patchset'])
         self.assertEqual(str(A.sha), zuulvars['commit_id'])
         self.assertEqual('master', zuulvars['branch'])
-        self.assertEquals(f'{self.fake_gitlab._test_baseurl}/'
-                          'org/project/merge_requests/1',
-                          zuulvars['items'][0]['change_url'])
+        self.assertEqual(f'{self.fake_gitlab._test_baseurl}/'
+                         'org/project/merge_requests/1',
+                         zuulvars['items'][0]['change_url'])
         self.assertEqual(zuulvars["message"], strings.b64encode(description))
         self.assertEqual(2, len(self.history))
         self.assertEqual(2, len(A.notes))
@@ -1589,9 +1589,9 @@ class TestGitlabDriverNoPool(ZuulTestCase):
         self.assertEqual(str(A.number), zuulvars['change'])
         self.assertEqual(str(A.sha), zuulvars['patchset'])
         self.assertEqual('master', zuulvars['branch'])
-        self.assertEquals(f'{self.fake_gitlab._test_baseurl}/'
-                          'org/project/merge_requests/1',
-                          zuulvars['items'][0]['change_url'])
+        self.assertEqual(f'{self.fake_gitlab._test_baseurl}/'
+                         'org/project/merge_requests/1',
+                         zuulvars['items'][0]['change_url'])
         self.assertEqual(zuulvars["message"], strings.b64encode(description))
         self.assertEqual(2, len(self.history))
         self.assertEqual(2, len(A.notes))

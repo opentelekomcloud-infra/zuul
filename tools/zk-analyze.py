@@ -31,11 +31,11 @@ GB = 1024**3
 
 def convert_human(size):
     if size >= GB:
-        return f'{int(size/GB)}G'
+        return f'{int(size / GB)}G'
     if size >= MB:
-        return f'{int(size/MB)}M'
+        return f'{int(size / MB)}M'
     if size >= KB:
-        return f'{int(size/KB)}K'
+        return f'{int(size / KB)}K'
     if size > 0:
         return f'{size}B'
     return '0'
