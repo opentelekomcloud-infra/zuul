@@ -4889,6 +4889,28 @@ class TestWebApiAccessRules(BaseTestWeb):
                 info['info']['capabilities']['auth']['read_protected'])
 
 
+class TestWebOIDCJobs(BaseTestWeb):
+    tenant_config_file = 'config/secrets/main.yaml'
+
+    def test_web_oidc_jobs(self):
+        # Test that we correctly load the job config of an OIDC job in
+        # zuul-web (without scheduler access).
+        self.commitConfigUpdate(
+            'org/project2',
+            'config/secrets/git/org_project2/zuul-oidc-single.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+        layout_scheduler = self.scheds.first.sched.local_layout_state.get(
+            'tenant-one')
+        for _ in iterate_timeout(10, "local layout of zuul-web to be updated"):
+            layout_web = self.web.web.local_layout_state.get('tenant-one')
+            if layout_web == layout_scheduler:
+                break
+        jobs = self.get_url("api/tenant/tenant-one/jobs").json()
+        names = set(x['name'] for x in jobs)
+        self.assertIn('project2-oidc-secret', names)
+
+
 class TestWebOIDCEndpoints(BaseTestWeb):
     tenant_config_file = 'config/multi-tenant/main.yaml'
 
