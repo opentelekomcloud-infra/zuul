@@ -1402,6 +1402,7 @@ class Launcher:
                             ctx,
                             request_id=request.uuid,
                             tenant_name=request.tenant_name,
+                            min_request_version=request.getZKVersion() + 1,
                         )
                     except NodeExistsError:
                         continue
