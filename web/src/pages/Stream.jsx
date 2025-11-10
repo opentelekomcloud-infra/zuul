@@ -19,11 +19,11 @@ import Sockette from 'sockette'
 import {Checkbox, Form, FormGroup, FormControl} from 'patternfly-react'
 import { PageSection, PageSectionVariants } from '@patternfly/react-core'
 
-import 'xterm/css/xterm.css'
-import { Terminal } from 'xterm'
-import { FitAddon} from 'xterm-addon-fit'
-import { WebLinksAddon } from 'xterm-addon-web-links'
-import { SearchAddon } from 'xterm-addon-search'
+import '@xterm/xterm/css/xterm.css'
+import { Terminal } from '@xterm/xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import { SearchAddon } from '@xterm/addon-search'
+import { WebLinksAddon } from '@xterm/addon-web-links'
 
 import { getStreamUrl, getAuthToken } from '../api'
 
@@ -78,7 +78,13 @@ class StreamPage extends React.Component {
     }
     document.title = 'Zuul Stream | ' + params.uuid.slice(0, 7)
 
-    const term = new Terminal()
+    const term = new Terminal({
+      fontSize: 12,
+      scrollback: 1000000,
+      disableStdin: true,
+      convertEol: true,
+    })
+
     const fitAddon = new FitAddon()
     const webLinksAddon = new WebLinksAddon()
     const searchAddon = new SearchAddon()
@@ -86,11 +92,6 @@ class StreamPage extends React.Component {
     term.loadAddon(fitAddon)
     term.loadAddon(webLinksAddon)
     term.loadAddon(searchAddon)
-
-    term.setOption('fontSize', 12)
-    term.setOption('scrollback', 1000000)
-    term.setOption('disableStdin', true)
-    term.setOption('convertEol', true)
 
     // Block all keys but page up/down. This needs to be done so ctrl+c can
     // be used to copy text from the terminal.
