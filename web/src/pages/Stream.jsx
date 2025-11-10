@@ -79,10 +79,12 @@ class StreamPage extends React.Component {
     document.title = 'Zuul Stream | ' + params.uuid.slice(0, 7)
 
     const term = new Terminal({
-      fontSize: 12,
-      scrollback: 1000000,
-      disableStdin: true,
       convertEol: true,
+      disableStdin: true,
+      fontFamily: 'monospace',
+      fontSize: 12,
+      lineHeight: 1.2,
+      scrollback: 1000000,
     })
 
     const fitAddon = new FitAddon()
