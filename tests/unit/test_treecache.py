@@ -239,3 +239,23 @@ class TestTreeCache(BaseTestCase):
                     found_playback_warning = True
             self.assertTrue(found_event_warning)
             self.assertTrue(found_playback_warning)
+
+    def test_tree_cache_max_zxid(self):
+        client = self.zk_client.client
+        data = b'{}'
+        client.create('/test', b'')
+        client.create('/test/bar', data)
+
+        cache = SimpleTreeCache(self.zk_client, "/test")
+        self.waitForCache(cache, {
+            '/test/bar': {},
+        })
+
+        orig_zxid = cache.max_zxid
+        self.assertGreater(cache.max_zxid, -1)
+        client.create('/test/foo', data)
+        self.waitForCache(cache, {
+            '/test/bar': {},
+            '/test/foo': {},
+        })
+        self.assertGreater(cache.max_zxid, orig_zxid)

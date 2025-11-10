@@ -22,9 +22,11 @@ import time
 from uuid import uuid4
 
 from kazoo import exceptions as kze
+from zuul.zk.vendor.states import (
+    WatchedEvent,
+)
 from kazoo.protocol.states import (
     EventType,
-    WatchedEvent,
     KazooState,
 )
 
@@ -87,9 +89,20 @@ class ZuulTreeCache(abc.ABC):
         self._playback_worker = None
         self._async_worker = async_worker
         self._zk_context = ZKContext(self.zk_client, None, None, self.log)
+        # The maximum zxid seen for any object creations or
+        # modifications.  This is not updated on delete transactions.
+        self._max_zxid = WatchedEvent.NO_ZXID
 
         self.client.add_listener(self._sessionListener)
         self._start()
+
+    @property
+    def max_zxid(self):
+        # Until we're ready, the max_zxid is unreliable while we are
+        # walking the tree to re-sync.
+        if self._ready:
+            return self._max_zxid
+        return WatchedEvent.NO_ZXID
 
     def _bytesToDict(self, data):
         return json.loads(data.decode('utf8'))
@@ -179,7 +192,7 @@ class ZuulTreeCache(abc.ABC):
             seen_paths.add(root)
             event = WatchedEvent(EventType.NONE,
                                  self.client._state,
-                                 root)
+                                 root, WatchedEvent.NO_ZXID)
             self._cacheListener(event)
             try:
                 for child in self.client.get_children(root):
@@ -196,7 +209,7 @@ class ZuulTreeCache(abc.ABC):
                     event = WatchedEvent(
                         EventType.NONE,
                         self.client._state,
-                        path)
+                        path, WatchedEvent.NO_ZXID)
                     self._cacheListener(event)
 
     def _eventWorker(self):
@@ -288,10 +301,12 @@ class ZuulTreeCache(abc.ABC):
         # self.event_log.debug("Cache playback event %s", event)
         exists = None
         data, stat = None, None
+        zxid = WatchedEvent.NO_ZXID
 
         if future:
             try:
                 data, stat = future.get()
+                zxid = stat.mzxid
                 exists = True
             except kze.NoNodeError:
                 exists = False
@@ -308,9 +323,15 @@ class ZuulTreeCache(abc.ABC):
         # If the event tells us whether the node exists, prefer that
         # value, otherwise fallback to what we determined above.
         if (event.type in (EventType.CREATED, EventType.CHANGED)):
+            # Update our max_zxid only for created or changed events.
+            # We receive zxids for deleted events, but we won't see
+            # them on re-initialization.
+            zxid = max(event.zxid, zxid)
             exists = True
         elif (event.type == EventType.DELETED):
             exists = False
+
+        self._max_zxid = max(zxid, self._max_zxid)
 
         # Keep the cached paths up to date
         if exists:

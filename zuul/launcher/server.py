@@ -1118,6 +1118,14 @@ class Launcher:
         self.zk_client = ZooKeeperClient.fromConfig(self.config)
         self.zk_client.connect()
 
+        # Since we haven't released NIZ yet, only fail if someone
+        # tries to run the launcher.
+        version = self.zk_client.client.server_version()
+        if not version or version < (3, 9):
+            raise Exception(
+                "The zuul-launcher component requires "
+                "ZooKeeper 3.9.0 or later")
+
         self.system = ZuulSystem(self.zk_client)
         self.trigger_events = TenantTriggerEventQueue.createRegistry(
             self.zk_client, self.connections
@@ -1895,6 +1903,16 @@ class Launcher:
                         # start time is dated back to the start
                         # of the create state machine.
                         pass
+
+        # Another launcher may have assigned our node to a request we
+        # haven't seen yet; make sure the request cache is up to date.
+        if (node.request_id and
+            node.min_request_zxid and
+            request is None and
+            self.api.requests_cache.max_zxid < node.min_request_zxid):
+            # Wait for the cache to update and try again
+            self.wake_event.set()
+            return
 
         # Mark outdated nodes w/o a request for cleanup when ...
         if not request and (
