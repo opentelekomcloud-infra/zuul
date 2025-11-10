@@ -20,6 +20,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "185827ab_276aa462",
+        "filename": "web/src/pages/Stream.jsx",
+        "patchSetId": 2
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-10T20:51:05Z",
+      "side": 1,
+      "message": "On the face of it, I don\u0027t have a problem with this, but I\u0027d like to see some analysis of why this isn\u0027t the default in the xterm package, and the implications for changing away from that default.\n\nWe should also check that this doesn\u0027t impact rendering special characters; and since, based on the image Mohammed linked, it appears to affect color and/or density, that colors still render correctly (including dark grey/grey/white/bold).",
+      "range": {
+        "startLine": 84,
+        "startChar": 28,
+        "endLine": 84,
+        "endChar": 30
+      },
+      "revId": "0c9396c2ef6df6a1ef5c7df0cc18011c9e40aa41",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2b6f29d1_fc436360",
         "filename": "web/src/pages/Stream.jsx",
         "patchSetId": 2
@@ -67,6 +90,24 @@
       "side": 1,
       "message": "ya its perhasp ok for paragraphs but i agree 1.2 is better for back to back console lines",
       "parentUuid": "b8db51b8_7f5cfcd8",
+      "revId": "0c9396c2ef6df6a1ef5c7df0cc18011c9e40aa41",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "34e887ea_341f7b9d",
+        "filename": "web/src/pages/Stream.jsx",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-10T20:51:05Z",
+      "side": 1,
+      "message": "I don\u0027t think we should include the lineHeight setting, for a few reasons:\n\n1) This is a text block, and an appropriate leading should be built into the font already.\n2) This is intended to appear exactly like a terminal, and they traditionally do not have added leading.\n3) Changing this is likely to negatively affect the rendering of non-textual elements (ie, ascii art, etc).\n\nIncidentally, I don\u0027t think the WCAG spec is saying: set line height to 1.5x font size for maximum accessibility.  I think it says: to avoid encumbering accessibility, ensure that if a user uses an accessibility tool to set the line height to 1.5x there is no reduction in functionality.  I think we\u0027re good.",
+      "parentUuid": "98d5d1fe_8eb20ec0",
       "revId": "0c9396c2ef6df6a1ef5c7df0cc18011c9e40aa41",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
