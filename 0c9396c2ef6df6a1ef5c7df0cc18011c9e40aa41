@@ -43,6 +43,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4bf5b146_fa78a465",
+        "filename": "web/src/pages/Stream.jsx",
+        "patchSetId": 2
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2025-11-10T21:23:10Z",
+      "side": 1,
+      "message": "\u003e On the face of it, I don\u0027t have a problem with this, but I\u0027d like to see some analysis of why this isn\u0027t the default in the xterm package, and the implications for changing away from that default.\n\nTo be honest, at first, I started by trying the font stack that GitHub uses which includes a host of \"native\" monospace fonts of different operating systems, but then I ran into this\n\nhttps://github.com/xtermjs/xterm.js/issues/5409\n\nFrom there, saw that playwright (pretty big in it\u0027s own regard) switched to using `monospace` in this PR:\n\nhttps://github.com/microsoft/playwright/pull/37540\n\nSo, figured I\u0027d flip to that and then things became nice 😊\n\n\u003e We should also check that this doesn\u0027t impact rendering special characters; and since, based on the image Mohammed linked, it appears to affect color and/or density, that colors still render correctly (including dark grey/grey/white/bold).\n\nWith this patch, I checked out the output here of devstack and it seems to have maintained things\n\nhttps://i.imgur.com/PAPOSiD.png\n\nI don\u0027t know of a better way to test everything.",
+      "parentUuid": "185827ab_276aa462",
+      "range": {
+        "startLine": 84,
+        "startChar": 28,
+        "endLine": 84,
+        "endChar": 30
+      },
+      "revId": "0c9396c2ef6df6a1ef5c7df0cc18011c9e40aa41",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2b6f29d1_fc436360",
         "filename": "web/src/pages/Stream.jsx",
         "patchSetId": 2
