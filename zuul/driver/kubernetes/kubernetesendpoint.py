@@ -36,13 +36,19 @@ class KubernetesDeleteStateMachine(statemachine.StateMachine):
         self.log = log
         self.node = node
         self.endpoint = endpoint
+        self.use_openshift_projects =\
+            endpoint.connection.use_openshift_projects
         super().__init__(node.delete_state)
 
     def advance(self):
         if self.state == self.START:
             if self.node.kubernetes_namespace_id:
-                self.endpoint._deleteNamespace(
-                    self.node.kubernetes_namespace_id)
+                if self.use_openshift_projects:
+                    self.endpoint._deleteProject(
+                        self.node.kubernetes_namespace_id)
+                else:
+                    self.endpoint._deleteNamespace(
+                        self.node.kubernetes_namespace_id)
                 self.state = self.NAMESPACE_DELETING
             else:
                 self.state = self.COMPLETE
@@ -69,6 +75,8 @@ class KubernetesCreateStateMachine(statemachine.StateMachine):
         self.hostname = hostname
         super().__init__(node.create_state)
         self.label = label
+        self.use_openshift_projects =\
+            endpoint.connection.use_openshift_projects
         if label.kind == 'pod':
             self.create_pod = True
             self.restricted_access = True
@@ -92,7 +100,10 @@ class KubernetesCreateStateMachine(statemachine.StateMachine):
 
     def advance(self):
         if self.state == self.START:
-            self.endpoint._createNamespace(self.hostname, self.node.tags)
+            if self.use_openshift_projects:
+                self.endpoint._createProject(self.hostname, self.node.tags)
+            else:
+                self.endpoint._createNamespace(self.hostname, self.node.tags)
             self.endpoint._createImagePullSecrets(self.namespace, self.label)
             self.endpoint._createServiceAccount(self.namespace,
                                                 self.user)
@@ -135,7 +146,8 @@ class KubernetesProviderEndpoint(BaseProviderEndpoint):
 
     def startEndpoint(self):
         self.log.debug("Starting kubernetes endpoint")
-        self.core_client, self.rbac_client = self._getClient()
+        self.core_client, self.rbac_client, self.dynamic_client =\
+            self._getClient()
         self._running = True
 
     def stopEndpoint(self):
@@ -153,18 +165,36 @@ class KubernetesProviderEndpoint(BaseProviderEndpoint):
         return True
 
     def listResources(self, providers):
-        for namespace in self.core_client.list_namespace().items:
+        if self.connection.use_openshift_projects:
+            projects = self.dynamic_client.resources.get(
+                api_version='v1', kind='Project')
+            namespaces = projects.get().items
+            namespace_type = KubernetesResource.TYPE_PROJECT
+        else:
+            namespaces = self.core_client.list_namespace().items
+            namespace_type = KubernetesResource.TYPE_NAMESPACE
+
+        for namespace in namespaces:
             yield KubernetesResource(namespace.metadata.labels or {},
-                                     KubernetesResource.TYPE_NAMESPACE,
+                                     namespace_type,
                                      namespace.metadata.name)
 
     def deleteResource(self, resource):
         self.log.info(f"Deleting leaked {resource.type}: {resource.id}")
         if resource.type == KubernetesResource.TYPE_NAMESPACE:
             self._deleteNamespace(resource.id)
+        elif resource.type == KubernetesResource.TYPE_PROJECT:
+            self._deleteProject(resource.id)
 
     def listInstances(self):
-        for namespace in self.core_client.list_namespace().items:
+        if self.connection.use_openshift_projects:
+            projects = self.dynamic_client.resources.get(
+                api_version='v1', kind='Project')
+            namespaces = projects.get().items
+        else:
+            namespaces = self.core_client.list_namespace().items
+
+        for namespace in namespaces:
             quota = QuotaInformation(namespaces=1)
             yield KubernetesInstance('namespace',
                                      namespace.metadata.name,
@@ -207,7 +237,9 @@ class KubernetesProviderEndpoint(BaseProviderEndpoint):
         conf = self._getConfig(config_file, context)
         core_client = kubernetes.client.CoreV1Api(conf)
         rbac_client = kubernetes.client.RbacAuthorizationV1Api(conf)
-        return (core_client, rbac_client)
+        api_client = kubernetes.client.api_client.ApiClient(conf)
+        dynamic_client = kubernetes.dynamic.DynamicClient(api_client)
+        return (core_client, rbac_client, dynamic_client)
 
     def _createNamespace(self, namespace, labels):
         self.log.debug("Creating namespace %s", namespace)
@@ -222,6 +254,22 @@ class KubernetesProviderEndpoint(BaseProviderEndpoint):
             }
         }
         self.core_client.create_namespace(ns_body)
+
+    def _createProject(self, project, labels):
+        self.log.debug("Creating project %s", project)
+
+        # Create the project
+        proj_body = {
+            'apiVersion': 'project.openshift.io/v1',
+            'kind': 'ProjectRequest',
+            'metadata': {
+                'name': project,
+                'labels': labels,
+            }
+        }
+        projects = self.dynamic_client.resources.get(
+            api_version='project.openshift.io/v1', kind='ProjectRequest')
+        projects.create(body=proj_body)
 
     def _createImagePullSecrets(self, namespace, label):
         # Copy any image pull secrets required
@@ -383,3 +431,9 @@ class KubernetesProviderEndpoint(BaseProviderEndpoint):
             "propagationPolicy": "Background"
         }
         self.core_client.delete_namespace(namespace, body=delete_body)
+
+    def _deleteProject(self, project):
+        self.log.debug("Deleting project %s", project)
+        projects = self.dynamic_client.resources.get(
+            api_version='v1', kind='Project')
+        projects.delete(name=project)

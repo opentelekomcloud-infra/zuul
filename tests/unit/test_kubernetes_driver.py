@@ -23,6 +23,7 @@ from zuul.driver.kubernetes.kubernetesendpoint import (
 from tests.fake_kubernetes import (
     FakeCoreClient,
     FakeRbacClient,
+    FakeDynamicClient,
 )
 from tests.base import (
     iterate_timeout,
@@ -36,14 +37,18 @@ class BaseKubernetesDriverTest(ZuulTestCase):
     cloud_test_connection_type = 'kubectl'
     cloud_test_provider_name = 'kube-main'
     cloud_test_min_instances = 1
+    is_openshift = False
 
     def setUp(self):
         self.initTestConfig()
         self.fake_core_client = FakeCoreClient()
         self.fake_rbac_client = FakeRbacClient()
+        self.fake_dynamic_client = FakeDynamicClient(self.fake_core_client,
+                                                     self.is_openshift)
 
         def _getClient(this):
-            return (self.fake_core_client, self.fake_rbac_client)
+            return (self.fake_core_client, self.fake_rbac_client,
+                    self.fake_dynamic_client)
 
         self.patch(KubernetesProviderEndpoint, '_getClient',
                    _getClient)
@@ -116,5 +121,58 @@ class TestKubernetesDriver(BaseKubernetesDriverTest, BaseCloudDriverTest):
 
         for _ in iterate_timeout(30, 'instance deletion'):
             if len(self.fake_core_client.list_namespace().items) == 1:
+                break
+            time.sleep(1)
+
+
+class TestKubernetesDriverOpenShift(
+        BaseKubernetesDriverTest, BaseCloudDriverTest):
+    is_openshift = True
+
+    def _assertProviderNodeAttributes(self, pnode):
+        # Don't call the superclass here since it assumes IP connectivity.
+        self.assertEqual(pnode.connection_type,
+                         self.cloud_test_connection_type)
+        if checks := self.test_config.driver.kubernetes.get('node_checks'):
+            checks(self, pnode)
+
+    @simple_layout('layouts/kubernetes/openshift.yaml', enable_nodepool=True)
+    def test_kubernetes_node_lifecycle_openshift(self):
+        self._test_node_lifecycle('debian-normal')
+
+    @simple_layout('layouts/kubernetes/openshift.yaml', enable_nodepool=True)
+    def test_kubernetes_resource_cleanup_openshift(self):
+        self.waitUntilSettled()
+        self.launcher.cleanup_worker.INTERVAL = 1
+
+        system_id = self.launcher.system.system_id
+        tags = {
+            'zuul_system_id': system_id,
+            'zuul_node_uuid': '0000000042',
+        }
+        proj_body = {
+            'apiVersion': 'project.openshift.io/v1',
+            'kind': 'ProjectRequest',
+            'metadata': {
+                'name': 'test',
+                'labels': tags,
+            }
+        }
+        projects = self.fake_dynamic_client.resources.get(
+            api_version='project.openshift.io/v1', kind='ProjectRequest')
+        projects.create(body=proj_body)
+
+        def list_projects():
+            projects = self.fake_dynamic_client.resources.get(
+                api_version='v1', kind='Project')
+            return projects.get().items
+
+        self.assertEqual(2, len(list_projects()))
+
+        self.log.debug("Start cleanup worker")
+        self.launcher.cleanup_worker.start()
+
+        for _ in iterate_timeout(30, 'instance deletion'):
+            if len(list_projects()) == 1:
                 break
             time.sleep(1)

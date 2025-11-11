@@ -47,6 +47,7 @@ class KubernetesInstance(statemachine.Instance):
 
 class KubernetesResource(statemachine.Resource):
     TYPE_NAMESPACE = 'namespace'
+    TYPE_PROJECT = 'project'
 
     def __init__(self, metadata, type, id):
         super().__init__(metadata, type)
