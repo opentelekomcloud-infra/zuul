@@ -16,6 +16,24 @@
       "message": "Wow, the newer version of xterm.js uses UMD? Or was something just not working properly before and we didn\u0027t notice it?",
       "revId": "efc9a72d13e5c6ee79259ceb0d9fb8609db9b523",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2fc7475_d5428dee",
+        "filename": "web/config-overrides.js",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2025-11-11T19:14:48Z",
+      "side": 1,
+      "message": "https://github.com/xtermjs/xterm.js/issues/2878\nhttps://github.com/xtermjs/xterm.js/pull/5092\n\nIt seems that landed but not released yet.  I couldn\u0027t build locally but I wonder if that\u0027s because of a too new version of Node when I was testing locally?",
+      "parentUuid": "8e62d891_cd151260",
+      "revId": "efc9a72d13e5c6ee79259ceb0d9fb8609db9b523",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
