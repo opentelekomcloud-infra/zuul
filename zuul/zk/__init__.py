@@ -64,6 +64,7 @@ class ZooKeeperClient(object):
         self.tls_key = tls_key
         self.tls_ca = tls_ca
         self.was_lost = False
+        self.cap_watched_event_zxid = False
 
         self.client = None
 
@@ -161,8 +162,24 @@ class ZooKeeperClient(object):
                 except KazooTimeoutError:
                     self.logConnectionRetryEvent()
 
+            self._checkCapabilities()
             for listener in self.on_connect_listeners:
                 listener()
+
+    def _checkCapabilities(self):
+        self.client.ensure_path('/zuul')
+
+        def watcher(event):
+            if event.zxid != event.NO_ZXID:
+                self.cap_watched_event_zxid = True
+
+        # Create and delete a node with a watch to experimentally
+        # determine whether we are running ZK 3.9+ with the zxid on
+        # event feature.
+        node = self.client.create('/zuul/capcheck',
+                                  sequence=True, ephemeral=True)
+        self.client.get(node, watch=watcher)
+        self.client.delete(node)
 
     def disconnect(self):
         """

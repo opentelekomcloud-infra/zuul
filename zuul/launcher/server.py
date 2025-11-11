@@ -1118,12 +1118,10 @@ class Launcher:
         self.zk_client = ZooKeeperClient.fromConfig(self.config)
         self.zk_client.connect()
 
-        # Since we haven't released NIZ yet, only fail if someone
-        # tries to run the launcher.
-        version = self.zk_client.client.server_version()
-        if not version or version < (3, 9):
-            raise Exception(
-                "The zuul-launcher component requires "
+        # TODO: remove this warning after we make 3.9 mandatory
+        if not self.zk_client.cap_watched_event_zxid:
+            self.log.warning(
+                "A future version of Zuul will require "
                 "ZooKeeper 3.9.0 or later")
 
         self.system = ZuulSystem(self.zk_client)
@@ -1909,11 +1907,19 @@ class Launcher:
         # haven't seen yet; make sure the request cache is up to date.
         if (node.request_id and
             node.min_request_zxid and
-            request is None and
-            self.api.requests_cache.max_zxid < node.min_request_zxid):
-            # Wait for the cache to update and try again
-            self.wake_event.set()
-            return
+            request is None):
+            if self.zk_client.cap_watched_event_zxid:
+                if self.api.requests_cache.max_zxid < node.min_request_zxid:
+                    # Wait for the cache to update and try again
+                    self.wake_event.set()
+                    return
+            else:
+                # TODO: remove this when 3.9 is mandatory
+                if node.state in node.ASSIGNABLE_STATES:
+                    self.log.debug("Waiting for request cache to sync "
+                                   "for request %s and node %s", request, node)
+                    self.api.requests_cache.waitForSync()
+                    request = self.api.getNodesetRequest(node.request_id)
 
         # Mark outdated nodes w/o a request for cleanup when ...
         if not request and (
