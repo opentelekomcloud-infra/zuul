@@ -1837,11 +1837,13 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 template_data['MetadataOptions'] = {
                     'HttpTokens': 'required',
                     'HttpEndpoint': 'enabled',
+                    'HttpProtocolIpv6': 'enabled',
                 }
             elif label.imds_http_tokens == 'optional':
                 template_data['MetadataOptions'] = {
                     'HttpTokens': 'optional',
                     'HttpEndpoint': 'enabled',
+                    'HttpProtocolIpv6': 'enabled',
                 }
 
             if label.userdata:
@@ -2125,11 +2127,13 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             args['MetadataOptions'] = {
                 'HttpTokens': 'required',
                 'HttpEndpoint': 'enabled',
+                'HttpProtocolIpv6': 'enabled',
             }
         elif label.imds_http_tokens == 'optional':
             args['MetadataOptions'] = {
                 'HttpTokens': 'optional',
                 'HttpEndpoint': 'enabled',
+                'HttpProtocolIpv6': 'enabled',
             }
 
         if dedicated_host_id:
