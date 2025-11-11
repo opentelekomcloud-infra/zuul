@@ -64,6 +64,7 @@ class ZooKeeperClient(object):
         self.tls_key = tls_key
         self.tls_ca = tls_ca
         self.was_lost = False
+        self.zk_version = None
 
         self.client = None
 
@@ -161,8 +162,16 @@ class ZooKeeperClient(object):
                 except KazooTimeoutError:
                     self.logConnectionRetryEvent()
 
+            self.zk_version = self.client.server_version()
             for listener in self.on_connect_listeners:
                 listener()
+
+    def isVersion(self, major, minor):
+        if self.zk_version is None:
+            return False
+        if self.zk_version >= (major, minor):
+            return True
+        return False
 
     def disconnect(self):
         """
