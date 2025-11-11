@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8e62d891_cd151260",
+        "filename": "web/config-overrides.js",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2025-11-11T18:34:33Z",
+      "side": 1,
+      "message": "Wow, the newer version of xterm.js uses UMD? Or was something just not working properly before and we didn\u0027t notice it?",
+      "revId": "efc9a72d13e5c6ee79259ceb0d9fb8609db9b523",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
