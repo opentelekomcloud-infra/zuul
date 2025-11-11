@@ -1200,6 +1200,40 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(set(request.nodes), {n.uuid for n in provider_nodes})
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_delete_used_node(self):
+        # Test that a node that somehow ended up in the used state
+        # with no request is cleaned up.
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(["debian-normal"])
+
+        node_id = request.nodes[0]
+        node = model.ProviderNode.fromZK(
+            ctx, path=model.ProviderNode._getPath(node_id))
+
+        request.delete(ctx)
+        self.waitUntilSettled()
+
+        with testtools.ExpectedException(NoNodeError):
+            # Request should be gone
+            request.refresh(ctx)
+
+        for _ in iterate_timeout(60, "node to be deallocated"):
+            node.refresh(ctx)
+            if node.request_id is None:
+                break
+
+        with node.activeContext(ctx):
+            self.log.debug("Set node to used")
+            node.setState(node.State.USED)
+
+        self.waitUntilSettled()
+        for _ in iterate_timeout(60, "node to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
+                break
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     @okay_tracebacks('getResource')
     @mock.patch('zuul.launcher.server.Launcher.doesProviderHaveQuotaForLabel',
                 return_value=True)
