@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e8230b8b_3cd93ac6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-11T19:49:00Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "9bbffbbc5b05d26888266dd96e7ec83a867970ed",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "172d02c4_16a7e0b2",
+        "filename": "zuul/zk/vendor/connection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-11T19:49:00Z",
+      "side": 1,
+      "message": "I guess this is the change from the upstream code? we pass in the extra info to construct the different WatchedEvent object?\n\nI wonder if we should try to annotate things a bit more where we diverge from upstream?",
+      "range": {
+        "startLine": 212,
+        "startChar": 51,
+        "endLine": 212,
+        "endChar": 62
+      },
+      "revId": "9bbffbbc5b05d26888266dd96e7ec83a867970ed",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
