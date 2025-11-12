@@ -16,6 +16,24 @@
       "message": "Does this effectively put a 5 minute limit on the replication delay? I\u0027m wondering if we\u0027re going to rely on user configured delays to accommodate setups where replication is something that we need to wait on that `is_merged_replication_timeout` may need to be configurable too? OR maybe we can calculate it based on replication_delay?\n\nThe PeekQueue is doing two things for us. The first is reordering change-merged and ref-updated events iirc. The other is ensuring that we don\u0027t try and take action on new refs until we can expect them to exist in replicas for setups that don\u0027t have zuul speaking directly to the primary gerrit. I think everything is fine for the first use case in this update. But I worry that if someone sets replication delay to say 8 minutes that this condition may get weird.\n\nMaybe we just check self.getRefSha if we\u0027re past the timeout and return False if the refsha isn\u0027t there otherwise return False? then we can push things past 5 minutes and still check if the data has arrived at that point?",
       "revId": "6a411bc95d119ccc7244603c99231741dd23d826",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f165fb6_51e967e7",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1235,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-12T01:15:39Z",
+      "side": 1,
+      "message": "Ok I conflated this timeout with event processing when they are mostly not related. This check is checking that when the gate merges code the expected ref shows up in the code base afterwards. That will emit events that we process but we\u0027re processing things mostly independently of one another.\n\nThat should mean there isn\u0027t a case where we enter this method while we\u0027re already past the timeout and never check if the ref is present in the first place. This was my primary concern hence the suggestion that we maybe check at least once if the timeout is hit. But I think we\u0027re already doing that so all is well.",
+      "parentUuid": "29624748_11645aff",
+      "revId": "6a411bc95d119ccc7244603c99231741dd23d826",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
