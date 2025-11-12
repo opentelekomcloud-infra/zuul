@@ -104,6 +104,24 @@
       "parentUuid": "a9dd50d0_d8ce08fb",
       "revId": "9f8171d00ab20294c62458f05c8db40ac0580631",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "78be17b1_342218aa",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-12T16:00:43Z",
+      "side": 1,
+      "message": "Oh I see this could be the case during normal runtime (not recovery) if we have a backlog.  We can correct that by changing line 329 to use the stat zxid only if there is no event zxid.",
+      "parentUuid": "a9dd50d0_d8ce08fb",
+      "revId": "9f8171d00ab20294c62458f05c8db40ac0580631",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
