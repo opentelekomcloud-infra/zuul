@@ -69,6 +69,24 @@
       "parentUuid": "c5cf67d3_93f706c9",
       "revId": "f7f2abdd11ea38c373abd32b280edb9c4a8e2951",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c63a69c4_b30d1fbd",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 413,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-12T01:07:49Z",
+      "side": 1,
+      "message": "Oh yup we do the math to ensure the second wait respects the overall timeout. Thank you for the explanation.",
+      "parentUuid": "48f9d93b_ea4ac0d3",
+      "revId": "f7f2abdd11ea38c373abd32b280edb9c4a8e2951",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
