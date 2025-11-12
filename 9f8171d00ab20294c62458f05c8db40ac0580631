@@ -34,6 +34,40 @@
       "parentUuid": "ce4838de_9f241a67",
       "revId": "9f8171d00ab20294c62458f05c8db40ac0580631",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4277a384_5fb0ddad",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-11-12T13:14:12Z",
+      "side": 1,
+      "message": "Are we not updating the max zxid on delete transactions because we don\u0027t get one with the event or what\u0027s the reason for only updating it on create/mod?",
+      "revId": "9f8171d00ab20294c62458f05c8db40ac0580631",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a9dd50d0_d8ce08fb",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-11-12T13:14:12Z",
+      "side": 1,
+      "message": "I think we should not use the mzxid of the object as that might introduce another race condition. E.g.\n\nEvents ZXIDs:\n\n1. create /foo\n2. create /bar\n3. modify /foo\n\nNow, if we start processing event 1. after 3. has already happened, we would set the max zxid to 3. without having processed event 2.",
+      "revId": "9f8171d00ab20294c62458f05c8db40ac0580631",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
