@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eb75391a_18087d7d",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1388,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-12T00:46:20Z",
+      "side": 1,
+      "message": "Is there a race here where we can refresh but before the waitForSync has fully completed and thus the node request state is still stale? Wondering if we need a wait until settled prior to this as well?\n\nThis would apply to the previous modern zk test case too I think.",
+      "revId": "3bfd8f5fe98c359826d9dd116a365969f64b1abd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "867ea20a_4a9b8473",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1122,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-12T00:46:20Z",
+      "side": 1,
+      "message": "I think this warning should be `if not self.zk_client.isVersion(3, 9)`. As is I think we\u0027re warning peolpe with zookeeper \u003e\u003d3.9 that they need to use 3.9 or later.",
+      "revId": "3bfd8f5fe98c359826d9dd116a365969f64b1abd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
