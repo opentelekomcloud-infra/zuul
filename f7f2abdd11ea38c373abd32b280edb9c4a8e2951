@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad211323_389ada98",
+        "filename": "tests/unit/test_treecache.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-12T00:53:29Z",
+      "side": 1,
+      "message": "Sure.",
+      "parentUuid": "8b1f7b32_a20590f6",
+      "revId": "f7f2abdd11ea38c373abd32b280edb9c4a8e2951",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c5cf67d3_93f706c9",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-11-12T00:38:32Z",
       "side": 1,
       "message": "If we don\u0027t trust threading.Event.wait() to properly return False when the timeout is hit why do we trust it here? Just wondering if we need the same check for play_sentinel\u0027s timeout against the monotonic timer or can we simplify the code for event_sentinel instead.",
+      "revId": "f7f2abdd11ea38c373abd32b280edb9c4a8e2951",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "48f9d93b_ea4ac0d3",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 413,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-12T00:53:29Z",
+      "side": 1,
+      "message": "It\u0027s not that we don\u0027t trust it, it\u0027s that it may have completed successfully.  If the timout for waitForSync is 30, and the event queue gets the sentinel in 20 seconds, then we still have another 10 seconds we can wait for the playback queue.\n\nIf we timeout on the event queue, no need to wait for the playback queue.",
+      "parentUuid": "c5cf67d3_93f706c9",
       "revId": "f7f2abdd11ea38c373abd32b280edb9c4a8e2951",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
