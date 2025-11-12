@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "451c2ab2_d11aedc9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-12T19:07:44Z",
+      "side": 1,
+      "message": "recheck zuul was unable to determine zookeeper version and zookeeper shows connection timeouts. Lets see if this problem is persistent.",
+      "revId": "9089330699582e4faafa31f612ba97bba8371125",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
