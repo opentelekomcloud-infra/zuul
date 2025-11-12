@@ -55,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7cb44a27_5df49438",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-12T14:57:43Z",
+      "side": 1,
+      "message": "We do receive it on delete, but if we\u0027re recovering, we aren\u0027t going to see the mzxid of an object that wasn\u0027t there.  Since we\u0027re using this for synchronization (rather than it\u0027s original upstream use-case of distinguishing new events from recovery events), I wanted to make sure the treecache has the same max_zxid whether it has been running the whole time or just (re-)started and read all the data from zk directly.  That could avoid bugs where we try to wait for a transaction that will never arrive.\n\nI suspect we may also start to use this for the original use-case, and in that case, we would want to pay attention to that, but I would still not update this attribute as long as we use it for synchronization.",
+      "parentUuid": "4277a384_5fb0ddad",
+      "revId": "9f8171d00ab20294c62458f05c8db40ac0580631",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a9dd50d0_d8ce08fb",
         "filename": "zuul/zk/cache.py",
         "patchSetId": 4
@@ -66,6 +84,24 @@
       "writtenOn": "2025-11-12T13:14:12Z",
       "side": 1,
       "message": "I think we should not use the mzxid of the object as that might introduce another race condition. E.g.\n\nEvents ZXIDs:\n\n1. create /foo\n2. create /bar\n3. modify /foo\n\nNow, if we start processing event 1. after 3. has already happened, we would set the max zxid to 3. without having processed event 2.",
+      "revId": "9f8171d00ab20294c62458f05c8db40ac0580631",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "870af4a2_d9942e2c",
+        "filename": "zuul/zk/cache.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-12T14:57:43Z",
+      "side": 1,
+      "message": "The events arrive in order and are processed in order, so if we\u0027re processing events, we will set them in order.\n\nDuring recovery, something like this could happen (if event #3 is new and arrives while we are recovering; events 1 and 2 are old).  But we set the ready flag to false during recovery, and always return -1 during that time, so we won\u0027t start returning our real max_zxid until we have at least reached #2.  That means the zxid will be 2 if we haven\u0027t processed #3, or 3 if we have, which is correct.",
+      "parentUuid": "a9dd50d0_d8ce08fb",
       "revId": "9f8171d00ab20294c62458f05c8db40ac0580631",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
