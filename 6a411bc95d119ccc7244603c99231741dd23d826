@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "29624748_11645aff",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1235,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-12T01:04:39Z",
+      "side": 1,
+      "message": "Does this effectively put a 5 minute limit on the replication delay? I\u0027m wondering if we\u0027re going to rely on user configured delays to accommodate setups where replication is something that we need to wait on that `is_merged_replication_timeout` may need to be configurable too? OR maybe we can calculate it based on replication_delay?\n\nThe PeekQueue is doing two things for us. The first is reordering change-merged and ref-updated events iirc. The other is ensuring that we don\u0027t try and take action on new refs until we can expect them to exist in replicas for setups that don\u0027t have zuul speaking directly to the primary gerrit. I think everything is fine for the first use case in this update. But I worry that if someone sets replication delay to say 8 minutes that this condition may get weird.\n\nMaybe we just check self.getRefSha if we\u0027re past the timeout and return False if the refsha isn\u0027t there otherwise return False? then we can push things past 5 minutes and still check if the data has arrived at that point?",
+      "revId": "6a411bc95d119ccc7244603c99231741dd23d826",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
