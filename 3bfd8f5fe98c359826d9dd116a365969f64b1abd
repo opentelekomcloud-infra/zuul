@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4fa338c4_6d6a8449",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1388,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-12T00:56:33Z",
+      "side": 1,
+      "message": "Acquiring the run lock means the launcher is idle, so waitForSync has completed.\n\nThe check below should be meaningless, it\u0027s belt-and-suspenders in case something completely unexpected happens.",
+      "parentUuid": "eb75391a_18087d7d",
+      "revId": "3bfd8f5fe98c359826d9dd116a365969f64b1abd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "867ea20a_4a9b8473",
         "filename": "zuul/launcher/server.py",
         "patchSetId": 2
@@ -31,6 +49,24 @@
       "writtenOn": "2025-11-12T00:46:20Z",
       "side": 1,
       "message": "I think this warning should be `if not self.zk_client.isVersion(3, 9)`. As is I think we\u0027re warning peolpe with zookeeper \u003e\u003d3.9 that they need to use 3.9 or later.",
+      "revId": "3bfd8f5fe98c359826d9dd116a365969f64b1abd",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7dedd369_0871161f",
+        "filename": "zuul/launcher/server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1122,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-12T00:56:33Z",
+      "side": 1,
+      "message": "Yep.",
+      "parentUuid": "867ea20a_4a9b8473",
       "revId": "3bfd8f5fe98c359826d9dd116a365969f64b1abd",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
