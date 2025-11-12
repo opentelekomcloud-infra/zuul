@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ce4838de_9f241a67",
+        "filename": "tests/unit/test_launcher.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1231,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-12T00:25:42Z",
+      "side": 1,
+      "message": "Does this go_event.set() ensure the creation of the original request and node is able to proceed? I see we clear the go_event later so I expect this is the case. I half wonder if it would be simpler to patch things in after line 1262?",
+      "revId": "9f8171d00ab20294c62458f05c8db40ac0580631",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
