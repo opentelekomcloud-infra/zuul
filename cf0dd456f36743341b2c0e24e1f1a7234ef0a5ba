@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c06524cc_dfe0216b",
+        "filename": "zuul/driver/kubernetes/kubernetesconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-12T18:56:43Z",
+      "side": 1,
+      "message": "I would also be fine just saying \"openshift\u003dtrue\" instead of \"use_openshift_projects\u003dtrue\".  In my mind, the difference is whether we will ever have any other openshift-specific behaviors, and if so, whether we would want to enable them individually, or all of them together.  When I wrote this, I thought \"individually\".  But would be happy to change it.",
+      "revId": "cf0dd456f36743341b2c0e24e1f1a7234ef0a5ba",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
