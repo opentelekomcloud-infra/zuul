@@ -137,6 +137,7 @@ class ZuulTreeCache(abc.ABC):
                 self._event_worker.join()
             # Replace the queue since any events from the previous
             # session aren't valid.
+            old_event_queue = self._event_queue
             self._event_queue = queue.Queue()
             # Prepare (but don't start) the new worker.
             if self._async_worker:
@@ -146,6 +147,7 @@ class ZuulTreeCache(abc.ABC):
 
             if self._playback_worker:
                 self._playback_worker.join()
+            old_playback_queue = self._playback_queue
             self._playback_queue = queue.Queue()
             if self._async_worker:
                 self._playback_worker = threading.Thread(
@@ -167,6 +169,19 @@ class ZuulTreeCache(abc.ABC):
                 self.client.ensure_path(self.root)
                 self._walkTree()
                 self._ready.set()
+                # Transfer sentinel events
+                for (old_queue, new_queue) in [
+                        (old_event_queue, self._event_queue),
+                        (old_playback_queue, self._playback_queue),
+                ]:
+                    while True:
+                        try:
+                            x = old_queue.get(block=False)
+                            old_queue.task_done()
+                            if isinstance(x, CacheSyncSentinel):
+                                new_queue.put(x)
+                        except queue.Empty:
+                            break
                 self.log.debug("Cache at %s is ready", self.root)
             except Exception:
                 self.log.exception("Error initializing cache at %s", self.root)
@@ -216,6 +231,10 @@ class ZuulTreeCache(abc.ABC):
         while not (self._stopped or self._stop_workers):
             event = self._event_queue.get()
             if event is None:
+                self._event_queue.task_done()
+                continue
+            if isinstance(event, CacheSyncSentinel):
+                event.set()
                 self._event_queue.task_done()
                 continue
 
@@ -378,9 +397,25 @@ class ZuulTreeCache(abc.ABC):
         self._ready.wait()
 
     def waitForSync(self, timeout=None):
-        sentinel = CacheSyncSentinel()
-        self._playback_queue.put(sentinel)
-        return sentinel.wait(timeout)
+        # Wait for (at least) all the events that were received at the
+        # time of this call to have been processed.
+        if not self._async_worker:
+            return True
+
+        event_sentinel = CacheSyncSentinel()
+        self._event_queue.put(event_sentinel)
+        start = time.monotonic()
+        if event_sentinel.wait(timeout):
+            if timeout is not None:
+                elapsed = time.monotonic() - start
+                remain = timeout - elapsed
+                if remain <= 0:
+                    return False
+                timeout = remain
+            play_sentinel = CacheSyncSentinel()
+            self._playback_queue.put(play_sentinel)
+            return play_sentinel.wait(timeout)
+        return False
 
     # Methods for subclasses:
     def preCacheHook(self, event, exists, data=None, stat=None):
