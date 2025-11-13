@@ -207,6 +207,11 @@ class TestStaticDriver(ZuulTestCase):
             sub1.refresh(ctx)
             with sub1.activeContext(ctx):
                 sub1.assign(ctx, request_id="dne", tenant_name="test")
+                # Modify the request so that the max zxid of the
+                # request cache is later than the node assignment
+                # (since the "dne" request does not exist).
+                with request.locked(ctx), request.activeContext(ctx):
+                    request.priority += 1
                 sub1.setState(sub1.State.USED)
 
         for _ in iterate_timeout(60, "sub1 to be marked ready"):
@@ -223,6 +228,11 @@ class TestStaticDriver(ZuulTestCase):
             with sub2.activeContext(ctx):
                 sub2.unassign(ctx)
                 sub2.assign(ctx, request_id="dne", tenant_name="test")
+                # Modify the request so that the max zxid of the
+                # request cache is later than the node assignment
+                # (since the "dne" request does not exist).
+                with request.locked(ctx), request.activeContext(ctx):
+                    request.priority += 1
                 sub2.setState(sub2.State.USED)
 
         for _ in iterate_timeout(60, "sub2 to be marked ready"):
@@ -352,6 +362,11 @@ class TestStaticDriver(ZuulTestCase):
                 with sub_used.activeContext(ctx):
                     sub_used.unassign(ctx)
                     sub_used.assign(ctx, request_id="dne", tenant_name="test")
+                    # Modify the request so that the max zxid of the
+                    # request cache is later than the node assignment
+                    # (since the "dne" request does not exist).
+                    with request.locked(ctx), request.activeContext(ctx):
+                        request.priority += 1
                     sub_used.setState(sub_used.State.USED)
 
             for _ in iterate_timeout(10, "nodes to be marked failed"):
@@ -406,6 +421,11 @@ class TestStaticDriver(ZuulTestCase):
             main.refresh(ctx)
             with main.activeContext(ctx):
                 main.assign(ctx, request_id="dne", tenant_name="test")
+                # Modify the request cache's max zxid to be later than
+                # the node assignment (since the "dne" request does
+                # not exist, and we have no requests in this test).
+                self.launcher.api.requests_cache._max_zxid =\
+                    main.min_request_zxid
                 main.setState(main.State.USED)
 
             self.commitConfigUpdate(
@@ -448,6 +468,11 @@ class TestStaticDriver(ZuulTestCase):
             sub1.refresh(ctx)
             with sub1.activeContext(ctx):
                 sub1.assign(ctx, request_id="dne", tenant_name="test")
+                # Modify the request cache's max zxid to be later than
+                # the node assignment (since the "dne" request does
+                # not exist, and we have no requests in this test).
+                self.launcher.api.requests_cache._max_zxid =\
+                    sub1.min_request_zxid
                 sub1.setState(sub1.State.USED)
 
             self.commitConfigUpdate(
