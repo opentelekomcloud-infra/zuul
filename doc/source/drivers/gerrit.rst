@@ -126,31 +126,6 @@ The supported options in ``zuul.conf`` connections are:
 
       User name to use when accessing Gerrit.
 
-   .. attr:: replication_timeout
-      :default: 0
-
-      When set to a positive value Zuul will become replication event
-      aware. Zuul will wait this many seconds for replication to
-      complete for events like patchset-created, change-merged, and
-      ref-updated events before proceeding with processing the primary
-      event. This is useful if you are pointing Zuul to Gerrit
-      replicas which need replication to complete before Zuul can
-      successfully fetch updates. You should not set this value if
-      Zuul talks to Gerrit directly for git repo data.
-
-      Note that necessary fields are not present in all events (like
-      refName in changed-merged events) until Gerrit 2.13 and newer.
-      If your Gerrit is older you should consider sticking with the
-      default value of 0.
-
-      One major limitation of this feature is that Gerrit replication
-      events can only be mapped using project and ref values. This
-      means if you have multiple replication updates to the same project
-      and ref occurring simultaneously Zuul must wait for all of them to
-      complete before it continues. For this reason you should set this
-      timeout to a small multiple (2 or 3) of your typical replication
-      time.
-
 SSH Configuration
 ~~~~~~~~~~~~~~~~~
 

@@ -600,7 +600,6 @@ class TestOnlineZKOperations(ZuulTestCase):
         self.executor_server.release()
         self.waitUntilSettled()
         self.assertHistory([
-            dict(name='project-promote', result='SUCCESS', changes='1,1'),
             dict(name='project-merge', result='SUCCESS', changes='2,1'),
             dict(name='project-merge', result='SUCCESS', changes='3,1'),
             dict(name='project-test1', result='SUCCESS', changes='3,1'),
