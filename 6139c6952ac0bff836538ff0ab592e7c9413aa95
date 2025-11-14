@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d680ba3_973671c8",
+        "filename": "zuul/driver/kubernetes/kubernetesendpoint.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-11-14T12:13:06Z",
+      "side": 1,
+      "message": "Not a strong opinion, but looking at the other create SMs we should probably call this `POD_CREATING_START` as we don\u0027t do anything with RBAC in that state.",
+      "revId": "6139c6952ac0bff836538ff0ab592e7c9413aa95",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
