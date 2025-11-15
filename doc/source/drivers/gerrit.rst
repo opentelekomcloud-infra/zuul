@@ -126,6 +126,19 @@ The supported options in ``zuul.conf`` connections are:
 
       User name to use when accessing Gerrit.
 
+   .. attr:: replication_delay
+      :default: 0
+
+      Some Gerrit installations consist of multiple servers with
+      various strategies for keeping these servers in sync (push
+      replication, pull replication, multi-master, shared storage,
+      etc.).  Since there is currently no reliable method to determine
+      when all servers are updated, this setting may be used to
+      introduce a delay in event processing.  Zuul will ensure that at
+      least this amount of time (in seconds) has passed before
+      processing the corresponding event.
+
+
 SSH Configuration
 ~~~~~~~~~~~~~~~~~
 

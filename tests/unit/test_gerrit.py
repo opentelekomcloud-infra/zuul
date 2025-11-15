@@ -1869,7 +1869,7 @@ class TestGerritPeekQueue(BaseTestCase):
         def handler(x):
             handled.append(x)
 
-        q = PeekQueue(handler)
+        q = PeekQueue(handler, 0)
 
         # Check noop
         q.run()
@@ -1979,7 +1979,7 @@ class TestGerritPeekQueue(BaseTestCase):
         def handler(x):
             handled.append(x)
 
-        q = PeekQueue(handler)
+        q = PeekQueue(handler, 0)
 
         orig = [
             self.make_ref_updated_event('refs/heads/master', 'new1', 1),
