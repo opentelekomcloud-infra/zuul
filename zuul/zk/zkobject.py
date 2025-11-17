@@ -157,6 +157,7 @@ class ZKObject:
     io_writer_class = sharding.RawZKIO
     truncate_on_create = False
     delete_on_error = False
+    log_error_missing = True
     makepath = True
 
     # Implementations of these two methods are required
@@ -427,9 +428,10 @@ class ZKObject:
                                                 cls.io_reader_class,
                                                 context, path)
             context.profileEvent('get', path)
-        except Exception:
-            context.log.error(
-                "Exception loading ZKObject at %s", path)
+        except Exception as exc:
+            if cls.log_error_missing or not isinstance(exc, NoNodeError):
+                context.log.error(
+                    "Exception loading ZKObject at %s", path)
             if cls.delete_on_error:
                 cls._delete(context, path)
             raise

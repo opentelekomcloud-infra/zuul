@@ -968,6 +968,7 @@ class PipelineChangeList(zkobject.ShardedZKObject):
     # sharded, that may produce an error.  If that happens, don't
     # delete the object, just retry.
     delete_on_error = False
+    log_error_missing = False
 
     def __init__(self):
         super().__init__()
@@ -1053,6 +1054,7 @@ class PipelineSummary(zkobject.ShardedZKObject):
     log = logging.getLogger("zuul.PipelineSummary")
     truncate_on_create = True
     delete_on_error = False
+    log_error_missing = False
 
     def __init__(self):
         super().__init__()
@@ -2743,6 +2745,7 @@ class NodesetRequest(zkobject.LockableZKObject):
 class NodesetRequestRevision(zkobject.ZKObject):
     # We don't want to re-create the request in case it was deleted
     makepath = False
+    log_error_missing = False
 
     def __init__(self):
         super().__init__()
@@ -3153,6 +3156,7 @@ class ProviderNodeSnapshot(zkobject.LockableZKObject):
 class ProviderNodeAssignment(zkobject.ZKObject):
     # We don't want to re-create the node in case it was deleted
     makepath = False
+    log_error_missing = False
     ASSIGNMENT_PATH = 'assignment'
 
     # This object allows us to change the request to which a node is
