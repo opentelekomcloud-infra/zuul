@@ -518,9 +518,11 @@ itself. Status name, description, and context is taken from the pipeline.
       Report status via the Github `status API
       <https://docs.github.com/v3/repos/statuses/>`__.  Set to one of
 
-      * ``pending``
-      * ``success``
-      * ``failure``
+      .. value:: pending
+
+      .. value:: success
+
+      .. value:: failure
 
       This is usually mutually exclusive with a value set in
       :attr:`pipeline.<reporter>.<github source>.check`, since this
@@ -535,12 +537,19 @@ itself. Status name, description, and context is taken from the pipeline.
       Report status via the Github `checks API
       <https://docs.github.com/v3/checks/>`__.  Set to one of
 
-      * ``cancelled``
-      * ``failure``
-      * ``in_progress``
-      * ``neutral``
-      * ``skipped``
-      * ``success``
+      .. value:: queued
+
+      .. value:: cancelled
+
+      .. value:: failure
+
+      .. value:: in_progress
+
+      .. value:: neutral
+
+      .. value:: skipped
+
+      .. value:: success
 
       This is usually mutually exclusive with a value set in
       :attr:`pipeline.<reporter>.<github source>.status`, since this

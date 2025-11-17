@@ -6815,6 +6815,7 @@ class QueueItem(zkobject.ZKObject):
             dequeue_time=None,
             first_job_start_time=None,
             reported=False,
+            reported_enqueue=False,
             reported_start=False,
             quiet=False,
             active=False,  # Whether an item is within an active window
@@ -6892,6 +6893,7 @@ class QueueItem(zkobject.ZKObject):
             "report_time": self.report_time,
             "dequeue_time": self.dequeue_time,
             "reported": self.reported,
+            "reported_enqueue": self.reported_enqueue,
             "reported_start": self.reported_start,
             "quiet": self.quiet,
             "active": self.active,

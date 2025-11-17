@@ -2500,6 +2500,237 @@ class TestGithubAppDriver(ZuulGithubAppTestCase):
         )
         self.assertIsNotNone(check_run["completed_at"])
 
+    @simple_layout("layouts/reporting-github-enqueue-dequeue.yaml",
+                   driver="github")
+    def test_reporting_checks_api_enqueue(self):
+        # Test enqueue reporting with normal completion
+        project = "org/project"
+        github = self.fake_github.getGithubClient(None)
+        self.executor_server.hold_jobs_in_build = True
+
+        A = self.fake_github.openFakePullRequest(project, "master", "A")
+        self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # We should have an in-progress check for the head sha
+        self.assertIn(
+            A.head_sha, github.repo_from_project(project)._commits.keys())
+        check_runs = self.fake_github.getCommitChecks(project, A.head_sha)
+
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("in_progress", check_run["status"])
+        self.assertThat(
+            check_run["output"]["summary"],
+            MatchesRegex(
+                r'.*Starting reporting jobs.*', re.DOTALL)
+        )
+        self.assertIsNone(check_run["completed_at"])
+
+        B = self.fake_github.openFakePullRequest(project, "master", "B")
+        self.fake_github.emitEvent(B.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # We should have a queued check for the second change
+        self.assertIn(
+            B.head_sha, github.repo_from_project(project)._commits.keys())
+        check_runs = self.fake_github.getCommitChecks(project, B.head_sha)
+
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("queued", check_run["status"])
+        self.assertEqual("", check_run["output"]["summary"])
+        self.assertIsNone(check_run["completed_at"])
+
+        # Release the first build
+        self.release(self.builds[0])
+        self.waitUntilSettled()
+
+        # We should now have a completed check run for the first change
+        check_runs = self.fake_github.getCommitChecks(project, A.head_sha)
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("completed", check_run["status"])
+        self.assertEqual("success", check_run["conclusion"])
+        self.assertThat(
+            check_run["output"]["summary"],
+            MatchesRegex(r'.*Build succeeded.*', re.DOTALL)
+        )
+        self.assertIsNotNone(check_run["completed_at"])
+
+        # Check that the second build is now in_progress
+        check_runs = self.fake_github.getCommitChecks(project, B.head_sha)
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("in_progress", check_run["status"])
+        self.assertThat(
+            check_run["output"]["summary"],
+            MatchesRegex(
+                r'.*Starting reporting jobs.*', re.DOTALL)
+        )
+        self.assertIsNone(check_run["completed_at"])
+
+        # Release the second build
+        self.release(self.builds[0])
+        self.waitUntilSettled()
+
+        # We should now have a completed check run for the second change
+        check_runs = self.fake_github.getCommitChecks(project, B.head_sha)
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("completed", check_run["status"])
+        self.assertEqual("success", check_run["conclusion"])
+        self.assertThat(
+            check_run["output"]["summary"],
+            MatchesRegex(r'.*Build succeeded.*', re.DOTALL)
+        )
+        self.assertIsNotNone(check_run["completed_at"])
+
+    @simple_layout("layouts/reporting-github-enqueue-dequeue.yaml",
+                   driver="github")
+    def test_reporting_checks_api_enqueue_dequeue(self):
+        # Test an enqueue/dequeue reporting pair
+        project = "org/project"
+        github = self.fake_github.getGithubClient(None)
+        self.executor_server.hold_jobs_in_build = True
+
+        A = self.fake_github.openFakePullRequest(project, "master", "A")
+        self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # We should have an in-progress check for the head sha
+        self.assertIn(
+            A.head_sha, github.repo_from_project(project)._commits.keys())
+        check_runs = self.fake_github.getCommitChecks(project, A.head_sha)
+
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("in_progress", check_run["status"])
+        self.assertThat(
+            check_run["output"]["summary"],
+            MatchesRegex(
+                r'.*Starting reporting jobs.*', re.DOTALL)
+        )
+        self.assertIsNone(check_run["completed_at"])
+
+        B = self.fake_github.openFakePullRequest(project, "master", "B")
+        self.fake_github.emitEvent(B.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # We should have a queued check for the second change
+        self.assertIn(
+            B.head_sha, github.repo_from_project(project)._commits.keys())
+        check_runs = self.fake_github.getCommitChecks(project, B.head_sha)
+
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("queued", check_run["status"])
+        self.assertEqual("", check_run["output"]["summary"])
+        self.assertIsNone(check_run["completed_at"])
+
+        # Dequeue the second change
+        event = DequeueEvent('tenant-one', 'reporting',
+                             'github.com', 'org/project',
+                             change='{},{}'.format(B.number, B.head_sha),
+                             ref=None, oldrev=None, newrev=None)
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'reporting'].put(event)
+        self.waitUntilSettled()
+
+        # We should now have a cancelled check run for the head sha
+        check_runs = self.fake_github.getCommitChecks(project, B.head_sha)
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("completed", check_run["status"])
+        self.assertEqual("cancelled", check_run["conclusion"])
+        self.assertThat(
+            check_run["output"]["summary"],
+            MatchesRegex(r'.*Build canceled.*', re.DOTALL)
+        )
+        self.assertIsNotNone(check_run["completed_at"])
+
+        # Dequeue the first change
+        event = DequeueEvent('tenant-one', 'reporting',
+                             'github.com', 'org/project',
+                             change='{},{}'.format(A.number, A.head_sha),
+                             ref=None, oldrev=None, newrev=None)
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'reporting'].put(event)
+        self.waitUntilSettled()
+
+        # We should now have a cancelled check run for the head sha
+        check_runs = self.fake_github.getCommitChecks(project, A.head_sha)
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("completed", check_run["status"])
+        self.assertEqual("cancelled", check_run["conclusion"])
+        self.assertThat(
+            check_run["output"]["summary"],
+            MatchesRegex(r'.*Build canceled.*', re.DOTALL)
+        )
+        self.assertIsNotNone(check_run["completed_at"])
+
+    @simple_layout("layouts/reporting-github-enqueue-dequeue.yaml",
+                   driver="github")
+    def test_reporting_checks_api_enqueue_without_jobs(self):
+        # Test an enqueue/dequeue reporting pair if no jobs run
+        # NOTE: this test does not use the "no-jobs" reporter
+        project = "org/project1"
+        github = self.fake_github.getGithubClient(None)
+        # Hold the merge job so we can observe the queued state
+        self.hold_merge_jobs_in_queue = True
+
+        A = self.fake_github.openFakePullRequest(project, "master", "A")
+        self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # We should have an in-progress check for the head sha
+        self.assertIn(
+            A.head_sha, github.repo_from_project(project)._commits.keys())
+        check_runs = self.fake_github.getCommitChecks(project, A.head_sha)
+
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("queued", check_run["status"])
+        self.assertEqual("", check_run["output"]["summary"])
+        self.assertIsNone(check_run["completed_at"])
+
+        # Release the merge job
+        self.hold_merge_jobs_in_queue = False
+        self.merger_api.release()
+        self.waitUntilSettled()
+
+        # We should now have a cancelled check run for the head sha
+        check_runs = self.fake_github.getCommitChecks(project, A.head_sha)
+        self.assertEqual(1, len(check_runs))
+        check_run = check_runs[0]
+
+        self.assertEqual("tenant-one/reporting", check_run["name"])
+        self.assertEqual("completed", check_run["status"])
+        self.assertEqual("skipped", check_run["conclusion"])
+        self.assertEqual("", check_run["output"]["summary"])
+        self.assertIsNotNone(check_run["completed_at"])
+
     @simple_layout("layouts/reporting-github.yaml", driver="github")
     def test_update_non_existing_check_run(self):
         project = "org/project3"
