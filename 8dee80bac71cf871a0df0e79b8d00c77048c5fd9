@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b4f90e90_c87e5dae",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-11-18T13:35:21Z",
+      "side": 1,
+      "message": "this is actually the kind of information that should be also reported back on a build result\u0027s page. Any suggestions on how this could be done?",
+      "revId": "8dee80bac71cf871a0df0e79b8d00c77048c5fd9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
