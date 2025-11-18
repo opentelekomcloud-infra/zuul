@@ -1133,16 +1133,24 @@ class PipelineManager(metaclass=ABCMeta):
                 try:
                     url = urllib.parse.urlparse(match)
                 except ValueError:
+                    log.debug("  Depends-On \"%s\" could not be parsed "
+                              "as a URL, it will not be used", match)
                     continue
                 source = self.sched.connections.getSourceByHostname(
                     url.hostname)
                 if not source:
+                    log.debug("  No connection matches Depends-On \"%s\" "
+                              "base URL, it will not be used", match)
                     continue
                 log.debug("  Found source: %s", source)
                 dep = source.getChangeByURLWithRetry(match, event)
-                if dep and (not dep.is_merged) and dep not in dependencies:
-                    log.debug("  Adding dependency: %s", dep)
-                    dependencies.append(dep)
+                if dep and dep not in dependencies:
+                    if not dep.is_merged:
+                        log.debug("  Adding dependency: %s", dep)
+                        dependencies.append(dep)
+                    else:
+                        log.debug("  Dependency \"%s\" was already merged, "
+                                  "skipping", dep)
             new_commit_needs_changes = [d.cache_key for d in dependencies]
 
             update_attrs = dict(commit_needs_changes=new_commit_needs_changes)
