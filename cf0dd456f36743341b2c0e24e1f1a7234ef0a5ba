@@ -34,6 +34,24 @@
       "parentUuid": "c06524cc_dfe0216b",
       "revId": "cf0dd456f36743341b2c0e24e1f1a7234ef0a5ba",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "575d119e_4127539c",
+        "filename": "zuul/driver/kubernetes/kubernetesconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-18T14:54:34Z",
+      "side": 1,
+      "message": "I believe it\u0027s a permission.  So, typically, users would not have permissions to create namespaces, but would have perms to create project requests (which cause projects to be created; that\u0027s what we do here).  But there\u0027s a permission that would allow direct namespace creation (that\u0027s how the component that processes the project requests works).",
+      "parentUuid": "c06524cc_dfe0216b",
+      "revId": "cf0dd456f36743341b2c0e24e1f1a7234ef0a5ba",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
