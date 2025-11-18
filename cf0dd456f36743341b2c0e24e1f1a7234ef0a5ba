@@ -52,6 +52,24 @@
       "parentUuid": "c06524cc_dfe0216b",
       "revId": "cf0dd456f36743341b2c0e24e1f1a7234ef0a5ba",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "58b32ef5_a1e40749",
+        "filename": "zuul/driver/kubernetes/kubernetesconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-11-18T14:57:52Z",
+      "side": 1,
+      "message": "Ok, I guess in that case I think it\u0027s better to call this `use_openshift_projects`. Using `openshift\u003dtrue` sounds like you\u0027d always need to set this to true when using OpenShift.",
+      "parentUuid": "575d119e_4127539c",
+      "revId": "cf0dd456f36743341b2c0e24e1f1a7234ef0a5ba",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
