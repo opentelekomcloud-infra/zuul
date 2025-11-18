@@ -1133,10 +1133,14 @@ class PipelineManager(metaclass=ABCMeta):
                 try:
                     url = urllib.parse.urlparse(match)
                 except ValueError:
+                    log.debug("  Depends-On \"%s\" could not be parsed "
+                              "as a URL, it will not be used", match)
                     continue
                 source = self.sched.connections.getSourceByHostname(
                     url.hostname)
                 if not source:
+                    log.debug("  No connection matches Depends-On \"%s\" "
+                              "base URL, it will not be used", match)
                     continue
                 log.debug("  Found source: %s", source)
                 dep = source.getChangeByURLWithRetry(match, event)
