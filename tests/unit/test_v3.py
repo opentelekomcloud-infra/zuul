@@ -1504,6 +1504,13 @@ class TestInRepoConfig(ZuulTestCase):
                                       'tenant-one-gate.layout_generation_time',
                                       kind='ms')
         self.assertTrue(0.0 < float(val) < 60000.0)
+        events = self.scheds.first.sched.sql.connection.getSystemEvents()
+        self.assertEqual(1, len(events))
+        self.assertEqual("tenant reconfiguration", events[0].event_type)
+        self.assertEqual(
+            "Tenant reconfiguration "
+            "due to review.example.com/org/project@master",
+            events[0].description)
 
     def test_dynamic_template(self):
         # Tests that a project can't update a template in another
