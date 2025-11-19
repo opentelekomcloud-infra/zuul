@@ -773,6 +773,29 @@ class NodesetRequestConverter:
         })
 
 
+class SystemEventConverter:
+    # A class to encapsulate the conversion of database SystemEvent
+    # objects to API output.
+    def toDict(event):
+        event_time = _datetimeToString(event.event_time)
+        ret = {
+            'event_id': event.event_id,
+            'event_time': event_time,
+            'event_type': event.event_type,
+            'description': event.description,
+        }
+        return ret
+
+    def schema(builds=False):
+        ret = {
+            'event_id': str,
+            'event_time': str,
+            'event_type': str,
+            'description': str,
+        }
+        return Prop('The system event', ret)
+
+
 class APIError(cherrypy.HTTPError):
     def __init__(self, code, json_doc=None, headers=None):
         self._headers = headers or {}
@@ -2154,6 +2177,43 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth()
+    @openapi_response(
+        code=200,
+        content_type='application/json',
+        description='Returns the list of system events',
+        schema=Prop('The list of system events',
+                    [SystemEventConverter.schema()]),
+    )
+    @openapi_response(404, 'Tenant not found')
+    def system_events(self, tenant_name, tenant, auth, event_type=None,
+                      idx_min=None, idx_max=None,
+                      limit=50, skip=0):
+        connection = self._get_connection()
+
+        if tenant_name not in self.zuulweb.abide.tenants.keys():
+            raise cherrypy.HTTPError(
+                404,
+                f'Tenant {tenant_name} does not exist.')
+
+        try:
+            _idx_max = idx_max is not None and int(idx_max) or idx_max
+            _idx_min = idx_min is not None and int(idx_min) or idx_min
+        except ValueError:
+            raise cherrypy.HTTPError(400, 'idx_min, idx_max must be integers')
+
+        events = connection.getSystemEvents(
+            tenant=tenant_name, event_type=event_type,
+            limit=limit, offset=skip, idx_min=_idx_min,
+            idx_max=_idx_max,
+            query_timeout=self.query_timeout)
+
+        return [SystemEventConverter.toDict(e) for e in events]
+
+    @cherrypy.expose
+    @cherrypy.tools.save_params()
+    @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
+    @cherrypy.tools.handle_options()
+    @cherrypy.tools.check_tenant_auth()
     def tenant_status(self, tenant_name, tenant, auth):
         ret = {
             'config_error_count': len(tenant.layout.loading_errors.errors),
@@ -3352,6 +3412,8 @@ class ZuulWeb(object):
                           controller=api, action='config_errors')
         route_map.connect('api', '/api/tenant/{tenant_name}/tenant-status',
                           controller=api, action='tenant_status')
+        route_map.connect('api', '/api/tenant/{tenant_name}/system-events',
+                          controller=api, action='system_events')
         # whitelabel webroot access
         route_map.connect('oidc', '/{tenant_name}/.well-known/jwks',
                           controller=oidc, action='tenant_jwks')

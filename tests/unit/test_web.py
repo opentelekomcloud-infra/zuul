@@ -1470,6 +1470,15 @@ class TestWeb(BaseTestWeb):
 
         self.assertEqual(job_params, resp.json())
 
+    def test_web_system_events(self):
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+        data = self.get_url('api/tenant/tenant-one/system-events').json()
+        self.assertEqual(1, len(data))
+        self.assertEqual("tenant reconfiguration", data[0]["event_type"])
+        self.assertEqual("Tenant reconfiguration due to external request",
+                         data[0]["description"])
+
 
 class TestWebStatsReporting(BaseTestWeb):
     stats_interval = 1
