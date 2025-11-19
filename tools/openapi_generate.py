@@ -75,21 +75,23 @@ def parse_docstring(doc):
 
 def generate_spec():
     api = ZuulWebAPI
-    route_map = ZuulWeb.generateRouteMap(api, True)
+    route_map = ZuulWeb.generateRouteMap(api, None, True)
     # Iterate over each route
     for r in route_map.mapper.matchlist:
         # Some of our routes have globs in the variable names; remove
         # those so that "{project:.*}" becomes "{project}" to match
         # the function arguments.
         routepath = r.routepath.replace(':.*', '')
+        # action is the ZuulWebAPI method name
+        action = r.defaults['action']
+        # handler is the ZuulWebAPI method itself
+        handler = getattr(api, action, None)
+        if handler is None:
+            continue
         # This is our output; initialize it to an empty dict, or if
         # we're handling another instance of a previous route (for
         # example, different GET and POST methods), start with that.
         routespec = spec['paths'].setdefault(routepath, {})
-        # action is the ZuulWebAPI method name
-        action = r.defaults['action']
-        # handler is the ZuulWebAPI method itself
-        handler = getattr(api, action)
         # Parse the docstring if available
         doc = handler.__doc__
         if doc:
