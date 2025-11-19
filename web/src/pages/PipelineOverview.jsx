@@ -405,6 +405,7 @@ function PipelineOverviewPage() {
                         {moment_tz.utc(stats.last_reconfigured).tz(timezone).format('llll')}
                       </div>
                     }
+                    link={`${tenant.linkPrefix}/system-events`}
                   />
                   <ToolbarItem>
                     <ReloadButton

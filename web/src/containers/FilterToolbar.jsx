@@ -1,4 +1,5 @@
 // Copyright 2020 BMW Group
+// Copyright 2025 Acme Gating, LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -14,6 +15,7 @@
 
 import React, { useState, useRef } from 'react'
 import { useDispatch } from 'react-redux'
+import { Link } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import {
   Button,
@@ -53,7 +55,7 @@ ToolbarStatsGroup.propTypes = {
   children: PropTypes.array.isRequired,
 }
 
-function ToolbarStatsItem({ name, value, tooltipContent, reverse = false }) {
+function ToolbarStatsItem({ name, value, tooltipContent, reverse = false, link = null }) {
 
   const value_span = <span className="zuul-toolbar-stats-item__value">{value}</span>
   const name_span = <span className="zuul-toolbar-stats-item__name">{name}</span>
@@ -69,7 +71,19 @@ function ToolbarStatsItem({ name, value, tooltipContent, reverse = false }) {
         }
         position="bottom"
       >
-        <Label>{label}</Label>
+        {link ?
+         <Label
+           render={({ className, content, componentRef }) => (
+             <Link to={link} className={className} innerRef={componentRef}>
+               {content}
+             </Link>
+           )}
+         >
+           {label}
+         </Label>
+         :
+         <Label>{label}</Label>
+        }
       </Tooltip>
     </ToolbarItem>
   )
@@ -80,6 +94,7 @@ ToolbarStatsItem.propTypes = {
   value: PropTypes.string.isRequired,
   tooltipContent: PropTypes.object.isRequired,
   reverse: PropTypes.bool,
+  link: PropTypes.string,
 }
 
 function FilterToolbar(props) {
