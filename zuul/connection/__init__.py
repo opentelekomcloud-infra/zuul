@@ -657,7 +657,8 @@ class BaseThreadPoolEventConnector:
             if not len(self._event_forward_queue):
                 if self._shouldStop():
                     return
-                self._dispatcher_wake_event.wait(delay or 10)
+                # Delay can be None and we will wait for the next event
+                self._dispatcher_wake_event.wait(delay)
             else:
                 # Sleep a small amount of time to give the futures
                 # time to complete.

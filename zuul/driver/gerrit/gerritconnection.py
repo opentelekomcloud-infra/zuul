@@ -450,7 +450,6 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
         self.log.debug("Handling event received %ss ago, delaying %ss",
                        now - timestamp, delay)
-        time.sleep(delay)
         return delay
 
     def _dispatchEvents(self):
@@ -494,7 +493,6 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
 class GerritEventProcessor:
     tracer = trace.get_tracer("zuul")
-    delay = 10.0
 
     def __init__(self, connector, connection_event):
         self.connector = connector
