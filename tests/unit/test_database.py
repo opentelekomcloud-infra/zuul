@@ -12,10 +12,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import datetime
 import difflib
 import os
 import re
 import subprocess
+import time
 import uuid
 
 from zuul.driver.sql import SQLDriver
@@ -45,6 +47,50 @@ class DBBaseTestCase(BaseTestCase):
         )
         self.addCleanup(self.zk_client.disconnect)
         self.zk_client.connect()
+
+    def test_system_events(self):
+        tenant = 'tenant1',
+        event_id = 'deadbeef'
+        event_time = datetime.datetime.fromtimestamp(
+            1763581571, tz=datetime.timezone.utc)
+        event_type = "reconfiguration"
+        description = "A reconfiguration happened"
+
+        # Create using the driver-external interface
+        with self.connection.getSession() as db:
+            db.createSystemEvent(
+                tenant=tenant,
+                event_id=event_id,
+                event_time=event_time,
+                event_type=event_type,
+                description=description,
+            )
+
+        # Verify that worked using the driver-external interface
+        self.assertEqual(len(self.connection.getSystemEvents()), 1)
+        self.assertEqual(self.connection.getSystemEvents()[0].event_id,
+                         event_id)
+
+        now = time.time()
+        # Create a newer event
+        event_time = datetime.datetime.fromtimestamp(
+            now, tz=datetime.timezone.utc)
+        with self.connection.getSession() as db:
+            db.createSystemEvent(
+                tenant=tenant,
+                event_id=event_id,
+                event_time=event_time,
+                event_type=event_type,
+                description=description,
+            )
+        self.assertEqual(len(self.connection.getSystemEvents()), 2)
+
+        # Delete the old event
+        cutoff = datetime.datetime.fromtimestamp(
+            now - 10, tz=datetime.timezone.utc)
+        self.connection.deleteSystemEvents(cutoff)
+
+        self.assertEqual(len(self.connection.getSystemEvents()), 1)
 
 
 class TestMysqlDatabase(DBBaseTestCase):
