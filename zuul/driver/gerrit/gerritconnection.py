@@ -494,7 +494,6 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
 class GerritEventProcessor:
     tracer = trace.get_tracer("zuul")
-    delay = 10.0
 
     def __init__(self, connector, connection_event):
         self.connector = connector

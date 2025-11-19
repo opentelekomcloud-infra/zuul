@@ -651,21 +651,23 @@ class BaseThreadPoolEventConnector:
             if len(self._event_forward_queue):
                 self._forwardEvents()
 
+            if delay:
+                # If we were asked to delay, then we haven't processed
+                # all the events yet so go again and don't wait below.
+                self._dispatcher_wake_event.set()
+
             # If there are no futures, we can sleep until there are
             # new events (or stop altogether); otherwise we need to
             # continue processing futures.
             if not len(self._event_forward_queue):
                 if self._shouldStop():
                     return
-                self._dispatcher_wake_event.wait(delay or 10)
+                # Delay can be None and we will wait for the next event
+                self._dispatcher_wake_event.wait()
             else:
                 # Sleep a small amount of time to give the futures
                 # time to complete.
                 self._dispatcher_wake_event.wait(0.1)
-            if delay:
-                # If we were asked to delay, then we haven't processed
-                # all the events yet so go again.
-                self._dispatcher_wake_event.set()
 
     def _dispatchEvents(self):
         # This is the first half of the event dispatcher.  It reads
