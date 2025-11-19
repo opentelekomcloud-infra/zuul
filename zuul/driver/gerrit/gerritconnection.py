@@ -329,7 +329,10 @@ class PeekQueue:
     def append(self, event):
         self.queue.append(event)
 
-    def run(self, end=False):
+    def run(self, timeout=None):
+        # If timeout is supplied, we can treat that as the "current"
+        # time and give up on waiting for any events whose timeout is
+        # before that time.
         if not self.queue:
             return
 
@@ -386,18 +389,18 @@ class PeekQueue:
                 newrev = refupdate.get('newRev')
                 if newrev in ref_updates:
                     # We're waiting on data for this one
-                    if end:
-                        # It's been more than 10 seconds (gerrit
-                        # event delay) since we saw the
-                        # ref-updated event, and we're at the end
-                        # of the list of events in zk, so it's
-                        # probably not going to show up.  Release
-                        # it.
+                    if (timeout and
+                        (timeout - event["timestamp"]) >= self.timeout):
+                        # It's been more than 10 seconds plus the
+                        # replication delay since we saw the
+                        # ref-updated event, and we're at the end of
+                        # the list of events in zk, so it's probably
+                        # not going to show up.  Release it.
                         ok = True
                     elif latest_time - event["timestamp"] >= self.timeout:
-                        # It's been a further 10 seconds since we saw
-                        # the event, so it may be missing at this
-                        # point; release it.
+                        # We've seen other events emmitted later 10
+                        # seconds since the event, so it may be
+                        # missing at this point; release it.
                         ok = True
                     # Otherwise, we're still waiting
                 else:
@@ -413,6 +416,20 @@ class PeekQueue:
 
             self.queue.remove(event)
             self.handler(event)
+
+    def getDelay(self):
+        """Return a delay time that is later than the expiration time
+        of the next event.
+
+        In other words: how long to sleep before polling the peek
+        queue again, assuming no new events.
+
+        """
+        if not self.queue:
+            return None
+        event = self.queue[0]
+        now = time.time()
+        return max((event["timestamp"] + self.timeout) - now, 0.0)
 
 
 class GerritEventConnector(BaseThreadPoolEventConnector):
@@ -450,7 +467,6 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
         self.log.debug("Handling event received %ss ago, delaying %ss",
                        now - timestamp, delay)
-        time.sleep(delay)
         return delay
 
     def _dispatchEvents(self):
@@ -478,7 +494,10 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
             self._peek_queue.append(event)
             self._peek_queue.run()
-        self._peek_queue.run(end=True)
+        # Once there are no more ZK events, run the queue a final time
+        # and allow it to timeout based on the current time.
+        self._peek_queue.run(timeout=time.time())
+        return self._peek_queue.getDelay()
 
     def _peekQueueHandler(self, event):
         # Called when the peek queue has decided an event should be processed
@@ -494,7 +513,6 @@ class GerritEventConnector(BaseThreadPoolEventConnector):
 
 class GerritEventProcessor:
     tracer = trace.get_tracer("zuul")
-    delay = 10.0
 
     def __init__(self, connector, connection_event):
         self.connector = connector
