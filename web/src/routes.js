@@ -21,6 +21,7 @@ import BuildsetsPage from './pages/Buildsets'
 import ChangeStatusPage from './pages/ChangeStatus'
 import ComponentsPage from './pages/Components'
 import ConfigErrorsPage from './pages/ConfigErrors'
+import SystemEventsPage from './pages/SystemEvents'
 import FreezeJobPage from './pages/FreezeJob'
 import JobPage from './pages/Job'
 import JobsPage from './pages/Jobs'
@@ -163,6 +164,10 @@ const routes = (info) => {
     {
       to: '/config-errors',
       component: ConfigErrorsPage,
+    },
+    {
+      to: '/system-events',
+      component: SystemEventsPage,
     },
     {
       to: '/tenants',
