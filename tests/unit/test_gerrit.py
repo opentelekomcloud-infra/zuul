@@ -37,7 +37,6 @@ from zuul.driver.gerrit import GerritDriver
 from zuul.driver.gerrit.gerritconnection import (
     ChangeNetworkConflict,
     GerritConnection,
-    GerritEventProcessor,
     PeekQueue,
 )
 
@@ -1341,11 +1340,16 @@ class TestGerritConnection(ZuulTestCase):
         self.waitUntilSettled()
         self.assertHistory([])
 
+
+class TestGerritConnectionDelay(ZuulTestCase):
+    config_file = 'zuul-gerrit-web-delay.conf'
+    tenant_config_file = 'config/single-tenant/main.yaml'
+    replication_delay = 10
+
     def test_ref_updated_reconfig(self):
         # Gerrit emits change-merged events after ref-updated events for the
         # change; make sure that job configuration changes take effect
         # for post pipelines that trigger off of ref-updated.
-        GerritEventProcessor.delay = 10.0
         in_repo_conf = textwrap.dedent(
             """
             - job:
@@ -1368,6 +1372,57 @@ class TestGerritConnection(ZuulTestCase):
             dict(name='project-post', result='SUCCESS'),
             dict(name='new-post-job', result='SUCCESS'),
         ], ordered=False)
+
+    def test_ref_updated_timeout(self):
+        # Test the behavior when the second event is missed
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.setMerged()
+        start = time.time()
+        self.fake_gerrit.addEvent(A.getRefUpdatedEvent())
+        self.waitUntilSettled()
+        end = time.time()
+        elapsed = end - start
+        self.log.debug("Elapsed time: %s", elapsed)
+        # We are waiting replication_delay + peekqueue timeout to pass
+        # for the corresponding change merged event that matches our
+        # ref updated event.
+        self.assertTrue(10 + self.replication_delay
+                        <= elapsed <
+                        20 + self.replication_delay)
+
+    def test_replication_delay_one_change(self):
+        # Test that a single change uses the correct replication delay
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        start = time.time()
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        end = time.time()
+        elapsed = end - start
+        self.log.debug("Elapsed time: %s", elapsed)
+        self.assertTrue(self.replication_delay
+                        <= elapsed <
+                        self.replication_delay + 10)
+
+    def test_replication_delay_two_changes(self):
+        # Test that two changes are collectively delayed only 10 seconds
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        start = time.time()
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        end = time.time()
+        elapsed = end - start
+        self.log.debug("Elapsed time: %s", elapsed)
+        self.assertTrue(self.replication_delay
+                        <= elapsed <
+                        self.replication_delay + 10)
+
+
+class TestGerritConnectionNoDelay(TestGerritConnectionDelay):
+    config_file = 'zuul-gerrit-web.conf'
+    tenant_config_file = 'config/single-tenant/main.yaml'
+    replication_delay = 0
 
 
 class TestGerritConnectionPreFilter(ZuulTestCase):
@@ -1936,7 +1991,10 @@ class TestGerritPeekQueue(BaseTestCase):
 
         # This is what the loop will acutally do
         q.run()
-        q.run(end=True)
+        # Normally we pass the current time in, but in the test we
+        # pass in a future time to accelerate the timout (the peek
+        # queue never consults the current time on its own).
+        q.run(cutoff=time.time() + 10)
         expected = [orig[0], orig[1]]
         self.assertEqual(expected, handled)
         self.assertEqual(1, handled[0].zuul_event_ltime)

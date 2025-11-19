@@ -101,7 +101,6 @@ from zuul.zk.merger import MergerApi
 from psutil import Popen
 
 import zuul.driver.gerrit.gerritsource as gerritsource
-import zuul.driver.gerrit.gerritconnection as gerritconnection
 import zuul.driver.github
 import zuul.driver.elasticsearch.connection as elconnection
 import zuul.driver.sql
@@ -2531,7 +2530,6 @@ class ZuulTestCase(BaseTestCase):
         # Speed up operations in tests
         gerritsource.GerritSource.replication_timeout = 1.5
         gerritsource.GerritSource.replication_retry_interval = 0.5
-        gerritconnection.GerritEventProcessor.delay = 0.0
         zuul.driver.aws.awsendpoint.CACHE_TTL = 0.1
         zuul.driver.openstack.openstackendpoint.CACHE_TTL = 0.1
         zuul.launcher.server.NodescanWorker.TIMEOUT = 0.1
