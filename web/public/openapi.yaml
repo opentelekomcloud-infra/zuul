@@ -423,8 +423,137 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: Response not yet documented
+        200:
+          content:
+            application/json:
+              schema:
+                properties:
+                  _id:
+                    type: string
+                  builds:
+                    items:
+                      description: The build
+                      properties:
+                        _id:
+                          type: string
+                        artifacts:
+                          items:
+                            properties:
+                              metadata:
+                                type: object
+                              name:
+                                type: string
+                              url:
+                                type: string
+                            type: object
+                          type: array
+                        duration:
+                          type: string
+                        end_time:
+                          type: string
+                        error_detail:
+                          type: string
+                        final:
+                          type: string
+                        held:
+                          type: string
+                        job_name:
+                          type: string
+                        log_url:
+                          type: string
+                        nodeset:
+                          type: string
+                        provides:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          type: array
+                        ref:
+                          description: The ref
+                          properties:
+                            branch:
+                              type: string
+                            change:
+                              type: string
+                            newrev:
+                              type: string
+                            oldrev:
+                              type: string
+                            patchset:
+                              type: string
+                            project:
+                              type: string
+                            ref:
+                              type: string
+                            ref_url:
+                              type: string
+                          type: object
+                        result:
+                          type: string
+                        start_time:
+                          type: string
+                        uuid:
+                          type: string
+                        voting:
+                          type: string
+                      type: object
+                    type: array
+                  event_id:
+                    type: string
+                  event_timestamp:
+                    type: string
+                  events:
+                    items:
+                      description: The buildset event
+                      properties:
+                        description:
+                          type: string
+                        event_time:
+                          type: string
+                        event_type:
+                          type: string
+                      type: object
+                    type: array
+                  first_build_start_time:
+                    type: string
+                  last_build_end_time:
+                    type: string
+                  message:
+                    type: string
+                  pipeline:
+                    type: string
+                  refs:
+                    items:
+                      description: The ref
+                      properties:
+                        branch:
+                          type: string
+                        change:
+                          type: string
+                        newrev:
+                          type: string
+                        oldrev:
+                          type: string
+                        patchset:
+                          type: string
+                        project:
+                          type: string
+                        ref:
+                          type: string
+                        ref_url:
+                          type: string
+                      type: object
+                    type: array
+                  result:
+                    type: string
+                  uuid:
+                    type: string
+                type: object
+          description: Returns a buildset
+        404:
+          description: Tenant not found
       summary: ''
       tags:
       - tenant
@@ -491,6 +620,10 @@ paths:
           type: string
       - in: query
         name: idx_max
+        schema:
+          type: string
+      - in: query
+        name: exclude_result
         schema:
           type: string
       responses:
@@ -600,6 +733,214 @@ paths:
       responses:
         '200':
           description: Response not yet documented
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/flavors:
+    get:
+      operationId: flavors
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  description: The image
+                  properties:
+                    canonical_name:
+                      type: string
+                    description:
+                      type: string
+                    name:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of flavors
+        404:
+          description: Tenant not found
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/image-build-artifact/{artifact_id}:
+    delete:
+      operationId: image_build_artifact_delete
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: artifact_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Response not yet documented
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/image-upload/{upload_id}:
+    delete:
+      operationId: image_upload_delete
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: upload_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Response not yet documented
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/image-upload/{upload_id}/validate:
+    post:
+      operationId: image_upload_validate
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: upload_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Response not yet documented
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/image/{image_name}/build:
+    post:
+      operationId: image_build
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: image_name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Response not yet documented
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/images:
+    get:
+      operationId: images
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  description: The image
+                  properties:
+                    branch:
+                      type: string
+                    build_artifacts:
+                      items:
+                        description: The image build artifact
+                        properties:
+                          build_tenant:
+                            type: boolean
+                          build_uuid:
+                            type: string
+                          canonical_name:
+                            type: string
+                          format:
+                            type: string
+                          is_locked:
+                            type: boolean
+                          lock_holder:
+                            type: string
+                          md5sum:
+                            type: string
+                          sha256:
+                            type: string
+                          state:
+                            type: string
+                          state_time:
+                            type: string
+                          timestamp:
+                            type: string
+                          uploads:
+                            items:
+                              description: The image upload
+                              properties:
+                                artifact_uuid:
+                                  type: string
+                                canonical_name:
+                                  type: string
+                                endpoint_name:
+                                  type: string
+                                external_id:
+                                  type: string
+                                is_locked:
+                                  type: boolean
+                                lock_holder:
+                                  type: string
+                                state:
+                                  type: string
+                                state_time:
+                                  type: string
+                                timestamp:
+                                  type: string
+                                uuid:
+                                  type: string
+                                validated:
+                                  type: string
+                              type: object
+                            type: array
+                          url:
+                            type: string
+                          uuid:
+                            type: string
+                          validated:
+                            type: string
+                        type: object
+                      type: array
+                    canonical_name:
+                      type: string
+                    name:
+                      type: string
+                    project_canonical_name:
+                      type: string
+                    type:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of images
+        404:
+          description: Tenant not found
       summary: ''
       tags:
       - tenant
@@ -735,6 +1076,61 @@ paths:
       parameters:
       - in: path
         name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Response not yet documented
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/nodes/{node_id}:
+    put:
+      operationId: nodes_put
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: node_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Response not yet documented
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/nodeset-requests:
+    get:
+      operationId: nodeset_requests
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Response not yet documented
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/nodeset-requests/{request_id}:
+    delete:
+      operationId: nodeset_requests_delete
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: request_id
         required: true
         schema:
           type: string
@@ -980,6 +1376,126 @@ paths:
       summary: ''
       tags:
       - tenant
+  /api/tenant/{tenant_name}/providers:
+    get:
+      operationId: providers
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  description: The provider
+                  properties:
+                    canonical_name:
+                      type: string
+                    flavors:
+                      items:
+                        properties:
+                          canonical_name:
+                            type: string
+                          name:
+                            type: string
+                        type: object
+                      type: array
+                    images:
+                      items:
+                        properties:
+                          build_artifacts:
+                            items:
+                              description: The image build artifact
+                              properties:
+                                build_tenant:
+                                  type: boolean
+                                build_uuid:
+                                  type: string
+                                canonical_name:
+                                  type: string
+                                format:
+                                  type: string
+                                is_locked:
+                                  type: boolean
+                                lock_holder:
+                                  type: string
+                                md5sum:
+                                  type: string
+                                sha256:
+                                  type: string
+                                state:
+                                  type: string
+                                state_time:
+                                  type: string
+                                timestamp:
+                                  type: string
+                                uploads:
+                                  items:
+                                    description: The image upload
+                                    properties:
+                                      artifact_uuid:
+                                        type: string
+                                      canonical_name:
+                                        type: string
+                                      endpoint_name:
+                                        type: string
+                                      external_id:
+                                        type: string
+                                      is_locked:
+                                        type: boolean
+                                      lock_holder:
+                                        type: string
+                                      state:
+                                        type: string
+                                      state_time:
+                                        type: string
+                                      timestamp:
+                                        type: string
+                                      uuid:
+                                        type: string
+                                      validated:
+                                        type: string
+                                    type: object
+                                  type: array
+                                url:
+                                  type: string
+                                uuid:
+                                  type: string
+                                validated:
+                                  type: string
+                              type: object
+                            type: array
+                          canonical_name:
+                            type: string
+                          name:
+                            type: string
+                          type:
+                            type: string
+                        type: object
+                      type: array
+                    labels:
+                      items:
+                        properties:
+                          canonical_name:
+                            type: string
+                          name:
+                            type: string
+                        type: object
+                      type: array
+                    name:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of providers
+        404:
+          description: Tenant not found
+      summary: ''
+      tags:
+      - tenant
   /api/tenant/{tenant_name}/semaphores:
     get:
       operationId: semaphores
@@ -994,6 +1510,21 @@ paths:
           description: Returns the list of semaphores
         404:
           description: Tenant not found
+      summary: ''
+      tags:
+      - tenant
+  /api/tenant/{tenant_name}/state:
+    get:
+      operationId: state_post
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Response not yet documented
       summary: ''
       tags:
       - tenant
@@ -1034,6 +1565,28 @@ paths:
         not currently documented and subject to change without notice.'
       tags:
       - tenant
+  /api/tenant/{tenant_name}/tenant-ssh-key/ssh.pub:
+    get:
+      operationId: tenant_ssh_key
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            text/plain:
+              example: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACA
+              schema:
+                type: string
+          description: Returns the tenant public key that executor adds to SSH agent
+        404:
+          description: Tenant or Project not found
+      summary: ''
+      tags:
+      - tenant
   /api/tenant/{tenant_name}/tenant-status:
     get:
       operationId: tenant_status
@@ -1063,12 +1616,6 @@ paths:
                     name:
                       description: Tenant name
                       type: string
-                    projects:
-                      description: Tenant project count
-                      type: integer
-                    queue:
-                      description: Active changes count
-                      type: integer
                   type: object
                 type: array
           description: Returns the list of tenants
