@@ -1578,6 +1578,7 @@ class Scheduler(threading.Thread):
             branch_cache_min_ltimes = defaultdict(lambda: ltime)
 
         for tenant_name in tenant_names:
+            reconfig_time = None
             with self.layout_lock[tenant_name]:
                 if event.smart:
                     old_tenant = old_unparsed_abide.tenants.get(tenant_name)
@@ -1594,6 +1595,7 @@ class Scheduler(threading.Thread):
                         self.zk_client, tenant_name, self.log,
                         identifier=RECONFIG_LOCK_ID) as lock,
                       self.statsd_timer(f'{stats_key}.reconfiguration_time')):
+                    reconfig_time = time.time()
                     tenant = loader.loadTenant(
                         self.abide, tenant_name, self.ansible_manager,
                         self.unparsed_abide, min_ltimes=min_ltimes,
@@ -1610,6 +1612,15 @@ class Scheduler(threading.Thread):
                                 del self.tenant_layout_state[tenant_name]
                             with suppress(KeyError):
                                 del self.local_layout_state[tenant_name]
+            if reconfig_time:
+                desc = "Tenant reconfiguration due to external request"
+                self.sql.reportSystemEvent(
+                    tenant_name,
+                    event_id=event.zuul_event_id,
+                    event_time=reconfig_time,
+                    event_type='tenant reconfiguration',
+                    description=desc,
+                )
 
         duration = round(time.monotonic() - start, 3)
         self.log.info("Reconfiguration complete (smart: %s, tenants: %s, "
@@ -1654,6 +1665,7 @@ class Scheduler(threading.Thread):
                         [event.tenant_name])
         stats_key = f'zuul.tenant.{event.tenant_name}'
 
+        reconfig_time = None
         with self.layout_lock[event.tenant_name]:
             old_tenant = self.abide.tenants.get(event.tenant_name)
             with (tenant_write_lock(
@@ -1666,6 +1678,7 @@ class Scheduler(threading.Thread):
                     self.unparsed_abide, min_ltimes=min_ltimes,
                     branch_cache_min_ltimes=branch_cache_min_ltimes)
                 tenant = self.abide.tenants[event.tenant_name]
+                reconfig_time = time.time()
                 with self.createZKContext(lock, self.log) as ctx:
                     self._reconfigureTenant(ctx, min_ltimes,
                                             event.trigger_event_ltime,
@@ -1673,6 +1686,17 @@ class Scheduler(threading.Thread):
         duration = round(time.monotonic() - start, 3)
         log.info("Tenant reconfiguration complete for %s (duration: %s "
                  "seconds)", event.tenant_name, duration)
+        if reconfig_time:
+            branches = [f'{b[0]}@{b[1]}' for b in event.project_branches]
+            branches = ', '.join(branches)
+            desc = f"Tenant reconfiguration due to {branches}"
+            self.sql.reportSystemEvent(
+                event.tenant_name,
+                event_id=event.zuul_event_id,
+                event_time=reconfig_time,
+                event_type='tenant reconfiguration',
+                description=desc,
+            )
 
     def _reenqueueGetProject(self, tenant, item, change):
         project = change.project
