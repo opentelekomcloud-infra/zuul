@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "61f5cd9e_64a0f7dd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 35923
+      },
+      "writtenOn": "2025-11-19T18:28:53Z",
+      "side": 1,
+      "message": "Will be useful for us, we have very complex rules to decide what jobs to run (based on coverage results, affected binaries to rebuild, etc.), so having init job that could do that officially will make us use less patches on top of community version.",
+      "revId": "850e996d30dd12dbc3f50c1cb1337e567ac6d1b2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
