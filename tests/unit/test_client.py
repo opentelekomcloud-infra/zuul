@@ -654,12 +654,16 @@ class DBPruneTestCase(ZuulTestCase):
         connection = self.scheds.first.sched.sql.connection
         buildset_uuid = uuid.uuid4().hex
         event_id = uuid.uuid4().hex
+        tenant = 'tenant-one',
+        event_type = "reconfiguration"
+        description = "A reconfiguration happened"
+
         with connection.getSession() as db:
             start_time = update_time - datetime.timedelta(seconds=1)
             end_time = update_time
             db_buildset = db.createBuildSet(
                 uuid=buildset_uuid,
-                tenant='tenant-one',
+                tenant=tenant,
                 pipeline='check',
                 event_id=event_id,
                 event_timestamp=update_time,
@@ -705,6 +709,13 @@ class DBPruneTestCase(ZuulTestCase):
                         event_type=f'event{event_num}',
                         event_time=start_time,
                     )
+            db.createSystemEvent(
+                tenant=tenant,
+                event_id=event_id,
+                event_time=update_time,
+                event_type=event_type,
+                description=description,
+            )
 
     def _query(self, db, model):
         table = model.__table__
@@ -729,6 +740,9 @@ class DBPruneTestCase(ZuulTestCase):
     def _getBuildEvents(self, db):
         return self._query(db, db.connection.buildEventModel)
 
+    def _getSystemEvents(self, db):
+        return self._query(db, db.connection.systemEventModel)
+
     def _setup(self):
         config_file = os.path.join(self.test_root, 'zuul.conf')
         with open(config_file, 'w') as f:
@@ -747,11 +761,13 @@ class DBPruneTestCase(ZuulTestCase):
             artifacts = self._getArtifacts(db)
             provides = self._getProvides(db)
             events = self._getBuildEvents(db)
+            system_events = self._getSystemEvents(db)
         self.assertEqual(len(buildsets), self.num_buildsets)
         self.assertEqual(len(builds), 2 * self.num_buildsets)
         self.assertEqual(len(artifacts), 4 * self.num_buildsets)
         self.assertEqual(len(provides), 4 * self.num_buildsets)
         self.assertEqual(len(events), 4 * self.num_buildsets)
+        self.assertEqual(len(system_events), self.num_buildsets)
         for build in builds:
             self.log.debug("Build %s %s %s",
                            build, build.start_time, build.end_time)
@@ -784,6 +800,7 @@ class DBPruneTestCase(ZuulTestCase):
             artifacts = self._getArtifacts(db)
             provides = self._getProvides(db)
             events = self._getBuildEvents(db)
+            system_events = self._getSystemEvents(db)
         for build in builds:
             self.log.debug("Build %s %s %s",
                            build, build.start_time, build.end_time)
@@ -792,6 +809,7 @@ class DBPruneTestCase(ZuulTestCase):
         self.assertEqual(len(artifacts), 4)
         self.assertEqual(len(provides), 4)
         self.assertEqual(len(events), 4)
+        self.assertEqual(len(system_events), 1)
 
     def test_db_prune_older_than(self):
         # Test pruning buildsets older than a relative time
@@ -819,11 +837,13 @@ class DBPruneTestCase(ZuulTestCase):
             artifacts = self._getArtifacts(db)
             provides = self._getProvides(db)
             events = self._getBuildEvents(db)
+            system_events = self._getSystemEvents(db)
         self.assertEqual(len(buildsets), 0)
         self.assertEqual(len(builds), 0)
         self.assertEqual(len(artifacts), 0)
         self.assertEqual(len(provides), 0)
         self.assertEqual(len(events), 0)
+        self.assertEqual(len(system_events), 0)
 
 
 class TestDBPruneMysql(DBPruneTestCase):

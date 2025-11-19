@@ -1230,6 +1230,7 @@ class Client(zuul.cmd.ZuulApp):
         self.configure_connections(database=True)
         connection = self.connections.getSqlConnection()
         connection.deleteBuildsets(cutoff, args.batch_size)
+        connection.deleteSystemEvents(cutoff)
         sys.exit(0)
 
 
