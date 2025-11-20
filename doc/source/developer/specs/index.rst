@@ -18,3 +18,4 @@ documentation instead.
 
    nodepool-in-zuul
    init-jobs
+   reporting-jobs
