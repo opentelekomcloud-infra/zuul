@@ -109,8 +109,9 @@ class DependentPipelineManager(SharedQueuePipelineManager):
         seen = set(needed_by_changes)
         for source in sources:
             log.debug("  Checking source: %s", source)
+            relevant_projects = [p for p in projects if p.source == source]
             for c in source.getChangesDependingOn(change,
-                                                  projects,
+                                                  relevant_projects,
                                                   self.tenant):
                 if c not in seen:
                     seen.add(c)
