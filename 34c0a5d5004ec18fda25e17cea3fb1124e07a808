@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1faa64ca_1cf7438f",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-20T00:58:26Z",
+      "side": 1,
+      "message": "If we hit this case we won\u0027t call `self.handler(event)` which is what puts the event into the `_event_forward_queue`. I think that means in the case of trying to match up `ref-updated` and `change-merged` events so that we can flip their orders we can have an empty `_event_forward_queue` and we\u0027re entirely dependent on the delay value returned by `_calculateDelay` and the subsequent wait to ensure we\u0027re waiting long enough to potentially flip the order of these events.\n\n`_calculateDelay` only looks at self.connection.replication_delay which may be zero. In this `PeekQueue` we add 10 to that value to handle the order flip (line 327). I think that means we will effectively busy wait in that case as we\u0027ll go back and forth between these methods waiting for the 10 seconds to elapse by passing control back and forth rather than sleeping. That isn\u0027t necessarily incorrect but probably isn\u0027t the most efficient way of handling this case.\n\nWe almost need to interrogate if we are delaying for general Gerrit synchronization purposes or if we\u0027re delaying to flip the order of events in later processing. Then we can decide if we need to sleep further or not.",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08c4e368_6efff8b4",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 452,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-20T00:58:26Z",
+      "side": 1,
+      "message": "Maybe we should move this log entry recording step to the location where we actually delay via calling wait()?",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
