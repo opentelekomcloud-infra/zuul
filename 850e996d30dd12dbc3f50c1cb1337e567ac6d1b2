@@ -16,6 +16,29 @@
       "message": "Will be useful for us, we have very complex rules to decide what jobs to run (based on coverage results, affected binaries to rebuild, etc.), so having init job that could do that officially will make us use less patches on top of community version.",
       "revId": "850e996d30dd12dbc3f50c1cb1337e567ac6d1b2",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "20ae98d7_0ab07ce7",
+        "filename": "doc/source/developer/specs/init-jobs.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-20T17:53:08Z",
+      "side": 1,
+      "message": "In the current graph construction and execution of builds we allow a paused build to satisfy the dependency of a subsequent build. Elsewhere in this spec it is noted that `behavior will be exactly as if the user had\nexplicitly specified these links` I think that means we will preserve the pausing behavior here as well. Is that the case?\n\nShould we clarify in this statement that `jobs will run to completion or until paused`?",
+      "range": {
+        "startLine": 72,
+        "startChar": 24,
+        "endLine": 72,
+        "endChar": 63
+      },
+      "revId": "850e996d30dd12dbc3f50c1cb1337e567ac6d1b2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
