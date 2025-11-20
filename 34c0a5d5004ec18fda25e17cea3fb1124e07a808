@@ -3,6 +3,40 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "64862e48_a1a7c483",
+        "filename": "tests/fixtures/zuul-gerrit-web-delay.conf",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-20T02:36:19Z",
+      "side": 1,
+      "message": "I wonder if we need test cases that cover the 0 case more explicitly (though I guess that is our default so maybe our normal test cases typically cover it)?",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "68c5d98e_2b9697c3",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1397,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-20T02:36:19Z",
+      "side": 1,
+      "message": "Adding tests that cover the peekqueue ref-updated and change-merged event order flip case in a functional manner would probably be a good idea in addition to these test cases.",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1faa64ca_1cf7438f",
         "filename": "zuul/driver/gerrit/gerritconnection.py",
         "patchSetId": 1
@@ -38,6 +72,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2b290b2f_84a75b36",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-20T02:36:19Z",
+      "side": 1,
+      "message": "We had a quick discussion and the problem is more that we\u0027ll return None as the delay value then we might not continue processing. A similar but slightly different corner case to this one.",
+      "parentUuid": "54b09521_e4fe5e40",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "08c4e368_6efff8b4",
         "filename": "zuul/driver/gerrit/gerritconnection.py",
         "patchSetId": 1
@@ -67,6 +119,24 @@
       "side": 1,
       "message": "I like it here because we know we\u0027re going to delay processing of this event and this is where we make the decisions.  There isnt\u0027t really a definitive location for the delay since we\u0027re going to let the thread do other things while we delay.  (The log message doesn\u0027t say \"sleeping immediately\".)  But if there\u0027s another wording that conveys that better, I\u0027m open to it.",
       "parentUuid": "08c4e368_6efff8b4",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c23ed09c_0e63aa24",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 452,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-20T02:36:19Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "e6cb639f_04df125a",
       "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
