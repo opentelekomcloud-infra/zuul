@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "54b09521_e4fe5e40",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-20T01:18:17Z",
+      "side": 1,
+      "message": "I think you\u0027re right, and I think this is why we used to have  self._dispatcher_wake_event.wait(delay or 10) -- that means every 10 seconds at least we would re-evaluate the peek queue.\n\nI think we should put it back, but do so in a way where it\u0027s clear where that constant is coming from and why.  Something like adding:\n\n```\nPeekQueue.timeout \u003d 10\nGerritEventConnector.event_processing_interval \u003d PeekQueue.timeout\n```\n\nAnd then in the connection base class, change that line to  self._dispatcher_wake_event.wait(delay or self.event_processing_interval).\n\nThe other drivers with no PeekQueue can have event_processing_interval \u003d None.",
+      "parentUuid": "1faa64ca_1cf7438f",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "08c4e368_6efff8b4",
         "filename": "zuul/driver/gerrit/gerritconnection.py",
         "patchSetId": 1
@@ -31,6 +49,24 @@
       "writtenOn": "2025-11-20T00:58:26Z",
       "side": 1,
       "message": "Maybe we should move this log entry recording step to the location where we actually delay via calling wait()?",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e6cb639f_04df125a",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 452,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-20T01:18:17Z",
+      "side": 1,
+      "message": "I like it here because we know we\u0027re going to delay processing of this event and this is where we make the decisions.  There isnt\u0027t really a definitive location for the delay since we\u0027re going to let the thread do other things while we delay.  (The log message doesn\u0027t say \"sleeping immediately\".)  But if there\u0027s another wording that conveys that better, I\u0027m open to it.",
+      "parentUuid": "08c4e368_6efff8b4",
       "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
