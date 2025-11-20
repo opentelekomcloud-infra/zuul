@@ -160,6 +160,9 @@ class FakeOpenstackConnection:
     def _needs_floating_ip(self, server, nat_destination):
         return self.cloud._fake_needs_floating_ip
 
+    def _use_neutron_floating(self):
+        return self.cloud._fake_needs_floating_ip
+
     def _has_floating_ips(self):
         return self.cloud._fake_needs_floating_ip
 

@@ -1068,8 +1068,47 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
     def _deletePort(self, port_id):
         self._client.delete_port(port_id)
 
+    # This method is vendored from openstacksdk (Apache 2 licensed) then
+    # modified to use our client object rather than self in order to add
+    # additional debugging to the floating ip deletion process. This code
+    # originates from:
+    # https://opendev.org/openstack/openstacksdk/src/tag/4.8.0/openstack/cloud/_network_common.py#L971-L1001
+    def _delete_unattached_floating_ips(self, retry=1):
+        """Safely delete unattached floating ips.
+
+        If the cloud can safely purge any unattached floating ips without
+        race conditions, do so.
+
+        Safely here means a specific thing. It means that you are not running
+        this while another process that might do a two step create/attach
+        is running. You can safely run this  method while another process
+        is creating servers and attaching floating IPs to them if either that
+        process is using add_auto_ip from shade, or is creating the floating
+        IPs by passing in a server to the create_floating_ip call.
+
+        :param retry: number of times to retry. Optional, defaults to 1,
+            which is in addition to the initial delete call.
+            A value of 0 will also cause no checking of results to occur.
+
+        :returns: Number of Floating IPs deleted, False if none
+        :raises: :class:`~openstack.exceptions.SDKException` on operation
+            error.
+        """
+        processed = []
+        if self._client._use_neutron_floating():
+            for ip in self._client.list_floating_ips():
+                if not bool(ip.port_id):
+                    self.log.debug("Deleting unattached floating ip %s %s",
+                                   ip['id'], ip['floating_ip_address'])
+                    processed.append(
+                        self._client.delete_floating_ip(
+                            floating_ip_id=ip['id'], retry=retry
+                        )
+                    )
+        return len(processed) if all(processed) else False
+
     def _cleanupFloatingIps(self):
-        did_clean = self._client.delete_unattached_floating_ips()
+        did_clean = self._delete_unattached_floating_ips()
         if did_clean:
             # some openstacksdk's return True if any port was
             # cleaned, rather than the count.  Just set it to 1 to
