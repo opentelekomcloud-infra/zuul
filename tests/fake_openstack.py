@@ -161,7 +161,7 @@ class FakeOpenstackConnection:
         return self.cloud._fake_needs_floating_ip
 
     def _has_floating_ips(self):
-        return False
+        return self.cloud._fake_needs_floating_ip
 
     def delete_unattached_floating_ips(self):
         for x in self.cloud.floating_ips:
@@ -272,9 +272,17 @@ class FakeOpenstackConnection:
     def list_floating_ips(self):
         return self.cloud.floating_ips
 
-    def delete_floating_ip(self, name_or_id):
+    def get_floating_ip(self, id, filters=None):
         for x in self.cloud.floating_ips:
-            if x.id == name_or_id:
+            if x.id == id:
+                return x
+            for k, v in filters.items():
+                if x[k] == v:
+                    return x
+
+    def delete_floating_ip(self, floating_ip_id, retry=1):
+        for x in self.cloud.floating_ips:
+            if x.id == floating_ip_id:
                 self.cloud.floating_ips.remove(x)
                 return
 

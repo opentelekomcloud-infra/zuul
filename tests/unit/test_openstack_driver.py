@@ -155,6 +155,10 @@ class TestOpenstackDriver(BaseOpenstackDriverTest, BaseCloudDriverTest):
         self.waitUntilSettled()
         self.launcher.cleanup_worker.INTERVAL = 1
         conn = self.fake_cloud[None]._getConnection()
+        # This test class doesn't generally use fips, but since we're
+        # testing *all* leaked resources, set it here.
+        conn.cloud._fake_needs_floating_ip = True
+
         system_id = self.launcher.system.system_id
         tags = {
             'zuul_system_id': system_id,
@@ -171,6 +175,7 @@ class TestOpenstackDriver(BaseOpenstackDriverTest, BaseCloudDriverTest):
         fip = FakeOpenstackFloatingIp(
             id='42',
             floating_ip_address='fake',
+            port_id=None,
             status='ACTIVE',
         )
         conn.cloud.floating_ips.append(fip)
