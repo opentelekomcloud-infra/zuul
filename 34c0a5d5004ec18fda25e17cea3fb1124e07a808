@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "16c57192_36464ba9",
+        "filename": "tests/fixtures/zuul-gerrit-web-delay.conf",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-20T21:08:54Z",
+      "side": 1,
+      "message": "It is the default, but for good measure I\u0027m updating this to run the same tests with 0 and 10s delay.",
+      "parentUuid": "64862e48_a1a7c483",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "68c5d98e_2b9697c3",
@@ -31,6 +49,24 @@
       "writtenOn": "2025-11-20T02:36:19Z",
       "side": 1,
       "message": "Adding tests that cover the peekqueue ref-updated and change-merged event order flip case in a functional manner would probably be a good idea in addition to these test cases.",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "840cefbc_a45414e4",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1397,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-20T21:08:54Z",
+      "side": 1,
+      "message": "The first change in this class does that, but it doesn\u0027t test the missing event/timeout case, so we should add that.",
+      "parentUuid": "68c5d98e_2b9697c3",
       "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -83,6 +119,24 @@
       "writtenOn": "2025-11-20T02:36:19Z",
       "side": 1,
       "message": "We had a quick discussion and the problem is more that we\u0027ll return None as the delay value then we might not continue processing. A similar but slightly different corner case to this one.",
+      "parentUuid": "54b09521_e4fe5e40",
+      "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "45ad16b6_d1e910a2",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-20T21:08:54Z",
+      "side": 1,
+      "message": "I learned a bit more: the problem I was concerned about doesn\u0027t actually happen because we call PeekQueue.run(end\u003dTrue) after we\u0027ve added all the incoming events to the peek queue.  That causes the event to get forwarded even if we haven\u0027t passed the timeout.\n\nSo there isn\u0027t a problem with us getting stuck because of that, however, that means we would give up too early.  In other words, if we get only a ref-updated event with PS1 of this change, we will go ahead and forward it without waiting for a change-merged.  Basically the sequence would be:\n\n1. event arrives and dispatch says to delay 10s\n2. 10s later we call dispatch a second time and it adds it to peek\n3. we call peek.run(); it does nothing since we\u0027re waiting\n4. we call peek.run(end\u003dTrue); it gives up and forwards the event\n\nIn other words, the idea of calling peek.run(end\u003dTrue) was predicated on the idea that we sleep inside the dispatcher, so that we never even add the event to the peek queue until the delay has expired.\n\nI still think it\u0027s worth continuing to try to get the delay handled by the base connection instad, so here\u0027s my proposal:\n\n* We remove the end\u003dTrue argument and change it to a timestamp.  That way we\u0027re not saying \"give up because there are no more zk events\" we\u0027re saying \"give up on events which have timed out\".  We\u0027ll make that an argument to the peek queue so that we can continue to have the queue be a little optimistic as long as there are still unprocessed events in zk, and then it can switch to being more pessimistic once those are exhausted.\n* To make sure that we call the dispatch method again after adding the event to the peek queue but while we\u0027re waiting for the peek queue to time out, we\u0027ll have the dispatch method calculate a delay for the peek queue (if necessary) and return that, so the base connection class will process that delay in the same way as it would for the normal new-event dispatch delay.\n* Further, to make sure we call dispatch again, we\u0027ll change the \"if delay\" check to \"if delay is not None\", so that any numeric delay, even 0.0, sets the wait event so that we call the dispatch method again.\n\nBecause of that, we can then pass \"delay\" directly to the event wait, we don\u0027t need to do \"delay or 10\" which means we don\u0027t need to plumb all that stuff through like I said above.",
       "parentUuid": "54b09521_e4fe5e40",
       "revId": "34c0a5d5004ec18fda25e17cea3fb1124e07a808",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
