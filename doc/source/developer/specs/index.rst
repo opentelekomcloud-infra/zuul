@@ -17,3 +17,4 @@ documentation instead.
    :maxdepth: 1
 
    nodepool-in-zuul
+   web-rbac
