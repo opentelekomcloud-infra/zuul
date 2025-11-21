@@ -35,6 +35,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f47a6ca6_22172540",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1377,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-21T15:30:06Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "dce0f614_251ea409",
+      "revId": "47e9220fac853cc9e876589e1bb39ee0f0e89f13",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a891d99b_9984090a",
@@ -54,6 +72,24 @@
         "endLine": 332,
         "endChar": 25
       },
+      "revId": "47e9220fac853cc9e876589e1bb39ee0f0e89f13",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e948d745_eff47a86",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-21T15:30:06Z",
+      "side": 1,
+      "message": "Sure, I tried to capture that in the comment, but I agree this is important and we want to get it right, so I\u0027ll rename it to \"cutoff\" which is a word we\u0027ve used for something similar before.",
+      "parentUuid": "a891d99b_9984090a",
       "revId": "47e9220fac853cc9e876589e1bb39ee0f0e89f13",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
