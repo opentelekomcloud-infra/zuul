@@ -26,6 +26,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "cc88a67a_eed51dce",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-21T17:47:08Z",
+      "side": 1,
+      "message": "Correct, the \"repo state\" job runs on the merger around the time we freeze the job graph in the scheduler.",
+      "parentUuid": "29f2b7a7_352a4d3c",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9de465dc_24e80e53",
         "filename": "doc/source/developer/specs/reporting-jobs.rst",
         "patchSetId": 1
@@ -37,6 +55,24 @@
       "writtenOn": "2025-11-21T01:23:48Z",
       "side": 1,
       "message": "What sort of recovery process do we think would happen in the case where the change merges but then these new special jobs fail? Assuming the failure is due to some temporary problem or a problem that is fixed do we need some sort of reenqueue process that limits the selection of the jobs to some subset based on the job type?\n\nAlternatively if the actions that failed are accounted for externally by some third party process how do we catch zuul up to this fact?",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ae33c1d6_c625462a",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-21T17:47:08Z",
+      "side": 1,
+      "message": "I believe a reporting job could be written so that the next one that runs could correct the situation (by correctly updating the superproject, etc).  It would primarily be the Zuul user\u0027s responsibility to ensure that.  Zuul\u0027s responsibility ends at ensuring that the repos it provides the job reflect reality (even if that reality is broken).\n\nI think it would be reasonable to consider the idea that if a reporting job fails, we completely empty the pipeline, and perhaps even disable it, until the situation is manually corrected.  I don\u0027t think we should do that, yet.  I think it would be good for us to get some experience with this first to see if that sort of thing is necessary.  We generally don\u0027t favor manual work over automation, so I think we should try automation first.\n\nPerhaps a user could create a special version of the reporting job that can be run to correct inconsistencies.  Then, rather than your suggestion of a special re-enqueue process, the user could push a change (to a superproject?  or some other project) that would run this corrective job.  I think that will be simpler than a special kind of re-enqueue, which may be difficult to reason about since it would be effectively saying \"re-enqueue the merge for these changes that already merged but don\u0027t run the normal jobs for them\".  That\u0027s definitely a tractable problem, and maybe one we could consider later if we think we need it, but I think \"just run this fixit job\" may be an easier solution to wrap our heads around.",
+      "parentUuid": "9de465dc_24e80e53",
       "revId": "87005477635d5eb16f258edbde164e9010b1062e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -60,6 +96,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "03828303_681c2528",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-21T17:47:08Z",
+      "side": 1,
+      "message": "I would expect them to run concurrently unless configured with dependencies -- in other words, our current behavior for jobs.  Reasoning: because reporter jobs could be used for sending chat messages, etc, which don\u0027t have an inherent sequencing, so therefore sequencing should be optional.",
+      "parentUuid": "11ba52dc_2b266cc4",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "00916a9b_1937ebf5",
         "filename": "doc/source/developer/specs/reporting-jobs.rst",
         "patchSetId": 1
@@ -71,6 +125,24 @@
       "writtenOn": "2025-11-21T01:23:48Z",
       "side": 1,
       "message": "Should this be `type: reporter` to match up with initializer jobs as proposed in the parent?",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8a619f63_e3fbc300",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-21T17:47:08Z",
+      "side": 1,
+      "message": "Yes, somehow I uploaded an earlier draft.  :(",
+      "parentUuid": "00916a9b_1937ebf5",
       "revId": "87005477635d5eb16f258edbde164e9010b1062e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -88,6 +160,24 @@
       "writtenOn": "2025-11-21T14:45:24Z",
       "side": 1,
       "message": "This is about the repo filtering, not in scope of this spec.",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2238ef55_9b969c58",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-21T17:47:08Z",
+      "side": 1,
+      "message": "Yep, this was also from an earlier draft.",
+      "parentUuid": "c1834b73_c34b9cd7",
       "revId": "87005477635d5eb16f258edbde164e9010b1062e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -140,6 +230,24 @@
       "writtenOn": "2025-11-21T01:23:48Z",
       "side": 1,
       "message": "I wonder if semaphores could be given some sort of queue line jumping for these jobs to mitigate most of these concerns. Probably not necessary to solve that problem in the initial implementation as long as we\u0027re happy with the known limitation.",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7aa0b07d_142eb947",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-21T17:47:08Z",
+      "side": 1,
+      "message": "That\u0027s a good idea.  I also like deferring it for now since I think the limitation is okay.\n\nI talked with Albin a while ago about a new type of zuul trigger that fires when a queue item is reported on another pipeline (to effectively set up pipeline chaining).  I think that if we did that, that would also solve this problem, because I would not expect that trigger to fire until after the reporting jobs finished.",
+      "parentUuid": "200a41a0_35832d56",
       "revId": "87005477635d5eb16f258edbde164e9010b1062e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
