@@ -18,6 +18,23 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "00a91747_234dc238",
+        "filename": "doc/source/developer/specs/init-jobs.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 5263
+      },
+      "writtenOn": "2025-11-21T19:16:41Z",
+      "side": 1,
+      "message": "The first reference that came to my mind was PID #1 in UNIX System V.",
+      "revId": "850e996d30dd12dbc3f50c1cb1337e567ac6d1b2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "20ae98d7_0ab07ce7",
@@ -55,6 +72,23 @@
       "side": 1,
       "message": "Yes that\u0027s a correct interpretation.  The main goal is to be a syntactic shortcut, so that people don\u0027t need to constantly tweak the job graphs for something that should always run first.\n\nI could imagine a situation where all jobs were based on container builds and therefore someone decides to make a buildset registry an init job.\n\nI phrased the spec the way I did to try to convey that: so that we don\u0027t have to explicitly aknowledge each of the things that don\u0027t change.  So I\u0027d like to acknowledge your point and say that yes that\u0027s included in the behavior that will be the same, but we probably don\u0027t need to update the spec.",
       "parentUuid": "20ae98d7_0ab07ce7",
+      "revId": "850e996d30dd12dbc3f50c1cb1337e567ac6d1b2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4fb7629_ef0fca1b",
+        "filename": "doc/source/developer/specs/init-jobs.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 5263
+      },
+      "writtenOn": "2025-11-21T19:16:41Z",
+      "side": 1,
+      "message": "This also raises the question of why not \"reporter job\" instead of \"reporting job\"? Perhaps to disambiguate from reporter drivers.",
       "revId": "850e996d30dd12dbc3f50c1cb1337e567ac6d1b2",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
