@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "04508403_d214bce1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T00:55:00Z",
+      "side": 1,
+      "message": "I think this code looks good. My comments are mostly about ensuring we understand what we\u0027ve done in the future.",
+      "revId": "47e9220fac853cc9e876589e1bb39ee0f0e89f13",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dce0f614_251ea409",
+        "filename": "tests/unit/test_gerrit.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1377,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T00:55:00Z",
+      "side": 1,
+      "message": "Should we note that we\u0027re specifically waiting replication_delay + peekqueue timeout to pass for the corresponding change merged event that matches our ref updated event? Thats a lot of words but I think it might make the assertion in this test case easier to understand (and why it is different to the other test cases).",
+      "revId": "47e9220fac853cc9e876589e1bb39ee0f0e89f13",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a891d99b_9984090a",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T00:55:00Z",
+      "side": 1,
+      "message": "This is maybe a nit but I think it might be important for future understanding of what we\u0027re doing here.\n\nWe have a self.timeout value which is the number of seconds to wait for each event before that particular event timesout. Now we\u0027re introducing a new value called timeout that represents an absolute endtime (rather than a relative timeout) to calculate whether of not self.timeout has elapsed. For clarity maybe we should call this cur_time or similar? Mostly think it itself isn\u0027t a timeout. Instead it is a value used to determine if a timeout has been exceeded relative to it.",
+      "range": {
+        "startLine": 332,
+        "startChar": 18,
+        "endLine": 332,
+        "endChar": 25
+      },
+      "revId": "47e9220fac853cc9e876589e1bb39ee0f0e89f13",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
