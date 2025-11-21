@@ -32,7 +32,7 @@ class LauncherApp(zuul.cmd.ZuulDaemonApp):
         self.addSubCommands(parser, COMMANDS)
         return parser
 
-    def exit_handler(self, signum, frame):
+    def _exit_handler(self, signum, frame):
         if self.launcher:
             self.launcher.stop()
             self.launcher.join()

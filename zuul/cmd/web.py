@@ -34,7 +34,7 @@ class WebServer(zuul.cmd.ZuulDaemonApp):
         self.addSubCommands(parser, zuul.web.COMMANDS)
         return parser
 
-    def exit_handler(self, signum, frame):
+    def _exit_handler(self, signum, frame):
         self.web.stop()
 
     def _run(self):

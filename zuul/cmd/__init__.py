@@ -236,6 +236,24 @@ class ZuulDaemonApp(ZuulApp, metaclass=abc.ABCMeta):
                              expand_user=True)
         return pid_fn
 
+    def exit_handler(self, signum, frame):
+        # Catch and log any exception to ensure the process
+        # terminates as intended, no matter what.
+        try:
+            self._exit_handler(signum, frame)
+        except Exception:
+            self.log.exception(
+                "An exception occured while exiting the process. "
+                "The process might terminate in a degraded state."
+            )
+
+    @abc.abstractmethod
+    def _exit_handler(self, signum, frame):
+        """
+        This is called just before terminating the application.
+        """
+        pass
+
     @abc.abstractmethod
     def run(self):
         """
