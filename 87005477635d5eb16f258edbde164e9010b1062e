@@ -1,0 +1,112 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "29f2b7a7_352a4d3c",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T01:23:48Z",
+      "side": 1,
+      "message": "In this case we\u0027re talking about the internal git merging and git state construction process not the user defined job builds right?",
+      "range": {
+        "startLine": 58,
+        "startChar": 18,
+        "endLine": 58,
+        "endChar": 32
+      },
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9de465dc_24e80e53",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T01:23:48Z",
+      "side": 1,
+      "message": "What sort of recovery process do we think would happen in the case where the change merges but then these new special jobs fail? Assuming the failure is due to some temporary problem or a problem that is fixed do we need some sort of reenqueue process that limits the selection of the jobs to some subset based on the job type?\n\nAlternatively if the actions that failed are accounted for externally by some third party process how do we catch zuul up to this fact?",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11ba52dc_2b266cc4",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T01:23:48Z",
+      "side": 1,
+      "message": "If multiple reporter jobs are defined in a single buildset do they run concurrently unless explicitly configured with dependencies between them? Or do we think they need to always be run in some deterministic order?",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00916a9b_1937ebf5",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T01:23:48Z",
+      "side": 1,
+      "message": "Should this be `type: reporter` to match up with initializer jobs as proposed in the parent?",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "17b6e225_57fcbbb2",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T01:23:48Z",
+      "side": 1,
+      "message": "Would the update-superproject job need the subproject git repo state in it in order to know what to update the superproject to? Or are we expecting that to be performed via some lookup in the job (say against the code review system API?). I\u0027m wondering if we\u0027re going to potentially encourage people to over limit the job state to exclude information that they probably need.",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "200a41a0_35832d56",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T01:23:48Z",
+      "side": 1,
+      "message": "I wonder if semaphores could be given some sort of queue line jumping for these jobs to mitigate most of these concerns. Probably not necessary to solve that problem in the initial implementation as long as we\u0027re happy with the known limitation.",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
