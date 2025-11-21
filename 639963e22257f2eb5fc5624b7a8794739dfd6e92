@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c3940b8_67401ff3",
+        "filename": "doc/source/developer/specs/web-rbac.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T01:08:17Z",
+      "side": 1,
+      "message": "Just want to note that controlling both the pipeline and project here is likely an important feature to doing this safely. I reenqueued a buildset (as admin) the other day and realized that for post merge actions idempotency is important and understanding what is safe is often project and pipeline specific. The ability to restrict reenqueuing things ensures that we can limit the functionality to people who understand these concerns within their domain and don\u0027t accidentally allow too much access in different domains.",
+      "revId": "639963e22257f2eb5fc5624b7a8794739dfd6e92",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "98c4759e_1713a795",
+        "filename": "doc/source/developer/specs/web-rbac.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-21T01:08:17Z",
+      "side": 1,
+      "message": "Do we think we will apply some sort of wildcard or regex matching to the conditions?",
+      "range": {
+        "startLine": 162,
+        "startChar": 0,
+        "endLine": 162,
+        "endChar": 49
+      },
+      "revId": "639963e22257f2eb5fc5624b7a8794739dfd6e92",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
