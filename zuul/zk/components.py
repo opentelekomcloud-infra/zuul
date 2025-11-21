@@ -17,8 +17,9 @@ import logging
 import threading
 from collections import defaultdict
 
-from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NoNodeError, RetryFailedError
 from kazoo.protocol.states import EventType
+from kazoo.retry import KazooRetry
 
 from zuul.zk import ZooKeeperBase
 from zuul.model_api import MODEL_API
@@ -115,9 +116,23 @@ class BaseComponent(ZooKeeperBase):
             # Update the ZooKeeper node
             content = json.dumps(self.content, sort_keys=True).encode("utf-8")
             try:
-                self.kazoo_client.set(self.path, content)
+                retry = KazooRetry(max_tries=10)
+                retry(self.kazoo_client.set, self.path, content)
             except NoNodeError:
-                self.log.error("Could not update %s in ZooKeeper", self)
+                self.log.error(
+                    "Could not update %s in ZooKeeper: node does not exist",
+                    self)
+                return
+            except RetryFailedError:
+                self.log.error(
+                    "Could not update %s in Zookeeper: too many retries",
+                    self)
+                return
+            except Exception as e:
+                self.log.error(
+                    "Unknown error encountered while "
+                    "updating %s in Zookeeper: %s",
+                    self, e)
 
     def register(self, model_api=MODEL_API):
         self.content['model_api'] = model_api
