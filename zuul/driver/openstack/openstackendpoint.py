@@ -623,6 +623,7 @@ class OpenstackProviderEndpoint(BaseProviderEndpoint):
                 wait=True,
                 md5=md5,
                 sha256=sha256,
+                validate_checksum=bool(md5 or sha256),
                 timeout=timeout,
                 **metadata)
         return image.id
