@@ -77,6 +77,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "783ee07c_f5cd6a3b",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-22T18:28:34Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "ae33c1d6_c625462a",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "11ba52dc_2b266cc4",
@@ -108,6 +126,24 @@
       "side": 1,
       "message": "I would expect them to run concurrently unless configured with dependencies -- in other words, our current behavior for jobs.  Reasoning: because reporter jobs could be used for sending chat messages, etc, which don\u0027t have an inherent sequencing, so therefore sequencing should be optional.",
       "parentUuid": "11ba52dc_2b266cc4",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25b0471b_304ace71",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-22T18:28:34Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "03828303_681c2528",
       "revId": "87005477635d5eb16f258edbde164e9010b1062e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -217,6 +253,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "80fdf081_339e1995",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-22T18:28:34Z",
+      "side": 1,
+      "message": "I see now that the spec notes new information will be supplied in zuul vars to the reporter job including the new merge hashes from the code review system. I think that was the critical piece of info that was missing before. But yes good point that the old git state is speculative and while it reflects what we expect to end up in the final post merge state critical details like hash values will differ.",
+      "parentUuid": "c4815af1_2c5c0266",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "200a41a0_35832d56",
@@ -248,6 +302,24 @@
       "side": 1,
       "message": "That\u0027s a good idea.  I also like deferring it for now since I think the limitation is okay.\n\nI talked with Albin a while ago about a new type of zuul trigger that fires when a queue item is reported on another pipeline (to effectively set up pipeline chaining).  I think that if we did that, that would also solve this problem, because I would not expect that trigger to fire until after the reporting jobs finished.",
       "parentUuid": "200a41a0_35832d56",
+      "revId": "87005477635d5eb16f258edbde164e9010b1062e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dc4046e2_f15d3719",
+        "filename": "doc/source/developer/specs/reporting-jobs.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-22T18:28:34Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "7aa0b07d_142eb947",
       "revId": "87005477635d5eb16f258edbde164e9010b1062e",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
