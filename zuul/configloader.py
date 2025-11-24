@@ -1735,6 +1735,76 @@ class AuthorizationRuleParser(object):
         return a
 
 
+class AuthorizationRoleParser(object):
+    permissions = (
+        'dequeue',
+        'enqueue',
+        'state_post',
+        'autohold_list',
+        'authold_list',
+        'set_autohold',
+        'get_autohold',
+        'delete_autohold',
+        'api_index',
+        'root_authorization',
+        'authorizations',
+        'tenants',
+        'connections',
+        'components',
+        'status',
+        'change_status',
+        'jobs',
+        'config_errors',
+        'tenant_status',
+        'job',
+        'projects',
+        'project',
+        'providers',
+        'pipelines',
+        'images',
+        'build_image',
+        'delete_build_artifact',
+        'delete_image_upload',
+        'validate_image_upload',
+        'flavors',
+        'labels',
+        'nodes',
+        'put_nodes',
+        'nodeset_requests',
+        'delete_nodeset_requests',
+        'project_secret_key',
+        'project_ssh_key',
+        'tenant_ssh_key',
+        'builds',
+        'build',
+        'build_times',
+        'badge',
+        'buildsets',
+        'buildset',
+        'semaphores',
+        'project_freeze_jobs',
+        'project_freeze_job',
+    )
+
+    def __init__(self):
+        self.log = logging.getLogger("zuul.AuthorizationRoleParser")
+        self.schema = self.getSchema()
+
+    def getSchema(self):
+        conditions = vs.Any(bool, {vs.Required('conditions'): dict})
+        permission = {vs.Any(*self.permissions): conditions}
+        authRole = {vs.Required('name'): str,
+                    vs.Required('permissions'): permission,
+                   }
+        return vs.Schema(authRole)
+
+    def fromYaml(self, conf):
+        self.schema(conf)
+        # TODO is it this simple?
+        a = model.AuthZConfigRole(conf)
+        return a
+
+
 class GlobalSemaphoreParser(object):
     def __init__(self):
         self.log = logging.getLogger("zuul.GlobalSemaphoreParser")
@@ -1759,10 +1829,20 @@ class ApiRootParser(object):
         self.log = logging.getLogger("zuul.ApiRootParser")
         self.schema = self.getSchema()
 
+    def validateRoleMappings(self):
+        # TODO Need to check that each key is a valid authz rule name
+        # and each value is a valid api method or admin or read.
+        # Maybe farm out to static or global method to share with
+        # TenantParser.
+        def v(value, path=[]):
+            return True
+        return v
+
     def getSchema(self):
         api_root = {
             'authentication-realm': str,
             'access-rules': to_list(str),
+            'role-mappings': self.validateRoleMappings(),
         }
         return vs.Schema(api_root)
 
@@ -1770,6 +1850,10 @@ class ApiRootParser(object):
         self.schema(conf)
         api_root = model.ApiRoot(conf.get('authentication-realm'))
         api_root.access_rules = conf.get('access-rules', [])
+        api_root.role_mappings = {}
+        if conf.get('role-mappings') is not None:
+            for key, val in conf['role-mappings']:
+                api_root.role_mappings[key] = as_list(val)
         return api_root
 
 
@@ -1919,6 +2003,15 @@ class TenantParser(object):
     def validateTenantSource(self, value, path=[]):
         self.tenant_source(value)
 
+    def validateRoleMappings(self):
+        # TODO Need to check that each key is a valid authz rule name
+        # and each value is a valid api method or admin or read.
+        # Maybe farm out to static or global method to share with
+        # ApiRootParser.
+        def v(value, path=[]):
+            return True
+        return v
+
     def getSchema(self):
         tenant = {vs.Required('name'): str,
                   'max-changes-per-pipeline': int,
@@ -1939,6 +2032,7 @@ class TenantParser(object):
                   'default-ansible-version': vs.Any(str, float, int),
                   'access-rules': to_list(str),
                   'admin-rules': to_list(str),
+                  'role-mappings': self.validateRoleMappings(),
                   'semaphores': to_list(str),
                   'authentication-realm': str,
                   # TODO: Ignored, allowed for backwards compat, remove for v5.
@@ -1988,6 +2082,10 @@ class TenantParser(object):
             tenant.admin_rules = as_list(conf['admin-rules'])
         if conf.get('access-rules') is not None:
             tenant.access_rules = as_list(conf['access-rules'])
+        tenant.role_mappings = {}
+        if conf.get('role-mappings') is not None:
+            for key, val in conf['role-mappings'].items():
+                tenant.role_mappings[key] = as_list(val)
         if conf.get('authentication-realm') is not None:
             tenant.default_auth_realm = conf['authentication-realm']
         if conf.get('semaphores') is not None:
@@ -3138,6 +3236,7 @@ class ConfigLoader(object):
             connections, zk_client, scheduler, merger, keystorage,
             zuul_globals, statsd, unparsed_config_cache)
         self.authz_rule_parser = AuthorizationRuleParser()
+        self.authz_role_parser = AuthorizationRoleParser()
         self.global_semaphore_parser = GlobalSemaphoreParser()
         self.api_root_parser = ApiRootParser()
 
@@ -3195,6 +3294,14 @@ class ConfigLoader(object):
         for conf_authz_rule in unparsed_abide.authz_rules:
             authz_rule = self.authz_rule_parser.fromYaml(conf_authz_rule)
             abide.authz_rules[authz_rule.name] = authz_rule
+        abide.authz_roles.clear()
+        for conf_authz_role in unparsed_abide.authz_roles:
+            authz_role = self.authz_role_parser.fromYaml(conf_authz_role)
+            abide.authz_roles[authz_role.name] = authz_role
+        admin_role = model.AuthZAdminRole()
+        abide.authz_roles['admin'] = admin_role
+        read_role = model.AuthZReadRole()
+        abide.authz_roles['read'] = read_role
 
     def loadSemaphores(self, abide, unparsed_abide):
         abide.semaphores.clear()

@@ -4396,6 +4396,67 @@ class TestTenantScopedWebApiTokenWithExpiry(BaseTestWeb):
         self.assertEqual("some reason", ah_request['reason'])
 
 
+class TestTenantScopedWebApiWithRBAC(BaseTestWeb):
+    config_file = 'zuul-admin-web-no-override.conf'
+    tenant_config_file = 'config/authorization/single-tenant/rbac.yaml'
+
+    def test_rbac_enqueue_permissions(self):
+        """Test that rbac rules defined on tenant are checked"""
+        path = "api/tenant/%(tenant)s/project/%(project)s/enqueue"
+
+        def _test_project_enqueue_with_authz(i, project, authz, expected):
+            f_ch = self.fake_gerrit.addFakeChange(project, 'master',
+                                                  '%s %i' % (project, i))
+            f_ch.addApproval('Code-Review', 2)
+            f_ch.addApproval('Approved', 1)
+            change = {'trigger': 'gerrit',
+                      'change': '%i,1' % i,
+                      'pipeline': 'gate', }
+            enqueue_args = {'tenant': 'tenant-one',
+                            'project': project, }
+
+            token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                               algorithm='HS256')
+            req = self.post_url(path % enqueue_args,
+                                headers={'Authorization': 'Bearer %s' % token},
+                                json=change)
+            self.assertEqual(expected, req.status_code, req.text)
+            self.waitUntilSettled()
+
+        i = 0
+        for p in ['org/project', 'org/project1', 'org/project2']:
+            i += 1
+            # Authorized sub
+            authz = {'iss': 'zuul_operator',
+                     'aud': 'zuul.example.com',
+                     'sub': 'venkman',
+                     'exp': int(time.time()) + 3600}
+            _test_project_enqueue_with_authz(i, p, authz, 200)
+            i += 1
+            # Unauthorized sub
+            authz = {'iss': 'zuul_operator',
+                     'aud': 'zuul.example.com',
+                     'sub': 'vigo',
+                     'exp': int(time.time()) + 3600}
+            _test_project_enqueue_with_authz(i, p, authz, 403)
+            i += 1
+            # Authorized group
+            authz = {'iss': 'zuul_operator',
+                     'aud': 'zuul.example.com',
+                     'sub': 'vigo',
+                     'groups': ['ghostbusters'],
+                     'exp': int(time.time()) + 3600}
+            _test_project_enqueue_with_authz(i, p, authz, 200)
+            i += 1
+            # unauthorized issuer
+            authz = {'iss': 'columbia.edu',
+                     'aud': 'zuul.example.com',
+                     'sub': 'stantz',
+                     'exp': int(time.time()) + 3600}
+            _test_project_enqueue_with_authz(i, p, authz, 401)
+        self.waitUntilSettled()
+
+
 class TestHeldAttributeInBuildInfo(BaseTestWeb):
     config_file = 'zuul-sql-driver-mysql.conf'
     tenant_config_file = 'config/sql-driver/main.yaml'
