@@ -3,6 +3,11 @@
     protected: true
     run: playbooks/job-protected.yaml
 
+- job:
+    name: job-transitive-protected
+    protected: true
+    run: playbooks/job-protected.yaml
+
 - project:
     name: org/project
     check:

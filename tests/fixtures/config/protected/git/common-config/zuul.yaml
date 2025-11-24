@@ -12,8 +12,22 @@
         Verified: -1
 
 - job:
-    name: base
+    name: base-logs
     parent: null
+    protected: true
+
+- job:
+    name: base-logs-test
+    parent: null
+    protected: true
+
+- job:
+    name: base
+    parent: base-logs
+
+- job:
+    name: base-test
+    parent: base-logs-test
 
 - project:
     name: org/project
