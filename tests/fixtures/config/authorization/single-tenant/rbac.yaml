@@ -1,0 +1,25 @@
+- authorization-rule:
+    name: venkman_rule
+    conditions:
+      - zuul_uid: venkman
+- authorization-rule:
+    name: gb_rule
+    conditions:
+      - groups: ghostbusters
+- role:
+    name: enqueue
+    permissions:
+      enqueue: true
+- tenant:
+    name: tenant-one
+    role-mappings:
+      venkman_rule: admin
+      gb_rule: enqueue
+    source:
+      gerrit:
+        config-projects:
+          - common-config
+        untrusted-projects:
+          - org/project
+          - org/project1
+          - org/project2
