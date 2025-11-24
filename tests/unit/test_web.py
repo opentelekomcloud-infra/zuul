@@ -2702,6 +2702,43 @@ class TestBuildInfo(BaseTestWeb):
                                     "idx_min=%i" % idx_max).json()
         self.assertEqual(len(builds_query), 1, builds_query)
 
+    def test_web_filter_builds_by_queue_item_uuid(self):
+        # Hold the builds on the executor, so we can look up the
+        # QueueItem UUID from the pipeline manager.
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        manager = tenant.layout.pipeline_managers.get('gate')
+        queue = None
+        for queue_candidate in manager.state.queues:
+            if queue_candidate.name == 'org/project':
+                queue = queue_candidate
+                break
+        queue_item = queue.queue[0]
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        # Filter the builds for the QueueItem UUID via the zuul-web API
+        builds = self.get_url(
+            f"api/tenant/tenant-one/builds?queue_item_uuid={queue_item.uuid}"
+        ).json()
+        self.assertEqual(len(builds), 3)
+        self.assertEqual(builds[0]["queue_item_uuid"], queue_item.uuid)
+
+        buildsets = self.get_url(
+            "api/tenant/tenant-one/buildsets?"
+            f"queue_item_uuid={queue_item.uuid}"
+        ).json()
+        self.assertEqual(len(buildsets), 1)
+        self.assertEqual(buildsets[0]["queue_item_uuid"], queue_item.uuid)
+
+
     def test_web_substring_search_builds(self):
         # Generate some build records in the db.
         self.add_base_changes()
