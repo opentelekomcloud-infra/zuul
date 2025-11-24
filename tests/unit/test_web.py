@@ -1972,6 +1972,13 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         nodes = self.get_url('api/tenant/tenant-one/nodes').json()
         self.assertEqual(len(nodes), 1)
 
+        # Test that unauthenticated access fails
+        resp = self.put_url(
+            f"api/tenant/tenant-one/nodes/{nodes[0]['uuid']}",
+            json={'state': 'hold'},
+        )
+        self.assertEqual(401, resp.status_code)
+
         token = self._getToken(['tenant-one'])
         resp = self.put_url(
             f"api/tenant/tenant-one/nodes/{nodes[0]['uuid']}",
@@ -1996,6 +2003,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
             'api/tenant/tenant-one/nodeset-requests').json()
         self.assertEqual(len(requests), 1)
         self.assertEqual(request.uuid, requests[0]['uuid'])
+
+        # Test that unauthenticated access fails
+        resp = self.delete_url(
+            f"api/tenant/tenant-one/nodeset-requests/{requests[0]['uuid']}",
+        )
+        self.assertEqual(401, resp.status_code)
 
         resp = self.delete_url(
             f"api/tenant/tenant-one/nodeset-requests/{requests[0]['uuid']}",
