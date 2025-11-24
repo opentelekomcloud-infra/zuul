@@ -1375,6 +1375,7 @@ class TestGerritConnectionDelay(ZuulTestCase):
 
     def test_ref_updated_timeout(self):
         # Test the behavior when the second event is missed
+        self.hold_merge_jobs_in_queue = True
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         A.setMerged()
         start = time.time()
@@ -1389,9 +1390,13 @@ class TestGerritConnectionDelay(ZuulTestCase):
         self.assertTrue(10 + self.replication_delay
                         <= elapsed <
                         20 + self.replication_delay)
+        self.hold_merge_jobs_in_queue = False
+        self.merger_api.release()
+        self.waitUntilSettled()
 
     def test_replication_delay_one_change(self):
         # Test that a single change uses the correct replication delay
+        self.hold_merge_jobs_in_queue = True
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         start = time.time()
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
@@ -1402,9 +1407,13 @@ class TestGerritConnectionDelay(ZuulTestCase):
         self.assertTrue(self.replication_delay
                         <= elapsed <
                         self.replication_delay + 10)
+        self.hold_merge_jobs_in_queue = False
+        self.merger_api.release()
+        self.waitUntilSettled()
 
     def test_replication_delay_two_changes(self):
         # Test that two changes are collectively delayed only 10 seconds
+        self.hold_merge_jobs_in_queue = True
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
         start = time.time()
@@ -1417,6 +1426,9 @@ class TestGerritConnectionDelay(ZuulTestCase):
         self.assertTrue(self.replication_delay
                         <= elapsed <
                         self.replication_delay + 10)
+        self.hold_merge_jobs_in_queue = False
+        self.merger_api.release()
+        self.waitUntilSettled()
 
 
 class TestGerritConnectionNoDelay(TestGerritConnectionDelay):
