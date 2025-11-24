@@ -92,7 +92,7 @@ class TestSQLConnectionMysql(ZuulTestCase):
         buildset_event_table = table_prefix + 'zuul_buildset_event'
 
         self.assertEqual(9, len(insp.get_columns(ref_table)))
-        self.assertEqual(11, len(insp.get_columns(buildset_table)))
+        self.assertEqual(12, len(insp.get_columns(buildset_table)))
         self.assertEqual(2, len(insp.get_columns(buildset_ref_table)))
         self.assertEqual(14, len(insp.get_columns(build_table)))
         self.assertEqual(5, len(insp.get_columns(artifact_table)))
@@ -173,6 +173,7 @@ class TestSQLConnectionMysql(ZuulTestCase):
                     buildsets[0].refs[0].ref_url)
                 self.assertNotEqual(None, buildsets[0].event_id)
                 self.assertNotEqual(None, buildsets[0].event_timestamp)
+                self.assertNotEqual(None, buildsets[0].queue_item_uuid)
 
                 # Check the first result, which should be the project-merge job
                 self.assertEqual(
