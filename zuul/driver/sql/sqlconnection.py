@@ -177,7 +177,8 @@ class DatabaseSession(object):
                   change=None, branch=None, patchset=None, ref=None,
                   newrev=None, event_id=None, event_timestamp=None,
                   first_build_start_time=None, last_build_end_time=None,
-                  uuid=None, job_name=None, voting=None, nodeset=None,
+                  queue_item_uuid=None, uuid=None, job_name=None,
+                  voting=None, nodeset=None,
                   result=None, provides=None, final=None, held=None,
                   complete=None, sort_by_buildset=False, limit=50,
                   offset=0, idx_min=None, idx_max=None,
@@ -231,6 +232,8 @@ class DatabaseSession(object):
             q, buildset_table.c.first_build_start_time, first_build_start_time)
         q = self.listFilter(
             q, buildset_table.c.last_build_end_time, last_build_end_time)
+        q = self.listFilter(
+            q, buildset_table.c.queue_item_uuid, queue_item_uuid)
         q = self.listFilter(q, build_table.c.uuid, uuid)
         q = self.listFilterFuzzy(q, build_table.c.job_name, job_name)
         q = self.listFilter(q, build_table.c.voting, voting)
@@ -450,8 +453,8 @@ class DatabaseSession(object):
 
     def getBuildsets(self, tenant=None, project=None, pipeline=None,
                      change=None, branch=None, patchset=None, ref=None,
-                     newrev=None, uuid=None, result=None, complete=None,
-                     updated_max=None,
+                     newrev=None, uuid=None, queue_item_uuid=None,
+                     result=None, complete=None, updated_max=None,
                      limit=50, offset=0, idx_min=None, idx_max=None,
                      exclude_result=None, query_timeout=None):
 
@@ -483,6 +486,8 @@ class DatabaseSession(object):
         q = self.listFilter(q, ref_table.c.ref, ref)
         q = self.listFilter(q, ref_table.c.newrev, newrev)
         q = self.listFilter(q, buildset_table.c.uuid, uuid)
+        q = self.listFilter(
+            q, buildset_table.c.queue_item_uuid, queue_item_uuid)
         q = self.listFilter(q, buildset_table.c.result, result)
         q = self.exListFilter(q, buildset_table.c.result, exclude_result)
         if idx_min:
@@ -754,6 +759,8 @@ class SQLConnection(BaseConnection):
             first_build_start_time = sa.Column(sa.DateTime, nullable=True)
             last_build_end_time = sa.Column(sa.DateTime, nullable=True)
             updated = sa.Column(sa.DateTime, nullable=True)
+            queue_item_uuid = sa.Column(sa.String(SQL_MAX_STRING_LENGTH),
+                                        nullable=True)
 
             refs = orm.relationship(
                 RefModel,
