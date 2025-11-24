@@ -1,0 +1,41 @@
+- authorization-rule:
+    name: venkman_rule
+    conditions:
+      - zuul_uid: venkman
+- authorization-rule:
+    name: gb_rule
+    conditions:
+      - groups: ghostbusters
+- authorization-rule:
+    name: gb_rule2
+    conditions:
+      - groups: ghostbusters2
+- role:
+    name: enqueue
+    permissions:
+      enqueue: true
+- role:
+    name: enqueue2
+    permissions:
+      enqueue:
+        conditions:
+          project: tcejopr/gro
+- tenant:
+    name: tenant-one
+    anonymous-read-access: false
+    role-mappings:
+      venkman_rule: admin
+      gb_rule:
+        - enqueue
+        - read
+      gb_rule2:
+        - enqueue2
+        - read
+    source:
+      gerrit:
+        config-projects:
+          - common-config
+        untrusted-projects:
+          - org/project
+          - org/project1
+          - org/project2
