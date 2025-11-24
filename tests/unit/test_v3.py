@@ -136,7 +136,7 @@ class TestProtected(ZuulTestCase):
         self.assertEqual(A.patchsets[-1]['approvals'][0]['value'], '1')
 
     def test_protected_reset(self):
-        # try to reset protected flag
+        # Try to reset the protected flag for a variant
         in_repo_conf = textwrap.dedent(
             """
             - job:
@@ -145,15 +145,17 @@ class TestProtected(ZuulTestCase):
                 run: playbooks/job-protected.yaml
 
             - job:
-                name: job-child-reset-protected
+                name: job-protected
                 parent: job-protected
                 protected: false
+                vars:
+                  foo: bar
 
             - project:
                 name: org/project
                 check:
                   jobs:
-                    - job-child-reset-protected
+                    - job-protected
 
             """)
 
@@ -163,8 +165,8 @@ class TestProtected(ZuulTestCase):
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
 
-        # The second patch tried to override some variables.
-        # Thus it should fail.
+        # The second job variant tries to explicitly reset the protected flag,
+        # so this should fail.
         self.assertEqual(A.reported, 1)
         self.assertEqual(A.patchsets[-1]['approvals'][0]['value'], '-1')
         self.assertIn('Unable to reset protected attribute', A.messages[0])
@@ -196,6 +198,128 @@ class TestProtected(ZuulTestCase):
         self.assertEqual(A.patchsets[-1]['approvals'][0]['value'], '-1')
         self.assertIn("is a protected job in a different project",
                       A.messages[0])
+
+    def test_protected_pipeline_variant_not_ok(self):
+        # Try to create a pipeline variant from a protected job
+        # in different project
+        in_repo_conf = textwrap.dedent(
+            """
+            - project:
+                name: org/project1
+                check:
+                  jobs:
+                    - job-protected:
+                        vars:
+                          foo: bar
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.reported, 1)
+        self.assertEqual(A.patchsets[-1]['approvals'][0]['value'], '-1')
+        self.assertIn("is protected and cannot be inherited",
+                      A.messages[0])
+
+    def test_use_protected(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - project:
+                name: org/project1
+                check:
+                  jobs:
+                    - job-protected
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.reported, 1)
+        self.assertEqual(A.patchsets[-1]['approvals'][0]['value'], '1')
+
+    def test_use_transitive_protected(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: job-use-transitive
+                parent: job-transitive-protected
+
+            - project:
+                name: org/project1
+                check:
+                  jobs:
+                    - job-use-transitive
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.reported, 1)
+        self.assertEqual(A.patchsets[-1]['approvals'][0]['value'], '1')
+
+    def test_use_protected_named(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: job-named
+                parent: job-protected
+
+            - project:
+                name: org/project1
+                check:
+                  jobs:
+                    - job-named
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.reported, 1)
+        self.assertEqual(A.patchsets[-1]['approvals'][0]['value'], '-1')
+        self.assertIn("is a protected job in a different project",
+                      A.messages[0])
+
+    def test_protected_multiple_inheritance(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: job-protected
+                parent: base
+                run: playbooks/job-protected.yaml
+
+            - job:
+                name: job-protected
+                parent: base-test
+                vars:
+                  foo: bar
+
+            - project:
+                name: org/project
+                check:
+                  jobs:
+                    - job-protected
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.reported, 1)
+        self.assertEqual(A.patchsets[-1]['approvals'][0]['value'], '1')
 
 
 class TestAbstract(ZuulTestCase):
