@@ -2516,7 +2516,7 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['PUT', ])
-    @cherrypy.tools.check_tenant_auth()
+    @cherrypy.tools.check_tenant_auth(require_admin=True)
     def nodes_put(self, tenant_name, tenant, auth, node_id):
         node = self.zuulweb.nodes_cache.getItem(node_id)
         if not node or node.tenant_name != tenant.name:
@@ -2556,7 +2556,7 @@ class ZuulWebAPI(object):
     @cherrypy.tools.save_params()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['DELETE', ])
-    @cherrypy.tools.check_tenant_auth()
+    @cherrypy.tools.check_tenant_auth(require_admin=True)
     def nodeset_requests_delete(self, tenant_name, tenant, auth, request_id):
         request = self.zuulweb.requests_cache.getItem(request_id)
         if not request or request.tenant_name != tenant.name:
