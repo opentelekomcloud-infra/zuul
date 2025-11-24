@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2e93ecf4_1dde96d7",
+        "filename": "tests/fixtures/config/protected/git/common-config/zuul.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-24T23:32:21Z",
+      "side": 1,
+      "message": "Nit: I\u0027d love a different naming scheme here, like:\n\nbase-parent-protected\nbase\nbase-parent-test-protected\nbase-test\n\nSince \"logs\" isn\u0027t relevant to the test.",
+      "revId": "d7ea44b8b5b1658cbbc7a637efefc64c6f7ae656",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d28032bd_348432d2",
+        "filename": "tests/unit/test_v3.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-24T23:32:21Z",
+      "side": 1,
+      "message": "This fails with: Unable to freeze job graph: Job \u003cJob job-transitive-protected explicit: None implied: {MatchAny:{ImpliedBranchMatcher:master}} source: common-config/zuul.yaml@master#14\u003e which is defined in review.example.com/org/project is protected and cannot be inherited from other projects.\n\nI think that\u0027s expected because we say: \"only jobs defined in the same project may inherit from this job\" and job-use-transitive inherits from a job in another repo that is protected (because it inherits from a protected job).",
+      "revId": "d7ea44b8b5b1658cbbc7a637efefc64c6f7ae656",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6018ed87_3b37c0c3",
+        "filename": "tests/unit/test_v3.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-11-24T23:32:21Z",
+      "side": 1,
+      "message": "This fails with: Unable to freeze job graph: Job \u003cJob base-test explicit: None implied: {MatchAny:{ImpliedBranchMatcher:master}} source: common-config/zuul.yaml@master#14\u003e which is defined in review.example.com/common-config is protected and cannot be inherited from other projects.\n\nI think that\u0027s expected because base-test is protected (via inheritance).\n\nHowever, in test_protected_ok we inherit from a protected base job and update it.  That test is a little unclean (with these changes) because it also adds its own protected flag.  But if we modify this test to avoid multiple inheritance, we see the same thing (the test passes with +1).  So there is a difference in behavior for base jobs, but that doesn\u0027t carry over to base jobs with multiple inheritance.  (That makes sense from an implementation point of view; even with multiple inheritance, there is still only one *base* job: the first one; any other base jobs will just look like any other job.)\n\nThat leaves us with the question: is the \"protected\" exception for a base job intentional?\n\nWhen we freeze a job, we first collect all of the matching job-variants (for this job and all of its parents).  We then pick the very first one of those in the list (which is guaranteed to be a base job) and we call Job.setBase() on that.  Then for every *other* variant in our list, we call Job.applyVariant().\n\nThe reason the behavior described above is different is because we only do anything with the \"protected\" flag in Job.applyVariant().  We do not examine or set it in Job.setBase().\n\nI think that was an oversight because we very likely did not expect anyone to set \"protected\u003dTrue\" on a base job.\n\nMy feeling after reviewing the documentation and the existing behavior is that the most consistent behavior would be to alter setBase to set up the protected flag if it is set on a base job.  That would leave this test failing and also a single-inheritance version of this test would also produce a -1.\n\nThat would be a (very!) breaking change for anyone using the protected flag on base jobs.  I see the logic in that structure -- it\u0027s effectively creating a private and public api.  I think it would be useful to support that.\n\nI think that perhaps we should resolve that by allowing users to un-set the protected flag on a job.  That would still only be permitted within the same project where it was originally set.  So if you had:\n\nbase-logs: protected\u003dTrue\nbase: protected\u003dFalse\n\nThen a user from another project would not be able to inherit from base-logs, but would be able to inherit from base.\n\nIf we like that approach, we can do the following:\n\n* Implement the protected\u003dFalse behavior immediately\n* Add a configuration warning if we detect that a base job (parent\u003dnull) has protected\u003dTrue set.  That warning will indicate that a future zuul version will no longer allow inheritance of that job from other projects, but note that protected can now be explicitly set to false in a same-project child job.\n* Major zuul release\n* Implement breaking change and remove warning\n\nSites that are relying on that behavior can make the protected\u003dFalse setting ahead of time and ignore the warning.",
+      "revId": "d7ea44b8b5b1658cbbc7a637efefc64c6f7ae656",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
