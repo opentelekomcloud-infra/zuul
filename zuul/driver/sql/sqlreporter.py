@@ -68,6 +68,7 @@ class SQLReporter(BaseReporter):
             pipeline=item.manager.pipeline.name,
             event_id=event_id,
             event_timestamp=event_timestamp,
+            queue_item_uuid=item.uuid,
             updated=datetime.datetime.utcnow(),
         )
         for change in item.changes:
