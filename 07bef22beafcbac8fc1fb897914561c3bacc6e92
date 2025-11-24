@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b1872aa1_e28bbf11",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-24T21:07:49Z",
+      "side": 1,
+      "message": "recheck the failure was in the gerrit replication test cases which shouldn\u0027t be affected by this change.",
+      "revId": "07bef22beafcbac8fc1fb897914561c3bacc6e92",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
