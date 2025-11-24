@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f90bf49_3a0e1035",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-11-24T16:05:28Z",
+      "side": 1,
+      "message": "recheck unrelated test failure in a gerrit connection test case",
+      "revId": "9b5d63e981221f94460e1313e828b66f18ffc378",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
