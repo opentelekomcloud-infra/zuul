@@ -9675,6 +9675,7 @@ class UnparsedAbideConfig(object):
         self.ltime = -1
         self.tenants = {}
         self.authz_rules = []
+        self.authz_roles = []
         self.semaphores = []
         self.api_roots = []
 
@@ -9682,6 +9683,7 @@ class UnparsedAbideConfig(object):
         if isinstance(conf, UnparsedAbideConfig):
             self.tenants.update(conf.tenants)
             self.authz_rules.extend(conf.authz_rules)
+            self.authz_roles.extend(conf.authz_roles)
             self.semaphores.extend(conf.semaphores)
             self.api_roots.extend(conf.api_roots)
             if len(self.api_roots) > 1:
@@ -9707,6 +9709,8 @@ class UnparsedAbideConfig(object):
                 self.authz_rules.append(value)
             elif key == 'authorization-rule':
                 self.authz_rules.append(value)
+            elif key == 'role':
+                self.authz_roles.append(value)
             elif key == 'global-semaphore':
                 self.semaphores.append(value)
             elif key == 'api-root':
@@ -9724,6 +9728,7 @@ class UnparsedAbideConfig(object):
             "api_roots": self.api_roots,
         }
         d["authz_rules"] = self.authz_rules
+        d["authz_roles"] = self.authz_roles
         return d
 
     @classmethod
@@ -9735,6 +9740,7 @@ class UnparsedAbideConfig(object):
         unparsed_abide.authz_rules = data.get('authz_rules',
                                               data.get('admin_rules',
                                                        []))
+        unparsed_abide.authz_roles = data.get('authz_roles', [])
         unparsed_abide.semaphores = data.get("semaphores", [])
         unparsed_abide.api_roots = data.get("api_roots", [])
         return unparsed_abide
@@ -11095,6 +11101,7 @@ class TenantTPCRegistry:
 class Abide(object):
     def __init__(self):
         self.authz_rules = {}
+        self.authz_roles = {}
         self.semaphores = {}
         self.tenants = {}
         self.tenant_lock = threading.Lock()
@@ -11477,6 +11484,30 @@ class AuthZRuleTree(object):
 
     def __repr__(self):
         return '<AuthZRuleTree [ %s ]>' % self.ruletree
+
+
+class AuthZRole(object):
+    # TODO Build out an object that when given an explicit permission
+    # like enqueue or build etc checks if the role state matches. The
+    # primary check is the permission name. but if the AuthZRole includes
+    # conditions it will check each condition against the current request
+    # state.
+    pass
+
+
+class AuthZAdminRole(AuthZRole):
+    # Special role that always returns true to checks to enable admin action
+    pass
+
+
+class AuthZReadRole(AuthZRole):
+    # Special role that limits access to read only endpoints
+    pass
+
+
+class AuthZConfigRole(AuthZRole):
+    # Roles that are configured in the zuul config
+    pass
 
 
 class TenantEventState(zkobject.ZKObject):
