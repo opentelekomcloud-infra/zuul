@@ -1,4 +1,5 @@
 // Copyright 2018 Red Hat, Inc
+// Copyright 2025 Acme Gating, LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -19,13 +20,15 @@ import { Link } from 'react-router-dom'
 import {
   Checkbox,
   Badge,
-  Form,
-  FormGroup,
-  FormControl,
-  Icon,
-  TreeView
-} from 'patternfly-react'
-
+  TreeView,
+  TreeViewSearch,
+  Toolbar,
+  ToolbarContent,
+  ToolbarItem,
+} from '@patternfly/react-core'
+import {
+  CubeIcon,
+} from '@patternfly/react-icons'
 
 class JobsList extends React.Component {
   static propTypes = {
@@ -46,6 +49,11 @@ class JobsList extends React.Component {
     }
   }
 
+  onSearch = (e) => {
+    console.log(e)
+    this.setState({filter: e.target.value})
+  }
+
   render () {
     const { jobs } = this.props
     const { filter, flatten } = this.state
@@ -59,25 +67,27 @@ class JobsList extends React.Component {
     // visited contains individual node
     const visited = {}
     // createNode returns the actual node needed by the tree view component
-    const createNode = (job, extra) => ({
-      text: (
+    const createNode = (job, extra, jobId) => ({
+      id: jobId,
+      name: (
         <React.Fragment>
           <Link to={linkPrefix + encodeURIComponent(job.name)}>{job.name}</Link>
           {extra && (<span> ({extra})</span>)}
           {job.description && (
             <span style={{marginLeft: '10px'}}>{job.description}</span>
           )}
+        </React.Fragment>),
+      customBadgeContent: (
+        <React.Fragment>
           {job.tags && job.tags.map((tag, idx) => (
             <Badge
-              key={idx}
-              pullRight>
+              key={idx}>
               {tag}
             </Badge>))}
         </React.Fragment>),
-      icon: 'fa fa-cube',
-      state: {
-        expanded: true,
-      },
+      icon: <CubeIcon/>,
+      hasBadge: job.tags,
+      defaultExpanded: true,
     })
     // getNode returns the tree node and visit each parents
     const getNode = function (job, filtered) {
@@ -92,7 +102,7 @@ class JobsList extends React.Component {
             }
           }
         }
-        visited[job.name] = createNode(job, null)
+        visited[job.name] = createNode(job, null, job.name)
         visited[job.name].parents = parents
         visited[job.name].filtered = filtered
         // Visit parent recursively
@@ -139,14 +149,14 @@ class JobsList extends React.Component {
                 'Job ', job.name, ' parent ', parent, ' does not exist!')
               continue
             }
-            if (!parentNode.nodes) {
-              parentNode.nodes = []
+            if (!parentNode.children) {
+              parentNode.children = []
             }
             if (attached) {
               // We need to create a duplicate node to satisfy TreeView constrains for multi parent
-              parentNode.nodes.push(createNode(job, 'branched'))
+              parentNode.children.push(createNode(job, 'branched', parent.id + ' ' + job.name))
             } else {
-              parentNode.nodes.push(jobNode)
+              parentNode.children.push(jobNode)
             }
             attached = true
           }
@@ -157,38 +167,29 @@ class JobsList extends React.Component {
         }
       }
     }
+
     return (
       <div className="tree-view-container">
-        <Form inline>
-          <FormGroup controlId='jobs'>
-            <FormControl
-              type='text'
-              className="pf-c-form-control"
-              placeholder='job name'
-              defaultValue={filter}
-              inputRef={i => this.filter = i}
-              onKeyPress={this.handleKeyPress} />
-            {filter && (
-              <FormControl.Feedback>
-                <span
-                  onClick={() => {this.setState({filter: ''})
-                    this.filter.value = ''}}
-                  style={{cursor: 'pointer', zIndex: 10, pointerEvents: 'auto'}}
-                >
-                  <Icon type='pf' title='Clear filter' name='delete' />
-                  &nbsp;
-                </span>
-              </FormControl.Feedback>
-            )}
-          </FormGroup>
-          <FormGroup controlId='jobs-flatten'>
-            &nbsp; Flatten list &nbsp;
-            <Checkbox
-              defaultChecked={flatten}
-              onChange={(e) => this.setState({flatten: e.target.checked})} />
-          </FormGroup>
-        </Form>
-        <TreeView nodes={nodes} />
+        <TreeView
+          data={nodes}
+          toolbar={
+            <Toolbar>
+              <ToolbarContent>
+                <ToolbarItem>
+                  <TreeViewSearch
+                    onSearch={this.onSearch}
+                  />
+                </ToolbarItem>
+                <ToolbarItem>
+                  Flatten list &nbsp;
+                  <Checkbox
+                    id='flatten'
+                    isChecked={flatten}
+                    onChange={(e) => {console.log(e); this.setState({flatten: e})}} />
+                </ToolbarItem>
+              </ToolbarContent>
+            </Toolbar>
+          }/>
       </div>
     )
   }
