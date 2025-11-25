@@ -16,7 +16,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import {
   TreeView,
-} from 'patternfly-react'
+} from '@patternfly/react-core'
 import { Link } from 'react-router-dom'
 
 import { renderTree } from '../../actions/build'
@@ -60,9 +60,7 @@ class Manifest extends React.Component {
       <React.Fragment>
         <br/>
         <div className="tree-view-container">
-          <TreeView
-            nodes={nodes}
-          />
+          <TreeView data={nodes} />
         </div>
       </React.Fragment>
     )
