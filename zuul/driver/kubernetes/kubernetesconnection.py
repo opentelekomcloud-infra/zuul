@@ -16,6 +16,7 @@ import logging
 import os
 
 from zuul.connection import BaseConnection
+from zuul.lib.config import any_to_bool
 
 
 class KubernetesConnection(BaseConnection):
@@ -36,3 +37,6 @@ class KubernetesConnection(BaseConnection):
 
         # Rate limit: requests/second
         self.rate = self.connection_config.get('rate', 2)
+        # Use openshift projects instead of namespaces
+        self.use_openshift_projects = any_to_bool(self.connection_config.get(
+            'use_openshift_projects', False))

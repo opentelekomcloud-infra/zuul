@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+
+
 class FakeCoreClient:
     def __init__(self):
         self.namespaces = {}
@@ -114,3 +117,36 @@ class FakeRbacClient:
 
     def create_namespaced_role_binding(self, ns, role_binding_body):
         return
+
+
+class FakeDynamicClient:
+    def __init__(self, core_client, openshift):
+        class FakeResources:
+            def get(self, api_version, kind):
+                if kind == 'ProjectRequest':
+                    if not openshift:
+                        raise Exception("Not an OpenShift server")
+
+                    class FakeProjects:
+                        def create(self, body):
+                            new_body = copy.deepcopy(body)
+                            new_body['apiVersion'] = 'v1'
+                            new_body['kind'] = 'Namespace'
+                            core_client.create_namespace(new_body)
+                    return FakeProjects()
+                if kind == 'Project':
+                    if not openshift:
+                        raise Exception("Not an OpenShift server")
+
+                    class FakeProject:
+                        def get(self):
+
+                            class FakeProjects:
+                                items = list(core_client.namespaces.values())
+                            return FakeProjects
+
+                        def delete(self, name):
+                            core_client.delete_namespace(name, None)
+                    return FakeProject()
+
+        self.resources = FakeResources()
