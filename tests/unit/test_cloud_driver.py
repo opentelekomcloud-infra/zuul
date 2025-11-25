@@ -32,6 +32,8 @@ class BaseCloudDriverTest(ZuulTestCase):
     cloud_test_connection_type = 'ssh'
     cloud_test_image_format = ''
     cloud_test_provider_name = ''
+    # The number of instances to expect when nothing is running
+    cloud_test_min_instances = 0
 
     def setUp(self):
         self.useFixture(fixtures.MonkeyPatch(
@@ -84,7 +86,8 @@ class BaseCloudDriverTest(ZuulTestCase):
             self._assertProviderNodeAttributes(pnode)
 
         for _ in iterate_timeout(10, "instances to appear"):
-            if len(list(provider.endpoint.listInstances())) > 0:
+            if (len(list(provider.endpoint.listInstances())) >
+                self.cloud_test_min_instances):
                 break
         client.useNodeset(nodeset)
         self.waitUntilSettled()
@@ -111,7 +114,8 @@ class BaseCloudDriverTest(ZuulTestCase):
         # Iterate here because the aws driver (at least) performs
         # delayed async deletes.
         for _ in iterate_timeout(60, "instances to be deleted"):
-            if len(list(provider.endpoint.listInstances())) == 0:
+            if (len(list(provider.endpoint.listInstances())) ==
+                self.cloud_test_min_instances):
                 break
 
     def _test_quota(self, label):
@@ -176,7 +180,8 @@ class BaseCloudDriverTest(ZuulTestCase):
         # Iterate here because the aws driver (at least) performs
         # delayed async deletes.
         for _ in iterate_timeout(60, "instances to be deleted"):
-            if len(list(provider.endpoint.listInstances())) == 0:
+            if (len(list(provider.endpoint.listInstances())) ==
+                self.cloud_test_min_instances):
                 break
 
     def _test_diskimage(self, expected_uploads=1):

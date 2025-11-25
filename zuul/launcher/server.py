@@ -506,9 +506,10 @@ class NodescanRequest:
             self.gather_hostkeys = False
         self.ip = node.interface_ip
         self.port = node.connection_port
-        addrinfo = socket.getaddrinfo(self.ip, self.port)[0]
-        self.family = addrinfo[0]
-        self.sockaddr = addrinfo[4]
+        if self.port:
+            addrinfo = socket.getaddrinfo(self.ip, self.port)[0]
+            self.family = addrinfo[0]
+            self.sockaddr = addrinfo[4]
         self.sock = None
         self.transport = None
         self.event = None

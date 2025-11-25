@@ -2123,6 +2123,7 @@ class Node(ConfigObject):
         self.private_ipv6 = None
         self.connection_port = 22
         self.connection_type = None
+        self.kubernetes_connection = {}
         self.username = None
         self.python_path = None
         self.shell_type = None
@@ -2883,6 +2884,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             private_ipv6=None,
             connection_port=22,
             connection_type=None,
+            kubernetes_connection={},
             username=None,
             python_path=None,
             shell_type=None,
@@ -3079,6 +3081,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             cloud=self.cloud,
             connection_port=self.connection_port,
             connection_type=self.connection_type,
+            kubernetes_connection=self.kubernetes_connection,
             username=self.username,
             python_path=self.python_path,
             shell_type=self.shell_type,
