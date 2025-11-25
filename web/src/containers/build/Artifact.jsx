@@ -16,7 +16,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import {
   TreeView,
-} from 'patternfly-react'
+} from '@patternfly/react-core'
 import ReactJson from 'react-json-view'
 import { connect } from 'react-redux'
 
@@ -64,11 +64,9 @@ class ArtifactList extends React.Component {
     const { artifacts, preferences } = this.props
 
     const nodes = artifacts.map((artifact, index) => {
-      const node = {text: <a href={artifact.url}>{artifact.name}</a>,
-        icon: null}
+      const node = {id: index, name: <a href={artifact.url}>{artifact.name}</a>}
       if (artifact.metadata) {
-        node['nodes']= [{text: <Artifact key={index} artifact={artifact} preferences={preferences}/>,
-          icon: ''}]
+        node['children']= [{id: index, name: <Artifact artifact={artifact} preferences={preferences}/>}]
       }
       return node
     })
@@ -77,9 +75,7 @@ class ArtifactList extends React.Component {
       <>
         <br/>
         <div className="tree-view-container">
-          <TreeView
-            nodes={nodes}
-          />
+          <TreeView data={nodes} />
         </div>
       </>
     )
