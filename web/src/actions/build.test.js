@@ -12,6 +12,11 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
+import * as React from 'react'
+import {
+  FileIcon,
+} from '@patternfly/react-icons'
+
 import * as buildAction from './build'
 
 it('processes job-output properly', () => {
@@ -26,8 +31,9 @@ it('processes job-output properly', () => {
     {linkPrefix: 'test/'},
     {log_url: 'http://test/', uuid: 'test'},
     '/', obj, (a) => (a), (a) => (a))
+  let icon = React.createElement(FileIcon)
   expect(tree).toEqual(
-    {'icon': 'fa fa-file-o', 'nodes': [], 'text': 'http://test'})
+    {'icon': icon, 'children': [], 'id': 'test', 'name': 'http://test'})
 })
 
 it('processes filename with % properly', () => {
@@ -36,6 +42,7 @@ it('processes filename with % properly', () => {
     {linkPrefix: 'test/'},
     {log_url: 'http://test/', uuid: 'test'},
     '/', obj, (a) => (a), (_log_url, path, name) => (path + name))
+  let icon = React.createElement(FileIcon)
   expect(tree).toEqual(
-    {'icon': 'fa fa-file-o', 'nodes': [], 'text': '/test%25el'})
+    {'icon': icon, 'children': [], 'id': 'test%25el', 'name': '/test%25el'})
 })
