@@ -12,9 +12,14 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
+import * as React from 'react'
 import * as API from '../api'
 
 import { fetchLogfile } from './logfile'
+
+import {
+  FileIcon,
+} from '@patternfly/react-icons'
 
 export const BUILD_FETCH_REQUEST = 'BUILD_FETCH_REQUEST'
 export const BUILD_FETCH_SUCCESS = 'BUILD_FETCH_SUCCESS'
@@ -64,24 +69,25 @@ export function renderTree(tenant, build, path, obj, textRenderer, defaultRender
   let name = encodeURIComponent(obj.name)
 
   if ('children' in obj && obj.children) {
-    node.nodes = obj.children.map(
+    node.children = obj.children.map(
       n => renderTree(tenant, build, path+name+'/', n,
         textRenderer, defaultRenderer))
   }
   if (obj.mimetype === 'application/directory') {
     name = name + '/'
   } else {
-    node.icon = 'fa fa-file-o'
+    node.icon = React.createElement(FileIcon)
   }
 
+  node.id = name
   let log_url = build.log_url
   if (log_url.endsWith('/')) {
     log_url = log_url.slice(0, -1)
   }
   if (obj.mimetype === 'text/plain') {
-    node.text = textRenderer(tenant, build, path, name, log_url, obj)
+    node.name = textRenderer(tenant, build, path, name, log_url, obj)
   } else {
-    node.text = defaultRenderer(log_url, path, name, obj)
+    node.name = defaultRenderer(log_url, path, name, obj)
   }
   return node
 }
