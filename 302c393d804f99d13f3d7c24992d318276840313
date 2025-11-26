@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9fbf6bfd_87eab4f8",
+        "filename": "doc/source/developer/specs/reporter-jobs.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-11-26T07:58:19Z",
+      "side": 1,
+      "message": "I\u0027m wondering if we want to make that behavior configurable similar to the `job.hold-following-changes` setting.\n\nI think there could be a use-case for those reporting jobs w/o the need to hold pipeline processing until the reporting jobs have finished.\nWe could also change the behavior based on whether the reporting job is voting or not, but I\u0027d prefer to make that explicit.",
+      "range": {
+        "startLine": 121,
+        "startChar": 0,
+        "endLine": 121,
+        "endChar": 133
+      },
+      "revId": "302c393d804f99d13f3d7c24992d318276840313",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
