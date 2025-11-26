@@ -3,6 +3,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "72f98bcf_bb87d1b0",
+        "filename": "doc/source/developer/specs/reporter-jobs.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-11-26T13:23:57Z",
+      "side": 1,
+      "message": "Would this affect the whole pipeline or just one particular change queue?",
+      "range": {
+        "startLine": 75,
+        "startChar": 16,
+        "endLine": 76,
+        "endChar": 38
+      },
+      "revId": "302c393d804f99d13f3d7c24992d318276840313",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9fbf6bfd_87eab4f8",
         "filename": "doc/source/developer/specs/reporter-jobs.rst",
         "patchSetId": 2
