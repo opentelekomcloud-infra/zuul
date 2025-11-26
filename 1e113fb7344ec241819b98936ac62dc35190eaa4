@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3baca63e_2b8ead85",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-11-26T15:37:25Z",
+      "side": 1,
+      "message": "LGTM. Compared to the old version, a \"directory node\" (e.g. zuul-info) does not show a folder icon anymore. Could we add that?",
+      "revId": "1e113fb7344ec241819b98936ac62dc35190eaa4",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
