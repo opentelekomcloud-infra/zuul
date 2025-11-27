@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "55b3a0fb_2d069b87",
+        "filename": "doc/source/tutorials/quick-start.rst",
+        "patchSetId": 27
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 12898
+      },
+      "writtenOn": "2025-11-27T10:12:38Z",
+      "side": 1,
+      "message": "I think that\u0027s a reasonable thing to add to the packages here.",
+      "parentUuid": "8a970947_88891b48",
+      "revId": "76f7d210de8c427840d9c0f021a6e275c16e03b0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0225b8c5_7635ef14",
         "filename": "playbooks/tutorial/roles/setup-tutorial/tasks/main.yaml",
         "patchSetId": 27
