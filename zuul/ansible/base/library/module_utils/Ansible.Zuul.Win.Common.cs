@@ -101,11 +101,7 @@ namespace Ansible.Zuul.Win.Common
 
         public ZuulConsole(string zuulLogId, string zuulLogPath)
         {
-            if (zuulLogId == "in-loop-ignore")
-            {
-                logFile = null;
-            }
-            else if (zuulLogId == "skip")
+            if (zuulLogId == "skip")
             {
                 logFile = null;
             }
