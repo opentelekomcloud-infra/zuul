@@ -36,7 +36,7 @@ def stream_setup_run(module, task_vars):
     skip = zuul_console_disabled(module)
     if skip:
         module._task.args['zuul_log_id'] = 'skip'
-    elif 'ansible_loop_var' in task_vars:
+    elif module._task.loop is not None:
         # we do not log loops in the zuul_stream.py callback.
         module._task.args['zuul_log_id'] = 'in-loop-ignore'
     else:
