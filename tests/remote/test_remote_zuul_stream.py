@@ -220,6 +220,13 @@ class FunctionalZuulStreamMixIn:
             self.assertLogLine(r'controller \| This is a rescue task', text)
             self.assertLogLine(r'compute1 \| This is an always task', text)
             self.assertLogLine(r'controller \| This is an always task', text)
+            for i in range(2):
+                self.assertLogLine(r'compute1 \| This is a command task from '
+                                   f'include_tasks inside a loop (index={i})',
+                                   text)
+                self.assertLogLine(r'controller \| This is a shell task from '
+                                   f'include_tasks inside a loop (index={i})',
+                                   text)
             self.assertLogLine(r'compute1 \| This is a handler', text)
             self.assertLogLine(r'controller \| This is a handler', text)
             self.assertLogLine(r'controller \| First free task', text)
