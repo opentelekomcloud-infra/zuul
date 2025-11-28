@@ -120,7 +120,8 @@ def remote(session):
                     '-r', 'test-requirements.txt')
     session.install('-e', '.')
     session.run_always('zuul-manage-ansible', '-v')
-    session.run('stestr', 'run', '--test-path', './tests/remote')
+    session.run('stestr', 'run', '--test-path', './tests/remote',
+                *session.posargs)
 
 
 @nox.session(python='3')
