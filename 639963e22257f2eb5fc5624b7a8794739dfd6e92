@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5cea273d_b0d8722e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2025-11-30T02:31:20Z",
+      "side": 1,
+      "message": "Just my 2 cents.. I know this is quite the reach but it would be nice if the gap could be bridged between SCM and Zuul.\n\nFor example, if I don\u0027t have access to a specific project in GitHub (or Gerrit), then I cannot view jobs for it in the UI.\n\nI am not sure on how all that could be wired up, but it can be huge.  It\u0027s currently making us have to run several tenants unnecessarily so simply to create some compartments of who can see what.\n\nIf based on GitHub or Gerrit permissions, it would allow you to view jobs/etc, that would be _quite neat_, but I can imagine a lot of work.",
+      "revId": "639963e22257f2eb5fc5624b7a8794739dfd6e92",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3c3940b8_67401ff3",
