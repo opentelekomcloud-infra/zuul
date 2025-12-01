@@ -67,6 +67,24 @@
       "message": "It looks like the retry will delay expected \u0027NoNodeError\u0027. I tried to handle this case higher up the function call here: https://review.opendev.org/c/zuul/zuul/+/950862, but retrying was not an option either because of the inconsistent state of the service. Perhaps we should terminate the process when the exit handler fails because of such exception?",
       "revId": "d1648fd0a7ae8f9cd31b7fae9da117afb691ab56",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "431c82cd_0ce5a46d",
+        "filename": "zuul/zk/components.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-12-01T16:00:59Z",
+      "side": 1,
+      "message": "If I read the documentation of kazoo.retry correctly [1], the retries only apply when the following exceptions occur: ConnectionLoss, OperationTimeout, or ForceRetryError. So a NoNodeError should still be thrown on the first attempt.\n\nTo give some context, the root issue that I want to address is that if an uncaught exception is thrown during a graceful stop, the graceful stop is canceled and the component never stops. This causes issues during pod rollouts in kubernetes, for example.\n\nSo the approach here isn\u0027t desirable, would it be okay to instead catch all exceptions in the graceful() function, log them and continue until shutdown?\n\n[1] https://kazoo.readthedocs.io/en/latest/api/retry.html#kazoo.retry.KazooRetry.__call__",
+      "parentUuid": "3f3845f2_7c8af021",
+      "revId": "d1648fd0a7ae8f9cd31b7fae9da117afb691ab56",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
