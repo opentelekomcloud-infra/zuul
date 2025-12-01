@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd894d9d_e46c6a7a",
+        "filename": "zuul/driver/sql/sqlconnection.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 761,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-01T15:47:35Z",
+      "side": 1,
+      "message": "I think if you move this one line down that would fix the migration test error.",
+      "revId": "4300c9253e99820e05575177fb02837fcf6e1029",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
