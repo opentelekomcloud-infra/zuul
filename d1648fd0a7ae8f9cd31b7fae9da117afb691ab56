@@ -50,6 +50,23 @@
       "message": "recheck",
       "revId": "d1648fd0a7ae8f9cd31b7fae9da117afb691ab56",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f3845f2_7c8af021",
+        "filename": "zuul/zk/components.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 9311
+      },
+      "writtenOn": "2025-12-01T15:46:18Z",
+      "side": 1,
+      "message": "It looks like the retry will delay expected \u0027NoNodeError\u0027. I tried to handle this case higher up the function call here: https://review.opendev.org/c/zuul/zuul/+/950862, but retrying was not an option either because of the inconsistent state of the service. Perhaps we should terminate the process when the exit handler fails because of such exception?",
+      "revId": "d1648fd0a7ae8f9cd31b7fae9da117afb691ab56",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
