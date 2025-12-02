@@ -67,7 +67,7 @@ ARG OPENSHIFT_SHA=74f252c812932425ca19636b2be168df8fe57b114af6b114283975e67d987d
 ARG PBR_VERSION=
 
 COPY . /tmp/src
-COPY --from=js-builder /tmp/src/build /tmp/src/zuul/web/static
+COPY --from=js-builder /tmp/src/dist /tmp/src/zuul/web/static
 RUN assemble
 
 # The wheel install method doesn't run the setup hooks as the source based
