@@ -21,12 +21,11 @@ import { matchPath, withRouter } from 'react-router'
 import { Link, NavLink, Redirect, Route, Switch } from 'react-router-dom'
 import { connect } from 'react-redux'
 import { withAuth } from 'oidc-react'
-import {
-  TimedToastNotification,
-  ToastNotificationList,
-} from 'patternfly-react'
 import * as moment_tz from 'moment-timezone'
 import {
+  Alert,
+  AlertActionCloseButton,
+  AlertGroup,
   Brand,
   Button,
   ButtonVariant,
@@ -71,7 +70,7 @@ import { getHomepageUrl } from './api'
 import AuthCallbackPage from './pages/AuthCallback'
 import AuthRequiredPage from './pages/AuthRequired'
 
-class App extends React.Component {
+class AppComponent extends React.Component {
   static propTypes = {
     notifications: PropTypes.array,
     tenantStatus: PropTypes.object,
@@ -270,7 +269,7 @@ class App extends React.Component {
 
   renderNotifications = (notifications) => {
     return (
-      <ToastNotificationList>
+      <AlertGroup isToast isLiveRegion>
         {notifications.map(notification => {
           let notificationBody
           if (notification.type === 'error') {
@@ -284,19 +283,25 @@ class App extends React.Component {
             notificationBody = (<span>{notification.text}</span>)
           }
           return (
-            <TimedToastNotification
+            <Alert
               key={notification.id}
-              type={notification.type}
-              onDismiss={() => { this.props.dispatch(clearNotification(notification.id)) }}
+              variant={notification.type}
+              timeout={true}
+              onTimeout={() => { this.props.dispatch(clearNotification(notification.id)) }}
+              actionClose={
+                <AlertActionCloseButton
+                  onClose={() => this.props.dispatch(clearNotification(notification.id))}
+                />
+              }
             >
               <span title={moment_tz.utc(notification.date).tz(this.props.timezone).format()}>
                 {notificationBody}
               </span>
-            </TimedToastNotification>
+            </Alert>
           )
         }
         )}
-      </ToastNotificationList>
+      </AlertGroup>
     )
   }
 
@@ -522,7 +527,7 @@ class App extends React.Component {
 }
 
 // This connect the info state from the store to the info property of the App.
-export default withRouter(connect(
+const App = withRouter(connect(
   state => ({
     notifications: state.notifications,
     tenantStatus: state.tenantStatus.tenant_status,
@@ -534,4 +539,6 @@ export default withRouter(connect(
     user: state.user,
     auth: state.auth,
   })
-)(withAuth(App)))
+)(withAuth(AppComponent)))
+
+export default App

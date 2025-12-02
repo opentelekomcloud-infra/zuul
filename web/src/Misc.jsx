@@ -12,8 +12,10 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-import React, { useState, useEffect } from 'react'
-import * as moment from 'moment'
+import { useState, useEffect, React } from 'react'
+import PropTypes from 'prop-types'
+import moment from 'moment'
+import { ExternalLinkAltIcon } from '@patternfly/react-icons'
 import { ExternalLink } from './MiscComponents'
 
 function removeHash() {

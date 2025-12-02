@@ -43,9 +43,10 @@ import {
   breakWord,
   cellWidth,
 } from '@patternfly/react-table'
-import 'moment-duration-format'
-import * as moment from 'moment'
-import * as moment_tz from 'moment-timezone'
+import momentDurationSetup from 'moment-duration-format'
+import moment from 'moment'
+import moment_tz from 'moment-timezone'
+momentDurationSetup(moment_tz)
 
 import { BuildResult, BuildResultWithIcon } from './Misc'
 import { buildExternalTableLink } from '../../Misc'

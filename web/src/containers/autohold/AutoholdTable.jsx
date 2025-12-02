@@ -40,7 +40,7 @@ import {
   TableVariant,
 } from '@patternfly/react-table'
 import { Link } from 'react-router-dom'
-import * as moment from 'moment'
+import moment from 'moment'
 
 import { autohold_delete } from '../../api'
 import { addNotification } from '../../actions/notifications'

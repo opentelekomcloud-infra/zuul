@@ -32,8 +32,10 @@ import {
   ChartVoronoiContainer,
   getCustomTheme,
 } from '@patternfly/react-charts'
-import * as moment from 'moment'
-import * as moment_tz from 'moment-timezone'
+import momentDurationSetup from 'moment-duration-format'
+import moment from 'moment'
+import moment_tz from 'moment-timezone'
+momentDurationSetup(moment_tz)
 
 import FreezeJobToolbar from '../containers/freezejob/FreezeJobToolbar'
 

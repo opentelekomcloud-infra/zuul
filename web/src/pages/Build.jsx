@@ -16,7 +16,7 @@ import * as React from 'react'
 import { connect } from 'react-redux'
 import { withRouter } from 'react-router-dom'
 import PropTypes from 'prop-types'
-import { parse } from 'query-string'
+import queryString from 'query-string'
 import {
   Button,
   EmptyState,
@@ -146,7 +146,7 @@ class BuildPageComponent extends React.Component {
       tenant,
     } = this.props
     const hash = location.hash.substring(1).split('/')
-    const severity = parseInt(parse(location.search).severity)
+    const severity = parseInt(queryString.parse(location.search).severity)
 
     // Get the logfile from react-routers URL parameters
     const logfileName = this.props.match.params.file

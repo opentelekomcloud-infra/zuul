@@ -22,8 +22,8 @@ import {
   TableBody,
   ActionsColumn,
 } from '@patternfly/react-table'
-import * as moment from 'moment'
-import * as moment_tz from 'moment-timezone'
+import moment from 'moment'
+import moment_tz from 'moment-timezone'
 import {
   PageSection,
   PageSectionVariants,
