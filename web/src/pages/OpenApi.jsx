@@ -15,8 +15,8 @@
 import * as React from 'react'
 import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
-import SwaggerUi from 'swagger-ui'
-import 'swagger-ui/dist/swagger-ui.css'
+import SwaggerUi from 'swagger-ui-react'
+import "swagger-ui-react/swagger-ui.css"
 import { PageSection, PageSectionVariants } from '@patternfly/react-core'
 
 import { fetchOpenApiIfNeeded } from '../actions/openapi'
@@ -39,21 +39,11 @@ class OpenApiPage extends React.Component {
     this.updateData()
   }
 
-  componentDidUpdate (prevProps) {
-    if (this.props.remoteData.openapi &&
-        this.props.remoteData.openapi !== prevProps.remoteData.openapi) {
-      SwaggerUi({
-        dom_id: '#swaggerContainer',
-        spec: this.props.remoteData.openapi,
-        presets: [SwaggerUi.presets.apis]
-      })
-    }
-  }
-
   render() {
+    console.log(this.props.remoteData.openapi)
     return (
       <PageSection variant={this.props.preferences.darkMode ? PageSectionVariants.dark : PageSectionVariants.light}>
-        <div id="swaggerContainer" />
+        <SwaggerUi spec={this.props.remoteData.openapi}/>
       </PageSection>
     )
   }

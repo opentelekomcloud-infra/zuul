@@ -1,4 +1,5 @@
 // Copyright 2019 Red Hat, Inc
+// Copyright 2025 Acme Gating, LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -31,9 +32,12 @@ it('processes job-output properly', () => {
     {linkPrefix: 'test/'},
     {log_url: 'http://test/', uuid: 'test'},
     '/', obj, (a) => (a), (a) => (a))
-  let icon = React.createElement(FileIcon)
-  expect(tree).toEqual(
-    {'icon': icon, 'children': [], 'id': 'test', 'name': 'http://test'})
+  expect(tree).toEqual({
+    'icon': React.createElement(FileIcon),
+    'id': 'test',
+    'children': [],
+    'name': 'http://test',
+  })
 })
 
 it('processes filename with % properly', () => {
@@ -42,7 +46,10 @@ it('processes filename with % properly', () => {
     {linkPrefix: 'test/'},
     {log_url: 'http://test/', uuid: 'test'},
     '/', obj, (a) => (a), (_log_url, path, name) => (path + name))
-  let icon = React.createElement(FileIcon)
-  expect(tree).toEqual(
-    {'icon': icon, 'children': [], 'id': 'test%25el', 'name': '/test%25el'})
+  expect(tree).toEqual({
+    'icon': React.createElement(FileIcon),
+    'id': 'test%25el',
+    'children': [],
+    'name': '/test%25el',
+  })
 })
