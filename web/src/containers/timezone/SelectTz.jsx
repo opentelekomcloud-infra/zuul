@@ -12,6 +12,7 @@
 
 import PropTypes from 'prop-types'
 import React from 'react'
+/*eslint-disable-next-line*/
 import Select, { components } from 'react-select'
 import moment from 'moment-timezone'
 import { OutlinedClockIcon, ChevronDownIcon } from '@patternfly/react-icons'

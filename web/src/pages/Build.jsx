@@ -51,7 +51,7 @@ import Console from '../containers/build/Console'
 import Manifest from '../containers/build/Manifest'
 import LogFile from '../containers/logfile/LogFile'
 
-class BuildPage extends React.Component {
+class BuildPageComponent extends React.Component {
   static propTypes = {
     match: PropTypes.object.isRequired,
     build: PropTypes.object,
@@ -372,7 +372,9 @@ function mapStateToProps(state, ownProps) {
 
 const mapDispatchToProps = { fetchBuildAllInfo, fetchLogfile }
 
-export default connect(
+const BuildPage = connect(
   mapStateToProps,
   mapDispatchToProps
-)(withRouter(BuildPage))
+)(withRouter(BuildPageComponent))
+
+export default BuildPage
