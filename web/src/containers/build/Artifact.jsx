@@ -17,7 +17,14 @@ import PropTypes from 'prop-types'
 import {
   TreeView,
 } from '@patternfly/react-core'
-import ReactJson from 'react-json-view'
+import {
+  TableComposable,
+  Tbody,
+  Thead,
+  Tr,
+  Td,
+} from '@patternfly/react-table'
+import { JSONTree } from 'react-json-tree'
 import { connect } from 'react-redux'
 
 class Artifact extends React.Component {
@@ -29,27 +36,28 @@ class Artifact extends React.Component {
   render() {
     const { artifact, preferences } = this.props
     return (
-      <table className="table table-striped table-bordered" style={{width:'50%'}}>
-        <tbody>
+      <TableComposable>
+        <Thead>
+          <Tr></Tr>
+        </Thead>
+        <Tbody>
           {Object.keys(artifact.metadata).map(key => (
-            <tr key={key}>
-              <td>{key}</td>
-              <td style={{width:'100%'}}>
+            <Tr key={key}>
+              <Td>{key}</Td>
+              <Td>
                 {typeof(artifact.metadata[key]) === 'object'?
-                 <ReactJson
-                   src={artifact.metadata[key]}
-                   name={null}
-                   collapsed={true}
-                   sortKeys={true}
-                   enableClipboard={false}
-                   displayDataTypes={false}
-                   theme={preferences.darkMode ? 'tomorrow' : 'rjv-default'}/>
+                 <JSONTree
+                   data={artifact.metadata[key]}
+                   hideRoot={true}
+                   sortObjectKeys={true}
+                   theme="default"
+                   invertTheme={!preferences.darkMode}/>
                  :artifact.metadata[key].toString()}
-              </td>
-            </tr>
+              </Td>
+            </Tr>
           ))}
-        </tbody>
-      </table>
+        </Tbody>
+      </TableComposable>
     )
   }
 }
