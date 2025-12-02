@@ -35,7 +35,7 @@ import 'moment-duration-format'
 import * as moment from 'moment'
 
 import { BuildResult, BuildResultWithIcon } from './Misc'
-import { IconProperty } from '../../Misc'
+import { IconProperty } from '../../MiscComponents'
 
 class BuildList extends React.Component {
   static propTypes = {

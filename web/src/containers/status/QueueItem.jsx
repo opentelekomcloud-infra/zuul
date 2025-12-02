@@ -46,13 +46,15 @@ import {
 
 import {
   calculateQueueItemTimes,
-  ChangeLink,
   getChangeLabel,
   getJobStrResult,
   getRefs,
+} from './Misc'
+import {
+  ChangeLink,
   JobLink,
   JobResultOrStatus,
-} from './Misc'
+} from './MiscComponents'
 
 import QueueItemProgress from './QueueItemProgress'
 

@@ -27,7 +27,7 @@ import {
   CubeIcon,
   ConnectedIcon,
 } from '@patternfly/react-icons'
-import { IconProperty } from '../Misc'
+import { IconProperty } from '../MiscComponents'
 
 import { fetchProjectsIfNeeded } from '../actions/projects'
 import { Fetchable, Fetching } from '../containers/Fetching'

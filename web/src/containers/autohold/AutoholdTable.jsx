@@ -47,7 +47,7 @@ import { addNotification } from '../../actions/notifications'
 import { addAutoholdError } from '../../actions/adminActions'
 import { fetchAutoholds } from '../../actions/autoholds'
 
-import { IconProperty } from '../../Misc'
+import { IconProperty } from '../../MiscComponents'
 
 function AutoholdTable(props) {
   const { autoholds, fetching, tenant, user, dispatch } = props

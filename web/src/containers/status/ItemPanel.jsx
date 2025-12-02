@@ -23,10 +23,12 @@ import { Button } from '@patternfly/react-core'
 
 import {
   calculateQueueItemTimes,
-  ChangeLink,
   getJobStrResult,
-  QueueItemProgressbar,
 } from './Misc'
+import {
+  ChangeLink,
+  QueueItemProgressbar,
+} from './MiscComponents'
 import { formatTime } from '../../Misc'
 
 function getRefs(item) {

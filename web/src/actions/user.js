@@ -26,7 +26,7 @@ export function getToken(user) {
   try {
     JSON.parse(atob(user.access_token.split('.')[1]))
     return user.access_token
-  } catch (e) {
+  } catch {
     return user.id_token
   }
 }

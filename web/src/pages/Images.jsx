@@ -26,7 +26,7 @@ import { fetchImages, fetchImagesIfNeeded } from '../actions/images'
 import ImageTable from '../containers/provider/ImageTable'
 import { ReloadButton } from '../containers/Fetching'
 
-function ImagesPage() {
+function ImagesPageComponent() {
   const tenant = useSelector((state) => state.tenant)
   const images = useSelector((state) => state.images.images[tenant.name])
   const isFetching = useSelector((state) => state.status.isFetching)
@@ -66,4 +66,5 @@ function ImagesPage() {
   )
 }
 
-export default withRouter(ImagesPage)
+const ImagesPage = withRouter(ImagesPageComponent)
+export default ImagesPage

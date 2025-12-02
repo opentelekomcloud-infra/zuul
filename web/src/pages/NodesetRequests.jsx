@@ -42,8 +42,10 @@ import {
 import { Link } from 'react-router-dom'
 import {
   getNodeStyle,
-  IconProperty,
 } from '../Misc'
+import {
+  IconProperty,
+} from '../MiscComponents'
 
 import { deleteNodesetRequest } from '../api'
 import { addNotification } from '../actions/notifications'
