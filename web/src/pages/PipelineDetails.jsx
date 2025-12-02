@@ -43,19 +43,23 @@ import ChangeQueue from '../containers/status/ChangeQueue'
 import {
   countPipelineItems,
   isPipelineEmpty,
-  PipelineIcon,
 } from '../containers/status/Misc'
+import {
+  PipelineIcon,
+} from '../containers/status/MiscComponents'
 import { fetchStatusIfNeeded } from '../actions/status'
 import { clearJobs } from '../actions/statusExpansion'
 import { EmptyBox, EmptyPage } from '../containers/Errors'
 import { Fetching, ReloadButton } from '../containers/Fetching'
 import { useDocumentVisibility, useInterval } from '../Hooks'
 import {
-  FilterToolbar,
   getFiltersFromUrl,
+} from '../containers/FilterToolbar'
+import {
+  FilterToolbar,
   ToolbarStatsGroup,
   ToolbarStatsItem,
-} from '../containers/FilterToolbar'
+} from '../containers/FilterToolbarComponents'
 import {
   filterPipelines,
   handleFilterChange,
@@ -136,7 +140,7 @@ PipelineDetails.propTypes = {
   pipeline: PropTypes.object.isRequired,
 }
 
-function PipelineDetailsPage({
+function PipelineDetailsPageComponent({
   pipeline, isFetching, tenant, darkMode, autoReload, fetchStatusIfNeeded, isEmpty, filterCategories, filters
 }) {
   const [isReloading, setIsReloading] = useState(false)
@@ -152,7 +156,7 @@ function PipelineDetailsPage({
   const updateData = useCallback((tenant) => {
     if (tenant.name) {
       setIsReloading(true)
-      fetchStatusIfNeeded(tenant)
+        fetchStatusIfNeeded(tenant)
         .then(() => {
           setIsReloading(false)
         })
@@ -162,9 +166,10 @@ function PipelineDetailsPage({
   useEffect(() => {
     document.title = 'Zuul Pipeline Details'
     // Initial data fetch
-    updateData(tenant)
-  }, [updateData, tenant])
-
+    if (tenant.name) {
+      fetchStatusIfNeeded(tenant)
+    }
+  }, [tenant, fetchStatusIfNeeded])
 
   // Subsequent data fetches every 5 seconds if auto-reload is enabled
   useInterval(() => {
@@ -296,7 +301,7 @@ function PipelineDetailsPage({
   )
 }
 
-PipelineDetailsPage.propTypes = {
+PipelineDetailsPageComponent.propTypes = {
   match: PropTypes.object.isRequired,
   pipeline: PropTypes.object,
   isFetching: PropTypes.bool,
@@ -342,7 +347,10 @@ function mapStateToProps(state, ownProps) {
 
 const mapDispatchToProps = { fetchStatusIfNeeded }
 
-export default connect(
+// TODO: drop the map methods to better match pipeline overview
+const PipelineDetailsPage = connect(
   mapStateToProps,
   mapDispatchToProps,
-)(withRouter(PipelineDetailsPage))
+)(withRouter(PipelineDetailsPageComponent))
+
+export default PipelineDetailsPage

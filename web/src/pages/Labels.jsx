@@ -23,7 +23,7 @@ import {
   TableBody,
 } from '@patternfly/react-table'
 import { TagIcon } from '@patternfly/react-icons'
-import { IconProperty } from '../Misc'
+import { IconProperty } from '../MiscComponents'
 
 import { fetchLabelsIfNeeded } from '../actions/labels'
 import { Fetchable, Fetching } from '../containers/Fetching'

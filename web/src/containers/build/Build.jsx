@@ -37,7 +37,8 @@ import _ from 'lodash'
 import 'moment-duration-format'
 
 import { BuildResultBadge, BuildResultWithIcon } from './Misc'
-import { buildExternalLink, renderRefInfo, ExternalLink, IconProperty } from '../../Misc'
+import { buildExternalLink, renderRefInfo } from '../../Misc'
+import { ExternalLink, IconProperty } from '../../MiscComponents'
 
 import AutoholdModal from '../autohold/autoholdModal'
 

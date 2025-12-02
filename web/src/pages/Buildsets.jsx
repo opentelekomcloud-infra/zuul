@@ -20,14 +20,16 @@ import { PageSection, PageSectionVariants, Pagination } from '@patternfly/react-
 
 import { fetchBuildsets } from '../api'
 import {
-  FilterToolbar,
   getFiltersFromUrl,
   writeFiltersToUrl,
 } from '../containers/FilterToolbar'
+import {
+  FilterToolbar,
+} from '../containers/FilterToolbarComponents'
 import { makeBuildsetQueryString } from '../containers/BuildQuery'
 import BuildsetTable from '../containers/build/BuildsetTable'
 
-class BuildsetsPage extends React.Component {
+class BuildsetsPageComponent extends React.Component {
   static propTypes = {
     tenant: PropTypes.object,
     location: PropTypes.object,
@@ -181,8 +183,9 @@ class BuildsetsPage extends React.Component {
   handleFilterChange = (newFilters) => {
     const { location, history } = this.props
     const { filters, itemCount } = this.state
-    /*eslint no-unused-vars: ["error", { "ignoreRestSiblings": true }]*/
+    /*eslint-disable-next-line*/
     let { 'skip': x1, 'limit': y1, ..._oldFilters } = filters
+    /*eslint-disable-next-line*/
     let { 'skip': x2, 'limit': y2, ..._newFilters } = newFilters
 
     // If filters have changed, reinitialize skip
@@ -276,7 +279,9 @@ class BuildsetsPage extends React.Component {
   }
 }
 
-export default connect((state) => ({
+const BuildsetsPage = connect((state) => ({
   tenant: state.tenant,
   preferences: state.preferences,
-}))(BuildsetsPage)
+}))(BuildsetsPageComponent)
+
+export default BuildsetsPage

@@ -35,7 +35,8 @@ import {
 } from '@patternfly/react-icons'
 
 import QueueItemPopover from './QueueItemPopover'
-import { PipelineIcon, getQueueItemIconConfig } from './Misc'
+import { getQueueItemIconConfig } from './Misc'
+import { PipelineIcon } from './MiscComponents'
 import { makeQueryString } from '../FilterToolbar'
 import ChangeQueue from './ChangeQueue'
 import { expandQueue, collapseQueue } from '../../actions/statusExpansion'

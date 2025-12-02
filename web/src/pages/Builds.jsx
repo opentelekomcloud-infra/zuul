@@ -21,14 +21,16 @@ import { PageSection, PageSectionVariants, Pagination } from '@patternfly/react-
 
 import { fetchBuilds } from '../api'
 import {
-  FilterToolbar,
   getFiltersFromUrl,
   writeFiltersToUrl,
 } from '../containers/FilterToolbar'
+import {
+  FilterToolbar,
+} from '../containers/FilterToolbarComponents'
 import { makeBuildQueryString } from '../containers/BuildQuery'
 import BuildTable from '../containers/build/BuildTable'
 
-class BuildsPage extends React.Component {
+class BuildsPageComponent extends React.Component {
   static propTypes = {
     tenant: PropTypes.object,
     timezone: PropTypes.string,
@@ -230,8 +232,9 @@ class BuildsPage extends React.Component {
   handleFilterChange = (newFilters) => {
     const { location, history } = this.props
     const { filters, itemCount } = this.state
-    /*eslint no-unused-vars: ["error", { "ignoreRestSiblings": true }]*/
+    /*eslint-disable-next-line*/
     let { 'skip': x1, 'limit': y1, ..._oldFilters } = filters
+    /*eslint-disable-next-line*/
     let { 'skip': x2, 'limit': y2, ..._newFilters } = newFilters
 
     // If filters have changed, reinitialize skip
@@ -325,7 +328,8 @@ class BuildsPage extends React.Component {
   }
 }
 
-export default connect((state) => ({
+const BuildsPage = connect((state) => ({
   tenant: state.tenant,
   timezone: state.timezone,
-}))(BuildsPage)
+}))(BuildsPageComponent)
+export default BuildsPage

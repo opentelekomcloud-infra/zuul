@@ -34,7 +34,7 @@ import {
 import { Fetching } from '../containers/Fetching'
 import { fetchTenantsIfNeeded } from '../actions/tenants'
 import { PageSection, PageSectionVariants } from '@patternfly/react-core'
-import { IconProperty } from '../Misc'
+import { IconProperty } from '../MiscComponents'
 
 class TenantsPage extends React.Component {
   static propTypes = {
