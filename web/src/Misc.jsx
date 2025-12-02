@@ -12,8 +12,8 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-import React, { useState, useEffect } from 'react'
-import * as moment from 'moment'
+import { useState, useEffect, React } from 'react'
+import moment from 'moment'
 import { ExternalLink } from './MiscComponents'
 
 function removeHash() {

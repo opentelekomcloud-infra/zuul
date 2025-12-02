@@ -24,7 +24,7 @@ export const fetchOpenApiRequest = () => ({
 })
 
 export const fetchOpenApiSuccess = (yaml_data, whiteLabel) => {
-  const data = yaml.safeLoad(yaml_data)
+  const data = yaml.load(yaml_data)
   if (whiteLabel) {
     const paths = {}
     for (let path in data.paths) {

@@ -31,7 +31,7 @@ def _build_javascript():
     if not os.path.exists('zuul/web/static/index.html'):
         os.makedirs('zuul/web/static', exist_ok=True)
         if not os.path.islink('../zuul/web/static'):
-            os.symlink('../zuul/web/static', 'web/build',
+            os.symlink('../zuul/web/static', 'web/dist',
                        target_is_directory=True)
         r = subprocess.Popen(['yarn', 'build'], cwd="web/").wait()
         if r:
