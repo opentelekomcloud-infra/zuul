@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb3cf247_b4586de0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-02T22:36:49Z",
+      "side": 1,
+      "message": "While this spec does touch on some ability to restrict access by project (specifically so that permissions like enqueue can be allocated to people with access to that project (in principle, aligning the access to *re-enqueue* a change to the same access for the original enqueuing of the change)), I don\u0027t anticipate changing the model for job visibility and access.  The purpose of a tenant is to scope access to shared resources (like jobs and pipelines) across projects, and if those projects have no interaction, it is proper for them to have a separate tenant.  Tenants are relatively cheap in Zuul, and indeed, there are few downsides and many upsides to having more of them.",
+      "parentUuid": "5cea273d_b0d8722e",
+      "revId": "639963e22257f2eb5fc5624b7a8794739dfd6e92",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3c3940b8_67401ff3",
