@@ -39,9 +39,10 @@ import {
   OutlinedClockIcon,
   RedoAltIcon,
 } from '@patternfly/react-icons'
-import * as moment from 'moment'
-import * as moment_tz from 'moment-timezone'
-import 'moment-duration-format'
+import momentDurationSetup from 'moment-duration-format'
+import moment from 'moment'
+import moment_tz from 'moment-timezone'
+momentDurationSetup(moment_tz)
 
 import { buildExternalLink, renderRefInfo } from '../../Misc'
 import { IconProperty } from '../../MiscComponents'
