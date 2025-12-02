@@ -31,8 +31,9 @@ import {
   ThumbtackIcon,
   LockIcon,
 } from '@patternfly/react-icons'
-import * as moment from 'moment'
-import * as moment_tz from 'moment-timezone'
+import momentDurationSetup from 'moment-duration-format'
+import moment from 'moment'
+import moment_tz from 'moment-timezone'
 import _ from 'lodash'
 import 'moment-duration-format'
 
@@ -41,6 +42,8 @@ import { buildExternalLink, renderRefInfo } from '../../Misc'
 import { ExternalLink, IconProperty } from '../../MiscComponents'
 
 import AutoholdModal from '../autohold/autoholdModal'
+
+momentDurationSetup(moment_tz)
 
 function getRefs(build) {
   // This method has a purpose beyond backwards compat: return the

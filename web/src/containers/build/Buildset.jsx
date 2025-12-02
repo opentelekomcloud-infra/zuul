@@ -39,9 +39,9 @@ import {
   OutlinedClockIcon,
   RedoAltIcon,
 } from '@patternfly/react-icons'
-import * as moment from 'moment'
-import * as moment_tz from 'moment-timezone'
-import 'moment-duration-format'
+import momentDurationSetup from 'moment-duration-format'
+import moment from 'moment'
+import moment_tz from 'moment-timezone'
 
 import { buildExternalLink, renderRefInfo } from '../../Misc'
 import { IconProperty } from '../../MiscComponents'
@@ -50,6 +50,8 @@ import { enqueue, enqueue_ref } from '../../api'
 import { addNotification, addApiError } from '../../actions/notifications'
 import { ChartModal } from '../charts/ChartModal'
 import BuildsetGanttChart from '../charts/GanttChart'
+
+momentDurationSetup(moment_tz)
 
 const BUILDSET_MESSAGE_PREVIEW_LINES = 8
 
