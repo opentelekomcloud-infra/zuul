@@ -91,6 +91,24 @@
       "message": "This also raises the question of why not \"reporter job\" instead of \"reporting job\"? Perhaps to disambiguate from reporter drivers.",
       "revId": "850e996d30dd12dbc3f50c1cb1337e567ac6d1b2",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ac49fa0_f6f1996a",
+        "filename": "doc/source/developer/specs/init-jobs.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-02T22:29:03Z",
+      "side": 1,
+      "message": "I actually did make that change on the \"reporter job\" spec: https://review.opendev.org/967937",
+      "parentUuid": "d4fb7629_ef0fca1b",
+      "revId": "850e996d30dd12dbc3f50c1cb1337e567ac6d1b2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
