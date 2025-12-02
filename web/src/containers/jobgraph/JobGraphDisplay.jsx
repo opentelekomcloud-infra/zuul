@@ -78,25 +78,18 @@ function GraphViz(props) {
             scale: 0.75,
           }).renderDot(props.dot)
 
-    // Fix up the initial values of the internal transform data;
-    // without this the first time we pan the graph jumps.
-    const element = d3.select('.zuul-job-graph > svg')
-    const transform = element[0][0].firstElementChild.attributes.transform.value
-    const match = transform.match(/translate\(\d+,(\d+)\).*/)
-    if (match && match.length > 0) {
-      const val = parseInt(match[1])
-      gv._translation.y = val
-      gv._originalTransform.y = val
-    }
 
-    // Disable scroll wheel zooming because it interferes with window
-    // scrolling
-    gv.zoomSelection().on('wheel.zoom', null)
+    gv.on('end', function() {
+      // Disable scroll wheel zooming because it interferes with window
+      // scrolling
+      this.zoomSelection().on('wheel.zoom', null)
 
-    // Mutate the links to be internal links
-    d3.select('.zuul-job-graph').selectAll('.node a').on('click', event => {
-      d3.event.preventDefault()
-      history.push(event.attributes['xlink:href'])
+      // Mutate the links to be internal links
+      d3.select('.zuul-job-graph').selectAll('.node a').on('click', event => {
+        event.preventDefault()
+        history.push(event.target.parentNode.attributes.href.value)
+      })
+
     })
   }, [props.dot, history])
 

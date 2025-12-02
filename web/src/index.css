@@ -89,6 +89,10 @@ a.refresh {
 
 /* Toolbar */
 
+.zuul-header-tools {
+    gap: 6px;
+}
+
 .zuul-toolbar-section .pf-l-level {
     /* Don't align items on center, as this would shift the reload button
        and toolbar stats when a filter is applied and the chip group
@@ -176,11 +180,6 @@ a.refresh {
 /* Remove ugly outline when a Switch is selected */
 .pf-c-switch {
     --pf-c-switch__input--focus__toggle--OutlineWidth: 0;
-}
-
-/* Keep the normal font-size for compact tables */
-.zuul-table td {
-    font-size: var(--pf-global--FontSize--md);
 }
 
 /* Align padding of compact expendable (child) rows. Without this there is
@@ -359,11 +358,12 @@ a.refresh {
 .zuul-pipeline-link {
     color: #363636;
     font-size: var(--pf-global--FontSize--xl);
+    font-weight: var(--pf-global--FontWeight--overpass--semi-bold);
 }
 
 .zuul-item-square {
     cursor: pointer;
-    padding: 0 !important;
+    padding: 4px 0 4px 0 !important;
 }
 
 .zuul-item-square-success {
@@ -621,10 +621,6 @@ a.refresh {
     width: 40px;
 }
 
-.zuul-pipeline-header h3 {
-    font-weight: var(--pf-global--FontWeight--bold);
-}
-
 .zuul-change {
     margin-bottom: 10px;
 }
@@ -838,7 +834,7 @@ pre.version {
 }
 
 .zuul-console .pf-c-data-list {
-    border: none
+    border: none;
 }
 
 .zuul-console-plays .pf-c-data-list__item:nth-child(even) {
@@ -856,9 +852,29 @@ pre.version {
     background: var(--pf-global--BackgroundColor--200);
 }
 
+.zuul-console-light pre {
+    font-size: 11;
+    padding: 10px;
+    border: 1px solid #bbb;
+    margin-bottom: 8px;
+}
+
 .zuul-console-dark pre {
     background: #000;
     color: #fff;
+    font-size: 11;
+    padding: 10px;
+    border: 1px solid white;
+    margin-bottom: 8px;
+}
+
+/* Increase the font size slightly for the JSON tree to match the text */
+.zuul-console-dark pre ul {
+    font-size: 12;
+}
+
+.zuul-console-light pre ul {
+    font-size: 12;
 }
 
 .zuul-console .pf-c-data-list__item:hover::before
@@ -1011,11 +1027,20 @@ details.foldable[open] summary::before {
 }
 
 .zuul-build-output {
+  background-color: white !important;
+  font-size: 11;
+  padding: 10px;
+  border: 1px solid #bbb;
+  margin-bottom: 8px;
 }
 
 .zuul-build-output-dark {
   background-color: #000 !important;
   color: #fff;
+  font-size: 11;
+  padding: 10px;
+  border: 1px solid white;
+  margin-bottom: 8px;
 }
 
 .pf-theme-dark .zuul-log-sev-0 {

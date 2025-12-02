@@ -24,7 +24,7 @@ then
     # Initialize nodeenv and tell it to re-use the currently active virtualenv
     attempts=0
     set +e
-    until nodeenv --python-virtualenv -n 22.11.0 ; do
+    until nodeenv --python-virtualenv -n 22.21.1 ; do
         ((attempts++))
         if [[ $attempts > 2 ]]
         then
@@ -42,7 +42,7 @@ fi
 if [[ ! -f zuul/web/static/index.html ]]
 then
     mkdir -p zuul/web/static
-    ln -sfn ../zuul/web/static web/build
+    ln -sfn ../zuul/web/static web/dist
     pushd web/
         if [[ -n "${YARN_REGISTRY}" ]]
         then
