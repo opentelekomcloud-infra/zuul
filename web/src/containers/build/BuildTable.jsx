@@ -48,7 +48,8 @@ import * as moment from 'moment'
 import * as moment_tz from 'moment-timezone'
 
 import { BuildResult, BuildResultWithIcon } from './Misc'
-import { buildExternalTableLink, IconProperty } from '../../Misc'
+import { buildExternalTableLink } from '../../Misc'
+import { IconProperty } from '../../MiscComponents'
 
 function getRef(build) {
   return 'project' in build ? build : build.ref

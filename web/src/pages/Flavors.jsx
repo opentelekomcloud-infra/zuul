@@ -26,7 +26,7 @@ import { fetchFlavors, fetchFlavorsIfNeeded } from '../actions/flavors'
 import FlavorTable from '../containers/provider/FlavorTable'
 import { ReloadButton } from '../containers/Fetching'
 
-function FlavorsPage() {
+function FlavorsPageComponent() {
   const tenant = useSelector((state) => state.tenant)
   const flavors = useSelector((state) => state.flavors.flavors[tenant.name])
   const isFetching = useSelector((state) => state.status.isFetching)
@@ -66,4 +66,5 @@ function FlavorsPage() {
   )
 }
 
-export default withRouter(FlavorsPage)
+const FlavorsPage = withRouter(FlavorsPageComponent)
+export default FlavorsPage

@@ -24,7 +24,7 @@ import {
   AddCircleOIcon,
 } from '@patternfly/react-icons'
 import AutoholdModal from '../containers/autohold/autoholdModal'
-import { IconProperty } from '../Misc'
+import { IconProperty } from '../MiscComponents'
 
 
 class AutoholdsPage extends React.Component {

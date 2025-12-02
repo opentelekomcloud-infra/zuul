@@ -40,8 +40,10 @@ import {
 import {
   formatProviderName,
   getNodeStyle,
-  IconProperty,
 } from '../Misc'
+import {
+  IconProperty,
+} from '../MiscComponents'
 
 import { setNodeState } from '../api'
 import { addNotification } from '../actions/notifications'

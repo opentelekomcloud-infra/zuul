@@ -26,7 +26,7 @@ import { fetchProviders, fetchProvidersIfNeeded } from '../actions/providers'
 import ProviderTable from '../containers/provider/ProviderTable'
 import { ReloadButton } from '../containers/Fetching'
 
-function ProvidersPage() {
+function ProvidersPageComponent() {
   const tenant = useSelector((state) => state.tenant)
   const providers = useSelector((state) => state.providers.providers[tenant.name])
   const isFetching = useSelector((state) => state.status.isFetching)
@@ -62,4 +62,5 @@ function ProvidersPage() {
   )
 }
 
-export default withRouter(ProvidersPage)
+const ProvidersPage = withRouter(ProvidersPageComponent)
+export default ProvidersPage

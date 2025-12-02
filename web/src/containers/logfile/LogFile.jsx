@@ -46,8 +46,6 @@ export default function LogFile({
   ...props
 }) {
   const [severity, setSeverity] = useState(props.severity)
-  const [highlightStart, setHighlightStart] = useState(0)
-  const [highlightEnd, setHighlightEnd] = useState(0)
   // We only want to scroll down to the highlighted section if the highlight
   // fields we're populated from the URL parameters. Here we assume that we
   // always want to scroll when the page is loaded and therefore disable the
@@ -55,32 +53,33 @@ export default function LogFile({
   // or section is marked.
   const [scrollOnPageLoad, setScrollOnPageLoad] = useState(true)
 
-  useEffect(() => {
-    // Only highlight the lines if the log is present (otherwise it doesn't make
-    // sense). Although, scrolling to the selected section only works once the
-    // necessary log lines are part of the DOM tree.
-    // Additionally note that if we set highlightStart before the page content
-    // is available then the window scrolling won't match any lines and we won't
-    // scroll. Then when we try to set highlightStart after page content is loaded
-    // the value isn't different than what is set previously preventing the
-    // scroll event from firing.
-    if (!isFetching) {
-      // Get the line numbers to highlight from the URL and directly cast them to
-      // a number. The substring(1) removes the '#' character.
-      const lines = location.hash
-        .substring(1)
-        .split('-')
-        .map(Number)
-        .sort(sortNumeric)
-      if (lines.length > 1) {
-        setHighlightStart(lines[0])
-        setHighlightEnd(lines[1])
-      } else if (lines.length === 1) {
-        setHighlightStart(lines[0])
-        setHighlightEnd(lines[0])
-      }
+  let highlightStart = 0
+  let highlightEnd = 0
+
+  // Only highlight the lines if the log is present (otherwise it doesn't make
+  // sense). Although, scrolling to the selected section only works once the
+  // necessary log lines are part of the DOM tree.
+  // Additionally note that if we set highlightStart before the page content
+  // is available then the window scrolling won't match any lines and we won't
+  // scroll. Then when we try to set highlightStart after page content is loaded
+  // the value isn't different than what is set previously preventing the
+  // scroll event from firing.
+  if (!isFetching) {
+    // Get the line numbers to highlight from the URL and directly cast them to
+    // a number. The substring(1) removes the '#' character.
+    const lines = location.hash
+      .substring(1)
+      .split('-')
+      .map(Number)
+      .sort(sortNumeric)
+    if (lines.length > 1) {
+      highlightStart = lines[0]
+      highlightEnd = lines[1]
+    } else if (lines.length === 1) {
+      highlightStart = lines[0]
+      highlightEnd = lines[0]
     }
-  }, [location.hash, isFetching])
+  }
 
   useEffect(() => {
     const scrollToHighlightedLine = () => {

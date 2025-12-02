@@ -37,7 +37,7 @@ import {
   OutlinedCommentDotsIcon,
   TrashIcon,
 } from '@patternfly/react-icons'
-import { IconProperty } from '../Misc'
+import { IconProperty } from '../MiscComponents'
 
 import { Link } from 'react-router-dom'
 import * as moment from 'moment'

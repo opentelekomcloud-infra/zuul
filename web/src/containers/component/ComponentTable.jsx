@@ -33,7 +33,7 @@ import {
   HistoryIcon,
 } from '@patternfly/react-icons'
 
-import { IconProperty } from '../../Misc'
+import { IconProperty } from '../../MiscComponents'
 
 const STATE_ICON_CONFIGS = {
   RUNNING: {
@@ -107,6 +107,35 @@ function ComponentTable({ components }) {
     return 0
   }
 
+  function createSectionRow(kind, childrenCount) {
+    return {
+      // Keep all sections open on initial page load. The handleCollapse()
+      // function will deal with open/closing sections.
+      isOpen: true,
+      cells: [`${capitalize(kind)} (${childrenCount})`],
+    }
+  }
+
+  function createComponentRow(kind, component, parent_id) {
+    return {
+      parent: parent_id,
+      cells: [
+        {
+          title: (
+            <>
+              <ComponentStateIcon state={component.state} />{' '}
+              {component.hostname}
+            </>
+          ),
+        },
+        {
+          title: <ComponentState state={component.state} />,
+        },
+        component.version,
+      ],
+    }
+  }
+
   useEffect(() => {
     const createTableRows = () => {
       const allRows = []
@@ -159,41 +188,14 @@ function ComponentTable({ components }) {
     },
   ]
 
-  function createSectionRow(kind, childrenCount) {
-    return {
-      // Keep all sections open on initial page load. The handleCollapse()
-      // function will deal with open/closing sections.
-      isOpen: true,
-      cells: [`${capitalize(kind)} (${childrenCount})`],
-    }
-  }
-
-  function createComponentRow(kind, component, parent_id) {
-    return {
-      parent: parent_id,
-      cells: [
-        {
-          title: (
-            <>
-              <ComponentStateIcon state={component.state} />{' '}
-              {component.hostname}
-            </>
-          ),
-        },
-        {
-          title: <ComponentState state={component.state} />,
-        },
-        component.version,
-      ],
-    }
-  }
-
   function handleCollapse(event, rowKey, isOpen) {
     const _rows = [...rows]
     /* Note from PF4:
      * Please do not use rowKey as row index for more complex tables.
      * Rather use some kind of identifier like ID passed with each row.
      */
+    // Skip the eslint check because we do use setState immediately below
+    // eslint-disable-next-line
     rows[rowKey].isOpen = isOpen
     setRows(_rows)
   }

@@ -22,9 +22,11 @@ import {
 
 import {
   calculateQueueItemTimes,
-  ChangeLink,
   getRefs
 } from './Misc'
+import {
+  ChangeLink,
+} from './MiscComponents'
 
 import QueueItemProgress from './QueueItemProgress'
 

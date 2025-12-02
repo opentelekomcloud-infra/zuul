@@ -26,15 +26,15 @@ import {
   StopwatchIcon,
 } from '@patternfly/react-icons'
 
-import { IconProperty, formatTime } from '../../Misc'
-import { QueueItemProgressbar } from './Misc'
+import { formatTime, useTimeMinute } from '../../Misc'
+import { IconProperty } from '../../MiscComponents'
+import { QueueItemProgressbar } from './MiscComponents'
 
 
 function QueueItemProgress({ item, times }) {
 
-  const formatEnqueueTime = (ms) => {
+  const formatEnqueueTime = (now, ms) => {
     let hours = 60 * 60 * 1000
-    let now = Date.now()
     let delta = now - ms
     let text = formatTime(delta)
     let color = 'var(--pf-global--success-color--100)'
@@ -67,6 +67,8 @@ function QueueItemProgress({ item, times }) {
     tooltipContent = 'Remaining Time unknown'
   }
 
+  const now = useTimeMinute()
+
   return (
     <Grid className="zuul-compact-grid">
       <GridItem>
@@ -74,7 +76,7 @@ function QueueItemProgress({ item, times }) {
       </GridItem>
       <GridItem span={6}>
         <Tooltip content="Elapsed Time" position="right">
-          <IconProperty icon={<StopwatchIcon />} value={formatEnqueueTime(item.enqueue_time)} />
+          <IconProperty icon={<StopwatchIcon />} value={formatEnqueueTime(now, item.enqueue_time)} />
         </Tooltip>
       </GridItem>
       <GridItem span={6} className={className}>

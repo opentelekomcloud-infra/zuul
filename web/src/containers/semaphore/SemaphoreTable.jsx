@@ -39,7 +39,7 @@ import {
 } from '@patternfly/react-table'
 import { Link } from 'react-router-dom'
 
-import { IconProperty } from '../../Misc'
+import { IconProperty } from '../../MiscComponents'
 
 function SemaphoreTable(props) {
   const { semaphores, fetching, tenant } = props
