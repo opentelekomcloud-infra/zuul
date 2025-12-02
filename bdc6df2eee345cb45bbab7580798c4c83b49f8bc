@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0283aa39_e65d3841",
+        "filename": "zuul/driver/sql/sqlconnection.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 763,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-02T20:32:08Z",
+      "side": 1,
+      "message": "-1: This can be String(36) like the other uuid -- we know it\u0027s a real uuid in that format.\n\n0: Do you think we might want an index for this?  We can always add it later, but my guess is that it will be useful.",
+      "revId": "bdc6df2eee345cb45bbab7580798c4c83b49f8bc",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
