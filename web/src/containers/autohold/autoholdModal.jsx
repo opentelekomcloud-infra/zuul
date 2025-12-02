@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { connect, useDispatch } from 'react-redux'
 
@@ -32,33 +32,21 @@ import { fetchAutoholds } from '../../actions/autoholds'
 
 const AutoholdModal = props => {
 
-    const dispatch = useDispatch()
-    const { tenant, user, showAutoholdModal, setShowAutoholdModal } = props
+  const dispatch = useDispatch()
+  const { tenant, user, showAutoholdModal, setShowAutoholdModal } = props
 
-    const [change, setChange] = useState('')
-    const [changeRef, setChangeRef] = useState('')
-    const [project, setProject] = useState('some project')
-    const [job_name, setJob_name] = useState('some job')
-    const [reason, setReason] = useState('-')
-    const [count, setCount] = useState(1)
-    const [nodeHoldExpiration, setNodeHoldExpiration] = useState(86400)
+  const [change, setChange] = useState(props.change ? props.change : '')
+  const [changeRef, setChangeRef] = useState(props.changeRef ? props.changeRef : '')
+  const [project, setProject] = useState(props.project ? props.project : 'some project')
+  const [job_name, setJob_name] = useState(props.jobName ? props.jobName : 'some job')
+  const [reason, setReason] = useState(
+    props.reason ? props.reason :
+      user.data ?
+      'Requested from the web UI by ' + user.data.profile.preferred_username : '-'
+  )
+  const [count, setCount] = useState(1)
+  const [nodeHoldExpiration, setNodeHoldExpiration] = useState(86400)
 
-    // Override defaults if optional parameters were passed
-    useEffect(() => {
-        if (props.change) { setChange(props.change) }
-        if (props.changeRef) { setChangeRef(props.changeRef) }
-        if (props.project) { setProject(props.project) }
-        if (props.jobName) { setJob_name(props.jobName) }
-        if (props.reason) {
-            setReason(props.reason)
-        } else {
-            setReason(
-                user.data
-                    ? 'Requested from the web UI by ' + user.data.profile.preferred_username
-                    : '-'
-            )
-        }
-    }, [props.change, props.changeRef, props.project, props.jobName, props.reason, user.data])
 
     function handleConfirm() {
         let ah_change = change === '' ? null : change

@@ -33,11 +33,8 @@ import {
   ToolbarContent,
   ToolbarItem,
   Tooltip,
-
   Flex,
   FlexItem,
-
-
 } from '@patternfly/react-core'
 import {
   StreamIcon,
@@ -51,13 +48,16 @@ import { fetchStatusIfNeeded } from '../actions/status'
 import { clearQueue } from '../actions/statusExpansion'
 import { Fetching, ReloadButton } from '../containers/Fetching'
 import {
-  FilterToolbar,
   getFiltersFromUrl,
   isFilterActive,
+} from '../containers/FilterToolbar'
+import {
+  FilterToolbar,
   ToolbarStatsGroup,
   ToolbarStatsItem,
-} from '../containers/FilterToolbar'
-import { getSearchKeyFromUrl, writeSearchKeyToUrl, SortDropdown } from '../containers/SortDropdown'
+} from '../containers/FilterToolbarComponents'
+import { getSearchKeyFromUrl, writeSearchKeyToUrl } from '../containers/SortDropdown'
+import { SortDropdown } from '../containers/SortDropdownComponents'
 import {
   clearFilters,
   filterInputValidation,
@@ -192,44 +192,46 @@ function getPipelines(status, location, filterCategories) {
   }
 }
 
-function PipelineOverviewPage() {
+function PipelineOverviewPageComponent() {
   const status = useSelector((state) => state.status.status)
   const user = useSelector((state) => state.user)
 
-  const filterCategories = [
-    {
-      key: 'change',
-      title: 'Change',
-      placeholder: 'Filter by Change...',
-      type: 'search',
-      fuzzy: true,
-    },
-    {
-      key: 'project',
-      title: 'Project',
-      placeholder: 'Filter by Project...',
-      type: 'search',
-      fuzzy: true,
-    },
-    {
-      key: 'queue',
-      title: 'Queue',
-      placeholder: 'Filter by Queue...',
-      type: 'select',
-      // the last filter part makes sure we only provide options for queues
-      // which have a non-empty name
-      options: status ? status.pipelines.map(p => p.change_queues).flat().map(q => q.name).filter(n => n) : [],
-      fuzzy: true,
-    },
-    {
-      key: 'pipeline',
-      title: 'Pipeline',
-      placeholder: 'Filter by Pipeline...',
-      type: 'select',
-      options: status ? status.pipelines.map(p => p.name) : [],
-      fuzzy: true,
-    },
-  ]
+  const filterCategories = useMemo(() =>
+    [
+      {
+        key: 'change',
+        title: 'Change',
+        placeholder: 'Filter by Change...',
+        type: 'search',
+        fuzzy: true,
+      },
+      {
+        key: 'project',
+        title: 'Project',
+        placeholder: 'Filter by Project...',
+        type: 'search',
+        fuzzy: true,
+      },
+      {
+        key: 'queue',
+        title: 'Queue',
+        placeholder: 'Filter by Queue...',
+        type: 'select',
+        // the last filter part makes sure we only provide options for queues
+        // which have a non-empty name
+        options: status ? status.pipelines.map(p => p.change_queues).flat().map(q => q.name).filter(n => n) : [],
+        fuzzy: true,
+      },
+      {
+        key: 'pipeline',
+        title: 'Pipeline',
+        placeholder: 'Filter by Pipeline...',
+        type: 'select',
+        options: status ? status.pipelines.map(p => p.name) : [],
+        fuzzy: true,
+      },
+    ],
+    [status])
 
   const location = useLocation()
   const history = useHistory()
@@ -303,8 +305,10 @@ function PipelineOverviewPage() {
   useEffect(() => {
     document.title = 'Zuul Status'
     // Initial data fetch
-    updateData(tenant)
-  }, [updateData, tenant])
+    if (tenant.name) {
+      dispatch(fetchStatusIfNeeded(tenant))
+    }
+  }, [tenant, dispatch])
 
   // Subsequent data fetches every 5 seconds if auto-reload is enabled
   useInterval(() => {
@@ -441,4 +445,5 @@ function PipelineOverviewPage() {
   )
 }
 
-export default withRouter(PipelineOverviewPage)
+const PipelineOverviewPage = withRouter(PipelineOverviewPageComponent)
+export default PipelineOverviewPage

@@ -24,7 +24,7 @@ import {
   QuestionIcon,
   TimesIcon,
 } from '@patternfly/react-icons'
-import { ConditionalWrapper } from '../../Misc'
+import { ConditionalWrapper } from '../../MiscComponents'
 
 const RESULT_ICON_CONFIGS = {
   // In progress

@@ -29,10 +29,12 @@ import {
 import { fetchConfigErrors } from '../api'
 import {
   makeQueryString,
-  FilterToolbar,
   getFiltersFromUrl,
   writeFiltersToUrl,
 } from '../containers/FilterToolbar'
+import {
+  FilterToolbar,
+} from '../containers/FilterToolbarComponents'
 import ConfigErrorTable from '../containers/configerrors/ConfigErrorTable'
 
 class ConfigErrorsPage extends React.Component {
@@ -197,8 +199,9 @@ class ConfigErrorsPage extends React.Component {
   handleFilterChange = (newFilters) => {
     const { location, history } = this.props
     const { filters, itemCount } = this.state
-    /*eslint no-unused-vars: ["error", { "ignoreRestSiblings": true }]*/
+    /*eslint-disable-next-line*/
     const { 'skip': x1, 'limit': y1, ..._oldFilters } = filters
+    /*eslint-disable-next-line*/
     const { 'skip': x2, 'limit': y2, ..._newFilters } = newFilters
 
     // If filters have changed, reinitialize skip

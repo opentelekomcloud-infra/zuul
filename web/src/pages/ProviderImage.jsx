@@ -28,7 +28,7 @@ import ImageDetail from '../containers/provider/ImageDetail'
 import ImageBuildTable from '../containers/provider/ImageBuildTable'
 import { ReloadButton } from '../containers/Fetching'
 
-function ProviderImagePage(props) {
+function ProviderImagePageComponent(props) {
   const providerName = props.match.params.providerName
   const imageName = props.match.params.imageName
   const tenant = useSelector((state) => state.tenant)
@@ -81,8 +81,9 @@ function ProviderImagePage(props) {
   )
 }
 
-ProviderImagePage.propTypes = {
+ProviderImagePageComponent.propTypes = {
   match: PropTypes.object.isRequired,
 }
 
-export default withRouter(ProviderImagePage)
+const ProviderImagePage = withRouter(ProviderImagePageComponent)
+export default ProviderImagePage
