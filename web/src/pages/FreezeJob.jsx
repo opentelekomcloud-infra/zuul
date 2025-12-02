@@ -22,7 +22,7 @@ import {
   Text,
   TextContent,
 } from '@patternfly/react-core'
-import ReactJson from 'react-json-view'
+import { JSONTree } from 'react-json-tree'
 
 import FreezeJobToolbar from '../containers/freezejob/FreezeJobToolbar'
 import { makeFreezeJobKey, fetchFreezeJobIfNeeded } from '../actions/freezejob'
@@ -91,14 +91,14 @@ function FreezeJobPage(props) {
   function renderFrozenJob() {
     return (
       <span style={{whiteSpace: 'pre-wrap'}}>
-        <ReactJson
-          src={job}
-          name={null}
-          collapsed={false}
-          sortKeys={true}
-          enableClipboard={false}
-          displayDataTypes={false}
-          theme={props.preferences.darkMode ? 'tomorrow' : 'rjv-default'}/>
+        <JSONTree
+          data={job}
+          hideRoot={true}
+          sortObjectKeys={true}
+          theme="default"
+          invertTheme={!props.preferences.darkMode}
+          shouldExpandNodeInitially={() => true}
+        />
       </span>
     )
   }

@@ -174,7 +174,7 @@ function getPipelines(status, location, filterCategories) {
     // we need to work on a copy of the state..pipelines, because when mutating
     // the original, we couldn't reset or change the filters without reloading
     // from the backend first.
-    pipelines = global.structuredClone(status.pipelines)
+    pipelines = structuredClone(status.pipelines)
     pipelines = filterPipelines(pipelines, filters, filterCategories, true)
 
     pipelines = pipelines.map(ppl => (

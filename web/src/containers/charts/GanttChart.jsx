@@ -17,9 +17,10 @@ import * as React from 'react'
 import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 
-import * as moment from 'moment'
-import * as moment_tz from 'moment-timezone'
-import 'moment-duration-format'
+import momentDurationSetup from 'moment-duration-format'
+import moment from 'moment'
+import moment_tz from 'moment-timezone'
+momentDurationSetup(moment_tz)
 
 import { Chart, ChartBar, ChartAxis, ChartLegend, ChartTooltip } from '@patternfly/react-charts'
 

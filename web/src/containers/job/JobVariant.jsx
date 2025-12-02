@@ -16,7 +16,7 @@ import * as React from 'react'
 import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 import { Link } from 'react-router-dom'
-import ReactJson from 'react-json-view'
+import { JSONTree } from 'react-json-tree'
 import {
   DescriptionList,
   DescriptionListTerm,
@@ -183,14 +183,14 @@ class JobVariant extends React.Component {
         } else {
           value = (
             <span style={{whiteSpace: 'pre-wrap'}}>
-              <ReactJson
-                src={value}
-                name={null}
-                collapsed={true}
-                sortKeys={true}
-                enableClipboard={false}
-                displayDataTypes={false}
-                theme={this.props.preferences.darkMode ? 'tomorrow' : 'rjv-default'}/>
+              <JSONTree
+                data={value}
+                hideRoot={true}
+                sortObjectKeys={true}
+                theme="default"
+                invertTheme={!this.props.preferences.darkMode}
+                shouldExpandNodeInitially={() => true}
+              />
             </span>
           )
         }
@@ -223,14 +223,14 @@ class JobVariant extends React.Component {
       if (label === 'variables') {
         value = (
           <span style={{whiteSpace: 'pre-wrap'}}>
-            <ReactJson
-              src={value}
-              name={null}
-              collapsed={true}
-              sortKeys={true}
-              enableClipboard={false}
-              displayDataTypes={false}
-              theme={this.props.preferences.darkMode ? 'tomorrow' : 'rjv-default'}/>
+            <JSONTree
+              data={value}
+              hideRoot={true}
+              sortObjectKeys={true}
+              theme="default"
+              invertTheme={!this.props.preferences.darkMode}
+              shouldExpandNodeInitially={() => true}
+            />
           </span>
         )
         nice_label = (<span><CodeIcon /> Job variables</span>)

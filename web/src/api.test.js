@@ -1,16 +1,18 @@
+import { afterEach } from 'vitest'
 import { getHomepageUrl, getLogFile, setAuthToken } from './api'
 import axios from 'axios'
-jest.mock('axios')
+
+vi.mock('axios')
 
 afterEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 it('should should return the homepage url', () => {
   const homepage = 'https://my-zuul.com/'
   Object.defineProperty(window, 'location', {
     value: new URL(homepage)
-  } )
+  })
 
   // Test some of the known, possible, URLs to verify
   // that the origin is returned.
@@ -41,12 +43,10 @@ it('should return the subdir homepage url', () => {
    const homepage = 'https://example.com/zuul/'
    Object.defineProperty(window, 'location', {
      value: new URL(homepage)
-   } )
+   })
    // The build process strips trailing slashes from PUBLIC_URL,
-   // so make sure we don't include any in our tests
-   Object.defineProperty(process.env, 'PUBLIC_URL', {
-     value: '/zuul'
-   } )
+  // so make sure we don't include any in our tests
+  vi.stubEnv('PUBLIC_URL', '/zuul')
 
    // Test some of the known, possible, URLs to verify
    // that the origin is returned.
@@ -69,9 +69,7 @@ it('should return the subdir homepage url', () => {
  })
 
 it('should not request logs with auth header per default', () => {
-  Object.defineProperty(process.env, 'REACT_APP_ZUUL_API', {
-    value: 'https://example.com/api/'
-  })
+  vi.stubEnv('REACT_APP_ZUUL_API', 'https://example.com/api/')
 
   // same origin but we're not expecting auth headers, because
   // we have not explicitly enabled that
@@ -84,9 +82,7 @@ it('should not request logs with auth header per default', () => {
 })
 
 it('should request logs with auth header if enabled', () => {
-  Object.defineProperty(process.env, 'REACT_APP_ZUUL_API', {
-    value: 'https://example.com/api/'
-  })
+  vi.stubEnv('REACT_APP_ZUUL_API', 'https://example.com/api/')
 
   const logFileUrl = 'https://example.com/logs/build-output.txt'
   setAuthToken('foobar')
@@ -99,9 +95,7 @@ it('should request logs with auth header if enabled', () => {
 })
 
 it('should request logs without auth header if origins don\'t match', () => {
-  Object.defineProperty(process.env, 'REACT_APP_ZUUL_API', {
-    value: 'https://example.com/api/'
-  })
+  vi.stubEnv('REACT_APP_ZUUL_API', 'https://example.com/api/')
 
   // api and log endpoint have different origins, so we must not pass auth
   // headers
@@ -114,9 +108,7 @@ it('should request logs without auth header if origins don\'t match', () => {
 })
 
 it('should pass additional request configs to axios', () => {
-  Object.defineProperty(process.env, 'REACT_APP_ZUUL_API', {
-    value: 'https://example.com/api/'
-  })
+  vi.stubEnv('REACT_APP_ZUUL_API', 'https://example.com/api/')
 
   const logFileUrl = 'https://example.com/logs/build-output.txt'
   setAuthToken('foobar')

@@ -32,7 +32,7 @@ import {
   OutlinedClockIcon
 } from '@patternfly/react-icons'
 import 'moment-duration-format'
-import * as moment from 'moment'
+import moment from 'moment'
 
 import { BuildResult, BuildResultWithIcon } from './Misc'
 import { IconProperty } from '../../MiscComponents'

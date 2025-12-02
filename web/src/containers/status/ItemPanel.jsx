@@ -17,8 +17,7 @@ import * as React from 'react'
 import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 import { Link } from 'react-router-dom'
-import * as moment from 'moment'
-import 'moment-duration-format'
+import moment from 'moment'
 import { Button } from '@patternfly/react-core'
 
 import {

@@ -12,12 +12,11 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-import * as moment from 'moment'
-import 'moment-duration-format'
+import moment from 'moment'
 import * as React from 'react'
 import ReAnsi from '@softwarefactory-project/re-ansi'
 import PropTypes from 'prop-types'
-import ReactJson from 'react-json-view'
+import { JSONTree } from 'react-json-tree'
 import { connect } from 'react-redux'
 
 import {
@@ -131,13 +130,14 @@ class TaskOutput extends React.Component {
     } else if (typeof(value) === 'object') {
       ret = (
         <pre>
-          <ReactJson
-            src={value}
-            name={null}
-            sortKeys={true}
-            enableClipboard={false}
-            displayDataTypes={false}
-            theme={this.props.preferences.darkMode ? 'tomorrow' : 'rjv-default'}/>
+          <JSONTree
+            data={value}
+            hideRoot={true}
+            sortObjectKeys={true}
+            theme="default"
+            invertTheme={!this.props.preferences.darkMode}
+            shouldExpandNodeInitially={() => true}
+          />
         </pre>
       )
     } else {

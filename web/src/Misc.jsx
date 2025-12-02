@@ -12,9 +12,10 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-import React, { useState, useEffect } from 'react'
-import * as moment from 'moment'
-import { ExternalLink } from './MiscComponents'
+import { useState, useEffect, React } from 'react'
+import PropTypes from 'prop-types'
+import moment from 'moment'
+import { ExternalLinkAltIcon } from '@patternfly/react-icons'
 
 function removeHash() {
   // Remove location hash from url
@@ -191,17 +192,17 @@ function formatProviderName(providerName) {
 
 // from https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent
 function useTimeMinute() {
-  const [time, setTime] = useState(() => new Date())
+  const [time, setTime] = useState(() => new Date());
 
   useEffect(() => {
     const id = setInterval(() => {
-      setTime(new Date())
-    }, 1000 * 60)
+      setTime(new Date());
+    }, 1000 * 60);
     // For our purposes, we only need the time to update once per minute
-    return () => clearInterval(id)
-  }, [])
+    return () => clearInterval(id);
+  }, []);
 
-  return time
+  return time;
 }
 
 export {

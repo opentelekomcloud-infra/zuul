@@ -19,7 +19,7 @@ import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 import {
   Icon
-} from 'patternfly-react'
+} from '@patternfly/react-core'
 import {
   PageSection,
   PageSectionVariants,
@@ -258,8 +258,6 @@ class ConfigErrorsPage extends React.Component {
     return (
       <PageSection variant={this.props.preferences.darkMode ? PageSectionVariants.dark : PageSectionVariants.light}>
         <div className="pull-right">
-          {/* Lint warning jsx-a11y/anchor-is-valid */}
-          {/* eslint-disable-next-line */}
           <a className="refresh" onClick={() => {this.updateData(filters)}}>
             <Icon type="fa" name="refresh" /> refresh&nbsp;&nbsp;
           </a>

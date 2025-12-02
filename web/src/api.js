@@ -35,8 +35,8 @@ function getHomepageUrl() {
   //
   let url = new URL(window.location.href)
 
-  if ('PUBLIC_URL' in process.env) {
-    url.pathname = process.env.PUBLIC_URL
+  if ('PUBLIC_URL' in import.meta.env) {
+    url.pathname = import.meta.env.PUBLIC_URL
   } else {
     url.pathname = ''
   }
@@ -48,7 +48,7 @@ function getHomepageUrl() {
 
 function getZuulUrl() {
   // Return the zuul root api absolute url
-  const ZUUL_API = process.env.REACT_APP_ZUUL_API
+  const ZUUL_API = import.meta.env.REACT_APP_ZUUL_API
   let apiUrl
 
   if (ZUUL_API) {

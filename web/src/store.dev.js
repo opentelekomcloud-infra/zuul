@@ -14,8 +14,9 @@
 
 import { applyMiddleware, compose, createStore } from 'redux'
 import appReducer from './reducers'
-import reduxImmutableStateInvariant from 'redux-immutable-state-invariant'
-import thunk from 'redux-thunk'
+import * as immutableStateInvariant from 'redux-immutable-state-invariant'
+import { thunk } from 'redux-thunk'
+
 
 export default function configureStore(initialState) {
   // Add support for Redux devtools
@@ -32,7 +33,7 @@ export default function configureStore(initialState) {
         // TODO (felix): Re-enable the status.status path once we know how to
         // solve the weird state mutations that are done somewhere deep within
         // the logic of the status page (or its child components).
-        reduxImmutableStateInvariant({
+        immutableStateInvariant.default.default({
           ignore: [
             'status.status',
           ]

@@ -40,7 +40,7 @@ import {
 import { IconProperty } from '../MiscComponents'
 
 import { Link } from 'react-router-dom'
-import * as moment from 'moment'
+import moment from 'moment'
 
 import { fetchAutohold } from '../actions/autoholds'
 import { EmptyPage } from '../containers/Errors'

@@ -195,7 +195,7 @@ function ComponentTable({ components }) {
      * Rather use some kind of identifier like ID passed with each row.
      */
     // Skip the eslint check because we do use setState immediately below
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/immutability
     rows[rowKey].isOpen = isOpen
     setRows(_rows)
   }

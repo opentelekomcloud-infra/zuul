@@ -323,7 +323,7 @@ function mapStateToProps(state, ownProps) {
     // we need to work on a copy of the state..pipelines, because when mutating
     // the original, we couldn't reset or change the filters without reloading
     // from the backend first.
-    const pipelines = global.structuredClone(state.status.status.pipelines)
+    const pipelines = structuredClone(state.status.status.pipelines)
     // Filter the state for this specific pipeline
     pipeline = filterPipelines(pipelines, filters, filterCategories, false)
       .find((p) => p.name === ownProps.match.params.pipelineName) || null
