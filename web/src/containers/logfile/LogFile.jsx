@@ -53,8 +53,8 @@ export default function LogFile({
   // or section is marked.
   const [scrollOnPageLoad, setScrollOnPageLoad] = useState(true)
 
-  let highlightStart = 0
-  let highlightEnd = 0
+  let highlightStart = 0;
+  let highlightEnd = 0;
 
   // Only highlight the lines if the log is present (otherwise it doesn't make
   // sense). Although, scrolling to the selected section only works once the

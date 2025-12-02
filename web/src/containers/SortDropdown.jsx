@@ -12,6 +12,11 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
+import React from 'react'
+import PropTypes from 'prop-types'
+import { Dropdown, DropdownItem, DropdownPosition, DropdownToggle, Tooltip } from '@patternfly/react-core'
+import { SortAmountDownIcon } from '@patternfly/react-icons'
+
 function getSearchKeyFromUrl(location, sortKeys) {
   const searchParams = new URLSearchParams(location.search)
   const searchKey = searchParams.get('sort')

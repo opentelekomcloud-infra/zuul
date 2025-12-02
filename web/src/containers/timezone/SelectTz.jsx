@@ -64,18 +64,16 @@ class SelectTz extends React.Component {
       border: 'solid #2b2b2b',
       borderWidth: '0 0 0 1px',
       cursor: 'pointer',
-      display: 'initial',
+      display: 'contents',
       padding: '6px'
     }
     const customStyles = {
-      container: () => ({
-        display: 'inline-block',
-      }),
       control: () => ({
         width: 'auto',
         display: 'flex'
       }),
-      singleValue: () => ({
+      singleValue: (provided) => ({
+        ...provided,
         color: textColor,
       }),
       input: (provided) => ({
@@ -95,7 +93,7 @@ class SelectTz extends React.Component {
         ...provided,
         width: 'auto',
         right: '0',
-        top: '22px',
+        top: '40px',
       })
     }
 
