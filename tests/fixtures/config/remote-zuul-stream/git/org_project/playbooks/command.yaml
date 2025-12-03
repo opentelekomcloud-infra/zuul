@@ -84,6 +84,14 @@
       no_log: true
       shell: echo "This task should not log"
 
+    - name: Log from inside a loop
+      include_tasks: _log.yaml
+      loop:
+        - 0
+        - 1
+      loop_control:
+        loop_var: index
+
   handlers:
     - name: test handler
       command: echo "This is a handler"

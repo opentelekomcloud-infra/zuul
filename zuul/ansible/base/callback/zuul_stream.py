@@ -462,7 +462,7 @@ class CallbackModule(default.CallbackModule):
         else:
             task_name = task.get_name().strip()
 
-        if task.loop:
+        if task.loop is not None:
             # Don't try to stream from loops
             return
         if task.async_val:
