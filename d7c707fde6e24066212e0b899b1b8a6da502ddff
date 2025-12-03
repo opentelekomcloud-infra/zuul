@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bb2feab2_fabc6d16",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1787,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-03T14:54:25Z",
+      "side": 1,
+      "message": "Just brainstorming: I wonder if we can do something like introspect the web component to get these... maybe the router...  but we\u0027re probably going to need to indicate which of these allows extra conditions, like \"project\" and that may not be fully standardized across all the endpoints (though, usually it shows up in the path, so that may still work)...  Or maybe the check_*_auth decorators could add these to a global registry that we use here.\n\nI don\u0027t think that\u0027s something we need, just something that might be nice in the future.",
+      "revId": "d7c707fde6e24066212e0b899b1b8a6da502ddff",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7e90968a_3e18ff21",
+        "filename": "zuul/configloader.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1788,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-03T14:54:25Z",
+      "side": 1,
+      "message": "Many of these are \"read\" level permissions, which I don\u0027t think we planned to make explicitly settable.  So I think this just needs to include the \"write\" permissions like \"enqueue\" but not \"status\".",
+      "revId": "d7c707fde6e24066212e0b899b1b8a6da502ddff",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
