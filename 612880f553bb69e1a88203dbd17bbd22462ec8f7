@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ce6af84_0c1255dd",
+        "filename": "doc/source/developer/specs/branch-assigned-queues.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-03T16:02:13Z",
+      "side": 1,
+      "message": "One side effect of this that will be a new behavior compared to the preexisting options is that if you create a new branch off of an old branch they will initially share a branch assigned queue. Previously, you either got the default project wide queue for all branches (same as every other branch) or you got a new branch specific queue (same for every other branch).\n\nI think the choices in UI here are reasonable and this is a necessary consequence of these decisions. In other words I don\u0027t think anything needs to change in terms of design. But I do think we may want to call out the behavior difference in documentation to users to help avoid surprises.",
+      "revId": "612880f553bb69e1a88203dbd17bbd22462ec8f7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "170c0082_7998f33f",
+        "filename": "doc/source/developer/specs/branch-assigned-queues.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-03T16:02:13Z",
+      "side": 1,
+      "message": "Nit the queue name is `legacy-queue`. Could rename it to just `legacy` to match the name here. Or update the name here.",
+      "range": {
+        "startLine": 166,
+        "startChar": 61,
+        "endLine": 166,
+        "endChar": 67
+      },
+      "revId": "612880f553bb69e1a88203dbd17bbd22462ec8f7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
