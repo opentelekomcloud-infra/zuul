@@ -5,20 +5,30 @@
 About Zuul
 ==========
 
-Zuul is a Project Gating System.  That's like a CI or CD system, but
-the focus is on testing the future state of code repositories.
+Zuul is a Project Gating System similar to a CI/CD system, but
+with a stronger focus on validating the future state of code repositories.
 
-A gating system doesn't just test a proposed change; it tests the
-proposed future state of multiple branches and repositories with any
-number of in-flight changes and their dependencies.  And the same
-playbooks used to test software can also be used to deploy it.
+Instead of only testing a proposed change, Zuul evaluates the combined
+effect of multiple in-flight changes across branches and repositories, 
+including their dependencies. This ensures that what is merged will work 
+reliably in the integrated future environment.
 
-Zuul itself is a service which listens to events from various code
-review systems, executes jobs based on those events, and reports the
-results back to the code review system.  The primary interface for
-Zuul is the code review system (or systems) so that it fits seamlessly
-into developer workflows, and a web interface is available for
-inspecting the current status and browsing build results.
+Zuul models this by:
+* Testing proposed changes in the context of other active changes
+* Predicting the future state of repositories
+* Reusing the same playbooks for both testing and deployment
+
+How Zuul Works
+--------------
+Zuul operates as a service that:
+* Listens for events from supported code-review systems
+* Schedules and executes jobs based on those events
+* Reports the results back to the code-review platform
+
+The primary developer interface is the code-review system (or systems) itself, 
+integrating seamlessly into existing workflows. In addition, Zuul provides
+a web interface for monitoring pipeline activity, viewing build details,
+and understanding job results.
 
 The best way to run Zuul is with a single installation serving as many
 projects or groups as possible.  It is a multi-tenant application that
