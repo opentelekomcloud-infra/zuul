@@ -15,20 +15,20 @@
 # limitations under the License.
 
 ZUUL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
-# Initialize tox environment if it's not set up
-if [[ ! -d "${ZUUL_DIR}/.tox/venv" ]]; then
+# Initialize nox environment if it's not set up
+if [[ ! -d "${ZUUL_DIR}/.nox/venv" ]]; then
     pushd $ZUUL_DIR
         echo "Virtualenv doesn't exist... creating."
-        tox -e venv --notest
+        nox -s venv --install-only
     popd
 fi
 
 ANSIBLE_VERSION="2.7"
-ANSIBLE_ROOT="${ZUUL_DIR}/.tox/venv/lib/zuul/ansible/${ANSIBLE_VERSION}"
+ANSIBLE_ROOT="${ZUUL_DIR}/.nox/venv/lib/zuul/ansible/${ANSIBLE_VERSION}"
 ARA_DIR=$(dirname $("${ANSIBLE_ROOT}/bin/python3" -c 'import ara; print(ara.__file__)'))
 
-# Source tox environment
-source ${ZUUL_DIR}/.tox/venv/bin/activate
+# Source nox environment
+source ${ZUUL_DIR}/.nox/venv/bin/activate
 
 WORK_DIR=$(mktemp -d /tmp/zuul_logs_XXXX)
 

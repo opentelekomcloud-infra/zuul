@@ -14,9 +14,9 @@ an Ubuntu 20.04 (or later) host.
 
 More information on pip here: http://www.pip-installer.org/en/latest/
 
-*Use pip to install tox*::
+*Use pip to install nox*::
 
-  pip install tox
+  pip install nox
 
 A running zookeeper is required to execute tests, but it also needs to be
 configured for TLS and a certificate authority set up to handle socket
@@ -51,50 +51,48 @@ Run The Tests
 
 *Navigate to the project's root directory and execute*::
 
-  tox
+  nox
 
 Note: completing this command may take a long time (depends on system resources)
-also, you might not see any output until tox is complete.
+also, you might not see any output until nox is complete.
 
-Information about tox can be found here: http://testrun.org/tox/latest/
+Information about nox can be found here: https://nox.thea.codes/en/stable/
 
 
 Run The Tests in One Environment
 --------------------------------
 
-Tox will run your entire test suite in the environments specified in the project tox.ini::
+Nox will run your entire test suite in the sessions specified in the project noxfile.py::
 
-  [tox]
-
-  envlist = <list of available environments>
+  nox.options.sessions = ["tests-3", "linters"]
 
 To run the test suite in just one of the environments in envlist execute::
 
-  tox -e <env>
+  nox -s <env>
 so for example, *run the test suite in py35*::
 
-  tox -e py35
+  nox -s py35
 
 Run One Test
 ------------
 
-To run individual tests with tox::
+To run individual tests with nox::
 
-  tox -e <env> -- path.to.module.Class.test
+  nox -s <env> -- path.to.module.Class.test
 
 For example, to *run a single Zuul test*::
 
-  tox -e py35 -- tests.unit.test_scheduler.TestScheduler.test_jobs_executed
+  nox -s py35 -- tests.unit.test_scheduler.TestScheduler.test_jobs_executed
 
-To *run one test in the foreground* (after previously having run tox
+To *run one test in the foreground* (after previously having run nox
 to set up the virtualenv)::
 
-  .tox/py35/bin/stestr run tests.unit.test_scheduler.TestScheduler.test_jobs_executed
+  .nox/py35/bin/stestr run tests.unit.test_scheduler.TestScheduler.test_jobs_executed
 
 List Failing Tests
 ------------------
 
-  .tox/py35/bin/activate
+  .nox/py35/bin/activate
   stestr failing --list
 
 Hanging Tests
@@ -103,7 +101,7 @@ Hanging Tests
 The following will run each test in turn and print the name of the
 test as it is run::
 
-  . .tox/py35/bin/activate
+  . .nox/py35/bin/activate
   stestr run
 
 You can compare the output of that to::

@@ -108,19 +108,6 @@
       nox_session: upgrade
 
 - job:
-    # Zuul cient uses this job so we can't just delete it yet.
-    name: zuul-tox-zuul-client
-    parent: zuul-nox
-    description: |
-      Test that Zuul and zuul-client work together.
-    required-projects:
-      - zuul/zuul
-      - zuul/zuul-client
-    vars:
-      zuul_work_dir: "{{ zuul.projects['opendev.org/zuul/zuul'].src_dir }}"
-      tox_envlist: zuul_client
-
-- job:
     name: zuul-nox-zuul-client
     parent: zuul-nox
     description: |
@@ -382,7 +369,6 @@
     vars:
       node_version: 22
       release_python: python3
-      ensure_tox_version: "<4"
     check:
       jobs:
         - zuul-build-image
