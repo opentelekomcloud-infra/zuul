@@ -69,9 +69,14 @@ Nox will run your entire test suite in the sessions specified in the project nox
 To run the test suite in just one of the environments in envlist execute::
 
   nox -s <env>
-so for example, *run the test suite in py35*::
 
-  nox -s py35
+so for example, *run the test suite in your default Python interpreter*::
+
+  nox -s tests
+
+or specifically *with Python 3.12*::
+
+  nox -s tests --force-python 3.12
 
 Run One Test
 ------------
@@ -82,17 +87,17 @@ To run individual tests with nox::
 
 For example, to *run a single Zuul test*::
 
-  nox -s py35 -- tests.unit.test_scheduler.TestScheduler.test_jobs_executed
+  nox -s tests --force-python 3.12 -- tests.unit.test_scheduler.TestScheduler.test_jobs_executed
 
 To *run one test in the foreground* (after previously having run nox
 to set up the virtualenv)::
 
-  .nox/py35/bin/stestr run tests.unit.test_scheduler.TestScheduler.test_jobs_executed
+  .nox/tests/bin/stestr run tests.unit.test_scheduler.TestScheduler.test_jobs_executed
 
 List Failing Tests
 ------------------
 
-  .nox/py35/bin/activate
+  .nox/tests/bin/activate
   stestr failing --list
 
 Hanging Tests
@@ -101,7 +106,7 @@ Hanging Tests
 The following will run each test in turn and print the name of the
 test as it is run::
 
-  . .nox/py35/bin/activate
+  . .nox/tests/bin/activate
   stestr run
 
 You can compare the output of that to::
