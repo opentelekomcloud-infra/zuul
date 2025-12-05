@@ -16,6 +16,24 @@
       "message": "I think if you move this one line down that would fix the migration test error.",
       "revId": "4300c9253e99820e05575177fb02837fcf6e1029",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c7563c9e_62761e4a",
+        "filename": "zuul/driver/sql/sqlconnection.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 761,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-05T09:23:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cd894d9d_e46c6a7a",
+      "revId": "4300c9253e99820e05575177fb02837fcf6e1029",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
