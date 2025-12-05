@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "df6fc91b_f0fc4bee",
+        "filename": "TESTING.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-05T21:20:18Z",
+      "side": 1,
+      "message": "This is actually how you run the tests under a specific python: `nox -s tests --force-python 3.12`. Beyond the flags changing I think this the big difference between the two systems. Basically you have a target and then choose the python as separate parameters.\n\nAnyway I won\u0027t -1 for this as I think this is still an improvement that points people in the right direction.",
+      "revId": "73273f73357f4b50368c2e2d973a926e5b9849fb",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aeffae7b_4e6b29a9",
+        "filename": "TESTING.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-05T21:20:18Z",
+      "side": 1,
+      "message": "The venv path becomes `.nox/tests` when using `-s tests` iirc.",
+      "revId": "73273f73357f4b50368c2e2d973a926e5b9849fb",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
