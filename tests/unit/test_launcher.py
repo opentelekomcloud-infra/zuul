@@ -58,7 +58,7 @@ from tests.base import (
 from tests.fake_nodescan import NodescanFixture
 
 
-class ImageMocksFixture(ResponsesFixture):
+class ImageMocksFixture(fixtures.Fixture):
     raw_body = 'test raw image'
     raw_sha256 = ('d043e8080c82dbfeca3199a24d5f019'
                   '3e66755b5ba62d6b60107a248996a6795')
@@ -68,10 +68,14 @@ class ImageMocksFixture(ResponsesFixture):
     qcow2_sha256 = ('6d30f48ee68786c12c7a6915dad1a7bd8'
                     '24b85a13c629583465de97bfb3f5b51')
     qcow2_md5sum = 'a2e23f2a097ac05d85dfebf44841869c'
+    vhd_body = 'test vhd image' * 4096
+    vhd_sha256 = ('1ba1903d07465751d996e5f995d13411df2'
+                  '6d346eb289dcb3d430e05eeb237a8')
+    vhd_md5sum = '81a6ad087b65300dcc61c2e543b6ba28'
 
-    def __init__(self):
+    def __init__(self, responses_fixture):
         super().__init__()
-        self.requests_mock.add_passthru("http://localhost")
+        self.requests_mock = responses_fixture.requests_mock
         self.requests_mock.add(
             responses.GET,
             'http://example.com/image.raw',
@@ -85,6 +89,10 @@ class ImageMocksFixture(ResponsesFixture):
             'http://example.com/image.qcow2',
             body=self.qcow2_body)
         self.requests_mock.add(
+            responses.GET,
+            'http://example.com/image.vhd',
+            body=self.vhd_body)
+        self.requests_mock.add(
             responses.HEAD,
             'http://example.com/image.raw',
             headers={'content-length': str(len(self.raw_body))})
@@ -96,6 +104,10 @@ class ImageMocksFixture(ResponsesFixture):
             responses.HEAD,
             'http://example.com/image.qcow2',
             headers={'content-length': str(len(self.qcow2_body))})
+        self.requests_mock.add(
+            responses.HEAD,
+            'http://example.com/image.vhd',
+            headers={'content-length': str(len(self.vhd_body))})
         # The next three are for the signed_url test
         # Partial response
         self.requests_mock.add(
@@ -199,7 +211,8 @@ class LauncherBaseTestCase(ZuulTestCase):
 
         self.mock_aws.start()
         # Must start responses after mock_aws
-        self.useFixture(ImageMocksFixture())
+        responses_fixture = self.useFixture(ResponsesFixture())
+        self.useFixture(ImageMocksFixture(responses_fixture))
         self.s3 = boto3.resource('s3', region_name='us-east-1')
         self.s3.create_bucket(Bucket='zuul')
         self.addCleanup(self.mock_aws.stop)

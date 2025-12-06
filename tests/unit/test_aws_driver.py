@@ -32,6 +32,7 @@ import zuul.driver.aws.awsendpoint
 
 from tests.fake_aws import FakeAws, FakeAwsProviderEndpoint
 from tests.base import (
+    ResponsesFixture,
     iterate_timeout,
     simple_layout,
     return_data,
@@ -118,7 +119,8 @@ class AwsBaseTest(BaseCloudDriverTest):
         self.fake_aws = FakeAws()
         self.mock_aws.start()
         # Must start responses after mock_aws
-        self.useFixture(ImageMocksFixture())
+        responses_fixture = self.useFixture(ResponsesFixture())
+        self.useFixture(ImageMocksFixture(responses_fixture))
 
         self.ec2 = boto3.resource('ec2', region_name='us-east-1')
         self.ec2_client = boto3.client('ec2', region_name='us-east-1')

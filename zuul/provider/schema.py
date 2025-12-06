@@ -18,7 +18,13 @@
 # driver.
 
 import voluptuous as vs
-from zuul.lib.voluputil import Required, Optional, Nullable, Constant
+from zuul.lib.voluputil import (
+    Constant,
+    Nullable,
+    Optional,
+    Required,
+    assemble,
+)
 
 # Labels
 
@@ -112,11 +118,18 @@ base_label = vs.Schema({
     Optional('min-ready', default=0): int,
 })
 
-# Label attributes that are common to any kind of ssh-based driver.
-ssh_label = vs.Schema({
-    Optional('key-name'): Nullable(str),
+# Azure doesn't take a key-name, so this is separate.
+host_key_checking = vs.Schema({
     Optional('host-key-checking', default=True): bool,
 })
+
+# Label attributes that are common to any kind of ssh-based driver.
+ssh_label = assemble(
+    vs.Schema({
+        Optional('key-name'): Nullable(str),
+    }),
+    host_key_checking,
+)
 
 # Images
 

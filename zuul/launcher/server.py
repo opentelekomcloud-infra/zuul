@@ -999,6 +999,7 @@ class CleanupWorker:
         quota_used = model.QuotaInformation()
         system_id = self.launcher.system.system_id
         node_ids = [n.uuid for n in self.launcher.api.nodes_cache.getItems()]
+
         for instance in endpoint.listInstances():
             meta = instance.metadata
             if (meta.get('zuul_system_id') == system_id and

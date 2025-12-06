@@ -30,6 +30,7 @@ from tests.fake_openstack import (
 )
 from tests.base import (
     FIXTURE_DIR,
+    ResponsesFixture,
     ZuulTestCase,
     driver_config,
     iterate_timeout,
@@ -84,7 +85,8 @@ class BaseOpenstackDriverTest(ZuulTestCase):
 
     def setUp(self):
         self.initTestConfig()
-        self.useFixture(ImageMocksFixture())
+        responses_fixture = self.useFixture(ResponsesFixture())
+        self.useFixture(ImageMocksFixture(responses_fixture))
         clouds_yaml = os.path.join(FIXTURE_DIR, 'clouds.yaml')
         self.useFixture(
             fixtures.EnvironmentVariable('OS_CLIENT_CONFIG_FILE', clouds_yaml))
