@@ -225,6 +225,25 @@ Here is an example of two job definitions:
       choosing one of the two variants, `foo` could be marked as
       ``intermediate``.
 
+   .. attr:: type
+      :default: regular
+
+      The type of job; see below for details.
+
+      .. value:: regular
+
+         This is a normal Zuul job and is appropriate for the vast
+         majority of circumstances.
+
+      .. value:: initializer
+
+         An initializer job is always automatically inserted at the
+         start of the job graph, so that it runs before any other jobs
+         and acts as a dependency for all other jobs in the graph.  It
+         behaves exactly as if all other jobs run for a queue item
+         were declared with a dependency on this job using
+         :attr:`job.dependencies`.
+
    .. attr:: attribute-control
 
       Individual attributes may be set to final so that any attempt to
@@ -258,6 +277,7 @@ Here is an example of two job definitions:
         * include-vars
         * dependencies
         * failure-output
+        * type
 
    .. attr:: success-message
       :default: SUCCESS

@@ -47,6 +47,7 @@ from tests.base import (
     FIXTURE_DIR,
     ZuulTestCase,
     iterate_timeout,
+    okay_tracebacks,
     simple_layout,
     skipIfMultiScheduler,
 )
@@ -6781,6 +6782,124 @@ class TestDataReturn(AnsibleZuulTestCase):
                          _get_file(print_build.jobdir.job_output_file))
         self.assertIn(retried_build.uuid,
                       _get_file(print_build.jobdir.job_output_file))
+
+
+class TestInitJobs(ZuulTestCase):
+    @simple_layout('layouts/init-job.yaml')
+    def test_data_return_init_job(self):
+        # Test an init job, and its ability to skip child jobs
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+
+        self.executor_server.returnData(
+            "init-job", A, data={
+                'zuul': {
+                    'child_jobs': ['check-job'],
+                }
+            })
+
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='init-job', result='SUCCESS', changes='1,1'),
+            dict(name='check-job', result='SUCCESS', changes='1,1'),
+        ])
+        self.assertTrue('Skipped 1 job' in A.messages[0])
+        self.assertIn('Build succeeded', A.messages[0])
+
+    @simple_layout('layouts/init-job2.yaml')
+    def test_data_return_two_init_jobs(self):
+        # Test two init jobs and the set intersection behavior of child_jobs
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+
+        self.executor_server.returnData(
+            "init1-job", A, data={
+                'zuul': {
+                    'child_jobs': ['check-job', 'skip2-job'],
+                }
+            })
+        self.executor_server.returnData(
+            "init2-job", A, data={
+                'zuul': {
+                    'child_jobs': ['check-job', 'skip1-job'],
+                }
+            })
+
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='init1-job', result='SUCCESS', changes='1,1'),
+            dict(name='init2-job', result='SUCCESS', changes='1,1'),
+            dict(name='check-job', result='SUCCESS', changes='1,1'),
+        ])
+        self.assertTrue('Skipped 2 jobs' in A.messages[0])
+        self.assertIn('Build succeeded', A.messages[0])
+
+    @simple_layout('layouts/init-job-skip.yaml')
+    def test_skipped_init_job(self):
+        # Test that an init job can be skipped due to file matchers
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='check-job', result='SUCCESS', changes='1,1'),
+        ])
+        self.assertTrue('Skipped' not in A.messages[0])
+        self.assertIn('Build succeeded', A.messages[0])
+
+    @simple_layout('layouts/init-job-override.yaml')
+    def test_override_init_job(self):
+        # Test that we can override init to a regular job
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        # This skip is ineffective since we're overriding "init-job"
+        # to be a regular job.
+        self.executor_server.returnData(
+            "init-job", A, data={
+                'zuul': {
+                    'child_jobs': ['check-job'],
+                }
+            })
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='init-job', result='SUCCESS', changes='1,1'),
+            dict(name='check-job', result='SUCCESS', changes='1,1'),
+            dict(name='skip-job', result='SUCCESS', changes='1,1'),
+        ])
+        self.assertTrue('Skipped' not in A.messages[0])
+        self.assertIn('Build succeeded', A.messages[0])
+
+    @simple_layout('layouts/init-job-dependency.yaml')
+    def test_init_job_dependency(self):
+        # Test an init job depending on another init
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+
+        self.executor_server.returnData(
+            "init1-job", A, data={
+                'zuul': {
+                    'child_jobs': ['check-job', 'init2-job'],
+                }
+            })
+
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='init1-job', result='SUCCESS', changes='1,1'),
+            dict(name='init2-job', result='SUCCESS', changes='1,1'),
+            dict(name='check-job', result='SUCCESS', changes='1,1'),
+        ])
+        self.assertTrue('Skipped 1 job' in A.messages[0])
+        self.assertIn('Build succeeded', A.messages[0])
+
+    @simple_layout('layouts/init-job-dependency2.yaml')
+    @okay_tracebacks('prepareItem')
+    def test_init_job_dependency2(self):
+        # Test an init job depending on a regular job
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertHistory([])
+        self.assertIn('Dependency cycle detected', A.messages[0])
 
 
 class TestDiskAccounting(AnsibleZuulTestCase):

@@ -3752,6 +3752,7 @@ class FrozenJob(zkobject.ZKObject):
                   'failure_output',
                   'image_build_name',
                   'include_vars',
+                  'type',
                   )
 
     job_data_attributes = ('artifact_data',
@@ -3772,6 +3773,7 @@ class FrozenJob(zkobject.ZKObject):
             other_refs=[],
             image_build_name=None,
             workspace_checkout=True,  # MODEL_API <= 32
+            type='regular',  # MODEL_API <= 36
             # Not serialized
             matches_change=True,
         )
@@ -4199,6 +4201,7 @@ class Job(ConfigObject):
         d['deduplicate'] = self.deduplicate
         d['failure_output'] = self.failure_output
         d['image_build_name'] = self.image_build_name
+        d['type'] = self.type
         d['include_vars'] = list(map(lambda x: x.toDict(), self.include_vars))
         if self.isBase():
             d['parent'] = None
@@ -4285,6 +4288,7 @@ class Job(ConfigObject):
             workspace_checkout=True,
             failure_output=(),
             image_build_name=None,
+            type='regular',
         )
 
         override_control = defaultdict(lambda: True)
@@ -5026,6 +5030,7 @@ class Job(ConfigObject):
                             "protected and cannot be inherited "
                             "from other projects."
                             % (repr(self), this_origin))
+                self._handleFinalControl(other, k)
                 if k not in set(['pre_run', 'run', 'post_run', 'cleanup_run',
                                  'roles', 'variables', 'extra_variables',
                                  'host_variables', 'group_variables',
@@ -5465,6 +5470,22 @@ class JobGraph(object):
         self._dependencies.setdefault(job.uuid, {})
         for dependency in job.dependencies:
             self._dependencies[job.uuid][dependency.name] = dependency.soft
+
+    def addInitializerJobs(self, log):
+        init_jobs = []
+        reg_jobs = []
+        for job in self._job_map.values():
+            if job.type == 'regular':
+                reg_jobs.append(job)
+            elif job.type == 'initializer':
+                init_jobs.append(job)
+        for reg_job in reg_jobs:
+            for init_job in init_jobs:
+                # True means a soft dependency; if the init job
+                # doesn't run due to file matchers, we won't fail.
+                self._dependencies[reg_job.uuid][init_job.name] = True
+                log.debug("Adding initializer dependency %s -> %s",
+                          reg_job, init_job)
 
     def _removeJob(self, job):
         # This should only be called internally during deduplication
@@ -10639,6 +10660,7 @@ class Layout(object):
                 fail_fast = ppc.fail_fast
 
         log = item.annotateLogger(self.log)
+        job_graph.addInitializerJobs(log)
         job_graph.deduplicateJobs(log, item)
         job_graph.removeNonMatchingJobs(log)
         job_graph.freezeDependencies(log, self)

@@ -807,6 +807,7 @@ class JobParser(object):
                       'deduplicate': vs.Any(bool, 'auto'),
                       'failure-output': override_list(str),
                       'image-build-name': str,
+                      'type': vs.Any('regular', 'initializer'),
                       'attribute-control': {
                           vs.Any(
                               'requires',
@@ -822,6 +823,7 @@ class JobParser(object):
                               'include-vars',
                               'dependencies',
                               'failure-output',
+                              'type',
                           ): {'final': True},
     }}
 
@@ -852,6 +854,7 @@ class JobParser(object):
         'workspace-checkout',
         'deduplicate',
         'image-build-name',
+        'type',
     ]
 
     attr_control_job_attr_map = {
