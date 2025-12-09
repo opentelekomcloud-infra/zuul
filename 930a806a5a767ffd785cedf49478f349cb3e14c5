@@ -16,6 +16,23 @@
       "message": "This accumulation of potentially matching rbac roles to be checked after the body is processed feels fragile to me. Like I\u0027m fighting against cherrypy. That said we want to match conditions that aren\u0027t know until after check_tenant_auth is called in the cherrypy tool call chain. Is there a better way to do this? Or is this roughly what we think we need to do to make this work as expected?\n\nIf we go with this approach we\u0027ll definitely want more testing of isAuthorized() to ensure that the three values returned by it don\u0027t get mixed up in some way where a clever ordering of rules allows some users to get more permissions than expected. We\u0027ll also need to add this sort of explicit check to the beginning of each `require_admin\u003dTrue` request handler method.\n\nAnyway I\u0027m very open to suggestions here, but I felt the best way to illustrate the concerns was to write what I could see as a potential solution and that is what you see here (note the diff between patchsets 5 and 6 should limit the context to the most relevant bits).",
       "revId": "930a806a5a767ffd785cedf49478f349cb3e14c5",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "33c619c6_263190bb",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1922,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-09T00:42:41Z",
+      "side": 1,
+      "message": "We should actually short circuit if permission is None still since we don\u0027t need to check specific role conditions in that read only case. So this needs some updating.",
+      "revId": "930a806a5a767ffd785cedf49478f349cb3e14c5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
