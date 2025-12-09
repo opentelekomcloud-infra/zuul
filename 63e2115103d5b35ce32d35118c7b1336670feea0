@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "baf57890_d35d0aab",
+        "filename": "tests/unit/test_client.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 770,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-09T09:47:55Z",
+      "side": 1,
+      "message": "Is it intended that you compare the number of system events with the number of buildsets or are those numbers just by chance the same?",
+      "revId": "63e2115103d5b35ce32d35118c7b1336670feea0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
