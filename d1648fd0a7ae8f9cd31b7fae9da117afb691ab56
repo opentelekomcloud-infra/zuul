@@ -121,6 +121,24 @@
       "parentUuid": "34a7c5f4_6e499b41",
       "revId": "d1648fd0a7ae8f9cd31b7fae9da117afb691ab56",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ca4b35fd_d6b7fad0",
+        "filename": "zuul/zk/components.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-12-09T09:51:20Z",
+      "side": 1,
+      "message": "Keep in mind that the original intent is to prevent the graceful stop process from being interrupted by uncaught exceptions. If we raise, then we will need to catch all exceptions at a higher level anyway (which is a good thing, I\u0027ll work on it in the next patchset amend).\n\nConnectionLoss could happen if the zookeeper node Zuul is connected to is stopped (the load balancing of zk servers always happens in the client). This may happen during a rolling update of the zookeeper ensemble. Same for OperationTimeout. You shouldn\u0027t expect the zuul executor to \"know\" it\u0027s safe to gracefully shutdown because the zookeeper ensemble is stable.\n\nThe InterruptedError is thrown when the retry is interrupted by a call to the \"interrupt\" param of the KazooRetry (None here). Since there\u0027s nothing to interrupt, such an exception will never be thrown.",
+      "parentUuid": "bc09f1a0_9cff1e02",
+      "revId": "d1648fd0a7ae8f9cd31b7fae9da117afb691ab56",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
