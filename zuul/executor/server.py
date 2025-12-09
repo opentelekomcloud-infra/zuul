@@ -3012,7 +3012,9 @@ class AnsibleJob(object):
         # Add playbook_context info
         zuul_vars['playbook_context'] = dict(
             playbook_projects={},
+            pre_playbooks=[],
             playbooks=[],
+            post_playbooks=[],
         )
         strip = len(self.jobdir.root) + 1
         for pi in self.jobdir.trusted_projects.values():
@@ -3023,12 +3025,14 @@ class AnsibleJob(object):
             root = os.path.join(pi.root[strip:], pi.canonical_name)
             zuul_vars['playbook_context']['playbook_projects'][
                 root] = pi.toDict()
-        for pb in self.jobdir.playbooks:
-            zuul_vars['playbook_context']['playbooks'].append(dict(
-                path=pb.path[strip:],
-                roles=[ri.toDict(self.jobdir.root) for ri in pb.roles
-                       if ri.role_path is not None],
-            ))
+
+        for pb_phase in ("pre_playbooks", "playbooks", "post_playbooks"):
+            for pb in getattr(self.jobdir, pb_phase):
+                zuul_vars['playbook_context'][pb_phase].append(dict(
+                    path=pb.path[strip:],
+                    roles=[ri.toDict(self.jobdir.root) for ri in pb.roles
+                           if ri.role_path is not None],
+                ))
 
         # The zuul vars in the debug inventory.yaml file should not
         # have any !unsafe tags, so save those before we update the

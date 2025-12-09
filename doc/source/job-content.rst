@@ -1227,11 +1227,11 @@ The following variables related to the job are available:
             depending on whether it was the result of a speculative
             merge.
 
-      .. var:: playbooks
+      .. var:: pre_playbooks|playbooks|post_playbooks
          :type: list
 
-         An ordered list of playbooks executed for the job.  Each item
-         is a dictionary with the following keys:
+         An ordered list of pre, run or post playbooks executed for
+         the job.  Each item is a dictionary with the following keys:
 
          .. var:: path
 
