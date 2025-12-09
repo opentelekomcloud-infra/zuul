@@ -85,6 +85,24 @@
       "parentUuid": "3f3845f2_7c8af021",
       "revId": "d1648fd0a7ae8f9cd31b7fae9da117afb691ab56",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "34a7c5f4_6e499b41",
+        "filename": "zuul/zk/components.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 9311
+      },
+      "writtenOn": "2025-12-09T08:17:03Z",
+      "side": 1,
+      "message": "Ok, I see, then that sounds like a good idea. However, we shouldn\u0027t swallow the retry exceptions because the caller probably needs to know when the update fails. I think we should replace the `return` by `raise`.",
+      "parentUuid": "431c82cd_0ce5a46d",
+      "revId": "d1648fd0a7ae8f9cd31b7fae9da117afb691ab56",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
