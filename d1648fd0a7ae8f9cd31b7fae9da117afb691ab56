@@ -103,6 +103,24 @@
       "parentUuid": "431c82cd_0ce5a46d",
       "revId": "d1648fd0a7ae8f9cd31b7fae9da117afb691ab56",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc09f1a0_9cff1e02",
+        "filename": "zuul/zk/components.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 9311
+      },
+      "writtenOn": "2025-12-09T08:26:13Z",
+      "side": 1,
+      "message": "Looking at the existing exception handlers, it doesn\u0027t seem like \"ConnectionLoss\" or \"OperationTimeout\" are ever expected, so it should be fine to re-throw the new exceptions.\n\nAlso, in other spots, Zuul handles the InterruptedError exception when using KazooRetry, isn\u0027t this something that we should do here?",
+      "parentUuid": "34a7c5f4_6e499b41",
+      "revId": "d1648fd0a7ae8f9cd31b7fae9da117afb691ab56",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
