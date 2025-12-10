@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "212a3ff7_ab0f7ff6",
+        "filename": "doc/source/about.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-10T16:01:35Z",
+      "side": 1,
+      "message": "I wonder if we should note that git is the required system here: `a wide range of git based code review systems`.",
+      "range": {
+        "startLine": 43,
+        "startChar": 14,
+        "endLine": 43,
+        "endChar": 49
+      },
+      "revId": "0b5f9d3f0b5c821697fd75dd43c77e025c535468",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a3bb0375_5d881c05",
+        "filename": "doc/source/about.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-10T16:01:35Z",
+      "side": 1,
+      "message": "Due to the upcoming zuul launcher system I think I would write this section more generically.\n\n```\nTest Resource Provisioning\n--------------------------\n\nZuul needs resources to execute jobs on. These resources are managed\nby dedicated services that communicate with the Zuul scheduler to\nallocate resources on demand as needed.\n\nThese systems work with:\n* Cloud providers\n* Kuberentes clusters\n...\n```",
+      "range": {
+        "startLine": 47,
+        "startChar": 0,
+        "endLine": 47,
+        "endChar": 31
+      },
+      "revId": "0b5f9d3f0b5c821697fd75dd43c77e025c535468",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
