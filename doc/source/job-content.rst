@@ -842,6 +842,15 @@ The following variables related to the queue item are available:
          Change
             The topic of the change (if any).
 
+      .. var:: merge_commit_id
+
+         This field is present only for reporter jobs run for Changes
+         when those changes are being merged.  This may not be
+         available for all sources (currently supported for Gerrit,
+         GitHub, and GitLab).
+
+         The git sha of the target branch after the change was merged.
+
    .. var:: buildset_refs
       :type: list
 
@@ -1001,6 +1010,15 @@ The following variables related to the queue item are available:
 
          Change
             The topic of the change (if any).
+
+      .. var:: merge_commit_id
+
+         This field is present only for reporter jobs run for Changes
+         when those changes are being merged.  This may not be
+         available for all sources (currently supported for Gerrit,
+         GitHub, and GitLab).
+
+         The git sha of the target branch after the change was merged.
 
 Job
 ~~~

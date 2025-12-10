@@ -6902,6 +6902,250 @@ class TestInitJobs(ZuulTestCase):
         self.assertIn('Dependency cycle detected', A.messages[0])
 
 
+class TestReporterJobs(ZuulTestCase):
+    tenant_config_file = 'config/single-tenant/main.yaml'
+
+    @simple_layout('layouts/reporter-job.yaml')
+    def test_reporter_job(self):
+        # Test a successful reporter job, with a change behind it
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+
+        self.executor_server.returnData(
+            'reporter-job', A,
+            {'zuul':
+             {'log_url': 'http://example.com/logs/',
+              }},
+        )
+
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertBuilds([dict(name='test-job', changes='1,1')])
+
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        self.executor_server.returnData(
+            'reporter-job', B,
+            {'zuul':
+             {'log_url': 'http://example.com/logs2/',
+              }},
+        )
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertBuilds([
+            dict(name='test-job', changes='1,1'),
+            dict(name='test-job', changes='1,1 2,1'),
+        ])
+
+        # Make sure that reporter jobs show up in the status json
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        status = tenant.layout.pipeline_managers['gate'].formatStatusJSON()
+        jobs = status['change_queues'][0]['heads'][0][0]['jobs']
+        self.assertEqual(2, len(jobs))
+        self.assertEqual('reporter-job', jobs[0]['name'])
+        self.assertEqual('test-job', jobs[1]['name'])
+
+        # Release first test job
+        test1 = self.builds[0]
+        test1.release()
+        self.waitUntilSettled()
+        self.assertBuilds([
+            dict(name='test-job', changes='1,1 2,1'),
+            dict(name='reporter-job', changes='1,1'),
+        ])
+
+        # Start a second scheduler to exercise serialization
+        app = self.createScheduler()
+        app.start()
+        self.assertEqual(len(self.scheds), 2)
+        self.waitUntilSettled()
+
+        # Hold the lock on the first scheduler so that only the second
+        # will act.
+        with self.scheds.first.sched.run_handler_lock:
+            self.assertEqual(A.data['status'], 'MERGED')
+            # This doesn't happen with Gerrit, but other drivers may
+            # "close" the PR (change), which is treated as abandoning
+            # the change.  Simulate that here to make sure we don't
+            # cancel builds.
+            self.fake_gerrit.addEvent(A.getChangeAbandonedEvent())
+            self.waitUntilSettled(matcher=[app])
+
+        reporter1 = self.builds[1]
+        # Release first reporter job
+        reporter1.release()
+        self.waitUntilSettled()
+
+        # Ensure that the reporter job does not appear in the gerrit
+        # report
+        self.assertEqual(2, len(A.messages))
+        self.assertIn('Starting gate jobs', A.messages[0])
+        self.assertIn('Build succeeded', A.messages[1])
+        self.assertNotIn('Skipped', A.messages[1])
+        self.assertIn('test-job', A.messages[1])
+        self.assertNotIn('reporter-job', A.messages[1])
+
+        # The reporter job should appear in the database
+        conn = self.scheds.first.sched.sql.connection
+        buildsets = list(reversed(conn.getBuildsets()))
+        results = {build.job_name: build.result
+                   for build in conn.getBuilds()
+                   if build.buildset_id == buildsets[0].id}
+        self.assertEqual({
+            'test-job': 'SUCCESS',
+            'reporter-job': 'SUCCESS',
+        }, results)
+        # The buildset for the first change:
+        self.assertEqual('SUCCESS', buildsets[0].result)
+
+        # Check the commit sha
+        upstream_path = os.path.join(self.upstream_root, 'org/project')
+        upstream_repo = git.Repo(upstream_path)
+        master_sha = upstream_repo.heads.master.commit.hexsha
+        reporter_job = self.getJobFromHistory('reporter-job')
+        self.assertEqual(
+            master_sha,
+            reporter_job.parameters['zuul']['buildset_refs'][0]
+            ['merge_commit_id'])
+
+        # Release the second change
+        self.executor_server.hold_jobs_in_build = False
+        self.orderedRelease()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='test-job', result='SUCCESS', changes='1,1'),
+            dict(name='reporter-job', result='SUCCESS', changes='1,1'),
+            dict(name='test-job', result='SUCCESS', changes='1,1 2,1'),
+            dict(name='reporter-job', result='SUCCESS', changes='1,1 2,1'),
+        ])
+        buildsets = list(reversed(conn.getBuildsets()))
+        self.assertEqual(2, len(buildsets))
+        # The buildset for the second change:
+        self.assertEqual('SUCCESS', buildsets[1].result)
+
+        # Make sure we store the return data
+        connection = self.scheds.first.sched.sql.connection
+        builds = connection.getBuilds()
+        self.assertEqual('http://example.com/logs/', builds[1].log_url)
+        self.assertEqual('http://example.com/logs2/', builds[0].log_url)
+
+    @simple_layout('layouts/reporter-job.yaml')
+    def test_reporter_job_failure(self):
+        # Test a failed reporter job, with a change behind it
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.executor_server.failJob('reporter-job', A)
+
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertBuilds([dict(name='test-job', changes='1,1')])
+
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertBuilds([
+            dict(name='test-job', changes='1,1'),
+            dict(name='test-job', changes='1,1 2,1'),
+        ])
+        test1 = self.builds[0]
+        # Release first test job
+        test1.release()
+        self.waitUntilSettled()
+        self.assertBuilds([
+            dict(name='test-job', changes='1,1 2,1'),
+            dict(name='reporter-job', changes='1,1'),
+        ])
+        reporter1 = self.builds[1]
+        # Release first reporter job
+        reporter1.release()
+        self.waitUntilSettled()
+
+        # Ensure that the reporter job does not appear in the gerrit
+        # report
+        self.assertEqual(2, len(A.messages))
+        self.assertIn('Starting gate jobs', A.messages[0])
+        self.assertIn('Build succeeded', A.messages[1])
+        self.assertNotIn('Skipped', A.messages[1])
+        self.assertIn('test-job', A.messages[1])
+        self.assertNotIn('reporter-job', A.messages[1])
+
+        # The reporter job should appear in the database
+        conn = self.scheds.first.sched.sql.connection
+        buildsets = list(reversed(conn.getBuildsets()))
+        results = {build.job_name: build.result
+                   for build in conn.getBuilds()
+                   if build.buildset_id == buildsets[0].id}
+        self.assertEqual({
+            'test-job': 'SUCCESS',
+            'reporter-job': 'FAILURE',
+        }, results)
+        # We report the buildset to the db before the reporter jobs
+        # finish, so it gets the original value.  Currently unclear
+        # whether this is worth changing.
+        # The first buildset for the first change:
+        self.assertEqual('SUCCESS', buildsets[0].result)
+        # The first buildset for the second change:
+        self.assertEqual('DEQUEUED', buildsets[1].result)
+
+        # Check the commit sha
+        upstream_path = os.path.join(self.upstream_root, 'org/project')
+        upstream_repo = git.Repo(upstream_path)
+        master_sha = upstream_repo.heads.master.commit.hexsha
+        reporter_job = self.getJobFromHistory('reporter-job')
+        self.assertEqual(
+            master_sha,
+            reporter_job.parameters['zuul']['buildset_refs'][0]
+            ['merge_commit_id'])
+
+        # Release the second change
+        self.executor_server.hold_jobs_in_build = False
+        self.orderedRelease()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='test-job', result='SUCCESS', changes='1,1'),
+            dict(name='reporter-job', result='FAILURE', changes='1,1'),
+            dict(name='test-job', result='ABORTED', changes='1,1 2,1'),
+            dict(name='test-job', result='SUCCESS', changes='2,1'),
+            # We didn't configure this job to fail specifically, but
+            # after A merges, it does run with the contents of change
+            # A in it, which is how we trigger the failure.
+            dict(name='reporter-job', result='FAILURE', changes='2,1'),
+        ])
+        buildsets = list(reversed(conn.getBuildsets()))
+        self.assertEqual(3, len(buildsets))
+        # The second buildset for the second change:
+        self.assertEqual('SUCCESS', buildsets[2].result)
+
+    @okay_tracebacks('prepareItem')
+    def test_configure_reporter_job_error(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - job: {name: 'reporter-job', type: 'reporter'}
+            - project:
+                name: org/project
+                check:
+                  jobs:
+                    - reporter-job
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.reported, 1)
+        self.assertIn('The project org/project is not permitted '
+                      'to configure a reporter job',
+                      A.messages[0])
+        self.assertHistory([])
+
+
 class TestDiskAccounting(AnsibleZuulTestCase):
     config_file = 'zuul-disk-accounting.conf'
     tenant_config_file = 'config/disk-accountant/main.yaml'
@@ -11748,6 +11992,25 @@ class TestSuperproject(ZuulTestCase):
         self.assertIn('the only project definition permitted is',
                       A.messages[0])
         self.assertHistory([])
+
+    def test_configure_reporter_job(self):
+        # Ensure we can configure a reporter job
+        in_repo_conf = textwrap.dedent(
+            """
+            - job: {name: 'reporter-job', type: 'reporter'}
+            - project:
+                name: submodule1
+                check:
+                  jobs:
+                    - reporter-job
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('superproject', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(A.reported, 0)
 
 
 class TestIncludeVars(ZuulTestCase):

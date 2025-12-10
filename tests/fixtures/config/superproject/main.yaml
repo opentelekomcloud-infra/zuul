@@ -6,6 +6,7 @@
           - common-config
         untrusted-projects:
           - superproject:
+              allow-reporter-jobs: true
               configure-projects:
                 - submodule1
                 - othermodule

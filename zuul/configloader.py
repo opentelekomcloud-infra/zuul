@@ -807,7 +807,7 @@ class JobParser(object):
                       'deduplicate': vs.Any(bool, 'auto'),
                       'failure-output': override_list(str),
                       'image-build-name': str,
-                      'type': vs.Any('regular', 'initializer'),
+                      'type': vs.Any('regular', 'initializer', 'reporter'),
                       'attribute-control': {
                           vs.Any(
                               'requires',
@@ -1885,6 +1885,7 @@ class TenantParser(object):
 
     inner_untrusted_project_dict = inner_config_project_dict.copy()
     inner_untrusted_project_dict['configure-projects'] = to_list(str)
+    inner_untrusted_project_dict['allow-reporter-jobs'] = bool
     untrusted_project_dict = {str: inner_untrusted_project_dict}
 
     config_project = vs.Any(str, config_project_dict)
@@ -2150,6 +2151,7 @@ class TenantParser(object):
             project_load_branch = None
             project_implied_branch_matchers = None
             project_configure_projects = None
+            project_allow_reporter_jobs = None
         else:
             project_name = list(conf.keys())[0]
             project = source.getProject(project_name)
@@ -2217,6 +2219,8 @@ class TenantParser(object):
                     project_configure_projects.append(rp)
             else:
                 project_configure_projects = None
+            project_allow_reporter_jobs = conf[project_name].get(
+                'allow-reporter-jobs', None)
 
         tenant_project_config = model.TenantProjectConfig(project)
         tenant_project_config.load_classes = frozenset(project_include)
@@ -2236,6 +2240,8 @@ class TenantParser(object):
             project_implied_branch_matchers
         tenant_project_config.configure_projects = \
             project_configure_projects
+        tenant_project_config.allow_reporter_jobs = \
+            project_allow_reporter_jobs
         return tenant_project_config
 
     def _getProjects(self, source, conf, current_include):
@@ -2284,6 +2290,7 @@ class TenantParser(object):
                 tpcs = self._getProjects(source, conf_repo, default_include)
                 for tpc in tpcs:
                     tpc.trusted = True
+                    tpc.allow_reporter_jobs = True
                     futures.append(executor.submit(
                         self._loadProjectKeys, source_name, tpc.project))
                     config_projects.append(tpc)
