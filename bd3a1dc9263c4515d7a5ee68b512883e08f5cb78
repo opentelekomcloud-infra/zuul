@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d2e06ba6_aec86601",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-10T17:36:05Z",
+      "side": 1,
+      "message": "See inline comment for some specific concerns.\n\nThen I\u0027m also wondering if it is correct to shutdown immediately if graceful shutdown hits an exception talking to zookeeper. Graceful shutdown of an executor is already polling for job workers to shutdown in a loop with a sleep here: https://opendev.org/zuul/zuul/src/branch/master/zuul/executor/server.py#L4305-L4307. It might be better to try to update zookeeper status each time through the loop while we continue to wait for workers to shutdown. This way graceful shutdown behaviors are preserved to the best of our ability. In theory we\u0027re going to reconnect eventually allowing the jobs to complete and report and allow us to update our component info.",
+      "revId": "bd3a1dc9263c4515d7a5ee68b512883e08f5cb78",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "90df20fd_4fefd6bd",
+        "filename": "zuul/cmd/__init__.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-10T17:36:05Z",
+      "side": 1,
+      "message": "I\u0027m not sure this comment is accurate. exit_handler is added as the SIGINT signal handler. SIGINT is merely an interrupt that doesn\u0027t cause processes to exit. Properly handling the signal and starting a process shutdown is what causes that to happen. If we don\u0027t handle things properly because an exception is raised and get here I think we may continue to not shut down at all.\n\nA better comment might be\n\n```\nCatch and log any exceptions to make it clear why SIGINT\nhandling may not be processed as expected.\n```\n\nThen update the self.log.exception line below similarly.\n\nAdditionally the exit_handler is only called when SIGINT is sent. You can also request graceful shutdowns via the command socket\u0027s graceful command. I think any solution requires handling exceptions that may occur within the graceful shutdown routine itself.",
+      "revId": "bd3a1dc9263c4515d7a5ee68b512883e08f5cb78",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
