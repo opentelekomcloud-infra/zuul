@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aebb348e_c41e13b4",
+        "filename": "tests/unit/test_v3.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6786,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-12-10T08:52:01Z",
+      "side": 1,
+      "message": "I think we might want to add test cases around dependencies between init jobs + testing the error condition of an init job depending on a regular job.",
+      "revId": "3f06a01ac11eecb1788e98ed2aae8c9aa05d16e7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
