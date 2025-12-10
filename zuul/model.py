@@ -6822,6 +6822,9 @@ class QueueItem(zkobject.ZKObject):
 
     log = logging.getLogger("zuul.QueueItem")
 
+    class State(StrEnum):
+        PENDING = "pending"
+
     def __init__(self):
         super().__init__()
         self._set(
@@ -6847,7 +6850,11 @@ class QueueItem(zkobject.ZKObject):
             _cached_sql_results={},
             event=None,  # Info about the event that lead to this queue item
             debug=False,
-            # Additional container for connection specifig information to be
+            reporter_jobs_state=None,
+            # Change.cache_key -> sha for any changes in this item
+            # that were merged
+            merged_change_shas={},
+            # Additional container for connection specific information to be
             # used by reporters throughout the lifecycle
             dynamic_state=defaultdict(dict),
         )
@@ -7058,7 +7065,12 @@ class QueueItem(zkobject.ZKObject):
     def getJobs(self):
         if not self.live or not self.current_build_set.job_graph:
             return []
-        return self.current_build_set.job_graph.getJobs()
+        include_reporter = bool(self.reporter_jobs_state)
+        ret = []
+        for job in self.current_build_set.job_graph.getJobs():
+            if include_reporter or job.type != 'reporter':
+                ret.append(job)
+        return ret
 
     def getJob(self, job_uuid):
         return self.current_build_set.job_graph.getJobFromUuid(job_uuid)
@@ -7069,6 +7081,22 @@ class QueueItem(zkobject.ZKObject):
         while item_ahead:
             yield item_ahead
             item_ahead = item_ahead.item_ahead
+
+    def getReporterJobs(self):
+        if not self.live or not self.current_build_set.job_graph:
+            return []
+        ret = []
+        for job in self.current_build_set.job_graph.getJobs():
+            if job.type == 'reporter':
+                ret.append(job)
+        return ret
+
+    def areAllReporterJobsComplete(self):
+        for job in self.getReporterJobs():
+            build = self.current_build_set.getBuild(job)
+            if not build or not build.result:
+                return False
+        return True
 
     def areAllChangesMerged(self):
         for change in self.changes:
@@ -7097,7 +7125,7 @@ class QueueItem(zkobject.ZKObject):
                 return False
         return True
 
-    def didAllJobsSucceed(self):
+    def _didAllJobsSucceed(self, jobs):
         """Check if all jobs have completed with status SUCCESS.
 
         Return True if all voting jobs have completed with status
@@ -7111,7 +7139,7 @@ class QueueItem(zkobject.ZKObject):
             return False
 
         all_jobs_skipped = True
-        for job in self.getJobs():
+        for job in jobs:
             build = self.current_build_set.getBuild(job)
             if build:
                 # If the build ran, record whether or not it was skipped
@@ -7132,6 +7160,12 @@ class QueueItem(zkobject.ZKObject):
             return False
 
         return True
+
+    def didAllJobsSucceed(self):
+        return self._didAllJobsSucceed(self.getJobs())
+
+    def didAllReporterJobsSucceed(self):
+        return self._didAllJobsSucceed(self.getReporterJobs())
 
     def hasAnyJobFailed(self):
         """Check if any jobs have finished with a non-success result.
@@ -7402,22 +7436,21 @@ class QueueItem(zkobject.ZKObject):
 
     def findJobsToRun(self, semaphore_handler):
         torun = []
-        if not self.live:
-            return []
-        if not self.current_build_set.job_graph:
-            return []
+        item_jobs = list(self.getJobs())
+        if not item_jobs:
+            return torun
         if self.item_ahead:
             # Only run jobs if any 'hold' jobs on the change ahead
             # have completed successfully.
             if self.item_ahead.isHoldingFollowingChanges():
-                return []
+                return torun
 
         job_graph = self.current_build_set.job_graph
         failed_job_ids = set()  # Jobs that run and failed
         ignored_job_ids = set()  # Jobs that were skipped or canceled
         unexecuted_job_ids = set()  # Jobs that were not started yet
         jobs_not_started = set()
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             build = self.current_build_set.getBuild(job)
             if build:
                 if build.result == 'SUCCESS' or build.paused:
@@ -7430,7 +7463,7 @@ class QueueItem(zkobject.ZKObject):
                 unexecuted_job_ids.add(job.uuid)
                 jobs_not_started.add(job)
 
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             if job not in jobs_not_started:
                 continue
             if not self.jobRequirementsReady(job):
@@ -7467,20 +7500,19 @@ class QueueItem(zkobject.ZKObject):
     def findJobsToRequest(self, semaphore_handler):
         build_set = self.current_build_set
         toreq = []
-        if not self.live:
-            return []
-        if not self.current_build_set.job_graph:
-            return []
+        item_jobs = list(self.getJobs())
+        if not item_jobs:
+            return toreq
         if self.item_ahead:
             if self.item_ahead.isHoldingFollowingChanges():
-                return []
+                return toreq
 
         job_graph = self.current_build_set.job_graph
         failed_job_ids = set()       # Jobs that run and failed
         ignored_job_ids = set()      # Jobs that were skipped or canceled
         unexecuted_job_ids = set()   # Jobs that were not started yet
         jobs_not_requested = set()
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             build = build_set.getBuild(job)
             if build and (build.result == 'SUCCESS' or build.paused):
                 pass
@@ -7506,7 +7538,7 @@ class QueueItem(zkobject.ZKObject):
 
         # Attempt to request nodes for jobs in the order jobs appear
         # in configuration.
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             if job not in jobs_not_requested:
                 continue
             if not self.jobRequirementsReady(job):

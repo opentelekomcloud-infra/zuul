@@ -1195,7 +1195,7 @@ class FakeGithubSession(object):
                 }
                 return FakeResponse(data, 405, 'Method not allowed')
             pr.setMerged(json.get("commit_message", ""))
-            return FakeResponse({"merged": True}, 200)
+            return FakeResponse({"merged": True, "sha": "fakemergesha"}, 200)
 
         return FakeResponse(None, 404)
 
