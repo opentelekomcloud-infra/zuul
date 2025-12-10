@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "81786713_4fe64c77",
+        "filename": "zuul/scheduler.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1616,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-12-10T07:01:39Z",
+      "side": 1,
+      "message": "Do we want to include the info if this was a smart/full reconfig?",
+      "revId": "1b833658342aa399829df97c5ba48e5e94785ca5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
