@@ -807,7 +807,7 @@ class JobParser(object):
                       'deduplicate': vs.Any(bool, 'auto'),
                       'failure-output': override_list(str),
                       'image-build-name': str,
-                      'type': vs.Any('regular', 'initializer'),
+                      'type': vs.Any('regular', 'initializer', 'reporter'),
                       'attribute-control': {
                           vs.Any(
                               'requires',

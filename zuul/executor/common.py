@@ -27,6 +27,13 @@ def make_src_dir(canonical_hostname, name, scheme):
                             scheme))
 
 
+def make_change(item, change):
+    ret = change.toDict()
+    if sha := item.merged_change_shas.get(change.cache_key):
+        ret['merge_commit_id'] = sha
+    return ret
+
+
 def construct_build_params(uuid, connections, job, item, pipeline,
                            dependent_changes=[], merger_items=[],
                            redact_secrets_and_keys=True):
@@ -57,8 +64,8 @@ def construct_build_params(uuid, connections, job, item, pipeline,
         build=uuid,
         buildset=item.current_build_set.uuid,
         ref=change.ref,
-        buildset_refs=[c.toDict() for c in item.changes],
-        build_refs=[c.toDict() for c in item.changes
+        buildset_refs=[make_change(item, c) for c in item.changes],
+        build_refs=[make_change(item, c) for c in item.changes
                     if c.cache_key in job.all_refs],
         pipeline=pipeline.name,
         post_review=pipeline.post_review,
