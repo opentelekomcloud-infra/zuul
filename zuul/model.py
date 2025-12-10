@@ -50,6 +50,7 @@ from zuul.exceptions import (
     PreTimeoutExceedsTimeoutError,
     ProjectNotFoundError,
     ProjectNotPermittedError,
+    ReporterJobNotPermittedError,
     UnknownConnection,
 )
 from zuul.lib.re2util import filter_allowed_disallowed
@@ -6822,6 +6823,9 @@ class QueueItem(zkobject.ZKObject):
 
     log = logging.getLogger("zuul.QueueItem")
 
+    class State(StrEnum):
+        PENDING = "pending"
+
     def __init__(self):
         super().__init__()
         self._set(
@@ -6847,7 +6851,11 @@ class QueueItem(zkobject.ZKObject):
             _cached_sql_results={},
             event=None,  # Info about the event that lead to this queue item
             debug=False,
-            # Additional container for connection specifig information to be
+            reporter_jobs_state=None,
+            # Change.cache_key -> sha for any changes in this item
+            # that were merged
+            merged_change_shas={},
+            # Additional container for connection specific information to be
             # used by reporters throughout the lifecycle
             dynamic_state=defaultdict(dict),
         )
@@ -6928,6 +6936,8 @@ class QueueItem(zkobject.ZKObject):
             "dynamic_state": self.dynamic_state,
             "first_job_start_time": self.first_job_start_time,
             "debug": self.debug,
+            "reporter_jobs_state": self.reporter_jobs_state,
+            "merged_change_shas": self.merged_change_shas,
         }
         return json.dumps(data, sort_keys=True).encode("utf8")
 
@@ -7055,10 +7065,16 @@ class QueueItem(zkobject.ZKObject):
         """Returns True if the item has a job graph."""
         return self.current_build_set.job_graph is not None
 
-    def getJobs(self):
+    def getJobs(self, include_reporter=None):
         if not self.live or not self.current_build_set.job_graph:
             return []
-        return self.current_build_set.job_graph.getJobs()
+        if include_reporter is None:
+            include_reporter = bool(self.reporter_jobs_state)
+        ret = []
+        for job in self.current_build_set.job_graph.getJobs():
+            if include_reporter or job.type != 'reporter':
+                ret.append(job)
+        return ret
 
     def getJob(self, job_uuid):
         return self.current_build_set.job_graph.getJobFromUuid(job_uuid)
@@ -7069,6 +7085,22 @@ class QueueItem(zkobject.ZKObject):
         while item_ahead:
             yield item_ahead
             item_ahead = item_ahead.item_ahead
+
+    def getReporterJobs(self):
+        if not self.live or not self.current_build_set.job_graph:
+            return []
+        ret = []
+        for job in self.current_build_set.job_graph.getJobs():
+            if job.type == 'reporter':
+                ret.append(job)
+        return ret
+
+    def areAllReporterJobsComplete(self):
+        for job in self.getReporterJobs():
+            build = self.current_build_set.getBuild(job)
+            if not build or not build.result:
+                return False
+        return True
 
     def areAllChangesMerged(self):
         for change in self.changes:
@@ -7097,7 +7129,7 @@ class QueueItem(zkobject.ZKObject):
                 return False
         return True
 
-    def didAllJobsSucceed(self):
+    def _didAllJobsSucceed(self, jobs):
         """Check if all jobs have completed with status SUCCESS.
 
         Return True if all voting jobs have completed with status
@@ -7111,7 +7143,7 @@ class QueueItem(zkobject.ZKObject):
             return False
 
         all_jobs_skipped = True
-        for job in self.getJobs():
+        for job in jobs:
             build = self.current_build_set.getBuild(job)
             if build:
                 # If the build ran, record whether or not it was skipped
@@ -7132,6 +7164,12 @@ class QueueItem(zkobject.ZKObject):
             return False
 
         return True
+
+    def didAllJobsSucceed(self):
+        return self._didAllJobsSucceed(self.getJobs())
+
+    def didAllReporterJobsSucceed(self):
+        return self._didAllJobsSucceed(self.getReporterJobs())
 
     def hasAnyJobFailed(self):
         """Check if any jobs have finished with a non-success result.
@@ -7402,22 +7440,21 @@ class QueueItem(zkobject.ZKObject):
 
     def findJobsToRun(self, semaphore_handler):
         torun = []
-        if not self.live:
-            return []
-        if not self.current_build_set.job_graph:
-            return []
+        item_jobs = list(self.getJobs())
+        if not item_jobs:
+            return torun
         if self.item_ahead:
             # Only run jobs if any 'hold' jobs on the change ahead
             # have completed successfully.
             if self.item_ahead.isHoldingFollowingChanges():
-                return []
+                return torun
 
         job_graph = self.current_build_set.job_graph
         failed_job_ids = set()  # Jobs that run and failed
         ignored_job_ids = set()  # Jobs that were skipped or canceled
         unexecuted_job_ids = set()  # Jobs that were not started yet
         jobs_not_started = set()
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             build = self.current_build_set.getBuild(job)
             if build:
                 if build.result == 'SUCCESS' or build.paused:
@@ -7430,7 +7467,7 @@ class QueueItem(zkobject.ZKObject):
                 unexecuted_job_ids.add(job.uuid)
                 jobs_not_started.add(job)
 
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             if job not in jobs_not_started:
                 continue
             if not self.jobRequirementsReady(job):
@@ -7467,20 +7504,19 @@ class QueueItem(zkobject.ZKObject):
     def findJobsToRequest(self, semaphore_handler):
         build_set = self.current_build_set
         toreq = []
-        if not self.live:
-            return []
-        if not self.current_build_set.job_graph:
-            return []
+        item_jobs = list(self.getJobs())
+        if not item_jobs:
+            return toreq
         if self.item_ahead:
             if self.item_ahead.isHoldingFollowingChanges():
-                return []
+                return toreq
 
         job_graph = self.current_build_set.job_graph
         failed_job_ids = set()       # Jobs that run and failed
         ignored_job_ids = set()      # Jobs that were skipped or canceled
         unexecuted_job_ids = set()   # Jobs that were not started yet
         jobs_not_requested = set()
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             build = build_set.getBuild(job)
             if build and (build.result == 'SUCCESS' or build.paused):
                 pass
@@ -7506,7 +7542,7 @@ class QueueItem(zkobject.ZKObject):
 
         # Attempt to request nodes for jobs in the order jobs appear
         # in configuration.
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             if job not in jobs_not_requested:
                 continue
             if not self.jobRequirementsReady(job):
@@ -7831,7 +7867,7 @@ class QueueItem(zkobject.ZKObject):
         ret['enqueue_time'] = int(self.enqueue_time * 1000)
         ret['jobs'] = []
         max_remaining = 0
-        for job in self.getJobs():
+        for job in self.getJobs(include_reporter=True):
             now = time.time()
             build = self.current_build_set.getBuild(job)
             elapsed = None
@@ -9225,6 +9261,7 @@ class TenantProjectConfig(object):
         # A list of project names/regexes that this project is allowed
         # to configure
         self.configure_projects = None
+        self.allow_reporter_jobs = None
 
     def canConfigureProject(self, other_tpc, validation_only=False):
         if self.trusted:
@@ -10256,14 +10293,14 @@ class Layout(object):
         return pt
 
     def addProjectConfig(self, project_canonical_name, project_config):
-        for job in project_config.embeddedJobs():
-            self._checkAddJob(job)
-
         source_tpc = self.tenant.getTPC(
             project_config.source_context.project_canonical_name)
         this_tpc = self.tenant.getTPC(project_canonical_name)
         if not source_tpc.canConfigureProject(this_tpc):
             raise ProjectNotPermittedError()
+
+        for job in project_config.embeddedJobs():
+            self._checkAddJob(job)
 
         if project_canonical_name in self.project_configs:
             self.project_configs[project_canonical_name].append(project_config)
@@ -10527,6 +10564,7 @@ class Layout(object):
             # Whether the change matches any of the project pipeline
             # variants
             matched = False
+            reporter_job_ok = False
             for variant in job_list.jobs[jobname]:
                 if variant.changeMatchesBranch(self.tenant, change):
                     final_job.applyVariant(variant, self, semaphore_handler)
@@ -10539,6 +10577,13 @@ class Layout(object):
                         # useful to allow untrusted jobs with secrets
                         # to be run in other untrusted projects.
                         final_job.ignore_allowed_projects = True
+                    if not reporter_job_ok and final_job.type == 'reporter':
+                        source_tpc = self.tenant.getTPC(
+                            variant.source_context.project_canonical_name)
+                        if not source_tpc.allow_reporter_jobs:
+                            raise ReporterJobNotPermittedError(
+                                source_tpc.project)
+                        reporter_job_ok = True
                     matched = True
                     log.debug("Pipeline variant %s matched %s",
                               repr(variant), change)

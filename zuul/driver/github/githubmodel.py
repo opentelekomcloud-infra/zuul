@@ -44,6 +44,7 @@ class PullRequest(Change):
         self.required_contexts = set()
         self.contexts = set()
         self.branch_protected = False
+        self.merge_commit_sha = None
 
     @property
     def status(self):

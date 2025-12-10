@@ -33,6 +33,7 @@ class MergeRequest(Change):
         self.blocking_discussions_resolved = None
         self.mr = None
         self.title = None
+        self.merge_commit_sha = None
 
     def __repr__(self):
         r = ['<Change 0x%x' % id(self)]
