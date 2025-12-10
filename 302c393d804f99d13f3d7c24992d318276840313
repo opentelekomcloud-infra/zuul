@@ -48,6 +48,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "47ad8df2_b1259881",
+        "filename": "doc/source/developer/specs/reporter-jobs.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-12-10T07:56:40Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "8a34b959_b7f59403",
+      "range": {
+        "startLine": 75,
+        "startChar": 16,
+        "endLine": 76,
+        "endChar": 38
+      },
+      "revId": "302c393d804f99d13f3d7c24992d318276840313",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9fbf6bfd_87eab4f8",
@@ -85,6 +109,30 @@
       "side": 1,
       "message": "It\u0027s not immediately obvious to me that a reporting job that doesn\u0027t wait for the report is a better approach than a finalizer job that runs in the regular buildset, or the MQTT reporter.\n\nOne potential problem with not waiting is that we would potentially merge changes behind the change at the head before the change at the head has even completed reporting.  That could affect jobs that use the zuul api.  Not to mention, just the idea of making decisions before the job at the head is complete.\n\nAt any rate, I think we can discuss the underlying use cases later and see whether finalizer jobs or MQTT would be a better fit, and if we decide that reporting jobs would be a good fit, I don\u0027t think there\u0027s anything in this spec or the implementation that I would anticipate blocking that in the future.",
       "parentUuid": "9fbf6bfd_87eab4f8",
+      "range": {
+        "startLine": 121,
+        "startChar": 0,
+        "endLine": 121,
+        "endChar": 133
+      },
+      "revId": "302c393d804f99d13f3d7c24992d318276840313",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "43edb133_3144b169",
+        "filename": "doc/source/developer/specs/reporter-jobs.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-12-10T07:56:40Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "d4e78429_77a267e0",
       "range": {
         "startLine": 121,
         "startChar": 0,
