@@ -55,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d8d1954d_e4cb21ee",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-12-11T16:43:12Z",
+      "side": 1,
+      "message": "the patchset for basecomponent has been moved here: https://review.opendev.org/c/zuul/zuul/+/970651",
+      "parentUuid": "b3193cf7_8d97b600",
+      "revId": "bd3a1dc9263c4515d7a5ee68b512883e08f5cb78",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "90df20fd_4fefd6bd",
         "filename": "zuul/cmd/__init__.py",
         "patchSetId": 4
