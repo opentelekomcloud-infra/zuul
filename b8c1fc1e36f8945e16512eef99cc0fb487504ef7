@@ -16,6 +16,24 @@
       "message": "LGTM. I noted a few differences compared to the old jobs page in the preview build, which we might want to have a look at:\n\n1. The search field shows a \"job name\" hint in the old version. I don\u0027t have a strong opinion here, but maybe we want to keep that or show something like \"Filter by job name...\" (this would be similar to what we do on the builds and buildsets pages)?\n\n2. There is a lot of free space around/between the items in the tree. I think we should reduce that, so it looks more like the old version.\n\n3. The refresh button takes a lot of space. If I remember correctly there is an option to make it \"floatable\", so it doesn\u0027t take up so much vertical space before the actual page content. There is also a newer refresh button component that I implemented for the status page, maybe we can use that one instead?",
       "revId": "b8c1fc1e36f8945e16512eef99cc0fb487504ef7",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0273faa7_21d6bb04",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-11T15:56:02Z",
+      "side": 1,
+      "message": "I agree with everything you said, but here are the challenges:\n\n1) The new TreeViewSeach component does not have an option for a hint.  This seems like a strange inconsistency since PatternFly does in other places.  This is truee in PF4 and it\u0027s still true in PF6.  I would like to add it, but I don\u0027t want to make our own search in this change.  https://v4-archive.patternfly.org/v4/components/tree-view\n\n2) There is a lot of space, but it\u0027s the PF standard for tree views.  The tables have a lot of space too, but less than the tree view.  But I don\u0027t think we did anything to change the tables; I think we\u0027re using the default there.  I know we\u0027re picky about space a lot of the time, but usuall when we\u0027re constructing components from scratch.  We have some small uses of the treeview already (in the individual job page) and they use the default spacing.  How strongly do you feel about this?  Can we use the toolkit default for now?\n\n3) That is the floating refresh button.  I think in PF4 it still collides with whatever else we have.  If you check the other nearby tabs (Projects, Labels), you\u0027ll see that it\u0027s in the same place.  A bigger problem is that the treeview has a bunch of space at the top.  We do have a problem in that half our pages use one refresh button and half another, but I\u0027d rather not change just this one right now, since it\u0027s neighbors match, and they\u0027re all frome the same generation.",
+      "parentUuid": "da8fb84a_16bb821e",
+      "revId": "b8c1fc1e36f8945e16512eef99cc0fb487504ef7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
