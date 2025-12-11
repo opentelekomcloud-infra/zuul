@@ -66,6 +66,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "6866b1c7_70780b84",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 17
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-11T19:09:52Z",
+      "side": 1,
+      "message": "Do you want to propose adding that in a followup patch?",
+      "parentUuid": "e3ea823b_3397d05e",
+      "range": {
+        "startLine": 36,
+        "startChar": 0,
+        "endLine": 38,
+        "endChar": 34
+      },
+      "revId": "112c43e620015b24bc8c2dfc4090964facd61fb8",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "3cc5ab5d_30bb0ed3",
