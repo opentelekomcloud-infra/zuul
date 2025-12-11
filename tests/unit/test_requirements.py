@@ -14,6 +14,8 @@
 
 import time
 
+from zuul.model import PromoteEvent
+
 from tests.base import ZuulTestCase, simple_layout
 
 
@@ -737,3 +739,264 @@ class TestGerritTriggerRequirements(ZuulTestCase):
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 1)
         self.assertEqual(self.history[0].name, jobname)
+
+
+class TestPromoteWithRequirements(ZuulTestCase):
+    @simple_layout('layouts/gerrit-gate-requirements.yaml')
+    def test_promote_all_matching_requirements(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        A.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        # Do not emit an event for this to force processing of B to discover
+        # the approved state
+        C.addApproval('Approved', 1)
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # Before the promote we have A <- B <- C
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertTrue(self.builds[1].hasChanges(A, B))
+        self.assertTrue(self.builds[2].hasChanges(A, B, C))
+
+        # Promote change B to the head of the gate queue
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{B.number},{B.latest_patchset}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After the promote we have B <- C <- A
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertTrue(self.builds[1].hasChanges(B, C))
+        self.assertTrue(self.builds[2].hasChanges(B, C, A))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(B.data['status'], 'MERGED')
+        self.assertEqual(C.data['status'], 'MERGED')
+        self.assertEqual(A.data['status'], 'MERGED')
+
+    @simple_layout('layouts/gerrit-gate-requirements.yaml')
+    def test_promote_child_not_matching_requirements(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        A.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        # We will remove this approval later
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # Before the promote we have A <- B <- C
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertTrue(self.builds[1].hasChanges(A, B))
+        self.assertTrue(self.builds[2].hasChanges(A, B, C))
+
+        # Now removal the approval on the child change before promoting
+        # the parent
+        C.addApproval('Approved', 0)
+        # If we emit the event like so:
+        # self.fake_gerrit.addEvent(C.addApproval('Approved', 0))
+        # then B gets promoted by C does not.
+
+        # Promote change B to the head of the gate queue
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{B.number},{B.latest_patchset}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After the promote we have B <- C <- A
+        # TODO promoting a change that meets requirements should succeed
+        # but we shouldn't enqueue its children that do not meet requirements
+        # any longer.
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertTrue(self.builds[1].hasChanges(B, C))
+        self.assertTrue(self.builds[2].hasChanges(B, C, A))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(B.data['status'], 'MERGED')
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(C.data['status'], 'MERGED')
+
+    @simple_layout('layouts/gerrit-gate-requirements.yaml')
+    def test_promote_parent_not_matching_requirements(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        A.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        # We will remove this approval later
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # Before the promote we have A <- B <- C
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertTrue(self.builds[1].hasChanges(A, B))
+        self.assertTrue(self.builds[2].hasChanges(A, B, C))
+
+        # Remove the old approval so the parent is no longer meeting
+        # requirements
+        B.addApproval('Approved', 0)
+        # If we emit the event like so:
+        # self.fake_gerrit.addEvent(B.addApproval('Approved', 0))
+        # The behavior changes to have only A in the pipeline as
+        # B and C get dequeued due to no longer meeting requirements
+        # then the promote noops.
+
+        # Promote change C to the head of the gate queue
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{C.number},{C.latest_patchset}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After the promote we have B <- C <- A
+        # TODO Should the promotion remove B and C entirely as
+        # C's parent no longer meets requirements so neither does C?
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertTrue(self.builds[1].hasChanges(B, C))
+        self.assertTrue(self.builds[2].hasChanges(B, C, A))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(B.data['status'], 'MERGED')
+        self.assertEqual(C.data['status'], 'MERGED')
+
+    @simple_layout('layouts/gerrit-gate-requirements.yaml')
+    def test_promote_not_matching_requirements(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        A.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        # We will remove this approval later
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # Before the promote we have A <- B <- C
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertTrue(self.builds[1].hasChanges(A, B))
+        self.assertTrue(self.builds[2].hasChanges(A, B, C))
+
+        # Remove the old approval so the promoted change is no longer
+        # meeting requirements
+        C.addApproval('Approved', 0)
+        # If we emit the event like so:
+        # self.fake_gerrit.addEvent(C.addApproval('Approved', 0))
+        # the behavior changes to make the promote a noop as C will
+        # be evicted from the pipeline before we promote it.
+
+        # Attempt to promote change C to the head of the gate queue.
+        # C doesn't meet requirements so only B should promote.
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{C.number},{C.latest_patchset}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After promotion we have B <- C <- A
+        # TODO should promotion noop because C does not meet requirements?
+        # Alternatively maybe only B should promote
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertTrue(self.builds[1].hasChanges(B, C))
+        self.assertTrue(self.builds[2].hasChanges(B, C, A))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(B.data['status'], 'MERGED')
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(C.data['status'], 'MERGED')
+
+    @simple_layout('layouts/gerrit-gate-requirements.yaml')
+    def test_promote_unrelated_not_matching_requirements(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        A.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        # We will remove this approval later
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # Before the promote we have A <- B <- C
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertTrue(self.builds[1].hasChanges(A, B))
+        self.assertTrue(self.builds[2].hasChanges(A, B, C))
+
+        # Remove the old approval so the unpromoted unrelated change is no
+        # longer meeting requirements
+        A.addApproval('Approved', 0)
+        # If we emit the event like so:
+        # self.fake_gerrit.addEvent(A.addApproval('Approved', 0))
+        # the behavior changes to make the promote a noop as A will get
+        # evicted leaving B and and then C in the gate.
+
+        # Attempt to promote change B to the head of the gate queue.
+        # A doesn't meet requirements so should get evicted.
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{C.number},{C.latest_patchset}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After promotion we have B <- C <- A
+        # TODO should A be removed as part of the reenqueue process as it
+        # no longer meets requirements?
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertTrue(self.builds[1].hasChanges(B, C))
+        self.assertTrue(self.builds[2].hasChanges(B, C, A))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(B.data['status'], 'MERGED')
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(C.data['status'], 'MERGED')
