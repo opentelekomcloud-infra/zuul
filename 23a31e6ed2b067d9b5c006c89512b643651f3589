@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "82933ce8_042c080b",
+        "filename": "web/src/containers/component/ComponentTable.jsx",
+        "patchSetId": 1
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-11T10:15:43Z",
+      "side": 1,
+      "message": "nit: Is this comment in the right place? I assume it\u0027s related to the `setRows()` call (which would be the line after the next).",
+      "revId": "23a31e6ed2b067d9b5c006c89512b643651f3589",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "34b3af2b_a346269c",
+        "filename": "web/src/pages/PipelineDetails.jsx",
+        "patchSetId": 1
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-11T10:15:43Z",
+      "side": 1,
+      "message": "Do you still want to do that?",
+      "revId": "23a31e6ed2b067d9b5c006c89512b643651f3589",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
