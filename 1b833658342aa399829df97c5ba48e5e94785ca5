@@ -16,6 +16,24 @@
       "message": "Do we want to include the info if this was a smart/full reconfig?",
       "revId": "1b833658342aa399829df97c5ba48e5e94785ca5",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31a005ed_a8e1894a",
+        "filename": "zuul/scheduler.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1616,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-11T19:26:58Z",
+      "side": 1,
+      "message": "It\u0027s a good question.  For now, I thought we\u0027d try to be conservative about how much information about operator activity we expose to end users.  But I don\u0027t think there\u0027s a strong argument against including it, so if we later decide to add it, that\u0027s probably okay.",
+      "parentUuid": "81786713_4fe64c77",
+      "revId": "1b833658342aa399829df97c5ba48e5e94785ca5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
