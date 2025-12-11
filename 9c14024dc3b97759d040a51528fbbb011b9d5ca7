@@ -41,6 +41,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0539a335_cbf08e74",
+        "filename": "web/src/Misc.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-11T16:46:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b51dd576_efb7a4a0",
+      "range": {
+        "startLine": 194,
+        "startChar": 11,
+        "endLine": 205,
+        "endChar": 13
+      },
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ee48e984_d995fe1e",
@@ -54,6 +78,24 @@
       "writtenOn": "2025-12-11T11:00:54Z",
       "side": 1,
       "message": "nit: Debug leftover?",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "158fc0d9_b3634e2d",
+        "filename": "web/src/actions/openapi.js",
+        "patchSetId": 5
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-11T16:46:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ee48e984_d995fe1e",
       "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -75,6 +117,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4ec9f502_6bbd28ac",
+        "filename": "web/src/containers/build/Build.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-11T16:46:19Z",
+      "side": 1,
+      "message": "We can move it.  It\u0027s necessary to make the import effective, so it sort of made sense to me to put it right there.  At some point, we\u0027re going to need to replace it though, so hopefully we won\u0027t have to deal with it for too much longer.",
+      "parentUuid": "25583f2a_67f5f29c",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0991f2e8_24124bf8",
@@ -88,6 +148,24 @@
       "writtenOn": "2025-12-11T11:00:54Z",
       "side": 1,
       "message": "See my comment in `web/src/containers/build/Build.jsx`.",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a874a101_7237e4c3",
+        "filename": "web/src/containers/build/Buildset.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-11T16:46:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0991f2e8_24124bf8",
       "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
@@ -109,6 +187,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d04c83e5_35a53600",
+        "filename": "web/src/containers/logfile/LogFile.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-11T16:46:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9450acfb_907ccdfd",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4d1eacc5_160c50a1",
@@ -122,6 +218,24 @@
       "writtenOn": "2025-12-11T11:00:54Z",
       "side": 1,
       "message": "Debug leftover?",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d5c002b_68696ba1",
+        "filename": "web/src/pages/OpenApi.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-11T16:46:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4d1eacc5_160c50a1",
       "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
