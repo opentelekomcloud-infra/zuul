@@ -1,0 +1,129 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1377940d_fa57085e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-11T11:00:54Z",
+      "side": 1,
+      "message": "The code changes look good to me, I just added a few nits. However, the dashboard preview shows the following exception, so I couldn\u0027t play around with it to see if everything is still working (therefore the -1):\n\n```\nReferenceError: ExternalLink is not defined\n    at Kce (index-C98b3qvZ.js:51:59854)\n    at s (index-C98b3qvZ.js:84:14186)\n    at index-C98b3qvZ.js:84:14913\n    at Array.map (\u003canonymous\u003e)\n    at Hj (index-C98b3qvZ.js:84:14906)\n    at Io (index-C98b3qvZ.js:6:16907)\n    at Ks (index-C98b3qvZ.js:8:3141)\n    at Ql (index-C98b3qvZ.js:8:44672)\n    at Vl (index-C98b3qvZ.js:8:39636)\n    at zl (index-C98b3qvZ.js:8:39564)\n```\n\nIt seems to originate from the Builds Page (build list), so I assume there is a \n```\nimport { ExternalLink } from \u0027../../MiscComponents\u0027\n```\nmissing somewhere.",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b51dd576_efb7a4a0",
+        "filename": "web/src/Misc.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-11T11:00:54Z",
+      "side": 1,
+      "message": "nit: Again some `;` ;-)",
+      "range": {
+        "startLine": 194,
+        "startChar": 11,
+        "endLine": 205,
+        "endChar": 13
+      },
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ee48e984_d995fe1e",
+        "filename": "web/src/actions/openapi.js",
+        "patchSetId": 5
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-11T11:00:54Z",
+      "side": 1,
+      "message": "nit: Debug leftover?",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "25583f2a_67f5f29c",
+        "filename": "web/src/containers/build/Build.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-11T11:00:54Z",
+      "side": 1,
+      "message": "Do we have to call this in between the import statements or can we also do that after the imports (between lines 45 and 47)?",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0991f2e8_24124bf8",
+        "filename": "web/src/containers/build/Buildset.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-11T11:00:54Z",
+      "side": 1,
+      "message": "See my comment in `web/src/containers/build/Build.jsx`.",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9450acfb_907ccdfd",
+        "filename": "web/src/containers/logfile/LogFile.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-11T11:00:54Z",
+      "side": 1,
+      "message": "nit: I don\u0027t think we need those `;` here.",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4d1eacc5_160c50a1",
+        "filename": "web/src/pages/OpenApi.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-11T11:00:54Z",
+      "side": 1,
+      "message": "Debug leftover?",
+      "revId": "9c14024dc3b97759d040a51528fbbb011b9d5ca7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
