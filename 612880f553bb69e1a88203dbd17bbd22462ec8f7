@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8bcbb56e_a29f0591",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37112
+      },
+      "writtenOn": "2025-12-11T11:17:07Z",
+      "side": 1,
+      "message": "We could mention that per-branch queues get the branch name automatically added to the queue name, e.g. \"my-queue (main)\" with main being the branch name. But these names are internal and can\u0027t be used to assign project/branch combinations to it. Instead, the user has to use branch assigned queues and choose queue names to \"emulate\" per-branch queue names.\n\nGiven the following example:\n\n```\nqueue:\n    name: my-queue\n    type: per-branch\n\nproject:\n    name: super\n    queue: my-queue\n\nproject:\n    name: child\n    branch: master # foo is using master instead of main\n    queue: my-queue (main) # not possible\n```\n\nThis definition is not allowed, instead the user would use branch assigned queues:\n\n```\nqueue:\n    name: my-queue (main)\n    type: branch-assigned\n\nproject:\n    name: super\n    queue: my-queue (main)\n\nproject:\n    name: child\n    branch: master\n    queue: my-queue (main)\n```\n\nThis is relevant when having a super-project and adding child projects to a queue defined in a super project. The branch name in parenthesis would reflect the branch name of the super-project. When branching the above definition (using branch-assigned queues), the user has to rename the \"my-queue (main)\" to \"my-queue (new-branch-name)\" if separate queues are needed. Branching of a super project requires editing the Zuul configuration. This could be addressed in future but is not in scope of this spec. Therefore the spec is fine to me as it is.",
+      "revId": "612880f553bb69e1a88203dbd17bbd22462ec8f7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5ce6af84_0c1255dd",
         "filename": "doc/source/developer/specs/branch-assigned-queues.rst",
         "patchSetId": 1
