@@ -30,7 +30,7 @@ class Merger(zuul.cmd.ZuulDaemonApp):
         self.addSubCommands(parser, zuul.merger.server.COMMANDS)
         return parser
 
-    def exit_handler(self, signum, frame):
+    def _exit_handler(self, signum, frame):
         self.merger.stop()
         self.merger.join()
 

@@ -40,7 +40,7 @@ class Executor(zuul.cmd.ZuulDaemonApp):
     def parseArguments(self, args=None):
         super(Executor, self).parseArguments()
 
-    def exit_handler(self, signum, frame):
+    def _exit_handler(self, signum, frame):
         if self.config.has_option('executor', 'sigterm_method'):
             graceful = self.config.get('executor', 'sigterm_method')
         else:
