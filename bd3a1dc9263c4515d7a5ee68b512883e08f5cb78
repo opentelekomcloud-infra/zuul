@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b3193cf7_8d97b600",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7186
+      },
+      "writtenOn": "2025-12-11T16:33:14Z",
+      "side": 1,
+      "message": "isn\u0027t it better to handle the update retries directly with KazooRetry, rather than when looping through the workers? That could lead to jobs being potentially accepted by the executor during on the 30 second-long sleep (if the zk connection is reestablished during that interval), and mutating job_workers, IIUC.",
+      "parentUuid": "d2e06ba6_aec86601",
+      "revId": "bd3a1dc9263c4515d7a5ee68b512883e08f5cb78",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "90df20fd_4fefd6bd",
         "filename": "zuul/cmd/__init__.py",
         "patchSetId": 4
