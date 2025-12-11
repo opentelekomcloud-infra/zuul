@@ -21,10 +21,13 @@ def _build_javascript():
     if subprocess.call(['which', 'yarn']) != 0:
         return
     if not os.path.exists('web/node_modules/.bin/webpack'):
-        r = subprocess.Popen(['yarn', 'install', '--verbose',
+        r = subprocess.Popen(['yarn', 'install',
                               '--frozen-lockfile'], cwd="web/").wait()
         if r:
             raise RuntimeError("Yarn install failed")
+    r = subprocess.Popen(['yarn', 'list'], cwd="web/").wait()
+    if r:
+        raise RuntimeError("Yarn list failed")
     if not os.path.exists('zuul/web/static/index.html'):
         os.makedirs('zuul/web/static', exist_ok=True)
         if not os.path.islink('../zuul/web/static'):
