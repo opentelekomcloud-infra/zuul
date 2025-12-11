@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5ce17604_d1cbfbff",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-11T19:20:37Z",
+      "side": 1,
+      "message": "Looks like the site preview built by this change is functional.",
+      "revId": "22b1bf5cdc0d7c81ff2b5e0798e8fecbf16113cf",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
