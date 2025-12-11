@@ -38,7 +38,7 @@ class FingerGatewayApp(zuul.cmd.ZuulDaemonApp):
         self.addSubCommands(parser, fingergw.COMMANDS)
         return parser
 
-    def exit_handler(self, signum, frame):
+    def _exit_handler(self, signum, frame):
         if self.gateway:
             self.gateway.stop()
 

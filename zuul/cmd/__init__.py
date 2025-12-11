@@ -236,6 +236,33 @@ class ZuulDaemonApp(ZuulApp, metaclass=abc.ABCMeta):
                              expand_user=True)
         return pid_fn
 
+    def exit_handler(self, signum, frame):
+        try:
+            self._exit_handler(signum, frame)
+        except Exception:
+            self.log.error(
+                "Exception occured while processing exit handler"
+            )
+            if signum == signal.SIGTERM:
+                # Assume that in this situation, the process must be
+                # terminated no matter what.
+                # This would happen for instance when running the app
+                # in the context of a container orchestrator like k8s.
+                self.log.exception("Exit handler's last exception was:")
+                self.log.warning("The process might terminate "
+                                 "in a degraded state")
+            else:
+                # Keep previous behavior, ie don't catch the exception
+                # and "soft cancel" the exit process
+                raise
+
+    @abc.abstractmethod
+    def _exit_handler(self, signum, frame):
+        """
+        This is called just before terminating the application.
+        """
+        pass
+
     @abc.abstractmethod
     def run(self):
         """
