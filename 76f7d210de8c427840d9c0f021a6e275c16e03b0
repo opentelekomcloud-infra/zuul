@@ -54,6 +54,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3a389f77_ce7dcc48",
+        "filename": "doc/source/tutorials/quick-start.rst",
+        "patchSetId": 27
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-11T19:56:35Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "b14d4408_7fb870f7",
+      "revId": "76f7d210de8c427840d9c0f021a6e275c16e03b0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0225b8c5_7635ef14",
@@ -85,6 +103,24 @@
       "side": 1,
       "message": "That\u0027s not what the local var is for -- it\u0027s for someone performing maintenance on the test job to use their local environment (ie, ssh keys and workspace).  Otherwise, it\u0027s intended to work just as the job does, so this should remain as written.",
       "parentUuid": "0225b8c5_7635ef14",
+      "revId": "76f7d210de8c427840d9c0f021a6e275c16e03b0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f83d33b_79bfd6a0",
+        "filename": "playbooks/tutorial/roles/setup-tutorial/tasks/main.yaml",
+        "patchSetId": 27
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-11T19:56:35Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "286136a7_166020fe",
       "revId": "76f7d210de8c427840d9c0f021a6e275c16e03b0",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
