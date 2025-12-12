@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e59ad631_b8ad608e",
+        "filename": "web/src/index.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-12T08:36:21Z",
+      "side": 0,
+      "message": "Removing this PF3 stylesheet results in some texts being much larger than before. I noticed this in the \"console-like\" output that is shown in the Task Summary and Console tabs on the build result page. It looks like the PF3 stylesheet reduced the font-size for \u003cpre\u003e tags from the 16px (PF4 default) to 11px. I don\u0027t have a strong opinion on this, but since we are used to the smaller font-size it might make sense to add some rules to our custom CSS stylesheet to keep those smaller font-sizes although PF4 would use larger fonts by default.\n\nThe same applies to all tables (there the font-size changed from 12px to 16px).\n\nI\u0027ve also noticed some other differences\n- Status page (PipelineOverview): Some fonts look bold that weren\u0027t bold before and vice-versa (I think we can live with it as you can only spot the difference in direct comparison to the old UI).\n- Status page (PipelineOverview): The spaces between the QueueItem boxes are gone\n- General: Headings (h1, h2, h3) don\u0027t have a margin anymore (previously: margin-bottom: 10px, margin-top: 20px).\n- Menu bar: The spaces between the different menu items are gone. This results e.g. in the config-error alert bell being squashed into the timezone selector.\n\nI find that some of those issues make the UI look a bit broken, so I think we should attract those first - especially the larger font-sizes and the missing spaces. It might be enough to add some CSS rules to our custom CSS stylesheet.",
+      "revId": "23a31e6ed2b067d9b5c006c89512b643651f3589",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
