@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d6b81fe8_175a72b3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2025-12-12T07:28:25Z",
+      "side": 1,
+      "message": "Code changes LGTM. I didn\u0027t validate the functionality of the new system events page, since the new API endpoint is not yet available in opendev and thus the dashboard preview gets a 404 and only shows the system events table in loading state. Assuming it\u0027s just a duplicate of the config-error page, we should be fine.",
+      "revId": "7339702aa177f4a02be572a047a4eacae78b4242",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
