@@ -2817,6 +2817,8 @@ class ZuulTestCase(BaseTestCase):
                     continue
                 if name == 'org/common-config':
                     continue
+                if name in untrusted_projects:
+                    continue
                 if self.test_config.enable_nodepool:
                     untrusted_projects.append({
                         name: {
