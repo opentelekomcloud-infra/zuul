@@ -16,6 +16,24 @@
       "message": "Removing this PF3 stylesheet results in some texts being much larger than before. I noticed this in the \"console-like\" output that is shown in the Task Summary and Console tabs on the build result page. It looks like the PF3 stylesheet reduced the font-size for \u003cpre\u003e tags from the 16px (PF4 default) to 11px. I don\u0027t have a strong opinion on this, but since we are used to the smaller font-size it might make sense to add some rules to our custom CSS stylesheet to keep those smaller font-sizes although PF4 would use larger fonts by default.\n\nThe same applies to all tables (there the font-size changed from 12px to 16px).\n\nI\u0027ve also noticed some other differences\n- Status page (PipelineOverview): Some fonts look bold that weren\u0027t bold before and vice-versa (I think we can live with it as you can only spot the difference in direct comparison to the old UI).\n- Status page (PipelineOverview): The spaces between the QueueItem boxes are gone\n- General: Headings (h1, h2, h3) don\u0027t have a margin anymore (previously: margin-bottom: 10px, margin-top: 20px).\n- Menu bar: The spaces between the different menu items are gone. This results e.g. in the config-error alert bell being squashed into the timezone selector.\n\nI find that some of those issues make the UI look a bit broken, so I think we should attract those first - especially the larger font-sizes and the missing spaces. It might be enough to add some CSS rules to our custom CSS stylesheet.",
       "revId": "23a31e6ed2b067d9b5c006c89512b643651f3589",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "48ecb0cf_6068a676",
+        "filename": "web/src/index.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-12T23:51:54Z",
+      "side": 0,
+      "message": "Okay, you gave me a little wiggle room in your comment since much of the text was about how it\u0027s not that big of a deal, but you left a -1, so I\u0027m going to try to triage this and see if I can address what I think is the most important based on what you wrote.  I don\u0027t think we need to make everything look exactly like the current page -- we are upgrading from pf3 to pf4, and we do expect things to look different when we do that.  And ideally we don\u0027t want to override the toolkit unless it really matters (since each one is debt for later).  But some of these do affect usability, so it\u0027s worth trying to improve.\n\nI have adjusted the font size and styling for the console and build outputs to approximate the current setup.  The size is the same for normal text, the JSON is slightly different due to the new widget, but the size is nearly the same.  On the light background in the console output, the background is now white instead of grey, which improves contrast and readability and matches the white background of the task summary output.  If we want to change that, I suggest making that as a standalone change and changing both.  But I think we should stick with black on white everywhere.\n\nIt turns out the font size for tables was easy: that was an override we made previously, and we can remove it now, since it looks like PF4 is actually more like what we wanted in PF3 (ie, they updated to our standards).  So the tables should look about the same now.\n\nThe Status page bold fonts: in my browser inspector, both the old and new fonts claimed a computed weight value of 700.  But they were clearly different.  I can\u0027t explain that, other than to suspect that the extremely complex css system here is somehow to blame.  I have overridden it to 500 and they look the same now.\n\nI added the spaces back with a padding override.  It\u0027s not clear how they had that vertical padding before.  Likely something related to the Button component.\n\nThe headings actually look better to me.  Many of the pages have what I would consider less wasted vertical space at the top.  If there is one that looks bad to you, can you point it out and attach a screenshot?  Otherwise, I\u0027d suggest we go with the new values.\n\nI added a gap in the menu bar tools on the right.  There is still a slight difference in height for the bell icon box; I suggest we ignore that.\n\nI also removed another .jsx file related to the status page that appeared to be unused, which means we can remove some css that was only used by that file.",
+      "parentUuid": "e59ad631_b8ad608e",
+      "revId": "23a31e6ed2b067d9b5c006c89512b643651f3589",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
