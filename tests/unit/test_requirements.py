@@ -794,26 +794,23 @@ class TestPromoteWithRequirements(ZuulTestCase):
         C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
         C.setDependsOn(B, 1)
         A.addApproval('Code-Review', 2)
-        C.addApproval('Code-Review', 2)
         B.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        A.data['hashtags'] = ['oktomerge']
+        B.data['hashtags'] = ['oktomerge']
+        # The gate pipeline requires the "oktomerge" hashtag; we omit
+        # it from change C to test that the pipeline requirement still
+        # applies to child changes not already in the pipeline even
+        # when promote is used.
         self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
-        # We will remove this approval later
-        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
         self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
         self.waitUntilSettled()
 
-        # Before the promote we have A <- B <- C
-        self.assertEqual(len(self.builds), 3)
+        # Before the promote we have A <- B
+        self.assertEqual(len(self.builds), 2)
         self.assertTrue(self.builds[0].hasChanges(A))
         self.assertTrue(self.builds[1].hasChanges(A, B))
-        self.assertTrue(self.builds[2].hasChanges(A, B, C))
-
-        # Now removal the approval on the child change before promoting
-        # the parent
-        C.addApproval('Approved', 0)
-        # If we emit the event like so:
-        # self.fake_gerrit.addEvent(C.addApproval('Approved', 0))
-        # then B gets promoted by C does not.
 
         # Promote change B to the head of the gate queue
         event = PromoteEvent(
@@ -822,14 +819,13 @@ class TestPromoteWithRequirements(ZuulTestCase):
             'gate'].put(event)
         self.waitUntilSettled()
 
-        # After the promote we have B <- C <- A
-        # TODO promoting a change that meets requirements should succeed
-        # but we shouldn't enqueue its children that do not meet requirements
-        # any longer.
-        self.assertEqual(len(self.builds), 3)
+        # After the promote we have B <- A
+        # Promoting a change that meets requirements should succeed
+        # but we shouldn't enqueue its children that do not meet
+        # requirements.
+        self.assertEqual(len(self.builds), 2)
         self.assertTrue(self.builds[0].hasChanges(B))
-        self.assertTrue(self.builds[1].hasChanges(B, C))
-        self.assertTrue(self.builds[2].hasChanges(B, C, A))
+        self.assertTrue(self.builds[1].hasChanges(B, A))
 
         self.executor_server.hold_jobs_in_build = False
         self.executor_server.release()
@@ -837,7 +833,7 @@ class TestPromoteWithRequirements(ZuulTestCase):
 
         self.assertEqual(B.data['status'], 'MERGED')
         self.assertEqual(A.data['status'], 'MERGED')
-        self.assertEqual(C.data['status'], 'MERGED')
+        self.assertEqual(C.data['status'], 'NEW')
 
     @simple_layout('layouts/gerrit-gate-requirements.yaml')
     def test_promote_parent_not_matching_requirements(self):

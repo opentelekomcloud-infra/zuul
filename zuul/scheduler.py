@@ -2008,17 +2008,6 @@ class Scheduler(threading.Thread):
                         # Convert the change number and patchset from
                         # our enqueued items to string to compare them
                         # with the event data.
-                        # This seems to be somewhat important if we're trying
-                        # to update change cache info because we don't trust
-                        # that we've received all events at promotion time.
-                        # Specifically I think we want to call conn.getChange()
-                        # against each change that we're going to be processing
-                        # below with refresh=True. But that takes a ChangeKey.
-                        # We could do something similar to what enqueue does
-                        # but those events include more information about the
-                        # project. I'm not sure how we map from the limited
-                        # info we have here to a tenant + project + source/conn
-                        # in order to refresh the change.
                         if (str(item_change.number) == number and
                             str(item_change.patchset) == patchset):
                             promote_operations.setdefault(
@@ -2060,16 +2049,7 @@ class Scheduler(threading.Thread):
                         item_change, item.event,
                         enqueue_time=item.enqueue_time,
                         quiet=True,
-                        # I expected that toggling this flag from True to False
-                        # would create new behavior in my new test cases.
-                        # This doesn't seem to be the case and that appears to
-                        # be due to changes not updating their data unless
-                        # we receive an event for that update (which will
-                        # cause changes to dequeue from the pipeline when
-                        # requirements no longer match) or if we query change
-                        # info out of band. See comment above about refreshing
-                        # change caches via ChangeKeys.
-                        ignore_requirements=False)
+                        ignore_requirements=True)
             # Regardless, move this shared change queue to the head.
             manager.state.promoteQueue(change_queue)
 

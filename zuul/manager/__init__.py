@@ -830,8 +830,16 @@ class PipelineManager(metaclass=ABCMeta):
                 self.reportEnqueue(item)
 
             for c in cycle:
+                # We ignore the supplied value for ignore_requirements
+                # and instead always apply pipeline requirements to
+                # changes behind.  If we perform a direct enqueue to
+                # override requirements, that should only apply to a
+                # change and its dependencies, not to its dependents.
+                # If we or a user want to override requirements for a
+                # change behind, we'll direct-enqueue the change
+                # behind.
                 self.enqueueChangesBehind(c, event, quiet,
-                                          ignore_requirements,
+                                          False,
                                           change_queue, history,
                                           dependency_graph)
 

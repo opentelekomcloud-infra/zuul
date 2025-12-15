@@ -3,8 +3,7 @@
     manager: dependent
     require:
       gerrit:
-        approval:
-          - Approved: 1
+        hashtags: oktomerge
     trigger:
       gerrit:
         - event: comment-added
