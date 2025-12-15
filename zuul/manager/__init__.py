@@ -384,6 +384,9 @@ class PipelineManager(metaclass=ABCMeta):
             if ret:
                 log.error("Reporting item enqueued %s received: %s" %
                           (item, ret))
+            else:
+                item.updateAttributes(self.current_context,
+                                      reported_enqueue=True)
 
     def reportStart(self, item):
         if not self.state.disabled:
@@ -393,6 +396,9 @@ class PipelineManager(metaclass=ABCMeta):
             ret = self.sendReport(self.pipeline.start_actions, item)
             if ret:
                 log.error("Reporting item start %s received: %s" % (item, ret))
+            else:
+                item.updateAttributes(self.current_context,
+                                      reported_start=True)
 
     def reportNormalBuildsetEnd(self, build_set, action, final, result=None):
         # Report a buildset end if there are jobs or errors
@@ -1034,10 +1040,12 @@ class PipelineManager(metaclass=ABCMeta):
         # twice.
         if not item.current_build_set.result and item.live:
             item.setReportedResult('DEQUEUED')
-            if not item.reported_start:
+            if not (item.reported_enqueue or item.reported_start):
                 # If we haven't reported start, we don't know if Zuul
                 # was supposed to act on the item at all, so keep it
-                # quiet.
+                # quiet; but if we reported enqueue, then we're
+                # probably in a pipeline that has an enqueue/dequeue
+                # pair, so we should make sure we clean that up.
                 quiet = True
             self.reportDequeue(item, quiet)
         item.queue.dequeueItem(item)
@@ -1950,8 +1958,6 @@ class PipelineManager(metaclass=ABCMeta):
                     and not item.quiet
                     ):
                     self.reportStart(item)
-                    item.updateAttributes(self.current_context,
-                                          reported_start=True)
                 if item.current_build_set.unable_to_merge:
                     failing_reasons.append("it has a merge conflict")
                 if item.current_build_set.has_blocking_errors:

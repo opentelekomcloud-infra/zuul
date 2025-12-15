@@ -586,18 +586,15 @@ class FakeCheckRun:
             },
         }
 
-    def update(self, conclusion, completed_at, output, details_url,
+    def update(self, status, conclusion, completed_at, output, details_url,
                external_id, actions):
+        self.status = status
         self.conclusion = conclusion
         self.completed_at = completed_at
         self.output = output
         self.details_url = details_url
         self.external_id = external_id
         self.actions = actions
-
-        # As we are only calling the update method when a build is completed,
-        # we can always set the status to "completed".
-        self.status = "completed"
 
 
 class FakeGithubReview(object):
@@ -1217,8 +1214,18 @@ class FakeGithubSession(object):
             ]
             check_run = check_runs[0]
 
-            check_run.update(json['conclusion'],
-                             json['completed_at'],
+            conclusion = json.get('conclusion')
+            if conclusion:
+                status = 'completed'
+            else:
+                status = json['status']
+            completed_at = json.get('completed_at')
+            if status == 'completed' and not completed_at:
+                raise Exception(
+                    "Provide completed_at for completed check runs")
+            check_run.update(status,
+                             conclusion,
+                             completed_at,
                              json['output'],
                              json['details_url'],
                              json['external_id'],

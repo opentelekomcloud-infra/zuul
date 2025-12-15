@@ -420,7 +420,7 @@ def getSchema():
         'review': v.Any('approve', 'request-changes', 'comment'),
         'review-body': str,
         'check': v.Any(
-            "in_progress", "success", "failure", "cancelled",
+            "queued", "in_progress", "success", "failure", "cancelled",
             "skipped", "neutral"),
     })
     return github_reporter

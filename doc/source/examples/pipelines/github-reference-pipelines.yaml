@@ -23,7 +23,7 @@
           check: .*/check:.*
     start:
       github:
-        check: 'in_progress'
+        check: in_progress
         comment: false
         # It is recommended to use the checks API for consistency with
         # other common CI tools that integrate with Github.  Results
@@ -36,18 +36,18 @@
         # sections below.  You should choose one or the other
         # depending on project preferences.
         #
-        #status: 'pending'
+        #status: pending
         #comment: false
     success:
       github:
-        check: 'success'
+        check: success
         comment: false
-        #status: 'success'
+        #status: success
     failure:
       github:
-        check: 'failure'
+        check: failure
         comment: false
-        #status: 'failure'
+        #status: failure
     dequeue:
       github:
         check: cancelled
@@ -93,21 +93,29 @@
           action: labeled
           label:
             - gate
+    enqueue:
+      github:
+        check: queued
+        comment: false
     start:
       github:
-        check: 'in_progress'
+        check: in_progress
         comment: false
-        #status: 'pending'
+        #status: pending
     success:
       github:
-        check: 'success'
+        check: success
         comment: false
-        #status: 'success'
+        #status: success
         merge: true
     failure:
       github:
-        check: 'failure'
-        #status: 'failure'
+        check: failure
+        #status: failure
+        comment: false
+    no-jobs:
+      github:
+        check: skipped
         comment: false
     dequeue:
       github:
