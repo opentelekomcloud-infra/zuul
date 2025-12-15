@@ -34,6 +34,24 @@
       "parentUuid": "81786713_4fe64c77",
       "revId": "1b833658342aa399829df97c5ba48e5e94785ca5",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "442d32b1_1936287d",
+        "filename": "zuul/scheduler.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1616,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-12-15T06:43:45Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "31a005ed_a8e1894a",
+      "revId": "1b833658342aa399829df97c5ba48e5e94785ca5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
