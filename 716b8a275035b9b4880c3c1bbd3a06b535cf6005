@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c6df6e0_6382c720",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-12-15T14:48:39Z",
+      "side": 1,
+      "message": "I assume there is no way to have a version with less padding for the rows? Especially with image artifacts this uses a lot of screen real estate",
+      "revId": "716b8a275035b9b4880c3c1bbd3a06b535cf6005",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
