@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9c68ebf_bc6d656f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33134
+      },
+      "writtenOn": "2025-12-15T07:21:03Z",
+      "side": 1,
+      "message": "As discussed separately in chat, it is agreed to put both endpoints under .well-known. i.e.:\n* `\u003czuul-root\u003e/.well-known/openid-configuration`\n* `\u003czuul-root\u003e/.well-known/jwks`",
+      "revId": "f309634d4685b9b8ee70440d01f537b092df9b86",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
