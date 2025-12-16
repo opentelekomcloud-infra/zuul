@@ -187,3 +187,15 @@ class Constant:
 
     def __call__(self, v):
         return self.schema(v)
+
+    def __eq__(self, other):
+        return str(self.schema) == other
+
+
+class Exclusive(vs.Exclusive):
+    """Subclass of Exclusive that supports documentation
+    """
+    def __init__(self, schema, group_of_exclusion, msg=None,
+                 description=None, doc=None):
+        super().__init__(schema, group_of_exclusion, msg, description)
+        self.doc = schema.doc

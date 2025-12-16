@@ -696,7 +696,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
     def listResources(self, providers):
         bucket_names = set()
         for provider in providers:
-            if bn := provider.object_storage.get('bucket-name'):
+            if bn := provider.object_storage.get('bucket_name'):
                 bucket_names.add(bn)
         self._tagSnapshots()
         self._tagAmis()
@@ -866,7 +866,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             if flavor.instance_type:
                 instance_types.append(flavor.instance_type)
             if flavor.fleet:
-                instance_types.extend(flavor.fleet.get('instance-types', []))
+                instance_types.extend(flavor.fleet.get('instance_types', []))
             for instance_type in instance_types:
                 if flavor.market_type == 'spot':
                     key = f'spot-instance-{instance_type}'
@@ -1915,7 +1915,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                      hostname, log):
         overrides = []
 
-        instance_types = flavor.fleet.get('instance-types', [])
+        instance_types = flavor.fleet.get('instance_types', [])
         priority = 0
         for instance_type in instance_types:
             ebs_settings = {
@@ -1942,7 +1942,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     },
                 ],
             }
-            if flavor.fleet['allocation-strategy'] in [
+            if flavor.fleet['allocation_strategy'] in [
                 'prioritized', 'capacity-optimized-prioritized']:
                 override_dict['Priority'] = priority
                 priority += 1
@@ -1960,7 +1960,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         if flavor.market_type == 'spot':
             capacity_type_option = {
                 'SpotOptions': {
-                    'AllocationStrategy': flavor.fleet['allocation-strategy'],
+                    'AllocationStrategy': flavor.fleet['allocation_strategy'],
                 },
                 'TargetCapacitySpecification': {
                     'TotalTargetCapacity': 1,
@@ -1970,7 +1970,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         else:
             capacity_type_option = {
                 'OnDemandOptions': {
-                    'AllocationStrategy': flavor.fleet['allocation-strategy'],
+                    'AllocationStrategy': flavor.fleet['allocation_strategy'],
                 },
                 'TargetCapacitySpecification': {
                     'TotalTargetCapacity': 1,
