@@ -18,6 +18,8 @@ import math
 import zuul.provider.schema as provider_schema
 from zuul.lib.voluputil import (
     AsList,
+    Constant,
+    Exclusive,
     Nullable,
     Optional,
     Required,
@@ -48,29 +50,126 @@ from zuul.provider import (
     BaseProviderSchema,
 )
 
+URL_BOTO_DESCRIBE_IMAGES = 'https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2.html#EC2.Client.describe_images'  # noqa
+URL_EBS_VOLUME_TYPE = 'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html'  # noqa
+URL_EBS_DIRECT_API = 'https://docs.aws.amazon.com/ebs/latest/userguide/ebs-accessing-snapshot.html'  # noqa
+URL_REGISTER_IMAGE = 'https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_RegisterImage.html'  # noqa
+URL_AWS_REGION = 'https://docs.aws.amazon.com/general/latest/gr/rande.html'  # noqa
+
 
 class AwsProviderImage(BaseProviderImage):
     aws_image_filters = {
-        'name': str,
-        'values': AsList(str),
+        Optional(
+            'name',
+            doc=f"""\
+            The filter name. See `Boto describe images`_ for a list of
+            valid filters.
+
+            .. _`Boto describe images`: {URL_BOTO_DESCRIBE_IMAGES}
+            """,
+        ): Nullable(str),
+        Optional(
+            'values',
+            doc="""A list of string values on which to filter.""",
+        ): Nullable(AsList(str)),
     }
     # This is used here and in flavors and labels
     inheritable_aws_image_schema = assemble(
         vs.Schema({
-            Optional('volume-size'): Nullable(int),
-            Optional('volume-type', default='gp3'): str,
-            Optional('iops'): Nullable(int),
-            Optional('throughput'): Nullable(int),
-            Optional('imds-http-tokens'): Nullable(
-                vs.Any('optional', 'required')),
+            Optional(
+                'volume-size',
+                doc="""\
+                The size of the root EBS volume, in GiB, for the
+                image.  If omitted, the volume size reported for the
+                imported snapshot will be used.  Only used with the
+                :value:`provider[aws].images[zuul].import-method.snapshot` or
+                :value:`provider[aws].images[zuul].import-method.ebs-direct`
+                import methods.""",
+            ): Nullable(int),
+            Optional(
+                'volume-type',
+                doc=f"""\
+                The root `EBS volume type`_ for the image.
+                Only used with the
+                :value:`provider[aws].images[zuul].import-method.snapshot` or
+                :value:`provider[aws].images[zuul].import-method.ebs-direct`
+                import methods.
+
+                .. _`EBS volume type`: {URL_EBS_VOLUME_TYPE}
+                """,
+                default='gp3',
+            ): str,
+            Optional(
+                'iops',
+                doc="""\
+                The number of I/O operations per second to be provisioned for
+                the volume.  The default varies based on the volume type; see
+                the documentation under `EBS volume type`_ for the specific
+                volume type for details.
+                """,
+            ): Nullable(int),
+            Optional(
+                'throughput',
+                doc="""\
+                The throughput of the volume in MiB/s.  This is only valid for
+                ``gp3`` volumes.
+                """,
+            ): Nullable(int),
+            Optional(
+                'imds-http-tokens',
+                doc="""\
+                Specify whether IMDSv2 is required.  If this is omitted,
+                then AWS defaults are used (usually equivalent to
+                ``optional`` but may be influenced by the image used).
+                """,
+            ): Nullable(vs.Any(
+                Constant(
+                    'optional',
+                    doc="""\
+                    Allows usage of IMDSv2 but do not require it.  This
+                    sets the following metadata options:
+
+                    * `HttpTokens` is `optional`
+                    * `HttpEndpoint` is `enabled`
+                    """),
+                Constant(
+                    'required',
+                    doc="""\
+                    Require IMDSv2.  This sets the following metadata
+                    options:
+
+                    * `HttpTokens` is `required`
+                    * `HttpEndpoint` is `enabled`
+                    """),
+            )),
         }),
         provider_schema.cloud_image,
     )
     aws_cloud_schema = vs.Schema({
-        vs.Exclusive(Required('image-id'), 'spec'): str,
-        vs.Exclusive(
-            Required('image-filters'), 'spec'
-        ): AsList(aws_image_filters),
+        Exclusive(
+            Required(
+                'image-id',
+                doc="""\
+                If this is provided, it is used to select the AMI
+                from AWS by ID.  Either this field or
+                :attr:`provider[aws].images[cloud].image-filters`
+                must be provided.
+                """,
+            ), 'spec'): str,
+        Exclusive(
+            Required(
+                'image-filters',
+                doc="""\
+                If provided, this is used to select an AMI by filters.  If
+                the filters provided match more than one image, the most
+                recent will be returned.  Either this field or
+                :attr:`provider[aws].images[cloud].image-id` must be
+                provided.
+
+                This field may be provided as a dictionary, or a list
+                of dictionaries with the following keys:
+                """,
+            ), 'spec'): AsList(aws_image_filters),
     })
     cloud_schema = vs.All(
         assemble(
@@ -83,14 +182,125 @@ class AwsProviderImage(BaseProviderImage):
                                '"image-filters", or "image-id" keys'))
     )
     inheritable_aws_zuul_schema = vs.Schema({
-        Optional('import-method', default='snapshot'): vs.Any(
-            'snapshot', 'image', 'ebs-direct'),
-        Optional('image-format', default='raw'): vs.Any(
-            'ova', 'vhd', 'vhdx', 'vmdk', 'raw', 'snapshot'),
+        Optional(
+            'import-method',
+            doc="""The method to use when importing the image.""",
+            default='snapshot'
+        ): vs.Any(
+            Constant(
+                'snapshot',
+                doc="""\
+                This method uploads the image file to AWS as a snapshot
+                and then registers an AMI directly from the snapshot.
+                This is faster compared to the `image` method and may be
+                used with operating systems and versions that AWS does not
+                otherwise support.  However, it is incompatible with some
+                operating systems which require special licensing or other
+                metadata in AWS.
+                """,
+            ),
+            Constant(
+                'image',
+                doc="""\
+                This method uploads the image file to AWS and performs
+                an "image import" on the file.  This causes AWS to
+                boot the image in a temporary VM and then take a
+                snapshot of that VM which is then used as the basis of
+                the AMI.  This is slower compared to the `snapshot`
+                method and may only be used with operating systems and
+                versions which AWS already supports.  This may be
+                necessary in order to use Windows images.
+                """,
+            ),
+            Constant(
+                'ebs-direct',
+                doc=f"""\
+                This is similar to the `snapshot` method, but uses the
+                `EBS direct API`_ instead of S3.  This may be faster and
+                more efficient, but it may incur additional costs.
+
+                .. _`EBS direct API`: {URL_EBS_DIRECT_API}
+                """,
+            ),
+        ),
+        Optional(
+            'image-format',
+            doc="""\
+            The image format that should be used when building and
+            uploading or importing the image.
+            """,
+            default='raw',
+        ): vs.Any(
+            Constant(
+                'ova',
+                doc="""The OVA image format.""",
+            ),
+            Constant(
+                'vhd',
+                doc="""The VHD image format.""",
+            ),
+            Constant(
+                'vhdx',
+                doc="""The VHDX image format.""",
+            ),
+            Constant(
+                'vmdk',
+                doc="""The VMDK image format.""",
+            ),
+            Constant(
+                'raw',
+                doc="""A raw image.""",
+            ),
+            Constant(
+                'snapshot',
+                doc="""\
+                Rather than producing an image artifact and
+                uploading or importing it, this image is created by
+                snapshotting a running instance.
+                """,
+            )
+        ),
         # None is an acceptable explicit value for imds-support
-        Optional('imds-support', default=None): vs.Any('v2.0', None),
-        Optional('architecture', default='x86_64'): str,
-        Optional('ena-support', default=True): bool,
+        Optional(
+            'imds-support',
+            doc="""\
+            Controls the usage of IMDSv2 on instances created from the
+            image, This is only supported using the
+            :value:`provider[aws].images[zuul].import-method.snapshot` or
+            :value:`provider[aws].images[zuul].import-method.ebs-direct`
+            import methods.
+            """,
+            default=None
+        ): vs.Any(
+            Constant(
+                'v2.0',
+                doc="""\
+                Enforces usage of IMDSv2 by default on instances
+                created from the image.
+                """,
+            ),
+            Constant(
+                None,
+                doc="""IMDSv2 is optional.""",
+            ),
+        ),
+        Optional(
+            'architecture',
+            doc=f"""\
+            The architecture of the image.  See the `AWS RegisterImage API
+            documentation`_ for valid values.
+
+            .. _`AWS RegisterImage API documentation`: {URL_REGISTER_IMAGE}
+            """,
+            default='x86_64'): str,
+        Optional(
+            'ena-support',
+            doc="""\
+            Whether the image has support for the AWS Enhanced Networking
+            Adapter (ENA).  Many newer operating systems include driver
+            support as standard and some AWS instance types require it.
+            """,
+            default=True): bool,
     })
     zuul_schema = assemble(
         BaseProviderImage.zuul_schema,
@@ -109,7 +319,8 @@ class AwsProviderImage(BaseProviderImage):
     schema = vs.Union(
         cloud_schema, zuul_schema,
         discriminant=discriminate(
-            lambda val, alt: val['type'] == alt['type']))
+            lambda val, alt: val['type'] == alt['type'].validators[0])
+    )
     inheritable_schema = assemble(
         inheritable_cloud_schema,
         inheritable_zuul_schema,
@@ -129,19 +340,116 @@ class AwsProviderImage(BaseProviderImage):
 
 class AwsProviderFlavor(BaseProviderFlavor):
     fleet_schema = vs.Schema({
-        vs.Required('instance-types'): AsList(str),
-        vs.Required('allocation-strategy'): vs.Any(
-            'prioritized', 'price-capacity-optimized',
-            'capacity-optimized', 'diversified', 'lowest-price')
+        Required(
+            'instance-types',
+            doc="""\
+            A list of instance types from which AWS may select when
+            launching the instance.""",
+        ): AsList(str),
+        Required(
+            'allocation-strategy',
+            doc="""\
+            The allocation strategy to use when launching the instance.
+            """,
+        ): vs.Any(
+            Constant(
+                'prioritized',
+                doc="""\
+                The prioritized allocation strategy.  Available for
+                on-demand instances""",
+            ),
+            Constant(
+                'price-capacity-optimized',
+                doc="""\
+                The price-capacity-optimized allocation strategy.
+                Available for spot instances""",
+            ),
+            Constant(
+                'capacity-optimized',
+                doc="""\
+                The capacity-optimized allocation strategy.  Available
+                for spot instances""",
+            ),
+            Constant(
+                'diversified',
+                doc="""\
+                The diversified allocation strategy.  Available for
+                spot instances""",
+            ),
+            Constant(
+                'lowest-price',
+                doc="""\
+                The lowest-price allocation strategy.  Available for
+                spot or on-demand instances""",
+            ),
+        )
     })
 
     aws_flavor_schema = vs.Schema({
-        vs.Exclusive(Required('instance-type'), 'instance'): str,
-        Optional('dedicated-host', default=False): bool,
-        Optional('ebs-optimized', default=False): bool,
-        Optional('market-type', default='on-demand'): vs.Any(
-            'on-demand', 'spot'),
-        vs.Exclusive(Required('fleet'), 'instance'): fleet_schema,
+        Exclusive(Required(
+            'instance-type',
+            doc="""\
+            Name of the AWS instance type to use..
+            Mutually exclusive with :attr:`provider[aws].flavors.fleet`.
+            """,
+        ), 'instance'): str,
+        Optional(
+            'dedicated-host',
+            doc="""\
+            If set to ``true``, an AWS dedicated host will be
+            allocated for the instance.  The host may be used for one
+            or more nodes depending on the settings of
+            :attr:`provider[aws].labels.slots` and
+            :attr:`provider[aws].labels.reuse`.
+
+            If this option is set, the
+            :value:`provider[aws].flavors.market-type.spot` option is
+            not available, and :attr:`provider[aws].labels.az` option is
+            required.""",
+            default=False): bool,
+        Optional(
+            'ebs-optimized',
+            doc="""\
+            Indicates whether EBS optimization (additional, dedicated
+            throughput between Amazon EC2 and Amazon EBS) should be
+            enabled for the instance.""",
+            default=False): bool,
+        Optional(
+            'market-type',
+            doc="""\
+            Whether to request an on-demand or spot instance.
+            """,
+            default='on-demand'
+        ): vs.Any(
+            Constant(
+                'on-demand',
+                doc="""\
+                This is the the typical EC2 instance where continued
+                availability is guaranteed after allocation.""",
+            ),
+            Constant(
+                'spot',
+                doc="""\
+                Request an Amazon EC2 Spot instance instead of an
+                On-Demand instance.  Spot instances take advantage of
+                unused EC2 capacity at a discount, but if demand is
+                high, instances may be unavailable.  In addition,
+                Amazon EC2 may interrupt Spot instances and reclaim
+                them.  Alternative nodesets with On-Demand instances
+                configured as a fallback may be configured in order to
+                mitigate this.""",
+            ),
+        ),
+        Exclusive(Required(
+            'fleet',
+            doc="""\
+            If specified, the EC2 Fleet API will be used for launching
+            the instance.  In this case, quota is not checked before
+            launching the instance, but is taken into account after
+            the instance is launched.  Mutually exclusive with
+            :attr:`provider[aws].flavors.instance-type`.
+            """,
+        ), 'instance'): fleet_schema,
     })
 
     inheritable_schema = assemble(
@@ -172,20 +480,64 @@ class AwsProviderFlavor(BaseProviderFlavor):
 class AwsProviderLabel(BaseProviderLabel):
     aws_iam_schema = vs.All(
         vs.Schema({
-            vs.Exclusive(Required('name'), 'iam'): str,
-            vs.Exclusive(Required('arn'), 'iam'): str
+            Exclusive(Required(
+                'name',
+                doc="""\
+                Name of the instance profile.  Mutually exclusive with
+                :attr:`provider[aws].labels.iam-instance-profile.arn`
+                """,
+            ), 'iam'): str,
+            Exclusive(Required(
+                'arn',
+                doc="""\
+                ARN identifier of the profile.  Mutually exclusive
+                with
+                :attr:`provider[aws].labels.iam-instance-profile.name`
+                """,
+            ), 'iam'): str
         }),
         RequiredExclusive('name', 'arn',
                           msg=('Provide either "name", or "arn" keys'))
     )
     aws_label_schema = vs.Schema({
-        Optional('az'): Nullable(str),
-        Optional('security-group-ids'): Nullable(AsList(str)),
-        Optional('subnet-ids', default=[]): AsList(str),
-        Optional('iam-instance-profile'): Nullable(aws_iam_schema),
+        Optional(
+            'az',
+            doc="""\
+            Instances will be assigned to the specified availibility
+            zone.  If omitted, AWS will select from the available
+            zones.
+            """,
+        ): Nullable(str),
+        Optional(
+            'security-group-ids',
+            doc="""\
+            Specifies the security group IDs to assign to the node's
+            network interfaces.
+            """,
+        ): Nullable(AsList(str)),
+        Optional(
+            'subnet-ids',
+            doc="""\
+            Specifies the subnets to assign to the node's network interfaces.
+            """,
+            default=[]): AsList(str),
+        Optional(
+            'iam-instance-profile',
+            doc="""\
+            Used to attach an IAM instance profile.
+            Useful for giving access to services without needing any secrets.
+            """,
+        ): Nullable(aws_iam_schema),
         # This could make sense for image as well, but currently is
         # only included in label.
-        Optional('kms-key-id'): Nullable(str),
+        Optional(
+            'kms-key-id',
+            doc="""\
+            The KMS key id to use when launching instances from an
+            encrypted image.  Typically only necessary when using
+            images shared from a different AWS account.
+            """,
+        ): Nullable(str),
     })
 
     inheritable_schema = assemble(
@@ -236,23 +588,70 @@ class AwsProviderSchema(BaseProviderSchema):
     def getProviderSchema(self):
         schema = super().getProviderSchema()
         object_storage = {
-            vs.Required('bucket-name'): str,
+            Required(
+                'bucket-name',
+                doc="""\
+                The name of the S3 bucket that should be used when
+                importing Zuul images.
+                """,
+            ): str,
         }
 
         resource_limits = {k: int for k in ALL_QUOTA_CODES}
-        resource_limits['instances'] = int
-        resource_limits['cores'] = int
-        resource_limits['ram'] = int
+        resource_limits[Optional(
+            'instances',
+            default=vs.UNDEFINED,
+            doc="""The number of instances.""",
+        )] = int
+        resource_limits[Optional(
+            'cores',
+            default=vs.UNDEFINED,
+            doc="""The number of cores.""",
+        )] = int
+        resource_limits[Optional(
+            'ram',
+            default=vs.UNDEFINED,
+            doc="""The amount of ram, in MiB.""",
+        )] = int
 
         aws_provider_schema = vs.Schema({
-            Required('region'): str,
-            Optional('object-storage'): Nullable(object_storage),
-            Optional('resource-limits', default=dict()): resource_limits,
+            Required(
+                'region',
+                doc=f"""\
+                The name of the `AWS region`_ to interact with.
+
+                .. _`AWS region`: {URL_AWS_REGION}
+                """,
+            ): str,
+            Optional(
+                'object-storage',
+                doc="""\
+                Configuration options related to object storage used
+                for image management.
+                """,
+            ): Nullable(object_storage),
+            Optional(
+                'resource-limits',
+                doc="""\
+                Resource limits for this provider.  Configure these
+                values to cause Zuul to attempt to limit the resource
+                usage.  This can be used to limit Zuul's usage to a
+                level below the cloud quota.
+
+                In addition to the options listed below, it is
+                possible to configure a limit for any of the quota
+                codes supported by AWS.  """,
+                default=dict(),
+            ): resource_limits,
         })
 
         return assemble(
             schema,
             aws_provider_schema,
+            doc="""\
+            The attributes available for configuring an AWS provider
+            are below.
+            """,
         )
 
 
