@@ -174,6 +174,7 @@ class LocalAccumulator:
             raise
         except Exception as exc:
             self.addError(exc)
+            raise
 
     def addError(self, error):
         """Adds the error or warning to the accumulator.
