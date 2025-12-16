@@ -696,7 +696,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
     def listResources(self, providers):
         bucket_names = set()
         for provider in providers:
-            if bn := provider.object_storage.get('bucket-name'):
+            if bn := provider.object_storage.get('bucket_name'):
                 bucket_names.add(bn)
         self._tagSnapshots()
         self._tagAmis()
