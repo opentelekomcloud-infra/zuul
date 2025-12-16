@@ -81,17 +81,53 @@ class StaticProviderLabel(BaseProviderLabel):
 
 class StaticNodeConfig:
     schema = vs.Schema({
-        Required('name'): str,
+        Required(
+            'name',
+            doc="""\
+            The hostname or ip address of the static node.
+            """,
+        ): str,
         # Normally we get the connection port and user from the
         # image, but in order to allow registering the same host
         # multiple times with different values, we allow the
         # setting here.  If it's null, we will get it from the
         # image.
-        Optional('connection-port'): Nullable(int),
-        Optional('username'): Nullable(str),
-        Required('label'): str,
-        Optional('aliases', default=[]): AsList(str),
-        Optional('host-key'): Nullable(str),
+        Optional(
+            'connection-port',
+            doc="""\
+            The port that Zuul should use when connecting to the node.
+            For most nodes this is not necessary. This defaults to 22 when
+            ``connection-type`` is 'ssh' and 5986 when it is 'winrm'.
+            """,
+        ): Nullable(int),
+        Optional(
+            'username',
+            doc="""\
+            The username Zuul should use when connecting to the node.
+            """,
+        ): Nullable(str),
+        Required(
+            'label',
+            doc="""\
+            The label to associate with this node.  This is the
+            primary label for the node and will be used to supply any
+            necessary information about the node's characteristics.
+            """,
+        ): str,
+        Optional(
+            'aliases',
+            doc="""\
+            A list of label aliases to associate with this node.
+            These labels may be used to request this node, but none of
+            their attributes will be used to define characteristics.
+            """,
+            default=[]): AsList(str),
+        Optional(
+            'host-key',
+            doc="""\
+            The ssh host key of the node.
+            """,
+        ): Nullable(str),
     })
 
     def __init__(self, node_config):
@@ -116,16 +152,32 @@ class StaticProviderSchema(BaseProviderSchema):
         schema = super().getProviderSchema()
 
         resource_limits = {}
-        resource_limits['instances'] = int
+        resource_limits[Optional(
+            'instances',
+            default=vs.UNDEFINED,
+            doc="""The number of instances.""",
+        )] = int
 
         static_provider_schema = vs.Schema({
-            Optional('resource-limits', default=dict()): resource_limits,
-            Required('nodes'): [StaticNodeConfig.schema],
+            Optional(
+                'resource-limits',
+                doc="""\
+                Resource limits for this provider.
+                """,
+                default=dict()): resource_limits,
+            Required(
+                'nodes',
+                doc="""A list of nodes to be used by this provider.""",
+            ): [StaticNodeConfig.schema],
         })
 
         return assemble(
             schema,
             static_provider_schema,
+            doc="""\
+            The attributes available for configuring a static provider
+            are below.
+            """,
         )
 
 
