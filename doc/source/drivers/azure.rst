@@ -1,9 +1,9 @@
 :orphan:
 
-.. attr:: provider[static]
+.. attr:: provider[azure]
    :type: dict
 
-   The attributes available for configuring a static provider
+   The attributes available for configuring an Azure provider
    are below.
 
    .. attr:: abstract
@@ -34,6 +34,12 @@
       Values set on individual flavors may still override the
       values set here.
 
+      .. attr:: ephemeral-disk
+         :type: bool
+
+         If set to ``true``, Azure will create an ephemeral OS disk
+         instead of a managed disk.
+
       .. attr:: final
 
          Whether the configuration of the flavor may be updated
@@ -54,6 +60,36 @@
             The flavor may not be updated by flavor-defaults
             but may be explicitly overidden by redefining
             it in a new 'flavor' entry.
+
+      .. attr:: generate-password
+         :type: bool
+
+         If booting a Windows image, an administrative password is
+         required.  If the password is not actually used (e.g., the
+         image has key-based authentication enabled), a random
+         password can be provided by enabling this option.  The
+         password is not stored anywhere and is not retrievable.
+
+      .. attr:: public-ipv4
+         :type: bool
+
+         Whether a public IPv4 address should be attached to nodes.
+
+      .. attr:: public-ipv6
+         :type: bool
+
+         Whether a public IPv6 address should be attached to nodes.
+
+      .. attr:: userdata
+         :type: str
+
+         A string of userdata for a node.  Systems such as "cloud-init"
+         may use this to configure the node on boot.
+
+      .. attr:: volume-size
+         :type: int
+
+         The size of the operating system disk, in GiB.
 
    .. attr:: flavors
       :type: dict
@@ -65,6 +101,12 @@
 
          A textual description of the image for reference purposes.
 
+      .. attr:: ephemeral-disk
+         :type: bool
+
+         If set to ``true``, Azure will create an ephemeral OS disk
+         instead of a managed disk.
+
       .. attr:: final
 
          Whether the configuration of the flavor may be updated
@@ -86,11 +128,73 @@
             but may be explicitly overidden by redefining
             it in a new 'flavor' entry.
 
+      .. attr:: generate-password
+         :type: bool
+
+         If booting a Windows image, an administrative password is
+         required.  If the password is not actually used (e.g., the
+         image has key-based authentication enabled), a random
+         password can be provided by enabling this option.  The
+         password is not stored anywhere and is not retrievable.
+
+      .. attr:: ipv4
+         :type: bool
+
+         Whether to enable IPv4 networking.  Defaults to true unless IPv6
+         is enabled.  Enabling this will attach a private IPv4 address.
+
+      .. attr:: ipv6
+         :type: bool
+
+         Whether to enable IPv6 networking.
+         Enabling this will attach a private IPv6 address.
+
       .. attr:: name
          :type: str
 
          The name of the flavor.  Used to refer to the flavor in Zuul
          configuration.
+
+      .. attr:: priority
+
+         Whether to create regular or spot instances.
+
+         .. value:: regular
+
+            A regular instance.
+
+         .. value:: spot
+
+            A spot instance.
+
+      .. attr:: public-ipv4
+         :type: bool
+
+         Whether a public IPv4 address should be attached to nodes.
+
+      .. attr:: public-ipv6
+         :type: bool
+
+         Whether a public IPv6 address should be attached to nodes.
+
+      .. attr:: userdata
+         :type: str
+
+         A string of userdata for a node.  Systems such as "cloud-init"
+         may use this to configure the node on boot.
+
+      .. attr:: vm-size
+         :type: str
+
+         Size of the VM to use in Azure.  See the `List of VM
+         sizes`_ for the list of sizes availabile in each region.
+
+         .. _`List of VM sizes`: https://azure.microsoft.com/en-us/global-infrastructure/services/?products=virtual-machines
+
+      .. attr:: volume-size
+         :type: int
+
+         The size of the operating system disk, in GiB.
 
    .. attr:: image-defaults
       :type: dict
@@ -122,6 +226,12 @@
 
             An ssh connection.
 
+      .. attr:: ephemeral-disk
+         :type: bool
+
+         If set to ``true``, Azure will create an ephemeral OS disk
+         instead of a managed disk.
+
       .. attr:: final
 
          Whether the configuration of the label may be updated
@@ -142,6 +252,15 @@
             The label may not be updated by label-defaults
             but may be explicitly overidden by redefining
             it in a new 'label' entry.
+
+      .. attr:: generate-password
+         :type: bool
+
+         If booting a Windows image, an administrative password is
+         required.  If the password is not actually used (e.g., the
+         image has key-based authentication enabled), a random
+         password can be provided by enabling this option.  The
+         password is not stored anywhere and is not retrievable.
 
       .. attr:: import-timeout
          :type: int
@@ -197,10 +316,21 @@
             Download the image from its storage location and
             upload it to the provider.
 
+      .. attr:: userdata
+         :type: str
+
+         A string of userdata for a node.  Systems such as "cloud-init"
+         may use this to configure the node on boot.
+
       .. attr:: username
          :type: str
 
          The username Zuul should use when connecting to the node.
+
+      .. attr:: volume-size
+         :type: int
+
+         The size of the operating system disk, in GiB.
 
    .. attr:: images
       :type: list
@@ -211,6 +341,31 @@
       :type: dict
 
       These are the attributes available for a cloud image.
+
+      .. attr:: community-gallery-image
+         :type: dict
+
+         Specifies a community gallery image to use.  Either this field,
+         :attr:`provider[azure].images[cloud].shared-gallery-image`,
+         :attr:`provider[azure].images[cloud].image-reference`,
+         :attr:`provider[azure].images[cloud].image-id`, or
+         :attr:`provider[azure].images[cloud].image-filter` must be
+         provided.
+
+         .. attr:: gallery-name
+            :type: str
+
+            The image gallery name.
+
+         .. attr:: name
+            :type: str
+
+            The image name.
+
+         .. attr:: version
+            :type: str
+
+            The image version.  Omit to use the latest version.
 
       .. attr:: connection-port
          :type: int
@@ -237,6 +392,12 @@
 
          A textual description of the image for reference purposes.
 
+      .. attr:: ephemeral-disk
+         :type: bool
+
+         If set to ``true``, Azure will create an ephemeral OS disk
+         instead of a managed disk.
+
       .. attr:: final
 
          Whether the configuration of the label may be updated
@@ -258,6 +419,90 @@
             but may be explicitly overidden by redefining
             it in a new 'label' entry.
 
+      .. attr:: generate-password
+         :type: bool
+
+         If booting a Windows image, an administrative password is
+         required.  If the password is not actually used (e.g., the
+         image has key-based authentication enabled), a random
+         password can be provided by enabling this option.  The
+         password is not stored anywhere and is not retrievable.
+
+      .. attr:: image-filter
+         :type: dict
+
+         Specifies a private image to use via filters.  Either this field,
+         :attr:`provider[azure].images[cloud].shared-gallery-image`,
+         :attr:`provider[azure].images[cloud].community-gallery-image`,
+         :attr:`provider[azure].images[cloud].image-reference`, or
+         :attr:`provider[azure].images[cloud].image-id` must be
+         provided.
+
+         If a filter is provided, Zuul will list all of the images
+         in the provider's resource group and reduce the list using
+         the supplied filter.  All items specified in the filter must
+         match in order for an image to match.  If more than one image
+         matches, the images are sorted by name and the last one
+         matches.
+
+         The following filters are available:
+
+         .. attr:: location
+            :type: str
+
+            The image location.
+
+         .. attr:: name
+            :type: str
+
+            The image name.
+
+         .. attr:: tags
+            :type: dict
+
+            The image tags.
+
+      .. attr:: image-id
+         :type: str
+
+         Specifies a private image to use by ID.  Either this field,
+         :attr:`provider[azure].images[cloud].shared-gallery-image`,
+         :attr:`provider[azure].images[cloud].community-gallery-image`,
+         :attr:`provider[azure].images[cloud].image-reference`, or
+         :attr:`provider[azure].images[cloud].image-filter` must be
+         provided.
+
+      .. attr:: image-reference
+         :type: dict
+
+         Specifies a public image to use by reference.  Either this field,
+         :attr:`provider[azure].images[cloud].shared-gallery-image`,
+         :attr:`provider[azure].images[cloud].community-gallery-image`,
+         :attr:`provider[azure].images[cloud].image-id`, or
+         :attr:`provider[azure].images[cloud].image-filter` must be
+         provided.
+
+         .. attr:: offer
+            :type: str
+
+            The image offer.
+
+         .. attr:: publisher
+            :type: str
+
+            The image Publisher.
+
+         .. attr:: sku
+            :type: str
+
+
+            The image SKU.
+
+         .. attr:: version
+            :type: str
+
+            The image version.
+
       .. attr:: import-timeout
          :type: int
 
@@ -277,6 +522,31 @@
          ``ansible_python_interpreter``.  The special value ``auto`` will
          direct Zuul to use inbuilt Ansible logic to select the
          interpreter.
+
+      .. attr:: shared-gallery-image
+         :type: dict
+
+         Specifies a shared gallery image to use.  Either this field,
+         :attr:`provider[azure].images[cloud].community-gallery-image`,
+         :attr:`provider[azure].images[cloud].image-reference`,
+         :attr:`provider[azure].images[cloud].image-id`, or
+         :attr:`provider[azure].images[cloud].image-filter` must be
+         provided.
+
+         .. attr:: gallery-name
+            :type: str
+
+            The image gallery name.
+
+         .. attr:: name
+            :type: str
+
+            The image name.
+
+         .. attr:: version
+            :type: str
+
+            The image version.  Omit to use the latest version.
 
       .. attr:: shell-type
          :type: str
@@ -300,10 +570,21 @@
 
             An existing image available in the cloud.
 
+      .. attr:: userdata
+         :type: str
+
+         A string of userdata for a node.  Systems such as "cloud-init"
+         may use this to configure the node on boot.
+
       .. attr:: username
          :type: str
 
          The username Zuul should use when connecting to the node.
+
+      .. attr:: volume-size
+         :type: int
+
+         The size of the operating system disk, in GiB.
 
    .. attr:: images[zuul]
       :type: dict
@@ -335,6 +616,12 @@
 
          A textual description of the image for reference purposes.
 
+      .. attr:: ephemeral-disk
+         :type: bool
+
+         If set to ``true``, Azure will create an ephemeral OS disk
+         instead of a managed disk.
+
       .. attr:: final
 
          Whether the configuration of the label may be updated
@@ -355,6 +642,15 @@
             The label may not be updated by label-defaults
             but may be explicitly overidden by redefining
             it in a new 'label' entry.
+
+      .. attr:: generate-password
+         :type: bool
+
+         If booting a Windows image, an administrative password is
+         required.  If the password is not actually used (e.g., the
+         image has key-based authentication enabled), a random
+         password can be provided by enabling this option.  The
+         password is not stored anywhere and is not retrievable.
 
       .. attr:: import-timeout
          :type: int
@@ -424,10 +720,21 @@
             Download the image from its storage location and
             upload it to the provider.
 
+      .. attr:: userdata
+         :type: str
+
+         A string of userdata for a node.  Systems such as "cloud-init"
+         may use this to configure the node on boot.
+
       .. attr:: username
          :type: str
 
          The username Zuul should use when connecting to the node.
+
+      .. attr:: volume-size
+         :type: int
+
+         The size of the operating system disk, in GiB.
 
    .. attr:: label-defaults
       :type: dict
@@ -443,6 +750,12 @@
          :type: int
 
          The time (in seconds) to wait for a node to boot.
+
+      .. attr:: ephemeral-disk
+         :type: bool
+
+         If set to ``true``, Azure will create an ephemeral OS disk
+         instead of a managed disk.
 
       .. attr:: executor-zone
          :type: str
@@ -471,6 +784,15 @@
             but may be explicitly overidden by redefining
             it in a new 'label' entry.
 
+      .. attr:: generate-password
+         :type: bool
+
+         If booting a Windows image, an administrative password is
+         required.  If the password is not actually used (e.g., the
+         image has key-based authentication enabled), a random
+         password can be provided by enabling this option.  The
+         password is not stored anywhere and is not retrievable.
+
       .. attr:: host-key-checking
          :type: bool
 
@@ -482,11 +804,10 @@
          networks, where the launcher is unable to reach the nodes
          directly.
 
-      .. attr:: key-name
+      .. attr:: key-data
          :type: str
 
-         The name of a keypair that will be used when
-         booting the node.
+         The SSH public key that should be installed on the node.
 
       .. attr:: max-age
          :type: int
@@ -530,12 +851,61 @@
 
          The time (in seconds) to wait for a snapshot to complete.
 
+      .. attr:: subnet-id
+         :type: str
+
+         Specifies the subnet to use by ID.
+
+      .. attr:: subnet-reference
+         :type: dict
+
+         Specifies the subnet to use by reference
+
+         .. attr:: network
+            :type: str
+
+            The name of the subnet's network.
+
+         .. attr:: resource-group
+            :type: str
+
+            The resource group that contains the subnet.
+
+         .. attr:: subnet
+            :type: str
+
+            The name of the subnet.
+
       .. attr:: tags
          :type: dict
 
          A dictionary of tags to add to nodes.  Avoid the use of
          `zuul_` as a key prefix since Zuul uses this for internal
          values.
+
+      .. attr:: user-assigned-identities
+         :type: dict
+
+         .. attr:: name
+            :type: str
+
+            The name of the identity.
+
+         .. attr:: resource-group
+            :type: str
+
+            The resource group that contains the identity.
+
+      .. attr:: userdata
+         :type: str
+
+         A string of userdata for a node.  Systems such as "cloud-init"
+         may use this to configure the node on boot.
+
+      .. attr:: volume-size
+         :type: int
+
+         The size of the operating system disk, in GiB.
 
    .. attr:: labels
       :type: dict
@@ -551,6 +921,12 @@
          :type: str
 
          A textual description of the label for reference purposes.
+
+      .. attr:: ephemeral-disk
+         :type: bool
+
+         If set to ``true``, Azure will create an ephemeral OS disk
+         instead of a managed disk.
 
       .. attr:: executor-zone
          :type: str
@@ -584,6 +960,15 @@
 
          The flavor to use with this label.
 
+      .. attr:: generate-password
+         :type: bool
+
+         If booting a Windows image, an administrative password is
+         required.  If the password is not actually used (e.g., the
+         image has key-based authentication enabled), a random
+         password can be provided by enabling this option.  The
+         password is not stored anywhere and is not retrievable.
+
       .. attr:: host-key-checking
          :type: bool
 
@@ -600,11 +985,10 @@
 
          The image to use with this label.
 
-      .. attr:: key-name
+      .. attr:: key-data
          :type: str
 
-         The name of a keypair that will be used when
-         booting the node.
+         The SSH public key that should be installed on the node.
 
       .. attr:: max-age
          :type: int
@@ -666,12 +1050,61 @@
 
          The time (in seconds) to wait for a snapshot to complete.
 
+      .. attr:: subnet-id
+         :type: str
+
+         Specifies the subnet to use by ID.
+
+      .. attr:: subnet-reference
+         :type: dict
+
+         Specifies the subnet to use by reference
+
+         .. attr:: network
+            :type: str
+
+            The name of the subnet's network.
+
+         .. attr:: resource-group
+            :type: str
+
+            The resource group that contains the subnet.
+
+         .. attr:: subnet
+            :type: str
+
+            The name of the subnet.
+
       .. attr:: tags
          :type: dict
 
          A dictionary of tags to add to nodes.  Avoid the use of
          `zuul_` as a key prefix since Zuul uses this for internal
          values.
+
+      .. attr:: user-assigned-identities
+         :type: dict
+
+         .. attr:: name
+            :type: str
+
+            The name of the identity.
+
+         .. attr:: resource-group
+            :type: str
+
+            The resource group that contains the identity.
+
+      .. attr:: userdata
+         :type: str
+
+         A string of userdata for a node.  Systems such as "cloud-init"
+         may use this to configure the node on boot.
+
+      .. attr:: volume-size
+         :type: int
+
+         The size of the operating system disk, in GiB.
 
    .. attr:: launch-attempts
       :type: int
@@ -693,47 +1126,6 @@
       The name of the provider.  Used to refer to the
       provider in Zuul configuration.
 
-   .. attr:: nodes
-      :type: dict
-
-      A list of nodes to be used by this provider.
-
-      .. attr:: aliases
-         :type: str
-
-         A list of label aliases to associate with this node.
-         These labels may be used to request this node, but none of
-         their attributes will be used to define characteristics.
-
-      .. attr:: connection-port
-         :type: int
-
-         The port that Zuul should use when connecting to the node.
-         For most nodes this is not necessary. This defaults to 22 when
-         ``connection-type`` is 'ssh' and 5986 when it is 'winrm'.
-
-      .. attr:: host-key
-         :type: str
-
-         The ssh host key of the node.
-
-      .. attr:: label
-         :type: str
-
-         The label to associate with this node.  This is the
-         primary label for the node and will be used to supply any
-         necessary information about the node's characteristics.
-
-      .. attr:: name
-         :type: str
-
-         The hostname or ip address of the static node.
-
-      .. attr:: username
-         :type: str
-
-         The username Zuul should use when connecting to the node.
-
    .. attr:: parent
       :type: str
 
@@ -741,17 +1133,45 @@
       This attribute is only used by :attr:`section`
       objects.  To indicate which section a provider should
       be attached to, use
-      :attr:`provider[static].section`
+      :attr:`provider[azure].section`
+
+   .. attr:: region
+      :type: str
+
+      Name of the Azure region to use.
+
+   .. attr:: resource-group
+      :type: str
+
+      Name of the resource group in which to place nodes.
 
    .. attr:: resource-limits
       :type: dict
 
-      Resource limits for this provider.
+      Resource limits for this provider.  Configure these
+      values to cause Zuul to attempt to limit the resource
+      usage.  This can be used to limit Zuul's usage to a
+      level below the cloud quota.
+
+      .. attr:: cores
+         :type: int
+
+         The number of cores used by regular instances.
 
       .. attr:: instances
          :type: int
 
          The number of instances.
+
+      .. attr:: lowPriorityCores
+         :type: int
+
+         The number of low priority cores (including spot instances).
+
+      .. attr:: ram
+         :type: int
+
+         The amount of ram, in MiB.
 
    .. attr:: section
       :type: str

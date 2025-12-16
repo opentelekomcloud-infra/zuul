@@ -19,6 +19,7 @@ import threading
 import urllib.parse
 
 from zuul.lib.voluputil import (
+    Constant,
     Nullable,
     Optional,
     Required,
@@ -55,14 +56,30 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
     cloud_schema = assemble(
         provider_schema.common_image,
         provider_schema.base_image,
-        vs.Schema({Required('type'): 'cloud'}),
-        doc="These are the attributes available for a Cloud image.",
+        vs.Schema({Required(
+            'type',
+            doc="""The type of image.""",
+        ): vs.Any(
+            Constant(
+                'cloud',
+                doc="""An existing image available in the cloud.""",
+            ),
+        )}),
+        doc="These are the attributes available for a cloud image.",
     )
     zuul_schema = assemble(
         provider_schema.common_image,
         provider_schema.common_image_zuul,
         provider_schema.base_image,
-        vs.Schema({Required('type'): 'zuul'}),
+        vs.Schema({Required(
+            'type',
+            doc="""The type of image.""",
+        ): vs.Any(
+            Constant(
+                'zuul',
+                doc="""An image managed by Zuul.""",
+            ),
+        )}),
         doc="These are the attributes available for a Zuul image.",
     )
     schema = vs.Union(
@@ -278,28 +295,105 @@ class BaseProviderSchema(metaclass=abc.ABCMeta):
         schema = vs.Schema({
             '_source_context': model.SourceContext,
             '_start_mark': model.ZuulMark,
-            Required('name'): str,
-            Required('section'): str,
-            Required('labels'): [self.getLabelSchema()],
+            Required(
+                'name',
+                doc="""\
+                The name of the provider.  Used to refer to the
+                provider in Zuul configuration.""",
+            ): str,
+            Required(
+                'section',
+                doc="""\
+                The name of the :attr:`section` from which to inherit.""",
+            ): str,
+            Required(
+                'labels',
+                doc="""A list of labels associated with this provider.""",
+            ): [self.getLabelSchema()],
             Required(
                 'images',
-                doc="""A list of images associated with this provider."""
+                doc="""A list of images associated with this provider.""",
             ): [self.getImageSchema()],
             Required(
                 'flavors',
-                doc="""A list of flavors associated with this provider."""
+                doc="""A list of flavors associated with this provider.""",
             ): [self.getFlavorSchema()],
-            Optional('label-defaults', default={}):
-            self.getInheritableLabelSchema(),
-            Optional('image-defaults', default={}):
-            self.getInheritableImageSchema(),
-            Optional('flavor-defaults', default={}):
-            self.getInheritableFlavorSchema(),
-            Optional('abstract', default=False): Nullable(bool),
-            Optional('parent'): Nullable(str),
-            Required('connection'): str,
-            Optional('launch-timeout'): Nullable(int),
-            Optional('launch-attempts', default=3): int,
+            Optional(
+                'label-defaults',
+                doc="""\
+                Attributes to be set as default values for any label
+                used with this provider.  Many attributes which may be
+                set on an individual label may be set once in this
+                section and used for all the labels in this provider.
+                Values set on individual labels may still override the
+                values set here.""",
+                default={},
+            ): self.getInheritableLabelSchema(),
+            Optional(
+                'image-defaults',
+                doc="""\
+                Attributes to be set as default values for any image
+                used with this provider.  Many attributes which may be
+                set on an individual image may be set once in this
+                section and used for all the images in this provider.
+                Values set on individual images may still override the
+                values set here.""",
+                default={},
+            ): self.getInheritableImageSchema(),
+            Optional(
+                'flavor-defaults',
+                doc="""\
+                Attributes to be set as default values for any flavor
+                used with this provider.  Many attributes which may be
+                set on an individual flavor may be set once in this
+                section and used for all the flavors in this provider.
+                Values set on individual flavors may still override the
+                values set here.""",
+                default={},
+            ): self.getInheritableFlavorSchema(),
+            Optional(
+                'abstract',
+                doc="""\
+                Whether a section is intended to be inherited by
+                another :attr:`section` or a :attr:`provider`.  This
+                setting is currently unused (but may be used in the
+                future).  If a section is used to provide common
+                values to other sections, set this to `true`.
+                Otherwise, the default of `false` indicates that the
+                section should be referenced directly by providers.""",
+                default=False,
+            ): Nullable(bool),
+            Optional(
+                'parent',
+                doc="""\
+                The name of the parent section from which to inherit.
+                This attribute is only used by :attr:`section`
+                objects.  To indicate which section a provider should
+                be attached to, use
+                :attr:`provider[$driver].section`""",
+            ): Nullable(str),
+            Required(
+                'connection',
+                doc="""\
+                The name of the :ref:`connection <connections>` to
+                use.  This attribute is only used by :attr:`section`
+                objects.""",
+            ): str,
+            Optional(
+                'launch-timeout',
+                doc="""\
+                The time to wait from issuing the command to create a
+                new node until the node is reporting as running.  If
+                the timeout is exceeded, the node launch is aborted
+                and the node deleted.""",
+            ): Nullable(int),
+            Optional(
+                'launch-attempts',
+                doc="""\
+                The number of times to attempt launching a node before
+                considering the request failed.""",
+                default=3,
+            ): int,
         })
         return schema
 

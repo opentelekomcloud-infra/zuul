@@ -45,13 +45,30 @@ class OpenstackProviderImage(BaseProviderImage):
     # This is used here and in flavors and labels
     inheritable_openstack_image_schema = assemble(
         vs.Schema({
-            Optional('volume-size'): Nullable(int),
+            Optional(
+                'volume-size',
+                doc="""\
+                When booting an image from volume, this indicates the
+                size of the created volume, in GB.
+                """,
+            ): Nullable(int),
         }),
         provider_schema.cloud_image,
     )
     openstack_cloud_schema = vs.Schema({
-        Required('image-id'): str,
-        Optional('config-drive', default=True): bool,
+        Required(
+            'image-id',
+            doc="""\
+            The ID of the cloud provider's image.
+            """,
+        ): str,
+        Optional(
+            'config-drive',
+            doc="""\
+            Whether config drive should be used for the cloud
+            image.
+            """,
+            default=True): bool,
     })
     cloud_schema = vs.All(
         assemble(
@@ -61,8 +78,13 @@ class OpenstackProviderImage(BaseProviderImage):
         ),
     )
     inheritable_openstack_zuul_schema = vs.Schema({
-        # None is an acceptable explicit value for imds-support
-        Optional('config-drive', default=True): bool,
+        Optional(
+            'config-drive',
+            doc="""\
+            Whether config drive should be used for the cloud
+            image.
+            """,
+            default=True): bool,
     })
     zuul_schema = assemble(
         BaseProviderImage.zuul_schema,
@@ -101,7 +123,12 @@ class OpenstackProviderImage(BaseProviderImage):
 
 class OpenstackProviderFlavor(BaseProviderFlavor):
     openstack_flavor_schema = vs.Schema({
-        Required('flavor-name'): str,
+        Required(
+            'flavor-name',
+            doc="""\
+            Name or id of the OpenStack flavor to use.
+            """,
+        ): str,
     })
 
     inheritable_schema = assemble(
@@ -119,14 +146,40 @@ class OpenstackProviderFlavor(BaseProviderFlavor):
 
 class OpenstackProviderLabel(BaseProviderLabel):
     inheritable_openstack_label_schema = vs.Schema({
-        Optional('az'): Nullable(str),
-        Optional('auto-floating-ip', default=True): bool,
-        Optional('boot-from-volume', default=False): bool,
+        Optional(
+            'az',
+            doc="""\
+            Servers will be assigned to the specified availibility
+            zone.  If omitted, one will be chosen at random.
+            """,
+        ): Nullable(str),
+        Optional(
+            'auto-floating-ip',
+            doc="""\
+            Whether to automatically allocate and assign a floating IP
+            for each node.
+            """,
+            default=True): bool,
+        Optional(
+            'boot-from-volume',
+            doc="""\
+            Whether to create a volume from the image and boot the
+            node from it.
+            """,
+            default=False): bool,
         Optional(
             'networks', default=[],
-            doc="""The OpenStack networks to associate with the node."""
+            doc="""\
+            The OpenStack networks to associate with the node.
+            """,
         ): AsList(str),
-        Optional('security-groups', default=[]): AsList(str),
+        Optional(
+            'security-groups',
+            doc="""\
+            Specify custom networks to be attached to each
+            node.  Specify the name or id of the network as a string.
+            """,
+            default=[]): AsList(str),
     })
     inheritable_schema = assemble(
         BaseProviderLabel.inheritable_schema,
@@ -171,23 +224,73 @@ class OpenstackProviderSchema(BaseProviderSchema):
         schema = super().getProviderSchema()
 
         resource_limits = {
-            'instances': int,
-            'cores': int,
-            'ram': int,
-            'volumes': int,
-            'volume-gb': int,
+            Optional(
+                'instances',
+                doc="""The number of instances.""",
+            ): int,
+            Optional(
+                'cores',
+                doc="""The number of cores.""",
+            ): int,
+            Optional(
+                'ram',
+                doc="""The amount of ram, in MiB.""",
+            ): int,
+            Optional(
+                'volumes',
+                doc="""The number of volumes.""",
+            ): int,
+            Optional(
+                'volume-gb',
+                doc="""The amount of volume storage in GB.""",
+            ): int,
         }
 
         openstack_provider_schema = vs.Schema({
-            Optional('region'): Nullable(str),
-            Optional('resource-limits', default=dict()): resource_limits,
-            Optional('floating-ip-cleanup', default=False): bool,
-            Optional('port-cleanup-interval', default=600): int,
+            Optional(
+                'region',
+                doc="""\
+                The region name if the provider cloud has multiple
+                regions.
+                """,
+            ): Nullable(str),
+            Optional(
+                'resource-limits',
+                doc="""\
+                Resource limits for this provider.  Configure these
+                values to cause Zuul to attempt to limit the resource
+                usage.  This can be used to limit Zuul's usage to a
+                level below the cloud quota.
+                """,
+                default=dict()): resource_limits,
+            Optional(
+                'floating-ip-cleanup',
+                doc="""\
+                If set to ``true``, Zuul will behave as if it is the
+                only user of the OpenStack project and will attempt to
+                clean unattached floating IPs that may have leaked.
+                """,
+                default=False): bool,
+            Optional(
+                'port-cleanup-interval',
+                doc="""\
+                If greater than 0, Zuul will behave as if it is the
+                only user of the OpenStack project and will attempt to
+                clean ports in ``DOWN`` state after the cleanup
+                interval has elapsed.  This value may be reduced if
+                the instance spawn time on the provider is reliably
+                quicker.
+                """,
+                default=600): int,
         })
 
         return assemble(
             schema,
             openstack_provider_schema,
+            doc="""\
+            The attributes available for configuring an OpenStack provider
+            are below.
+            """,
         )
 
 

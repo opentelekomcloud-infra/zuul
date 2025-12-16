@@ -18,6 +18,8 @@ import math
 import zuul.provider.schema as provider_schema
 from zuul.lib.voluputil import (
     AsList,
+    Constant,
+    Exclusive,
     Nullable,
     Optional,
     Required,
@@ -41,42 +43,170 @@ from zuul.provider import (
     BaseProviderSchema,
 )
 
+URL_VM_SIZES = 'https://azure.microsoft.com/en-us/global-infrastructure/services/?products=virtual-machines'  # noqa
+
 
 class AzureProviderImage(BaseProviderImage):
     azure_image_reference = {
-        Required('sku'): str,
-        Required('publisher'): str,
-        Required('version'): str,
-        Required('offer'): str,
+        Required(
+            'sku',
+            doc="""
+            The image SKU.
+            """,
+        ): str,
+        Required(
+            'publisher',
+            doc="""\
+            The image Publisher.
+            """,
+        ): str,
+        Required(
+            'version',
+            doc="""\
+            The image version.
+            """,
+        ): str,
+        Required(
+            'offer',
+            doc="""\
+            The image offer.
+            """,
+        ): str,
     }
     azure_image_filter = {
-        Optional('location'): Nullable(str),
-        Optional('name'): Nullable(str),
-        Optional('tags'): Nullable(dict),
+        Optional(
+            'location',
+            doc="""\
+            The image location.
+            """,
+        ): Nullable(str),
+        Optional(
+            'name',
+            doc="""\
+            The image name.
+            """,
+        ): Nullable(str),
+        Optional(
+            'tags',
+            doc="""\
+            The image tags.
+            """,
+        ): Nullable({str: str}),
     }
     azure_gallery_image = {
-        Required('gallery-name'): str,
-        Required('name'): str,
-        Optional('version'): Nullable(str),
+        Required(
+            'gallery-name',
+            doc="""\
+            The image gallery name.
+            """,
+        ): str,
+        Required(
+            'name',
+            doc="""\
+            The image name.
+            """,
+        ): str,
+        Optional(
+            'version',
+            doc="""\
+            The image version.  Omit to use the latest version.
+            """,
+        ): Nullable(str),
     }
     # This is used here and in flavors and labels
     inheritable_azure_image_schema = assemble(
         vs.Schema({
-            Optional('volume-size'): Nullable(int),
-            Optional('ephemeral-disk'): Nullable(bool),
-            Optional('generate-password'): Nullable(bool),
+            Optional(
+                'volume-size',
+                doc="""\
+                The size of the operating system disk, in GiB.
+                """,
+            ): Nullable(int),
+            Optional(
+                'ephemeral-disk',
+                doc="""\
+                If set to ``true``, Azure will create an ephemeral OS disk
+                instead of a managed disk.
+                """,
+            ): Nullable(bool),
+            Optional(
+                'generate-password',
+                doc="""\
+                If booting a Windows image, an administrative password is
+                required.  If the password is not actually used (e.g., the
+                image has key-based authentication enabled), a random
+                password can be provided by enabling this option.  The
+                password is not stored anywhere and is not retrievable.
+                """,
+            ): Nullable(bool),
         }),
         provider_schema.cloud_image,
     )
     azure_cloud_schema = vs.Schema({
-        vs.Exclusive(Required('image-filter'), 'spec'): azure_image_filter,
-        vs.Exclusive(Required('image-id'), 'spec'): str,
-        vs.Exclusive(Required('image-reference'), 'spec'
-                     ): azure_image_reference,
-        vs.Exclusive(Required('community-gallery-image'), 'spec'
-                     ): azure_gallery_image,
-        vs.Exclusive(Required('shared-gallery-image'), 'spec'
-                     ): azure_gallery_image,
+        Exclusive(Required(
+            'image-filter',
+            doc="""\
+            Specifies a private image to use via filters.  Either this field,
+            :attr:`provider[azure].images[cloud].shared-gallery-image`,
+            :attr:`provider[azure].images[cloud].community-gallery-image`,
+            :attr:`provider[azure].images[cloud].image-reference`, or
+            :attr:`provider[azure].images[cloud].image-id` must be
+            provided.
+
+            If a filter is provided, Zuul will list all of the images
+            in the provider's resource group and reduce the list using
+            the supplied filter.  All items specified in the filter must
+            match in order for an image to match.  If more than one image
+            matches, the images are sorted by name and the last one
+            matches.
+
+            The following filters are available:
+            """,
+        ), 'spec'): azure_image_filter,
+        Exclusive(Required(
+            'image-id',
+            doc="""\
+            Specifies a private image to use by ID.  Either this field,
+            :attr:`provider[azure].images[cloud].shared-gallery-image`,
+            :attr:`provider[azure].images[cloud].community-gallery-image`,
+            :attr:`provider[azure].images[cloud].image-reference`, or
+            :attr:`provider[azure].images[cloud].image-filter` must be
+            provided.
+            """,
+        ), 'spec'): str,
+        Exclusive(Required(
+            'image-reference',
+            doc="""\
+            Specifies a public image to use by reference.  Either this field,
+            :attr:`provider[azure].images[cloud].shared-gallery-image`,
+            :attr:`provider[azure].images[cloud].community-gallery-image`,
+            :attr:`provider[azure].images[cloud].image-id`, or
+            :attr:`provider[azure].images[cloud].image-filter` must be
+            provided.
+            """,
+        ), 'spec'): azure_image_reference,
+        Exclusive(Required(
+            'community-gallery-image',
+            doc="""\
+            Specifies a community gallery image to use.  Either this field,
+            :attr:`provider[azure].images[cloud].shared-gallery-image`,
+            :attr:`provider[azure].images[cloud].image-reference`,
+            :attr:`provider[azure].images[cloud].image-id`, or
+            :attr:`provider[azure].images[cloud].image-filter` must be
+            provided.
+            """,
+        ), 'spec'): azure_gallery_image,
+        Exclusive(Required(
+            'shared-gallery-image',
+            doc="""\
+            Specifies a shared gallery image to use.  Either this field,
+            :attr:`provider[azure].images[cloud].community-gallery-image`,
+            :attr:`provider[azure].images[cloud].image-reference`,
+            :attr:`provider[azure].images[cloud].image-id`, or
+            :attr:`provider[azure].images[cloud].image-filter` must be
+            provided.
+            """,
+        ), 'spec'): azure_gallery_image,
     })
     cloud_schema = vs.All(
         assemble(
@@ -130,12 +260,50 @@ class AzureProviderImage(BaseProviderImage):
 
 class AzureProviderFlavor(BaseProviderFlavor):
     azure_flavor_schema = vs.Schema({
-        Required('vm-size'): str,
+        Required(
+            'vm-size',
+            doc=f"""\
+            Size of the VM to use in Azure.  See the `List of VM
+            sizes`_ for the list of sizes availabile in each region.
+
+            .. _`List of VM sizes`: {URL_VM_SIZES}
+            """,
+        ): str,
         # TODO: add "low" priority
-        Optional('priority', default='regular'): vs.Any(
-            'regular', 'spot'),
-        Optional('ipv4', default=False): bool,
-        Optional('ipv6', default=False): bool,
+        Optional(
+            'priority',
+            doc="""\
+            Whether to create regular or spot instances.
+            """,
+            default='regular'
+        ): vs.Any(
+            Constant(
+                'regular',
+                doc="""\
+                A regular instance.
+                """,
+            ),
+            Constant(
+                'spot',
+                doc="""\
+                A spot instance.
+                """,
+            ),
+        ),
+        Optional(
+            'ipv4',
+            doc="""\
+            Whether to enable IPv4 networking.  Defaults to true unless IPv6
+            is enabled.  Enabling this will attach a private IPv4 address.
+            """,
+            default=False): bool,
+        Optional(
+            'ipv6',
+            doc="""\
+            Whether to enable IPv6 networking.
+            Enabling this will attach a private IPv6 address.
+            """,
+            default=False): bool,
     })
 
     inheritable_schema = assemble(
@@ -155,25 +323,66 @@ class AzureProviderFlavor(BaseProviderFlavor):
 
 class AzureProviderLabel(BaseProviderLabel):
     azure_network_reference = {
-        Optional('resource-group'): Nullable(str),
-        Required('network'): str,
-        Optional('subnet', default='default'): str,
+        Optional(
+            'resource-group',
+            doc="""\
+            The resource group that contains the subnet.
+            """,
+        ): Nullable(str),
+        Required(
+            'network',
+            doc="""\
+            The name of the subnet's network.
+            """,
+        ): str,
+        Optional(
+            'subnet',
+            doc="""\
+            The name of the subnet.
+            """,
+            default='default'): str,
     }
 
     azure_identity_reference = {
-        Optional('resource-group'): Nullable(str),
-        vs.Required('name'): str,
+        Optional(
+            'resource-group',
+            doc="""\
+            The resource group that contains the identity.
+            """,
+        ): Nullable(str),
+        Required(
+            'name',
+            doc="""\
+            The name of the identity.
+            """,
+        ): str,
     }
 
     azure_label_schema = vs.Schema({
-        Optional('az'): Nullable(str),
-        vs.Exclusive(Required('subnet-id'), 'subnet'
-                     ): str,
-        vs.Exclusive(Required('subnet-reference'), 'subnet'
-                     ): azure_network_reference,
-        Optional('user-assigned-identities', default=[]
-                 ): AsList(azure_identity_reference),
-        Optional('key-data'): Nullable(str),
+        Exclusive(Required(
+            'subnet-id',
+            doc="""\
+            Specifies the subnet to use by ID.
+            """,
+        ), 'subnet'): str,
+        Exclusive(Required(
+            'subnet-reference',
+            doc="""\
+            Specifies the subnet to use by reference
+            """,
+        ), 'subnet'): azure_network_reference,
+        Optional(
+            'user-assigned-identities',
+            doc="""\
+            """,
+            default=[],
+        ): AsList(azure_identity_reference),
+        Optional(
+            'key-data',
+            doc="""\
+            The SSH public key that should be installed on the node.
+            """,
+        ): Nullable(str),
     })
 
     inheritable_schema = assemble(
@@ -232,21 +441,55 @@ class AzureProviderSchema(BaseProviderSchema):
         schema = super().getProviderSchema()
 
         resource_limits = {
-            'instances': int,
-            'cores': int,
-            'ram': int,
-            'lowPriorityCores': int,
+            Optional(
+                'instances',
+                doc="""The number of instances.""",
+            ): int,
+            Optional(
+                'cores',
+                doc="""The number of cores used by regular instances.""",
+            ): int,
+            Optional(
+                'ram',
+                doc="""The amount of ram, in MiB.""",
+            ): int,
+            Optional(
+                'lowPriorityCores',
+                doc="""\
+                The number of low priority cores (including spot instances).
+                """,
+            ): int,
         }
 
         azure_provider_schema = vs.Schema({
-            Required('region'): str,
-            Required('resource-group'): str,
-            Optional('resource-limits', default=dict()): resource_limits,
+            Required(
+                'region',
+                doc="""Name of the Azure region to use.""",
+            ): str,
+            Required(
+                'resource-group',
+                doc="""\
+                Name of the resource group in which to place nodes.
+                """,
+            ): str,
+            Optional(
+                'resource-limits',
+                doc="""\
+                Resource limits for this provider.  Configure these
+                values to cause Zuul to attempt to limit the resource
+                usage.  This can be used to limit Zuul's usage to a
+                level below the cloud quota.
+                """,
+                default=dict()): resource_limits,
         })
 
         return assemble(
             schema,
             azure_provider_schema,
+            doc="""\
+            The attributes available for configuring an Azure provider
+            are below.
+            """,
         )
 
 
