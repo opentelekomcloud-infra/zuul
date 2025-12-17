@@ -506,6 +506,7 @@ class ProviderParser(object):
         '_start_mark': model.ZuulMark,
         vs.Required('name'): str,
         vs.Required('section'): str,
+        'description': str,
         'images': [vs.Any(str, dict)],
         'labels': [vs.Any(str, dict)],
     }
