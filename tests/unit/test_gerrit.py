@@ -1340,6 +1340,33 @@ class TestGerritConnection(ZuulTestCase):
         self.waitUntilSettled()
         self.assertHistory([])
 
+    def test_query_abandoned_changes(self):
+        # Test that we stop querying when we encounter an abandoned change
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        D = self.fake_gerrit.addFakeChange('org/project', 'master', 'D')
+
+        # A(open) -> B(abandoned) -> C(abandoned) -> D(open)
+        A.setDependsOn(B, 1)
+        B.setAbandoned()
+        B.setDependsOn(C, 1)
+        C.setAbandoned()
+        C.setDependsOn(D, 1)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.queried, 1)
+        self.assertEqual(B.queried, 1)
+        self.assertEqual(C.queried, 0)
+        self.assertEqual(D.queried, 0)
+
+        self.assertHistory([
+            dict(name="project-merge", result="SUCCESS", changes="2,1 1,1"),
+            dict(name="project-test1", result="SUCCESS", changes="2,1 1,1"),
+            dict(name="project-test2", result="SUCCESS", changes="2,1 1,1"),
+        ], ordered=False)
+
 
 class TestGerritConnectionDelay(ZuulTestCase):
     config_file = 'zuul-gerrit-web-delay.conf'
