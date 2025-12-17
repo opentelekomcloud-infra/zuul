@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0e235301_3043c9aa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-12-17T08:03:33Z",
+      "side": 1,
+      "message": "Just a surface-level review, but LGTM",
+      "revId": "ddecad786e459a7ae7bc10720a74e019c96f6582",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f8127a3b_54852967",
+        "filename": "tests/fixtures/layouts/azure/nodepool-image.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2025-12-17T08:03:33Z",
+      "side": 1,
+      "message": "nit: whitespace",
+      "revId": "ddecad786e459a7ae7bc10720a74e019c96f6582",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
