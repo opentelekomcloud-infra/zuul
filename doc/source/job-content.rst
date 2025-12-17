@@ -1504,6 +1504,8 @@ or a static host), the use of the `add-build-sshkey
 <https://zuul-ci.org/docs/zuul-jobs/general-roles.html#role-add-build-sshkey>`_
 role is recommended.
 
+.. _tenant-key:
+
 Tenant Key
 ~~~~~~~~~~
 
