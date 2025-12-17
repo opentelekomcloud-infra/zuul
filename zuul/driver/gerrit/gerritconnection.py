@@ -1075,7 +1075,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
 
         # Get the dependencies for this change, and recursively update
         # dependent changes (recursively calling this method).
-        if not change.is_merged:
+        if change.open:
             extra = self._updateChangeDependencies(
                 log, key, change, data, event, history, network_future)
         else:
