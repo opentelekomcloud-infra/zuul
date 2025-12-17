@@ -515,7 +515,11 @@ class TestGerritWeb(ZuulTestCase):
 
         self.assertEqual(A.data['status'], 'NEW')
         self.assertEqual(A.reported, 2)
-        self.assertIn('does not match pipeline requirement',
+        # Full message: Change 2,1 in project org/project is needed
+        # but can not be merged due to: change is closed
+        # Meaning we can not enqueue A because it depends on B which
+        # is abandoned.
+        self.assertIn('change is closed',
                       A.messages[1])
 
         # Test that we get debug info for a pipeline debug trigger
@@ -1051,7 +1055,6 @@ class TestWrongConnection(ZuulTestCase):
         self.assertEqual(B.reported, 0)
         self.assertHistory([
             dict(name='test-job', result='SUCCESS', changes='1,1'),
-            dict(name='test-job', result='SUCCESS', changes='2,1'),
         ], ordered=False)
 
 
@@ -1338,6 +1341,63 @@ class TestGerritConnection(ZuulTestCase):
         # the still missing Code-Review label
         self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
         self.waitUntilSettled()
+        self.assertHistory([])
+
+    def test_query_abandoned_changes_check(self):
+        # Test that we stop querying when we encounter an abandoned change
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        D = self.fake_gerrit.addFakeChange('org/project', 'master', 'D')
+
+        # D(open) -> C(abandoned) -> B(abandoned) -> A(open)
+        D.setDependsOn(C, 1)
+        C.setDependsOn(B, 1)
+        B.setDependsOn(A, 1)
+        C.setAbandoned()
+        B.setAbandoned()
+        self.fake_gerrit.addEvent(D.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.queried, 0)
+        self.assertEqual(B.queried, 0)
+        self.assertEqual(C.queried, 1)
+        self.assertEqual(D.queried, 1)
+
+        self.assertHistory([
+            dict(name="project-merge", result="SUCCESS", changes="3,1 4,1"),
+            dict(name="project-test1", result="SUCCESS", changes="3,1 4,1"),
+            dict(name="project-test2", result="SUCCESS", changes="3,1 4,1"),
+        ], ordered=False)
+
+    def test_query_abandoned_changes_gate(self):
+        # Test that we stop querying when we encounter an abandoned change
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        D = self.fake_gerrit.addFakeChange('org/project', 'master', 'D')
+
+        # D(open) -> C(abandoned) -> B(abandoned) -> A(open)
+        D.setDependsOn(C, 1)
+        C.setDependsOn(B, 1)
+        B.setDependsOn(A, 1)
+        C.setAbandoned()
+        B.setAbandoned()
+        A.addApproval('Code-Review', 2)
+        A.addApproval('Approved', 1)
+        B.addApproval('Code-Review', 2)
+        B.addApproval('Approved', 1)
+        C.addApproval('Code-Review', 2)
+        C.addApproval('Approved', 1)
+        D.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(D.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.queried, 0)
+        self.assertEqual(B.queried, 0)
+        self.assertEqual(C.queried, 1)
+        self.assertEqual(D.queried, 1)
+
         self.assertHistory([])
 
 

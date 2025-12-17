@@ -1075,7 +1075,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
 
         # Get the dependencies for this change, and recursively update
         # dependent changes (recursively calling this method).
-        if not change.is_merged:
+        if change.open:
             extra = self._updateChangeDependencies(
                 log, key, change, data, event, history, network_future)
         else:
@@ -1277,6 +1277,9 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         if change.wip:
             self.log.debug("Unable to merge due to WIP")
             return FalseWithReason("work in progress flag")
+        if not change.open:
+            self.log.debug("Unable to merge due to change is closed")
+            return FalseWithReason("change is closed")
         missing_labels = change.missing_labels - set(allow_needs)
         if missing_labels:
             self.log.debug("Unable to merge due to "
