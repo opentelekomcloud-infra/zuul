@@ -14,7 +14,9 @@
 
 import time
 
-from tests.base import ZuulTestCase, simple_layout
+from zuul.model import PromoteEvent
+
+from tests.base import ZuulTestCase, simple_layout, okay_tracebacks
 
 
 class TestRequirementsApprovalNewerThan(ZuulTestCase):
@@ -737,3 +739,250 @@ class TestGerritTriggerRequirements(ZuulTestCase):
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 1)
         self.assertEqual(self.history[0].name, jobname)
+
+
+class TestPromoteWithRequirements(ZuulTestCase):
+    @simple_layout('layouts/gerrit-gate-requirements.yaml')
+    def test_promote_all_matching_requirements(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        A.addApproval('Code-Review', 2)
+        B.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        A.data['hashtags'] = ['oktomerge']
+        B.data['hashtags'] = ['oktomerge']
+        C.data['hashtags'] = ['oktomerge']
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        # Do not emit an event for this to force processing of B to discover
+        # the approved state
+        C.addApproval('Approved', 1)
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # Before the promote we have A <- B <- C
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertTrue(self.builds[1].hasChanges(A, B))
+        self.assertTrue(self.builds[2].hasChanges(A, B, C))
+
+        # Promote change B to the head of the gate queue
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{B.number},{B.latest_patchset}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After the promote we have B <- C <- A
+        self.assertEqual(len(self.builds), 3)
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertTrue(self.builds[1].hasChanges(B, C))
+        self.assertTrue(self.builds[2].hasChanges(B, C, A))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(B.data['status'], 'MERGED')
+        self.assertEqual(C.data['status'], 'MERGED')
+        self.assertEqual(A.data['status'], 'MERGED')
+
+    @simple_layout('layouts/gerrit-gate-requirements.yaml')
+    def test_promote_child_not_matching_requirements(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        A.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        B.addApproval('Code-Review', 2)
+        A.data['hashtags'] = ['oktomerge']
+        B.data['hashtags'] = ['oktomerge']
+        # The gate pipeline requires the "oktomerge" hashtag; we omit
+        # it from change C to test that the pipeline requirement still
+        # applies to child changes not already in the pipeline even
+        # when promote is used.
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # Before the promote we have A <- B
+        self.assertEqual(len(self.builds), 2)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertTrue(self.builds[1].hasChanges(A, B))
+
+        # Promote change B to the head of the gate queue
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{B.number},{B.latest_patchset}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After the promote we have B <- A
+        # Promoting a change that meets requirements should succeed
+        # but we shouldn't enqueue its children that do not meet
+        # requirements.
+        self.assertEqual(len(self.builds), 2)
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertTrue(self.builds[1].hasChanges(B, A))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(B.data['status'], 'MERGED')
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(C.data['status'], 'NEW')
+
+    @simple_layout('layouts/gerrit-gate-requirements.yaml')
+    @okay_tracebacks('Unable to find 3,1')
+    def test_promote_parent_not_matching_requirements(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        A.addApproval('Code-Review', 2)
+        B.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        A.data['hashtags'] = ['oktomerge']
+        # The gate pipeline requires the "oktomerge" hashtag; we omit
+        # it from change B to test that the pipeline requirement still
+        # applies to parent changes not already in the pipeline even
+        # when promote is used.
+        C.data['hashtags'] = ['oktomerge']
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # Before the promote we have A
+        self.assertEqual(len(self.builds), 1)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        build = self.builds[0]
+
+        # Promote change C to the head of the gate queue
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{C.number},{C.latest_patchset}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After the promote we still have just A because C cannot enqueue
+        # due to its parent missing requirements.
+        self.assertEqual(len(self.builds), 1)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertEqual(build, self.builds[0])
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(B.data['status'], 'NEW')
+        self.assertEqual(C.data['status'], 'NEW')
+
+    @simple_layout('layouts/gerrit-gate-requirements.yaml')
+    @okay_tracebacks('Unable to find 3,1')
+    def test_promote_not_matching_requirements(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        A.addApproval('Code-Review', 2)
+        B.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        A.data['hashtags'] = ['oktomerge']
+        B.data['hashtags'] = ['oktomerge']
+        # The gate pipeline requires the "oktomerge" hashtag; we omit
+        # it from change C to test that the pipeline requirement still
+        # applies to changes that are directly promoted.
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # Before the promote we have A <- B
+        self.assertEqual(len(self.builds), 2)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertTrue(self.builds[1].hasChanges(A, B))
+        builds = (self.builds[0], self.builds[1])
+
+        # Attempt to promote change C to the head of the gate queue.
+        # C isn't in the pipeline and doesn't meet requirements. It will
+        # fail to promote and so will its parent. This is a noop.
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{C.number},{C.latest_patchset}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After promotion we still have A <- B because promoting C
+        # will fail as it was never in the pipeline in the first place.
+        # Attempting to promote C produces the error we accept as ok
+        # via the test case decorator.
+        self.assertEqual(len(self.builds), 2)
+        self.assertTrue(self.builds[0].hasChanges(A))
+        self.assertTrue(self.builds[1].hasChanges(A, B))
+        self.assertEqual(builds, (self.builds[0], self.builds[1]))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(A.data['status'], 'MERGED')
+        self.assertEqual(B.data['status'], 'MERGED')
+        self.assertEqual(C.data['status'], 'NEW')
+
+    @simple_layout('layouts/gerrit-gate-requirements.yaml')
+    def test_promote_unrelated_not_matching_requirements(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        A.addApproval('Code-Review', 2)
+        B.addApproval('Code-Review', 2)
+        C.addApproval('Code-Review', 2)
+        # The gate pipeline requires the "oktomerge" hashtag; we omit
+        # it from change A to test that trivial case that changes not meeting
+        # pipeline requirements are not added to the queue if other unrelated
+        # changes are directly promoted.
+        B.data['hashtags'] = ['oktomerge']
+        C.data['hashtags'] = ['oktomerge']
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # Before the promote we have B <- C
+        self.assertEqual(len(self.builds), 2)
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertTrue(self.builds[1].hasChanges(B, C))
+
+        # Attempt to promote change C to the head of the gate queue.
+        # A has no relationship to B or C and should be ignored.
+        # C depends on B so will not jump ahead of B in the queue.
+        event = PromoteEvent(
+            'tenant-one', 'gate', [f'{C.number},{C.latest_patchset}'])
+        self.scheds.first.sched.pipeline_management_events['tenant-one'][
+            'gate'].put(event)
+        self.waitUntilSettled()
+
+        # After promotion we have B <- C
+        self.assertEqual(len(self.builds), 2)
+        self.assertTrue(self.builds[0].hasChanges(B))
+        self.assertTrue(self.builds[1].hasChanges(B, C))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertEqual(B.data['status'], 'MERGED')
+        self.assertEqual(C.data['status'], 'MERGED')
+        self.assertEqual(A.data['status'], 'NEW')
