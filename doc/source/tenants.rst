@@ -488,6 +488,10 @@ configuration. Some examples of tenant definitions are:
    .. attr:: allowed-labels
       :default: []
 
+      .. note:: This option is only used with Nodepool.  It is
+                deprecated and will be removed in a future version of
+                Zuul.
+
       The list of labels (as strings or :ref:`regular expressions <regex>`)
       a tenant can use in a job's nodeset. When set, this setting can
       be used to restrict what labels a tenant can use.  Without this
@@ -495,6 +499,10 @@ configuration. Some examples of tenant definitions are:
 
    .. attr:: disallowed-labels
       :default: []
+
+      .. note:: This option is only used with Nodepool.  It is
+                deprecated and will be removed in a future version of
+                Zuul.
 
       The list of labels (as strings or :ref:`regular expressions <regex>`)
       a tenant is forbidden to use in a job's nodeset. When set, this
@@ -559,6 +567,15 @@ configuration. Some examples of tenant definitions are:
 
       A list of names of :attr:`global-semaphore` objects to allow
       jobs in this tenant to access.
+
+   .. attr:: use-nodepool
+      :default: true
+
+      Once a tenant has been migrated to use `zuul-launcher` instead
+      of Nodepool, set this value to ``false`` in order to disable the
+      Nodepool label fallback behavior.  This is important since, with
+      no Nodepool running, Zuul needs to know that any requests for
+      nonexistent labels should be declined.
 
 .. _global_semaphore:
 
