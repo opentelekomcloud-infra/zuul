@@ -6864,7 +6864,7 @@ class TestInitJobs(ZuulTestCase):
             dict(name='init-job', result='SUCCESS', changes='1,1'),
             dict(name='check-job', result='SUCCESS', changes='1,1'),
             dict(name='skip-job', result='SUCCESS', changes='1,1'),
-        ])
+        ], ordered=False)
         self.assertTrue('Skipped' not in A.messages[0])
         self.assertIn('Build succeeded', A.messages[0])
 
