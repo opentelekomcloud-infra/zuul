@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6d25cad8_9e5e9581",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1442,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-20T19:45:57Z",
+      "side": 1,
+      "message": "The more I think about this the more I think something like this approach is actually what we need to do. The specific api request methods have the information necessary to process conditions. The auth layer knows which roles apply to the current user. Therefore we need to provide the valid roles to the request in order to  check conditions to see if any roles match.",
+      "parentUuid": "ba3dca25_5a9e5bd8",
+      "revId": "930a806a5a767ffd785cedf49478f349cb3e14c5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "33c619c6_263190bb",
         "filename": "zuul/web/__init__.py",
         "patchSetId": 6
@@ -31,6 +49,24 @@
       "writtenOn": "2025-12-09T00:42:41Z",
       "side": 1,
       "message": "We should actually short circuit if permission is None still since we don\u0027t need to check specific role conditions in that read only case. So this needs some updating.",
+      "revId": "930a806a5a767ffd785cedf49478f349cb3e14c5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4df42a07_3b6d0d99",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1922,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2025-12-20T19:45:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "33c619c6_263190bb",
       "revId": "930a806a5a767ffd785cedf49478f349cb3e14c5",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
