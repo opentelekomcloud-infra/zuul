@@ -1,5 +1,3 @@
-:orphan:
-
 .. _image:
 
 Image

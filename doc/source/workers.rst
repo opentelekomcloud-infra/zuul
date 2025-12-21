@@ -1,5 +1,3 @@
-:orphan:
-
 :title: Test Workers
 
 .. _workers:

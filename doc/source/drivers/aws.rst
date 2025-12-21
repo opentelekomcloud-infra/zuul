@@ -1,5 +1,3 @@
-:orphan:
-
 :title: AWS Driver
 
 .. _aws:

@@ -209,3 +209,14 @@ the YAML files:
    config/nodeset
    config/semaphore
    config/pragma
+
+The following items are related to :ref:`workers`:
+
+.. toctree::
+   :maxdepth: 1
+
+   config/flavor
+   config/image
+   config/label
+   config/section
+   config/provider

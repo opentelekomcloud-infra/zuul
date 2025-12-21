@@ -28,3 +28,13 @@ Zuul includes the following drivers:
    smtp
    timer
    zuul
+
+And the following drivers for :ref:`workers`:
+
+.. toctree::
+   :maxdepth: 2
+
+   aws
+   azure
+   openstack
+   static
