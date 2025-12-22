@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a8edb18_663e0269",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1078,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-22T19:24:28Z",
+      "side": 1,
+      "message": "Review note: I traced through this quite a bit, and I think this is a good change.\n\nupdateChangeDependencies calls getChange which calls updateChange (this method).\n\nupdateChangeDependencies does have checks to avoid adding closed changes to a changes dependencies (and it\u0027s very careful about whether it uses .is_merged or .open; it uses is_merged for git dependencies, and open for others, to make sure that it does include abandoned git parents).  But that check is *after* it actually walks the change network.  This change will prevent us from adding any abandoned changes to the network in the first place.\n\nThe only potential problem I see with this is that if the change we\u0027re querying depends on an abandoned change, this patch will cause us not to walk up the network any further.  We\u0027ll stop at the first abandoned change.\n\nWe do have unit tests that cover a change depending on an abandoned change.  I\u0027m not sure we have anything like A(open) \u003c- B(abandoned) \u003c- C(abandoned) \u003c- D(open).  It might be worth adding a test for that.  What I suspect will happen is that D will not be enqueued because C is abandoned.  I suspect before this patch, we would have queried A and B.  And after this patch we will only query D and C.  So we won\u0027t have the full picture, but we will have just enough info to know we can\u0027t enqueue D.",
+      "revId": "65b5ee091ae22d1e9186edc064095a65c8bdaea5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
