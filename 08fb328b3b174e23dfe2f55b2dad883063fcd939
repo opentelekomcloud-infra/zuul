@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "89cde8d4_5f5ec7c8",
+        "filename": "doc/source/job-content.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 1230,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2025-12-24T16:01:52Z",
+      "side": 1,
+      "message": "I don\u0027t think we should do this since it affects how links are created.  I think we should have a separate section for each one, but we can have all the sub-documentation in playbooks if you want, and then just make pre_ and post_ sections say \"See playbooks\".",
+      "revId": "08fb328b3b174e23dfe2f55b2dad883063fcd939",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
