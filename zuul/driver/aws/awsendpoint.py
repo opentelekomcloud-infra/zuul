@@ -2050,7 +2050,10 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     'ResourceType': 'volume',
                     'Tags': tag_dict_to_list(tags),
                 },
-            ]
+            ],
+            MaintenanceOptions={
+                'AutoRecovery': 'Disabled',
+            },
         )
 
         if label.security_group_ids:
