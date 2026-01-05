@@ -106,9 +106,15 @@ class TestConfigLoader(ZuulTestCase):
 class TenantParserTestCase(ZuulTestCase):
     create_project_keys = True
 
-    CONFIG_SET = set(['pipeline', 'job', 'semaphore', 'project',
-                      'project-template', 'nodeset', 'secret', 'queue'])
-    UNTRUSTED_SET = CONFIG_SET
+    JOB_SET = set([
+        'pipeline', 'job', 'semaphore', 'project',
+        'project-template', 'nodeset', 'secret', 'queue',
+    ])
+    PROVIDER_SET = set([
+        'image', 'flavor', 'label', 'section', 'provider',
+    ])
+    UNTRUSTED_SET = JOB_SET
+    CONFIG_SET = UNTRUSTED_SET | PROVIDER_SET
 
     def setupAllProjectKeys(self, config: ConfigParser):
         for project in ['common-config', 'org/project1', 'org/project2']:
@@ -1335,6 +1341,77 @@ class TestTenantConfigSuperproject(TenantParserTestCase):
     def test_tenant_config_superproject(self):
         # The magic is in setUp
         pass
+
+
+class TestTenantProvider(TenantParserTestCase):
+    tenant_config_file = 'config/tenant-parser/provider.yaml'
+
+    def test_tenant_provider(self):
+        # Test config/untrusted defaults
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        self.assertEqual(['common-config'],
+                         [x.name for x in tenant.config_projects])
+        self.assertEqual(['org/project1'],
+                         [x.name for x in tenant.untrusted_projects])
+        project = list(tenant.config_projects)[0]
+        tpc = tenant.project_configs[project.canonical_name]
+        self.assertEqual(self.CONFIG_SET, tpc.load_classes)
+        project = list(tenant.untrusted_projects)[0]
+        tpc = tenant.project_configs[project.canonical_name]
+        self.assertEqual(self.UNTRUSTED_SET,
+                         tpc.load_classes)
+
+
+class TestTenantProvider2(TenantParserTestCase):
+    tenant_config_file = 'config/tenant-parser/provider2.yaml'
+
+    def test_tenant_provider2(self):
+        # Test the include-provider-config setting, and test it with
+        # "exclude".
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        self.assertEqual(['common-config'],
+                         [x.name for x in tenant.config_projects])
+        self.assertEqual(['org/project1', 'org/project2'],
+                         [x.name for x in tenant.untrusted_projects])
+        project = list(tenant.config_projects)[0]
+        tpc = tenant.project_configs[project.canonical_name]
+        self.assertEqual(self.CONFIG_SET - set(['semaphore']),
+                         tpc.load_classes)
+        project = list(tenant.untrusted_projects)[0]
+        tpc = tenant.project_configs[project.canonical_name]
+        self.assertEqual(self.UNTRUSTED_SET | self.PROVIDER_SET,
+                         tpc.load_classes)
+        project = list(tenant.untrusted_projects)[1]
+        tpc = tenant.project_configs[project.canonical_name]
+        self.assertEqual(
+            (self.UNTRUSTED_SET | self.PROVIDER_SET) - set(['project']),
+            tpc.load_classes)
+
+
+class TestTenantProvider3(TenantParserTestCase):
+    tenant_config_file = 'config/tenant-parser/provider3.yaml'
+
+    def test_tenant_provider3(self):
+        # Test the include-provider-config setting, and test it with
+        # "include".
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        self.assertEqual(['common-config'],
+                         [x.name for x in tenant.config_projects])
+        self.assertEqual(['org/project1', 'org/project2'],
+                         [x.name for x in tenant.untrusted_projects])
+        project = list(tenant.config_projects)[0]
+        tpc = tenant.project_configs[project.canonical_name]
+        self.assertEqual(self.PROVIDER_SET | set(['pipeline']),
+                         tpc.load_classes)
+        project = list(tenant.untrusted_projects)[0]
+        tpc = tenant.project_configs[project.canonical_name]
+        self.assertEqual(self.PROVIDER_SET | set(['job']),
+                         tpc.load_classes)
+        project = list(tenant.untrusted_projects)[1]
+        tpc = tenant.project_configs[project.canonical_name]
+        self.assertEqual(
+            self.PROVIDER_SET | set(['project']),
+            tpc.load_classes)
 
 
 class TestMergeMode(ZuulTestCase):

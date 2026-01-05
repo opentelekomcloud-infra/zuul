@@ -5,5 +5,4 @@
         config-projects:
           - common-config
         untrusted-projects:
-          - org/project1:
-              include-provider-config: true
+          - org/project1
