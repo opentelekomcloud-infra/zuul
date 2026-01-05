@@ -6151,7 +6151,7 @@ For CI problems and help debugging, contact ci@example.org"""
                          ['100-0000000001'])
         zk_nodepool.deleteNodeRequest(req2.id)
 
-    @simple_layout('layouts/nodepool.yaml')
+    @simple_layout('layouts/simple.yaml')
     def test_nodeset_request_cleanup(self):
         "Test that we cleanup leaked nodeset requests"
 

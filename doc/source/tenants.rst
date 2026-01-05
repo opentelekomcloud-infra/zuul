@@ -182,10 +182,36 @@ configuration. Some examples of tenant definitions are:
             * project-template
             * nodeset
             * secret
+            * image
+            * flavor
+            * label
+            * section
+            * provider
 
          .. attr:: exclude
 
             A list of **configuration items** that should not be loaded.
+
+         .. attr:: include-provider-config
+            :type: bool
+
+            Add the configuration items related to provider
+            configuration to the set of items to be loaded.  Normally,
+            :term:`untrusted projects <untrusted-project>` do not load
+            these items, but :term:`config projects <config-project>`
+            do.  To allow an untrusted-project to do so (or to add
+            back this set of items after using **include**), set this
+            attribute to ``true``.  This takes effect after
+            **include** and before **exclude**.
+
+            The following **configuration items** are considered
+            **provider config**:
+
+            * image
+            * flavor
+            * label
+            * section
+            * provider
 
          .. attr:: shadow
 

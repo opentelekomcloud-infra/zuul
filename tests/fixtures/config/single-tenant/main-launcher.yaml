@@ -4,20 +4,6 @@
       gerrit:
         config-projects:
           - common-config:
-              include:
-                - job
-                - nodeset
-                - secret
-                - pipeline
-                - project
-                - project-template
-                - semaphore
-                - queue
-                - image
-                - flavor
-                - label
-                - section
-                - provider
               extra-config-paths: zuul-provider.yaml
         untrusted-projects:
           - org/project

@@ -209,3 +209,16 @@ the YAML files:
    config/nodeset
    config/semaphore
    config/pragma
+
+Some additional items may be available if the project is allowed to
+load items related to provider config.  See :ref:`workers` for more
+information about these:
+
+.. toctree::
+   :maxdepth: 1
+
+   config/image
+   config/flavor
+   config/label
+   config/section
+   config/provider
