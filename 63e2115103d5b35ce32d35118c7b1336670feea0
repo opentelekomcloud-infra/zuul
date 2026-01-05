@@ -16,6 +16,24 @@
       "message": "Is it intended that you compare the number of system events with the number of buildsets or are those numbers just by chance the same?",
       "revId": "63e2115103d5b35ce32d35118c7b1336670feea0",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ee58159_b704081b",
+        "filename": "tests/unit/test_client.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 770,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-05T19:50:44Z",
+      "side": 1,
+      "message": "This test creates a system event for every buildset (line 712), so it\u0027s intentional.",
+      "parentUuid": "baf57890_d35d0aab",
+      "revId": "63e2115103d5b35ce32d35118c7b1336670feea0",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
