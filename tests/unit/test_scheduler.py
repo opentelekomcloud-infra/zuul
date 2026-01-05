@@ -4024,6 +4024,11 @@ class TestScheduler(ZuulTestCase):
                          'SUCCESS')
         self.assertEqual(A.data['status'], 'MERGED')
         self.assertEqual(A.reported, 2)
+        events = self.scheds.first.sched.sql.connection.getSystemEvents()
+        self.assertEqual(1, len(events))
+        self.assertEqual("tenant reconfiguration", events[0].event_type)
+        self.assertEqual("Tenant reconfiguration due to external request",
+                         events[0].description)
 
     def test_live_reconfiguration_layout_cache_fallback(self):
         # Test that re-calculating a dynamic fallback layout works after it
@@ -9867,6 +9872,13 @@ class TestSchedulerSmartReconfiguration(ZuulTestCase):
         self.fake_gerrit.addEvent(B2.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
         self.assertEqual(1, B2.reported)
+
+        events = self.scheds.first.sched.sql.connection.getSystemEvents()
+        self.assertEqual(3, len(events))
+        for x in range(3):
+            self.assertEqual("tenant reconfiguration", events[x].event_type)
+            self.assertEqual("Tenant reconfiguration due to external request",
+                             events[x].description)
 
     def test_smart_reconfiguration(self):
         "Test that live reconfiguration works"

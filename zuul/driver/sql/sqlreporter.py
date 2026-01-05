@@ -288,6 +288,23 @@ class SQLReporter(BaseReporter):
         """Return a list of Build objects"""
         return self.connection.getBuilds(*args, **kw)
 
+    def reportSystemEvent(self, tenant, **kw):
+        if 'event_time' in kw:
+            kw['event_time'] = datetime.datetime.fromtimestamp(
+                kw['event_time'], tz=datetime.timezone.utc)
+
+        for retry_count in range(self.retry_count):
+            try:
+                with self.connection.getSession() as db:
+                    db_event = db.createSystemEvent(tenant=tenant, **kw)
+                    return db_event
+            except sqlalchemy.exc.DBAPIError:
+                if retry_count < self.retry_count - 1:
+                    self.log.error("Unable to create event, will retry")
+                    time.sleep(self.retry_delay)
+                else:
+                    self.log.exception("Unable to create event")
+
     def report(self, item):
         # We're not a real reporter, but we use _formatItemReport, so
         # we inherit from the reporters.
