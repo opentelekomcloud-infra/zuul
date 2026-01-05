@@ -38,6 +38,7 @@ BUILD_TABLE = 'zuul_build'
 BUILD_EVENT_TABLE = 'zuul_build_event'
 ARTIFACT_TABLE = 'zuul_artifact'
 PROVIDES_TABLE = 'zuul_provides'
+SYSTEM_EVENT_TABLE = 'zuul_system_event'
 
 POSTGRES_STATEMENT_TIMEOUT_RE = re.compile(
     r'/\* postgres_statement_timeout=(\d+) \*/')
@@ -609,6 +610,62 @@ class DatabaseSession(object):
             if deleted:
                 self.log.info("Deleted from %s to %s", oldest, cutoff)
 
+    def createSystemEvent(self, *args, **kw):
+        """Create a new system event"""
+        e = self.connection.systemEventModel(*args, **kw)
+        self.session().add(e)
+        self.session().flush()
+        return e
+
+    def getSystemEvents(self, tenant=None, event_type=None,
+                        limit=50, offset=0, idx_min=None, idx_max=None,
+                        query_timeout=None):
+
+        event_table = self.connection.zuul_system_event_table
+
+        q = self.session().query(self.connection.systemEventModel)
+        q = self.listFilter(q, event_table.c.tenant, tenant)
+        q = self.listFilter(q, event_table.c.event_type, event_type)
+        if idx_min:
+            q = q.filter(event_table.c.id >= idx_min)
+        if idx_max:
+            q = q.filter(event_table.c.id <= idx_max)
+
+        q = q.order_by(event_table.c.id.desc()).\
+            limit(limit).\
+            offset(offset)
+
+        if query_timeout:
+            # For MySQL, we can add a query hint directly.
+            q = q.prefix_with(
+                f'/*+ MAX_EXECUTION_TIME({query_timeout}) */',
+                dialect='mysql')
+            # For Postgres and mariadb, we add a comment that we parse
+            # in our event handler.
+            q = q.with_statement_hint(
+                f'/* postgres_statement_timeout={query_timeout} */',
+                dialect_name='postgresql')
+            q = q.with_statement_hint(
+                f'/* mariadb_statement_timeout={query_timeout} */',
+                dialect_name='mariadb')
+
+        try:
+            return q.all()
+        except sqlalchemy.orm.exc.NoResultFound:
+            return []
+
+    def deleteSystemEvents(self, cutoff):
+        """Delete system events before the cutoff"""
+
+        event_table = self.connection.zuul_system_event_table
+        q = sa.delete(self.connection.systemEventModel)\
+              .where(event_table.c.event_time < cutoff)
+        result = self.session().execute(q)
+        self.session().commit()
+        if result.rowcount:
+            self.log.info("Deleted %s events until %s",
+                          result.rowcount, cutoff)
+
 
 class SQLConnection(BaseConnection):
     driver_name = 'sql'
@@ -950,6 +1007,24 @@ class SQLConnection(BaseConnection):
             sa.Index(self.table_prefix + 'zuul_build_event_build_id_idx',
                      build_id)
 
+        class SystemEventModel(Base):
+            __tablename__ = self.table_prefix + SYSTEM_EVENT_TABLE
+            id = sa.Column(sa.Integer, primary_key=True)
+            tenant = sa.Column(sa.String(SQL_MAX_STRING_LENGTH))
+            event_id = sa.Column(sa.String(SQL_MAX_STRING_LENGTH))
+            event_time = sa.Column(sa.DateTime)
+            event_type = sa.Column(sa.String(SQL_MAX_STRING_LENGTH))
+            description = sa.Column(sa.TEXT())
+
+            sa.Index(self.table_prefix + 'zuul_system_event_tenant_idx',
+                     tenant)
+            sa.Index(self.table_prefix + 'zuul_system_event_event_id_idx',
+                     event_id)
+            sa.Index(self.table_prefix + 'zuul_system_event_event_time_idx',
+                     event_time)
+            sa.Index(self.table_prefix + 'zuul_system_event_event_type_idx',
+                     event_type)
+
         self.buildEventModel = BuildEventModel
         self.zuul_build_event_table = self.buildEventModel.__table__
 
@@ -973,6 +1048,9 @@ class SQLConnection(BaseConnection):
 
         self.buildSetRefModel = BuildSetRefModel
         self.zuul_buildset_ref_table = self.buildSetRefModel.__table__
+
+        self.systemEventModel = SystemEventModel
+        self.zuul_system_event_table = self.systemEventModel.__table__
 
     def onStop(self):
         self.log.debug("Stopping SQL connection %s" % self.connection_name)
@@ -1007,3 +1085,13 @@ class SQLConnection(BaseConnection):
         """Return a list of Build objects"""
         with self.getSession() as db:
             return db.getBuildTimes(*args, **kw)
+
+    def getSystemEvents(self, *args, **kw):
+        """Return a list of SystemEvent objects"""
+        with self.getSession() as db:
+            return db.getSystemEvents(*args, **kw)
+
+    def deleteSystemEvents(self, *args, **kw):
+        """Delete system events"""
+        with self.getSession() as db:
+            return db.deleteSystemEvents(*args, **kw)
