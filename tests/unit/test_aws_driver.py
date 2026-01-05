@@ -233,6 +233,10 @@ class TestAwsDriver(AwsBaseTest):
             200,
             self.run_instances_calls[0]['BlockDeviceMappings'][0]['Ebs']
             ['Throughput'])
+        self.assertEqual(
+            'disabled',
+            self.run_instances_calls[0]['MaintenanceOptions']
+            ['AutoRecovery'])
         for tag_spec in self.run_instances_calls[0]['TagSpecifications']:
             tags = {t["Key"]: t["Value"] for t in tag_spec['Tags']}
             self.assertEqual(
