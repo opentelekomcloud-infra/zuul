@@ -16,6 +16,24 @@
       "message": "I assume there is no way to have a version with less padding for the rows? Especially with image artifacts this uses a lot of screen real estate",
       "revId": "716b8a275035b9b4880c3c1bbd3a06b535cf6005",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f8138d8_735d1fc8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-05T17:14:37Z",
+      "side": 1,
+      "message": "It may be possible with custom CSS, but this is the standard TreeView in PF4, so it will match other uses.  All of the padding is generous in PF4, and sometimes we do something about it, but this doesn\u0027t seem too large.  One thing to note: in this patch, we start wrapping text, which takes up a lot of room if you expand the artifacts, but by the end of the series, the wrapping no longer occurs (due to other upgrades), so it\u0027s more compact again.",
+      "parentUuid": "7c6df6e0_6382c720",
+      "revId": "716b8a275035b9b4880c3c1bbd3a06b535cf6005",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
