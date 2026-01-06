@@ -52,3 +52,7 @@ class KubernetesResource(statemachine.Resource):
     def __init__(self, metadata, type, id):
         super().__init__(metadata, type)
         self.id = id
+
+    @property
+    def unique_id(self):
+        return '-'.join([self.type, self.id])
