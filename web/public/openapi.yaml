@@ -1565,6 +1565,51 @@ paths:
         not currently documented and subject to change without notice.'
       tags:
       - tenant
+  /api/tenant/{tenant_name}/system-events:
+    get:
+      operationId: system_events
+      parameters:
+      - in: path
+        name: tenant_name
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: event_type
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: string
+      - in: query
+        name: skip
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  description: The system event
+                  properties:
+                    description:
+                      type: string
+                    event_id:
+                      type: string
+                    event_time:
+                      type: string
+                    event_type:
+                      type: string
+                  type: object
+                type: array
+          description: Returns the list of system events
+        404:
+          description: Tenant not found
+      summary: ''
+      tags:
+      - tenant
   /api/tenant/{tenant_name}/tenant-ssh-key/ssh.pub:
     get:
       operationId: tenant_ssh_key
