@@ -3108,6 +3108,12 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             ret['tenant_name'] = self.tenant_name
         return ret
 
+    def getRequiredResources(self):
+        """Return a list of resource unique_ids that are required by
+        this node.  Used by the launcher to avoid deleting in-use
+        infrastructure resources."""
+        return []
+
     def getSpanAttributes(self):
         return dict(
             uuid=self.uuid,

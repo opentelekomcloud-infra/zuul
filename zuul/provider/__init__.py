@@ -237,7 +237,27 @@ class BaseProviderEndpoint(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError()
 
+    def listRequiredInfrastructureResources(self):
+        """Return a list of infrastructure resources in use by this endpoint.
+
+        This returns the same type of resource objects as
+        listResources, but it returns only the resources which are
+        currently needed by the provider.  In "infrastructure
+        resource" is a resource which is not directly associated with
+        a single node or upload.  Instead, it is a resource that may
+        be used by multiple nodes or uploads.  Examples include launch
+        templates or ssh keys.  Providers may create these on their
+        own when needed by their labels.  The launcher will use this
+        information to help the provider know when to delete them.
+
+        :returns: A generator of :py:class:`Resource` objects.
+
+        """
+
+        return []
+
     def deleteResource(self, resource):
+
         """Delete the supplied resource
 
         The driver has identified a leaked resource and the adapter

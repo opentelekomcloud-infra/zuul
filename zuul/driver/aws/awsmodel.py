@@ -24,13 +24,20 @@ class AwsProviderNode(model.ProviderNode, subclass_id="aws"):
         self._set(
             aws_instance_id=None,
             aws_dedicated_host_id=None,
+            aws_launch_template_name=None,
         )
 
     def getDriverData(self):
         return dict(
             aws_instance_id=self.aws_instance_id,
             aws_dedicated_host_id=self.aws_dedicated_host_id,
+            aws_launch_template_name=self.aws_launch_template_name,
         )
+
+    def getRequiredResources(self):
+        if self.aws_launch_template_name:
+            return [self.aws_launch_template_name]
+        return []
 
 
 class AwsInstance(statemachine.Instance):
@@ -75,8 +82,13 @@ class AwsResource(statemachine.Resource):
     TYPE_SNAPSHOT = 'snapshot'
     TYPE_VOLUME = 'volume'
     TYPE_OBJECT = 'object'
+    TYPE_LAUNCH_TEMPLATE = 'launch-template'
 
     def __init__(self, metadata, type, id, bucket_name=None):
         super().__init__(metadata, type)
         self.id = id
         self.bucket_name = bucket_name
+
+    @property
+    def unique_id(self):
+        return '-'.join([self.type, self.id])

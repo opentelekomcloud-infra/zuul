@@ -913,6 +913,7 @@ class CleanupWorker:
         # These are indexed by endpoint cname
         self.possibly_leaked_nodes = {}
         self.possibly_leaked_uploads = {}
+        self.possibly_leaked_resources = {}
         self._running = False
         self.thread = None
 
@@ -978,9 +979,12 @@ class CleanupWorker:
     def cleanupLeakedResources(self, endpoint):
         newly_leaked_nodes = {}
         newly_leaked_uploads = {}
+        newly_leaked_resources = {}
         possibly_leaked_nodes = self.possibly_leaked_nodes.get(
             endpoint.canonical_name, {})
         possibly_leaked_uploads = self.possibly_leaked_uploads.get(
+            endpoint.canonical_name, {})
+        possibly_leaked_resources = self.possibly_leaked_resources.get(
             endpoint.canonical_name, {})
 
         # Get a list of all providers that share this endpoint.  This
@@ -992,14 +996,29 @@ class CleanupWorker:
         ]
         now = int(time.time())
 
-        # First update quota; we get different classes back from
+        # The endpoint may have infrastructure resources that may be
+        # used by nodes.  Start with a list of the ones that the
+        # endpoint itself thinks are still in use.
+        required_resource_ids = set(
+            r.unique_id for r in endpoint.listRequiredInfrastructureResources()
+        )
+
+        # Get information about all nodes and their required resources
+        node_ids = []
+        for node in self.launcher.api.nodes_cache.getItems():
+            node_ids.append(node.uuid)
+            # If this node is associated with a provider on this
+            # endpoint, consider its resources as required.
+            if node.endpoint_name == endpoint.name:
+                required_resource_ids.update(set(
+                    node.getRequiredResources()))
+
+        # Update quota; we get different classes back from
         # listInstances and listResources, so we can't use the same
         # call for both.  Ideally the endpoint will cache the internal
         # API call.
         quota_used = model.QuotaInformation()
         system_id = self.launcher.system.system_id
-        node_ids = [n.uuid for n in self.launcher.api.nodes_cache.getItems()]
-
         for instance in endpoint.listInstances():
             meta = instance.metadata
             if (meta.get('zuul_system_id') == system_id and
@@ -1063,10 +1082,28 @@ class CleanupWorker:
                     except Exception:
                         self.log.exception(
                             "Unable to delete leaked resource")
+            if ((not (node_id or upload_id or expiration)) and
+                resource.unique_id not in required_resource_ids):
+                # This may be an infrastructure resource.
+                newly_leaked_resources[resource.unique_id] = resource
+                if resource.unique_id in possibly_leaked_resources:
+                    try:
+                        endpoint.deleteResource(resource)
+                        # if self._statsd:
+                        #     key = ('nodepool.provider.%s.leaked.%s'
+                        #            % (self.provider.name,
+                        #               resource.plural_metric_name))
+                        #     self._statsd.incr(key, 1)
+                    except Exception:
+                        self.log.exception(
+                            "Unable to delete leaked resource")
+
         self.possibly_leaked_nodes[endpoint.canonical_name] =\
             newly_leaked_nodes
         self.possibly_leaked_uploads[endpoint.canonical_name] =\
             newly_leaked_uploads
+        self.possibly_leaked_resources[endpoint.canonical_name] =\
+            newly_leaked_resources
 
 
 class Launcher:
@@ -1675,6 +1712,7 @@ class Launcher:
                      static_node=None):
         image = provider.images[label.image]
         label_quota = provider.getQuotaForLabel(label)
+        endpoint_name = provider.getEndpoint().name
         if static_node:
             node_uuid = static_node.node_id
             connection_port = static_node.connection_port
@@ -1708,6 +1746,7 @@ class Launcher:
             shell_type=image.shell_type,
             quota=label_quota,
             provider=provider.canonical_name,
+            endpoint_name=endpoint_name,
         )
 
         # Save a copy of the args here since nothing below should be
