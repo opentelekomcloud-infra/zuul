@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a5a4999_cdb80b86",
+        "filename": "zuul/driver/aws/awsendpoint.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1090,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-07T22:49:16Z",
+      "side": 1,
+      "message": "Agreed, this is unchanged code and I just didn\u0027t update it this time.",
+      "parentUuid": "fd027829_3048d710",
+      "revId": "2bcbf8763a18666a9a12bc3e7abdae4ed0164d6a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "63356c0e_4a003fe4",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-01-07T10:45:19Z",
       "side": 1,
       "message": "same nit as above",
+      "revId": "2bcbf8763a18666a9a12bc3e7abdae4ed0164d6a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f46c764_b6bef473",
+        "filename": "zuul/driver/aws/awsendpoint.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1194,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-07T22:49:16Z",
+      "side": 1,
+      "message": "Yep.",
+      "parentUuid": "63356c0e_4a003fe4",
       "revId": "2bcbf8763a18666a9a12bc3e7abdae4ed0164d6a",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
