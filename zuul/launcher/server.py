@@ -1082,7 +1082,8 @@ class Launcher:
     MAX_QUOTA_AGE = 5 * 60  # How long to keep the quota information cached
     _stats_interval = 30
 
-    def __init__(self, config, connections):
+    def __init__(self, config, connections, _hostname=None):
+        # _hostname is only used by the unit tests
         self._running = True
         # The cleanup method requires some extra AWS mocks that are
         # not enabled in most tests, so we allow the test suite to
@@ -1137,8 +1138,7 @@ class Launcher:
         )
 
         COMPONENT_REGISTRY.create(self.zk_client)
-        self.hostname = get_default(self.config, "launcher", "hostname",
-                                    socket.getfqdn())
+        self.hostname = _hostname or socket.getfqdn()
         self.component_info = LauncherComponent(
             self.zk_client, self.hostname, version=get_version_string(),
             connection_filter=self.connection_filter)

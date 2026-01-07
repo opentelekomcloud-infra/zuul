@@ -2624,7 +2624,7 @@ class ZuulTestCase(BaseTestCase):
             f"launcher-{instance_id}.socket"
         )
         launcher_config.set("launcher", "command_socket", command_socket)
-        launcher_config.set("launcher", "hostname", f"launcher-{instance_id}")
+        hostname = f"launcher-{instance_id}"
 
         if connection_filter:
             launcher_config.set(
@@ -2638,7 +2638,8 @@ class ZuulTestCase(BaseTestCase):
         launcher_connections.configure(launcher_config, providers=True)
         launcher = TestLauncher(
             launcher_config,
-            launcher_connections)
+            launcher_connections,
+            _hostname=hostname)
         launcher._start_cleanup = False
         launcher._stats_interval = 1
         launcher.start()
