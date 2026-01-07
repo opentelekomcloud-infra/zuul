@@ -18,6 +18,7 @@
                 - label
                 - section
                 - provider
+              extra-config-paths: zuul-provider.yaml
         untrusted-projects:
           - org/project
           - org/project1
