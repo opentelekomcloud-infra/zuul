@@ -146,8 +146,7 @@ ZooKeeper
    .. attr:: hosts
       :required:
 
-      A list of zookeeper hosts for Zuul to use when communicating
-      with Nodepool.
+      A list of zookeeper hosts for Zuul to use.
 
    .. attr:: tls_cert
       :required:
@@ -253,13 +252,9 @@ connections to remote systems which have been configured, enqueues
 items into pipelines, distributes jobs to executors, and reports
 results.
 
-The scheduler must be able to connect to the ZooKeeper cluster shared
-by Zuul and Nodepool in order to request nodes.  It does not need to
-connect directly to the nodes themselves, however -- that function is
-handled by the Executors.
-
-It must also be able to connect to any services for which connections
-are configured (Gerrit, GitHub, etc).
+The scheduler must be able to connect to the ZooKeeper cluster.  It
+must also be able to connect to any services for which connections are
+configured (Gerrit, GitHub, etc).
 
 The following sections of ``zuul.conf`` are used by the scheduler:
 
@@ -323,7 +318,7 @@ The following sections of ``zuul.conf`` are used by the scheduler:
       relative priority information for node requests.
 
       In all cases, each pipeline may specify a precedence value which
-      is used by Nodepool to satisfy requests from higher-precedence
+      is used to satisfy requests from higher-precedence
       pipelines first.  If ``relative_priority`` is set to ``True``,
       then Zuul will additionally group items in the same pipeline by
       pipeline queue and weight each request by its position in that
@@ -491,7 +486,7 @@ need to run standalone mergers.
 
 Executors need to be able to connect to the ZooKeeper cluster, any
 services for which connections are configured (Gerrit, GitHub, etc),
-as well as directly to the hosts which Nodepool provides.
+as well as directly to the worker nodes.
 
 Trusted and Untrusted Playbooks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -622,7 +617,7 @@ The following sections of ``zuul.conf`` are used by the executor:
       :default: zuul
 
       Username to use when logging into worker nodes, if none is
-      supplied by Nodepool.
+      supplied by the image configuration.
 
    .. attr:: winrm_cert_key_file
       :default: ~/.winrm/winrm_client_cert.key
@@ -824,13 +819,13 @@ The following sections of ``zuul.conf`` are used by the executor:
    .. attr:: zone
       :default: None
 
-      Name of the nodepool executor-zone to exclusively execute all jobs that
-      have nodes with the specified executor-zone attribute.  As an example,
-      it is possible for nodepool nodes to exist in a cloud without public
-      accessible IP address. By adding an executor to a zone nodepool nodes
-      could be configured to use private ip addresses.
+      Name of the executor-zone to exclusively execute all jobs that
+      have nodes with the specified executor-zone attribute.  As an
+      example, it is possible for nodes to exist in a cloud without
+      public accessible IP address. By adding an executor to a zone,
+      nodes may be configured to use private ip addresses.
 
-      To enable this in nodepool, you'll use the node-attributes setting in a
+      To enable this in Nodepool, you'll use the node-attributes setting in a
       provider pool. For example:
 
       .. code-block:: yaml
@@ -839,6 +834,9 @@ The following sections of ``zuul.conf`` are used by the executor:
           - name: main
             node-attributes:
               executor-zone: vpn
+
+      To enable this with Zuul's provider configuration, set the
+      ``executor-zone`` attribute of the label.
 
    .. attr:: allow_unzoned
       :default: False

@@ -20,6 +20,7 @@ which is described below.
       Merger [href="#merger"]
       Statsd [shape=ellipse fontcolor=grey]
       Scheduler [href="#scheduler"]
+      Launcher [href="#launcher"]
       Zookeeper [shape=ellipse]
       Nodepool
       GitHub [fontcolor=grey]
@@ -40,6 +41,7 @@ which is described below.
       Zookeeper -- Finger;
       Zookeeper -- Merger
       Zookeeper -- Nodepool;
+      Zookeeper -- Launcher;
       Scheduler -- GitHub;
       Scheduler -- Statsd;
    }
@@ -52,15 +54,19 @@ which is described below.
 Each of the Zuul processes may run on the same host, or different
 hosts.
 
+Previous versions of Zuul used Nodepool to provide worker nodes; new
+installations should use Zuul's internal resource management and not
+Nodepool.
+
 Zuul requires an external ZooKeeper cluster running at least ZooKeeper
 version 3.5.1, and all Zuul and Nodepool components need to be able to
 connect to the hosts in that cluster on a TLS-encrypted TCP port,
 typically 2281.
 
-Both the Nodepool launchers and Zuul executors need to be able to
-communicate with the hosts which Nodepool provides.  If these are on
-private networks, the executors will need to be able to route traffic
-to them.
+Both the Nodepool (or Zuul) launchers and Zuul executors need to be
+able to communicate with the hosts which Nodepool (or Zuul) provides.
+If these are on private networks, the executors will need to be able
+to route traffic to them.
 
 Only Zuul fingergw and Zuul web need to be publicly accessible;
 executors never do. Executors should be accessible on TCP port 7900 by

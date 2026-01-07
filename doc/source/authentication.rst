@@ -36,7 +36,7 @@ as possible (one tenant only) to reduce the surface of attack should the
 token be compromised.
 
 Exposing administration tasks can impact build results (dequeue-ing buildsets),
-and pose potential resources problems with Nodepool if the ``autohold`` feature
+and pose potential resources problems if the ``autohold`` feature
 is abused, leading to a significant number of nodes remaining in "hold" state for
 extended periods of time. As always, "with great power comes great responsibility"
 and tokens should be handed over with discernment.
