@@ -16,6 +16,24 @@
       "message": "Should we document here that once set a connection can not be changed?",
       "revId": "bc24a73880989acaa514c6e820a5d319742d1c5d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a623599f_65496f20",
+        "filename": "zuul/provider/__init__.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-07T22:47:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "56be04c1_600f72b9",
+      "revId": "bc24a73880989acaa514c6e820a5d319742d1c5d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
