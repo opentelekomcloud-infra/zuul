@@ -180,6 +180,14 @@ function fetchStatus(apiPrefix) {
   return makeRequest(apiPrefix + 'status')
 }
 
+function fetchSystemEvents(apiPrefix, queryString) {
+  let path = 'system-events'
+  if (queryString) {
+    path += '?' + queryString.slice(1)
+  }
+  return makeRequest(apiPrefix + path)
+}
+
 function fetchChangeStatus(apiPrefix, changeId) {
   return makeRequest(apiPrefix + 'status/change/' + changeId)
 }
@@ -467,6 +475,7 @@ export {
   fetchProviders,
   fetchSemaphores,
   fetchStatus,
+  fetchSystemEvents,
   fetchTenantInfo,
   fetchTenantStatus,
   fetchTenants,
