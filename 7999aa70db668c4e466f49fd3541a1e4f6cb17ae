@@ -114,6 +114,29 @@
       },
       "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "be4e29e2_2ea6e5a6",
+        "filename": "doc/source/drivers/azure.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-07T10:23:28Z",
+      "side": 1,
+      "message": "Zuul?",
+      "range": {
+        "startLine": 36,
+        "startChar": 41,
+        "endLine": 36,
+        "endChar": 49
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
