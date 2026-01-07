@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "64e99d8c_915feebe",
+        "filename": "doc/source/config/label.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-07T10:14:32Z",
+      "side": 1,
+      "message": "Should this be \"providers\" instead? I guess it\u0027s technically correct, but the tenant would also need a different provider, so using \"tenants\" here seems to be a bit confusing or at least hinting towards a specific configuration (non-shared providers).",
+      "range": {
+        "startLine": 25,
+        "startChar": 10,
+        "endLine": 25,
+        "endChar": 17
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "565b9af2_039f625f",
+        "filename": "doc/source/config/provider.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-07T10:14:32Z",
+      "side": 1,
+      "message": "Should we just call them \"build nodes\" or simply \"nodes\"? \"test worker\" sounds like this is specific for tests and not for builds.",
+      "range": {
+        "startLine": 8,
+        "startChar": 38,
+        "endLine": 8,
+        "endChar": 55
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13348557_938d9de5",
+        "filename": "doc/source/config/provider.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-07T10:14:32Z",
+      "side": 1,
+      "message": "But this would require a different, tenant specific section as e.g. the used instance type is a property of the section and not the flavor, right?",
+      "range": {
+        "startLine": 24,
+        "startChar": 8,
+        "endLine": 25,
+        "endChar": 70
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6d779574_e499165c",
+        "filename": "doc/source/config/provider.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-07T10:14:32Z",
+      "side": 1,
+      "message": "same question as above: do we need to call it \"test resources\"? Maybe \"resources\" would be enough.",
+      "range": {
+        "startLine": 36,
+        "startChar": 62,
+        "endLine": 36,
+        "endChar": 66
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2519aa35_39ce3d6c",
+        "filename": "doc/source/config/provider.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-07T10:14:32Z",
+      "side": 1,
+      "message": "same q here",
+      "range": {
+        "startLine": 39,
+        "startChar": 36,
+        "endLine": 39,
+        "endChar": 40
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
