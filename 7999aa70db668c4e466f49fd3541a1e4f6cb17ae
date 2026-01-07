@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "207278ce_760c0284",
+        "filename": "doc/source/config/label.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-07T22:46:46Z",
+      "side": 1,
+      "message": "The use of \"tenants\" was intentional.  I agree it\u0027s a little confusing, but I also don\u0027t think we should change it, because changing it to \"providers\" is not the thing we\u0027re trying to get across here.\n\nWithin a single tenant, a given label will always have exactly the same combination of image+flavor, because that label can have only one definition, and that definition specifies the image and flavor, and those objects in turn have only one definition.  So even different providers within the same tenant, if they reference a given label, will always get the same image+flavor combination.\n\nBut in different tenants, the image, which is referenced by name, could have different definitions, even if the same label object is loaded.  This is one of the things we resolve internally with config hashes.\n\nThat\u0027s the main thing I was trying to get across.  I think you probably read it more like \"different providers can adjust some attributes of images/flavors/labels as they are added to the provider\", which is a useful thing to document, and I think we do on the Provider object.\n\nBut here, I just want to convey that (a) objects are referenced by name, and (b) therefore they can be different in different tenants.\n\nI suspect the phrase \"underlying characteristics\" contributed to the confusion, so I\u0027ll rework that bit.",
+      "parentUuid": "64e99d8c_915feebe",
+      "range": {
+        "startLine": 25,
+        "startChar": 10,
+        "endLine": 25,
+        "endChar": 17
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "565b9af2_039f625f",
         "filename": "doc/source/config/provider.rst",
         "patchSetId": 4
@@ -37,6 +61,30 @@
       "writtenOn": "2026-01-07T10:14:32Z",
       "side": 1,
       "message": "Should we just call them \"build nodes\" or simply \"nodes\"? \"test worker\" sounds like this is specific for tests and not for builds.",
+      "range": {
+        "startLine": 8,
+        "startChar": 38,
+        "endLine": 8,
+        "endChar": 55
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1504e01a_0c626c98",
+        "filename": "doc/source/config/provider.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-07T22:46:46Z",
+      "side": 1,
+      "message": "We could probably benefit from a pass over the whole docs to settle on a good term and add it to the glossary.  I\u0027ll remove \"test\" here and reword it a little more clearly.  I\u0027ve done something similar with the other comments you mentioned, which I resolved.",
+      "parentUuid": "565b9af2_039f625f",
       "range": {
         "startLine": 8,
         "startChar": 38,
@@ -72,6 +120,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "77d9a451_03bf6448",
+        "filename": "doc/source/config/provider.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-07T22:46:46Z",
+      "side": 1,
+      "message": "You\u0027re right, this is a bad example, and probably not something terribly important to communicate.  I\u0027ll remove the sentence.",
+      "parentUuid": "13348557_938d9de5",
+      "range": {
+        "startLine": 24,
+        "startChar": 8,
+        "endLine": 25,
+        "endChar": 70
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6d779574_e499165c",
         "filename": "doc/source/config/provider.rst",
         "patchSetId": 4
@@ -83,6 +155,30 @@
       "writtenOn": "2026-01-07T10:14:32Z",
       "side": 1,
       "message": "same question as above: do we need to call it \"test resources\"? Maybe \"resources\" would be enough.",
+      "range": {
+        "startLine": 36,
+        "startChar": 62,
+        "endLine": 36,
+        "endChar": 66
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ab05802a_313d0fbe",
+        "filename": "doc/source/config/provider.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-07T22:46:46Z",
+      "side": 1,
+      "message": "Yep.",
+      "parentUuid": "6d779574_e499165c",
       "range": {
         "startLine": 36,
         "startChar": 62,
@@ -116,6 +212,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "137342a7_b25a80db",
+        "filename": "doc/source/config/provider.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-07T22:46:46Z",
+      "side": 1,
+      "message": "Changing this one to just \"cloud or resource supplier\".",
+      "parentUuid": "2519aa35_39ce3d6c",
+      "range": {
+        "startLine": 39,
+        "startChar": 36,
+        "endLine": 39,
+        "endChar": 40
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "be4e29e2_2ea6e5a6",
@@ -129,6 +249,30 @@
       "writtenOn": "2026-01-07T10:23:28Z",
       "side": 1,
       "message": "Zuul?",
+      "range": {
+        "startLine": 36,
+        "startChar": 41,
+        "endLine": 36,
+        "endChar": 49
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6551208f_6b3b7e5b",
+        "filename": "doc/source/drivers/azure.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-07T22:46:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "be4e29e2_2ea6e5a6",
       "range": {
         "startLine": 36,
         "startChar": 41,
