@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd027829_3048d710",
+        "filename": "zuul/driver/aws/awsendpoint.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1090,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-07T10:45:19Z",
+      "side": 1,
+      "message": "nit: with logging we should use % formatting",
+      "revId": "2bcbf8763a18666a9a12bc3e7abdae4ed0164d6a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63356c0e_4a003fe4",
+        "filename": "zuul/driver/aws/awsendpoint.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1194,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-07T10:45:19Z",
+      "side": 1,
+      "message": "same nit as above",
+      "revId": "2bcbf8763a18666a9a12bc3e7abdae4ed0164d6a",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
