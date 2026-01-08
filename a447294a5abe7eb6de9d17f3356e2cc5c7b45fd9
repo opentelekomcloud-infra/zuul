@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ae711f79_35ba0cd0",
+        "filename": "doc/source/configuration.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 1055,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-08T06:31:12Z",
+      "side": 1,
+      "message": "typo",
+      "range": {
+        "startLine": 1055,
+        "startChar": 25,
+        "endLine": 1055,
+        "endChar": 35
+      },
+      "revId": "a447294a5abe7eb6de9d17f3356e2cc5c7b45fd9",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
