@@ -48,6 +48,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a9d11fff_592984a5",
+        "filename": "doc/source/config/label.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-08T07:06:48Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "207278ce_760c0284",
+      "range": {
+        "startLine": 25,
+        "startChar": 10,
+        "endLine": 25,
+        "endChar": 17
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "565b9af2_039f625f",
@@ -95,6 +119,30 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "758587a4_f19e38f2",
+        "filename": "doc/source/config/provider.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-08T07:06:48Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1504e01a_0c626c98",
+      "range": {
+        "startLine": 8,
+        "startChar": 38,
+        "endLine": 8,
+        "endChar": 55
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "13348557_938d9de5",
@@ -132,6 +180,30 @@
       "side": 1,
       "message": "You\u0027re right, this is a bad example, and probably not something terribly important to communicate.  I\u0027ll remove the sentence.",
       "parentUuid": "13348557_938d9de5",
+      "range": {
+        "startLine": 24,
+        "startChar": 8,
+        "endLine": 25,
+        "endChar": 70
+      },
+      "revId": "7999aa70db668c4e466f49fd3541a1e4f6cb17ae",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eef2cfe5_8591ed20",
+        "filename": "doc/source/config/provider.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-08T07:06:48Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "77d9a451_03bf6448",
       "range": {
         "startLine": 24,
         "startChar": 8,
