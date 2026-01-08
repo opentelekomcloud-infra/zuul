@@ -29,6 +29,7 @@ import json
 import jwt
 import logging
 import os
+import pathlib
 import time
 import re
 import select
@@ -3102,22 +3103,37 @@ class ZuulWebAPI(object):
 
 class StaticHandler(object):
     def __init__(self, root):
-        self.root = root
+        self.root = pathlib.Path(root).resolve()
 
     def default(self, path, **kwargs):
-        # Try to handle static file first
-        handled = cherrypy.lib.static.staticdir(
-            section="",
-            dir=self.root,
-            index='index.html')
-        if not path or not handled:
-            # When not found, serve the index.html
-            return cherrypy.lib.static.serve_file(
-                path=os.path.join(self.root, "index.html"),
-                content_type="text/html")
-        else:
-            return cherrypy.lib.static.serve_file(
-                path=os.path.join(self.root, path))
+        # We don't expect path to be provided in the query string,
+        # this is only supposed to handle static urls
+        if cherrypy.request.query_string:
+            params = cherrypy.lib.httputil.parse_query_string(
+                cherrypy.request.query_string)
+            if params and 'path' in params:
+                raise cherrypy.HTTPError(403)
+        # Make sure the resulting path is under our root
+        plain_path = self.root / pathlib.Path(path)
+        if not plain_path.is_relative_to(self.root):
+            raise cherrypy.HTTPError(403)
+        # Follow symlinks and double check
+        plain_path = plain_path.resolve()
+        if not plain_path.is_relative_to(self.root):
+            raise cherrypy.HTTPError(403)
+        # Construct a hypothetical index.html path under the resulting
+        # path to use as a fallback in case the path provided is a
+        # directory.
+        index_path = (plain_path / "index.html").resolve()
+        # The ultimate fallback is the root index; start with that.
+        new_path = (self.root / "index.html").resolve()
+        # If the directory index exists, use that.
+        if os.path.exists(index_path):
+            new_path = index_path
+        # If the supplied path exists, use that.
+        elif os.path.exists(plain_path):
+            new_path = plain_path
+        return cherrypy.lib.static.serve_file(path=str(new_path))
 
 
 class StreamManager(object):
