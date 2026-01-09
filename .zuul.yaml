@@ -222,27 +222,27 @@
       quay.io:
         username: zuul-ci+opendevzuul
         password: !encrypted/pkcs1-oaep
-          - B5RM116kdo4uTDHChDVWLbRUvXZHXkndzi9sZVmZ/8EjQRKhtsNfVWWPinr7cbXiN6NjA
-            ja85RrAMwYic8Y2f8cTRSowitPDmvAs8Av/zZ6PnFap6pGb1vQFuPYYOqEkkeqrQoY9vO
-            h2PV3Z2A+O48mzDt0CVhI6E8AQdqrMO7R0pO1plb5q9PFTHUlwgUdIbUMkVpndVMER8Ez
-            IdWs2bcVUC5hChUKFcSX2Jr8peOwQvLnzX5nGRAYATrp5tV/xsC8R/WkOVvKP0ORLJlf8
-            T/yZRXm7yw9LdizCsf+3jkzw726YZT+GqavPnygJvKeu+WVMtBs69TPhTdpq4B5WCnQko
-            Xq+g2WZkqdfeQRBp2BqMsk1wZ+fMnTqKb8iJRO0tjYmFJBq0xRRQHHjwLDd4clM1KBMqT
-            17ss4QvTY61ZbbSM33M3FgibBPe96G7vCuTLiUnrmcR8i5M1H+XHPYMSSbCn3DgY5IBl2
-            Lr9ism4velFlzXQ9r71VM5v+JCSbcjrMAn5GKFZ5f9MeqWnATqYUO+xwEa/wb+sgPzd/v
-            VNlB74K3tg7wP1abGM7LtQkVKkWuy44sXayt2PcikE4pDO6EiODOxSv5a5Uxc6ef/cmfl
-            ADZ08hlob4CFNjL1m5lZSZNYDcsgwYuYXoP2a5kgykerEV+v3q0epjExCCUrEI=
+          - WgDM39Q6XgHy+kSJtQaT8WyGWzdtuT6A+GPcaRFV3nxxwIMd+O+I+0rVIC8q2CifTS7g+
+            t7YjiBr3CFqJcG7W3Wrfj1jTTSj7XI8UppFd9bxml0wKz3cmqgv2ZX/uZu4tZtSn77otE
+            Ub/RVE1esvz9TXhd/K8CCW0VQxwankIiMi2pg3bF+McbxW52EYTU6eo8XEfohWTirKE49
+            AoAha9PMNjJJCTGzkBM1mxrAfKeETg7w+P3BFvGJjxcilXcQkISbvl8DCCYzn8i6i1bfG
+            nWvMuQB+DmDbvdQOompJpxwE8jVLaivv7WkHOS8HiMZ8o+ESWZtlnB4ubBbk9uUxWW9+g
+            B63QsfP4jOyyKk1slr6aeLq/qT6Xj0xrudYlJbSEzGECm/pgx/siMGDDrySPozATCsFNW
+            SJmkNELlJN/93lh1ELhaT1uprhPW4WXRQA74NLEYViV2nFw3Fq+UqeXV47Um4n4YeC8eF
+            aC0vSoaQ3I6JHdkiECVhuu8BvLIr/32dSfcuP/azpFNi8qYlS/mXlstAbZyBJ35c9brHO
+            GxTQt6U5jFQlSPoywvFCuR+Vq6z49SHDEfGDJkj+jbcY1R0ZCEg6a8oS+4AxU1Y2356qo
+            vsvgflaaU9ilvh0oq1u93QbzTYTKRdwyiNH0Xi9wZGJTLfMfWu8Au5h+Qh8fvc=
         api_token: !encrypted/pkcs1-oaep
-          - HTgQ6onrqJCCwjwT+TGjgiXT6qgwJMbWYUXlt5mz570RKNN4Ptsa6oqu4zpk+paAIwain
-            Olw3n4InshNAWIvTSro6zwYurmiiKCbxcocaxLzIKM+zbgIR7haKm+Crqei4tanWNpXHq
-            ULdu4muJojxu6OdYNhftPY3NLdFFuDA5IF2zv2f4gZSthvmQ9NzvEqPKFDV2yzNa6G4V+
-            jicYR3X7f0TjW9QF9p9CuSMvZrOCxp98zRelT8EJBKsb+38JVapvJgbAqAgJhAaGgJYkP
-            1W7iqL+eNLMcRCnkoBEnOwZe66WO5gZagqWH25oRhjFnFM/qqMeYEG/AhAUae7vTHd9VK
-            yHSndEdrdCNpdzBsJQFGS7lxJMUl8ELL61qoojZSW91bGRIziedYEbDuPEzZUkoosaf6r
-            50jvdRYOsmYnmr3Q5/T0QxW00qLL6FkPCRHg8wI2EXDPA/X5+vTlEYMhJxEJZ1+unHk9t
-            PPebXHCZ2B0VA+x3Khnt5BOJt/ewxfbfVu0CVgjSgrAUaSHWY3DLdvbuA9lwjafybkfxC
-            vIEhQz8AxAgWsdWpFOr9uPCB+5C+ma4jF15k/RUWoODHhvYZEoSNDOz4BRGrK+kHczr3F
-            P9x7xzzPhVCdbspsf+sV90xpUI0U4vCeVpi+3Ha1zZZR0JAC1SIWXUnJxB2EkM=
+          - fXEMFVSs8gAcbELOUOVv4z9f1iKuWz2cUncAwf5ERMZTLIxr/B+iCtsjCIft5RGxy8Qxe
+            Hx8lbGu0q0B735WgJz0wDy5AMKPluNFK1pLI5UtZF5iQ2itgipxMXdzXH/tvNl8zT6nBV
+            2q0Z/n0HSeqQm5Y6WeuioP3+IYT9cv2uLMyug1q+RjRZRuoYFZlaNDlrZJ1wTt1FTCpcB
+            Z95PXM1WKqxF9ANp06nRSR47Kvzmlz1oJp1kqMzfM0/lggCj92OZi62NkCBm/QYtfkElg
+            5iEoO8SeTsv0gghQb8/x89PuxbwcXE5w9CoFyAaQPJ3ak6HxHJTkI+AltEwvhEM6RH3nK
+            Nu0ilUJbhUNt2rSpgWq4XZ6+DKsdgOyb6xsfSzoh9oOtaBRXQ4DQKczalBiTnG0YbLDvY
+            7BbfLectw9wmVKh48XaPFcRjvnmzJQgvpMGlviBd3uvQROX2QujMpADgt6JIG8s6ZtQy6
+            BcWfQ6ahcfaQZkmEu2SQHr86kEtgObvrMmXJtahXzDhgT5taKOspZA9ufQ7m7R4bSEhQs
+            ziYjOimRTL4r72urzB6QOZkngxLVacRg0RUEaaD9EvDOE77gqFA/739WHv69Q1jsiM7nv
+            gs1+jfQCCpG7bi7Udu/LB6BeXiLPqoosDO46hayincHOpepawDh2vmeqm2vFMw=
 
 - job:
     name: zuul-build-image
