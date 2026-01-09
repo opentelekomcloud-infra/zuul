@@ -11493,7 +11493,7 @@ class AuthZRole(object):
         self.name = conf['name']
         self.permissions = conf['permissions']
 
-    def check_conditions(self, permission, params):
+    def __call__(self, permission, params):
         return False
 
 
@@ -11505,10 +11505,7 @@ class AuthZAdminRole(AuthZRole):
         self.name = 'admin'
         self.permissions = {}
 
-    def __call__(self, permission):
-        return True
-
-    def check_conditions(self, permission, params):
+    def __call__(self, permission, params):
         return True
 
 
@@ -11520,7 +11517,7 @@ class AuthZReadRole(AuthZRole):
         self.name = 'read'
         self.permissions = {}
 
-    def __call__(self, permission):
+    def __call__(self, permission, params):
         return True
 
 
@@ -11533,24 +11530,14 @@ class AuthZConfigRole(AuthZRole):
     # carry the old backward compatbile code.
     admin = True
 
-    def __call__(self, permission):
+    def __call__(self, permission, params):
         if permission:
-            for k, v in self.permissions.items():
-                if permission == k:
-                    if v:
-                        # We delay processing of conditions to later in
-                        # request handling when more info is known.
+            for perm, conditions in self.permissions.items():
+                if permission == perm:
+                    if conditions is True:
                         return True
-        return False
-
-    def check_conditions(self, permission, params):
-        if permission:
-            for k, v in self.permissions.items():
-                if permission == k:
-                    if v is True:
-                        return True
-                    else:
-                        for cond, val in v['conditions'].items():
+                    elif conditions and isinstance(conditions, dict):
+                        for cond, val in conditions['conditions'].items():
                             if not params.get(cond) == val:
                                 return False
                         return True

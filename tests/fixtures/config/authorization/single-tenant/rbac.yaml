@@ -20,6 +20,17 @@
       enqueue:
         conditions:
           project: tcejopr/gro
+- role:
+    name: autohold
+    permissions:
+      set_autohold:
+        conditions:
+          project: org/project
+          job: project-test1
+      delete_autohold:
+        conditions:
+          project: org/project2
+          job: project-test2
 - tenant:
     name: tenant-one
     anonymous-read-access: false
@@ -27,6 +38,7 @@
       venkman_rule: admin
       gb_rule:
         - enqueue
+        - autohold
         - read
       gb_rule2:
         - enqueue2

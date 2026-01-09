@@ -881,10 +881,9 @@ def openapi_response(
 
 
 class AuthInfo:
-    def __init__(self, uid, admin, roles):
+    def __init__(self, uid, admin):
         self.uid = uid
         self.admin = admin
-        self.roles = roles
 
 
 class AuthContext:
@@ -957,14 +956,14 @@ class AuthContext:
                 raise
             return None
 
-        access, admin, roles = self.zuulweb.api._isAuthorized(self.tenant,
-                                                              claims,
-                                                              self.permission)
+        access, admin = self.zuulweb.api._isAuthorized(self.tenant,
+                                                       claims,
+                                                       self.permission)
         if ((self.require_auth and not access) or
             (self.require_admin and not admin)):
             raise APIError(403)
 
-        return AuthInfo(claims['__zuul_uid_claim'], admin, roles)
+        return AuthInfo(claims['__zuul_uid_claim'], admin)
 
     def _getTokenFromHeader(self):
         """Make sure protected endpoints have a Authorization header with the
@@ -1032,10 +1031,10 @@ def check_tenant_auth(**kw):
     request.params['auth'] = auth_context.validate()
 
 
-cherrypy.tools.check_root_auth = cherrypy.Tool('on_start_resource',
+cherrypy.tools.check_root_auth = cherrypy.Tool('before_handler',
                                                check_root_auth,
                                                priority=90)
-cherrypy.tools.check_tenant_auth = cherrypy.Tool('on_start_resource',
+cherrypy.tools.check_tenant_auth = cherrypy.Tool('before_handler',
                                                  check_tenant_auth,
                                                  priority=90)
 
@@ -1369,6 +1368,14 @@ class ZuulWebOIDC(object):
 
 
 class ZuulWebAPI(object):
+    _rbac_param_map = {
+        "tenant_name": "tenant",
+        "project_name": "project",
+        "branch_name": "branch",
+        "job_name": "job",
+        "pipeline_name": "pipeline",
+    }
+
     def __init__(self, zuulweb):
         self.zuulweb = zuulweb
         self.zk_client = zuulweb.zk_client
@@ -1389,6 +1396,19 @@ class ZuulWebAPI(object):
     @property
     def log(self):
         return get_request_logger()
+
+    def _get_mapped_rbac_params(self):
+        params = {}
+        if hasattr(cherrypy.request, 'json'):
+            params = cherrypy.request.json.copy()
+        params.update(cherrypy.request.params)
+        for p, v in self._rbac_param_map.items():
+            # Replace internal API names with human friendly names when
+            # checking rbac permissions
+            if p in params:
+                params[v] = params[p]
+                del params[p]
+        return params
 
     @cherrypy.expose
     @cherrypy.tools.json_in()
@@ -1432,22 +1452,6 @@ class ZuulWebAPI(object):
     @cherrypy.tools.check_tenant_auth(require_admin=True, permission='enqueue')
     def enqueue(self, tenant_name, tenant, auth, project_name):
         body = cherrypy.request.json
-        check_params = {
-            'project': project_name,
-            'trigger': body['trigger'],
-            'pipeline': body['pipeline'],
-        }
-        if auth.roles:
-            for role in auth.roles:
-                if role.check_conditions('enqueue', check_params):
-                    self.log.info('%s authorized to enqueue by role %s',
-                                  auth.uid, role.name)
-                    break
-            else:
-                # It should be safe to not raise 403 if auth.roles is empty
-                # because we require admin and admin is only true if we match
-                # old style rules or if we have at least one role to check.
-                raise cherrypy.HTTPError(403)
         if cherrypy.request.method != 'POST':
             raise cherrypy.HTTPError(405)
         self.log.info(f'User {auth.uid} requesting enqueue on '
@@ -1714,6 +1718,8 @@ class ZuulWebAPI(object):
                       f'{request.tenant}/{request.project}')
 
         # User is authorized, so remove the autohold request
+        # TODO Currently autohold deletions are not scoped to project, job,
+        # etc. They probably should be with an RBAC system?
         self.log.debug("Removing autohold %s", request)
         try:
             self.zk_nodepool.deleteHoldRequest(request, self.zuulweb.launcher)
@@ -1872,7 +1878,6 @@ class ZuulWebAPI(object):
         if not tenant:
             tenant_name = '<root>'
 
-        matched_roles = []
         if access_rules or role_mappings:
             access = False
         elif role_mappings and anonymous_read_access:
@@ -1883,12 +1888,13 @@ class ZuulWebAPI(object):
             admin = False
             if access and permission is None:
                 # Only requesting read access; we can short circuit
-                return (access, admin, matched_roles)
-            # TODO In the old system admin is basically the check for can read
-            # or write privileged info. With the role system we essentially
-            # treat an explicit privilege on a resource as effectively admin
-            # for that resource so we keep the terminology for now. We may want
-            # to reconsider this to make it less hacky and more explicit.
+                return (access, admin)
+
+            check_params = self._get_mapped_rbac_params()
+
+            # With RBAC controls 'access' indicates RO access and 'admin'
+            # indicates RW access to the specified permission. If the old
+            # system below is removed we can rename things for clarity.
             for rule_name, roles in role_mappings.items():
                 rule = abide.authz_rules.get(rule_name)
                 if not rule:
@@ -1903,10 +1909,7 @@ class ZuulWebAPI(object):
                     # if any assigned roles have sufficient permissions.
                     for role_name in roles:
                         role = abide.authz_roles.get(role_name)
-                        # TODO do we need to pass the request into role() so
-                        # that we can compare role permissions against request
-                        # values like pipeline, project, etc?
-                        authorized = role(permission)
+                        authorized = role(permission, check_params)
                         if authorized:
                             if '__zuul_uid_claim' in claims:
                                 uid = claims['__zuul_uid_claim']
@@ -1920,25 +1923,16 @@ class ZuulWebAPI(object):
                             # which means if we set admin to True when access
                             # is False we will have problems.
                             admin = admin or role.admin
-                            if permission is None:
-                                # We can short circuit here as we know read
-                                # only access is requested so no additional
-                                # write role conditions apply.
+                            if (permission is None and access) or admin:
+                                # If we only need read only access and we have
+                                # that or we have RW access to the request we
+                                # are done.
                                 self.log.info('%s authorized access on '
                                               'tenant "%s" by rule "%s '
                                               'and role %s"',
                                               uid, tenant_name,
                                               rule_name, role_name)
                                 break
-                            elif role.admin:
-                                # Alternatively, RW permissions have been
-                                # requested. We accumulate the matching roles
-                                # so that RW criteria can be checked later.
-                                self.log.debug('%s in tenant %s matched '
-                                               'rule %s and role %s',
-                                               uid, tenant_name,
-                                               rule_name, role_name)
-                                matched_roles.append(role)
         else:
             # Backward compatible behavior handling. Once role_mappings are
             # defined they are the only rules that matter.
@@ -1982,7 +1976,7 @@ class ZuulWebAPI(object):
                                   uid, tenant_name, rule_name)
                     access = admin = True
                     break
-        return (access, admin, matched_roles)
+        return (access, admin)
 
     @cherrypy.expose
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')

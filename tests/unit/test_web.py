@@ -20,6 +20,7 @@ import urllib.parse
 import socket
 import textwrap
 import time
+import json
 import jwt
 import sys
 import subprocess
@@ -4501,6 +4502,145 @@ class TestTenantScopedWebApiWithRBAC(BaseTestWeb):
                      'exp': int(time.time()) + 3600}
             _test_project_enqueue_with_authz(i, p, authz, 403)
         self.waitUntilSettled()
+
+    def test_rbac_authorizations(self):
+        # TODO this test case should test that we list out the authorizations
+        # for the current user.
+        pass
+
+    def test_rbac_autohold(self):
+        """Test autoholds work with rbac authz"""
+
+        def _test_autohold_with_authz(project, job, authz, expected):
+            path = '/api/tenant/%(tenant)s/project/%(project)s/autohold'
+            autohold = {'job': job,
+                        'count': 1,
+                        'change': None,
+                        'ref': '.*',
+                        'reason': 'Testing RBAC',
+                        'node_hold_expiration': 0}
+            autohold_args = {'tenant': 'tenant-one',
+                             'project': project, }
+
+            token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                               algorithm='HS256')
+            req = self.post_url(path % autohold_args,
+                                headers={'Authorization': 'Bearer %s' % token},
+                                json=autohold)
+            self.assertEqual(expected, req.status_code, req.text)
+            self.waitUntilSettled()
+
+        # Unauthorized sub
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'exp': int(time.time()) + 3600}
+        _test_autohold_with_authz('org/project', 'project-test1', authz, 403)
+        # Unauthorized group
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters2'],
+                 'exp': int(time.time()) + 3600}
+        _test_autohold_with_authz('org/project', 'project-test1', authz, 403)
+        # Unauthorized project
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        _test_autohold_with_authz('org/project2', 'project-test1', authz, 403)
+        # Unauthorized job
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        _test_autohold_with_authz('org/project', 'project-test2', authz, 403)
+        # Authorized group
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        _test_autohold_with_authz('org/project', 'project-test1', authz, 200)
+
+        # Check the resulting autohold exists (and get its id for deletion)
+        path = '/api/tenant/%(tenant)s/project/%(project)s/autohold'
+        autohold_args = {'tenant': 'tenant-one',
+                         'project': 'org/project'}
+        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                           algorithm='HS256')
+        req = self.get_url(path % autohold_args,
+                           headers={'Authorization': 'Bearer %s' % token})
+        request_id = req.json()[0]['id']
+        self.assertEqual('0000000000', request_id)
+
+        def _test_delete_autohold_with_authz(request_id, authz, expected):
+            path = '/api/tenant/%(tenant)s/autohold/%(request_id)s'
+            delete_args = {'tenant': 'tenant-one',
+                           'request_id': request_id}
+            token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                               algorithm='HS256')
+            req = self.get_url(path % delete_args,
+                               headers={'Authorization': 'Bearer %s' % token})
+            self.assertEqual(expected, req.status_code)
+
+        # Now try to delete the autohold
+        # Unauthorized sub
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'exp': int(time.time()) + 3600}
+        _test_delete_autohold_with_authz(request_id, authz, 403)
+        # Authorized group*
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        # This succeeds despite having a role would like to only allow
+        # autohold deletions for project: org/project2 and job: project-test2
+        # because currently the delete request only considers the request_id
+        # not any of the other autohold attributes.
+        # TODO Consider scoping permissions for autohold deletes based on
+        # project, job, change/ref, etc.
+        _test_delete_autohold_with_authz(request_id, authz, 200)
+
+    def test_rbac_invalid_json(self):
+        """Test behavior of bad requests prior to auth validation"""
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+                           algorithm='HS256')
+        path = '/api/tenant/%(tenant)s/project/%(project)s/autohold'
+        autohold_args = {'tenant': 'tenant-one',
+                         'project': 'org/project', }
+        autohold = {'job': 'project-test1',
+                    'count': 1,
+                    'change': None,
+                    'ref': '.*',
+                    'reason': 'Testing RBAC',
+                    'node_hold_expiration': 0}
+        headers = {
+            'Authorization': 'Bearer %s' % token,
+            'Content-Type': 'application/json'
+        }
+        full_path = urllib.parse.urljoin(self.base_url, path % autohold_args)
+        raw_json = json.dumps(autohold)
+
+        # Ensure everything is happy if the json is valid
+        req = requests.post(full_path, headers=headers, data=raw_json)
+        self.assertEqual(200, req.status_code)
+
+        # Edit the raw_json to make it invalid json
+        raw_json = raw_json[1:-1]
+        req = requests.post(full_path, headers=headers, data=raw_json)
+        self.assertEqual(400, req.status_code)
+        self.assertIn('Invalid JSON document', req.text)
 
 
 class TestHeldAttributeInBuildInfo(BaseTestWeb):
