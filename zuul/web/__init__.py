@@ -1032,10 +1032,10 @@ def check_tenant_auth(**kw):
     request.params['auth'] = auth_context.validate()
 
 
-cherrypy.tools.check_root_auth = cherrypy.Tool('on_start_resource',
+cherrypy.tools.check_root_auth = cherrypy.Tool('before_handler',
                                                check_root_auth,
                                                priority=90)
-cherrypy.tools.check_tenant_auth = cherrypy.Tool('on_start_resource',
+cherrypy.tools.check_tenant_auth = cherrypy.Tool('before_handler',
                                                  check_tenant_auth,
                                                  priority=90)
 
@@ -1430,30 +1430,14 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST', ])
     @cherrypy.tools.check_tenant_auth(require_admin=True, permission='enqueue')
-    def enqueue(self, tenant_name, tenant, auth, project_name):
+    def enqueue(self, tenant_name, tenant, auth, project):
         body = cherrypy.request.json
-        check_params = {
-            'project': project_name,
-            'trigger': body['trigger'],
-            'pipeline': body['pipeline'],
-        }
-        if auth.roles:
-            for role in auth.roles:
-                if role.check_conditions('enqueue', check_params):
-                    self.log.info('%s authorized to enqueue by role %s',
-                                  auth.uid, role.name)
-                    break
-            else:
-                # It should be safe to not raise 403 if auth.roles is empty
-                # because we require admin and admin is only true if we match
-                # old style rules or if we have at least one role to check.
-                raise cherrypy.HTTPError(403)
         if cherrypy.request.method != 'POST':
             raise cherrypy.HTTPError(405)
         self.log.info(f'User {auth.uid} requesting enqueue on '
-                      f'{tenant_name}/{project_name}')
+                      f'{tenant_name}/{project}')
 
-        project = self._getProjectOrRaise(tenant, project_name)
+        project = self._getProjectOrRaise(tenant, project)
 
         if 'pipeline' not in body:
             raise cherrypy.HTTPError(400, 'Invalid request body')
@@ -1884,6 +1868,10 @@ class ZuulWebAPI(object):
             if access and permission is None:
                 # Only requesting read access; we can short circuit
                 return (access, admin, matched_roles)
+
+            check_params = cherrypy.request.json.copy()
+            check_params.update(cherrypy.request.params)
+
             # TODO In the old system admin is basically the check for can read
             # or write privileged info. With the role system we essentially
             # treat an explicit privilege on a resource as effectively admin
@@ -1912,14 +1900,14 @@ class ZuulWebAPI(object):
                                 uid = claims['__zuul_uid_claim']
                             else:
                                 uid = json.dumps(claims)
-                            access = access or True
+                            #access = access or True
                             # It is important that we only set the admin value
                             # if we set access to True due to defaults in the
                             # Role classes. We check the isAuthorized return
                             # values with an OR against access and then admin
                             # which means if we set admin to True when access
                             # is False we will have problems.
-                            admin = admin or role.admin
+                            #admin = admin or role.admin
                             if permission is None:
                                 # We can short circuit here as we know read
                                 # only access is requested so no additional
@@ -1929,16 +1917,19 @@ class ZuulWebAPI(object):
                                               'and role %s"',
                                               uid, tenant_name,
                                               rule_name, role_name)
-                                break
+                                access = access or True
+                                admin = admin or role.admin
                             elif role.admin:
-                                # Alternatively, RW permissions have been
-                                # requested. We accumulate the matching roles
-                                # so that RW criteria can be checked later.
-                                self.log.debug('%s in tenant %s matched '
-                                               'rule %s and role %s',
-                                               uid, tenant_name,
-                                               rule_name, role_name)
-                                matched_roles.append(role)
+                                print("JEB check", role, check_params)
+                                if role.check_conditions(
+                                        permission, check_params):
+                                    self.log.info('%s authorized access on '
+                                                  'tenant "%s" by rule "%s '
+                                                  'and role %s"',
+                                                  uid, tenant_name,
+                                                  rule_name, role_name)
+                                    access = access or True
+                                    admin = admin or role.admin
         else:
             # Backward compatible behavior handling. Once role_mappings are
             # defined they are the only rules that matter.
@@ -3352,7 +3343,7 @@ class ZuulWeb(object):
                 action='state_post')
             route_map.connect(
                 'api',
-                '/api/tenant/{tenant_name}/project/{project_name:.*}/enqueue',
+                '/api/tenant/{tenant_name}/project/{project:.*}/enqueue',
                 controller=api, action='enqueue')
             route_map.connect(
                 'api',
