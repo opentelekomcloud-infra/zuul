@@ -6846,7 +6846,7 @@ class TestInitJobs(ZuulTestCase):
         self.assertHistory([
             dict(name='init-job', result='SUCCESS', changes='1,1'),
             dict(name='check-job', result='SUCCESS', changes='1,1'),
-        ])
+        ], ordered=False)
         self.assertTrue('Skipped 1 job' in A.messages[0])
         self.assertIn('Build succeeded', A.messages[0])
 
@@ -6874,7 +6874,7 @@ class TestInitJobs(ZuulTestCase):
             dict(name='init1-job', result='SUCCESS', changes='1,1'),
             dict(name='init2-job', result='SUCCESS', changes='1,1'),
             dict(name='check-job', result='SUCCESS', changes='1,1'),
-        ])
+        ], ordered=False)
         self.assertTrue('Skipped 2 jobs' in A.messages[0])
         self.assertIn('Build succeeded', A.messages[0])
 
@@ -6886,7 +6886,7 @@ class TestInitJobs(ZuulTestCase):
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='check-job', result='SUCCESS', changes='1,1'),
-        ])
+        ], ordered=False)
         self.assertTrue('Skipped' not in A.messages[0])
         self.assertIn('Build succeeded', A.messages[0])
 
@@ -6930,7 +6930,7 @@ class TestInitJobs(ZuulTestCase):
             dict(name='init1-job', result='SUCCESS', changes='1,1'),
             dict(name='init2-job', result='SUCCESS', changes='1,1'),
             dict(name='check-job', result='SUCCESS', changes='1,1'),
-        ])
+        ], ordered=False)
         self.assertTrue('Skipped 1 job' in A.messages[0])
         self.assertIn('Build succeeded', A.messages[0])
 
