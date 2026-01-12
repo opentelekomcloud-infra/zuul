@@ -34,6 +34,24 @@
       "parentUuid": "e59ad631_b8ad608e",
       "revId": "23a31e6ed2b067d9b5c006c89512b643651f3589",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37b99daa_dc5f24ac",
+        "filename": "web/src/index.jsx",
+        "patchSetId": 5
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2026-01-12T13:23:06Z",
+      "side": 0,
+      "message": "Thanks for the update, I\u0027ll have another look. I think in the beginning I left the -1 because the preview build was not working, which I tried to make clear in the following sentence 😄\n\u003e However, the dashboard preview shows the following exception, so I couldn\u0027t play around with it to see if everything is still working (therefore the -1).\n\nLater on I noticed that the differences in the UI were caused by removing the \"PF3 compatibility stylesheet\", so I wanted to highlight this information, but didn\u0027t update my original comment in that regard, sry. Nevertheless I think it\u0027s good that you tackled those issues, thanks for that 😊.",
+      "parentUuid": "48ecb0cf_6068a676",
+      "revId": "23a31e6ed2b067d9b5c006c89512b643651f3589",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
