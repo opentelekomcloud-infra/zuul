@@ -34,6 +34,24 @@
       "parentUuid": "da8fb84a_16bb821e",
       "revId": "b8c1fc1e36f8945e16512eef99cc0fb487504ef7",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce7da069_f21130af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2026-01-12T12:57:50Z",
+      "side": 1,
+      "message": "Thanks for the clarification.\n\n1) Understood. Then let\u0027s keep it like this\n\n2) AFAIK we used the \"compact\" variant of the table component, not sure if there is one available for TreeViews as well. I also don\u0027t know if those variants stay consistent across different PF versions. I think we also reduced some spaces further via custom CSS rules, but I would have to check for the details. I personally don\u0027t have a problem with the spaces, I just remember that this was a big issue for some people when I first introduced the new design using PF4 a few years ago (There were some comparisons using building blocks, e.g. Lego vs Duplo 😄).\n\n3) Fine with me as well.",
+      "parentUuid": "0273faa7_21d6bb04",
+      "revId": "b8c1fc1e36f8945e16512eef99cc0fb487504ef7",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
