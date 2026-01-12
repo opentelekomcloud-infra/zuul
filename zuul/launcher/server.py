@@ -3050,7 +3050,7 @@ class Launcher:
                     "Received 403 for %s, retrying with range header", url)
                 # This may be a pre-signed url that can't handle a
                 # HEAD request, retry with GET:
-                with requests.get(url,
+                with requests.get(url, stream=True,
                                   headers={"Range": "bytes=0-0"}) as resp:
                     resp.raise_for_status()
                     size = int(resp.headers['content-range'].split('/')[-1])
