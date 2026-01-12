@@ -6237,6 +6237,42 @@ class TestRoleBranches(RoleTestCase):
                     'commit': self.getCheckout(
                         build,
                         'untrusted/project_2/review.example.com/project2')}},
+            'pre_playbooks': [
+                {'path': 'trusted/project_0/review.example.com/'
+                 'common-config/playbooks/pre-base.yaml',
+                 'roles': [
+                     {'checkout': 'master',
+                      'checkout_description': 'playbook branch',
+                      'link_name': 'ansible/pre_playbook_0/role_0/'
+                      'common-config',
+                      'link_target': 'trusted/project_0/'
+                      'review.example.com/common-config',
+                      'role_path': 'ansible/pre_playbook_0/role_0/'
+                      'common-config/roles'
+                      }
+                 ]},
+                {'path': 'untrusted/project_0/review.example.com/'
+                 'project1/playbooks/parent-job-pre.yaml',
+                 'roles': [
+                     {'checkout': 'stable',
+                      'checkout_description': 'playbook branch',
+                      'link_name': 'ansible/pre_playbook_1/role_0/project1',
+                      'link_target': 'untrusted/project_0/'
+                      'review.example.com/project1',
+                      'role_path': 'ansible/pre_playbook_1/role_0/'
+                      'project1/roles'
+                      },
+                     {'checkout': 'master',
+                      'checkout_description': 'zuul branch',
+                      'link_name': 'ansible/pre_playbook_1/role_1/'
+                      'common-config',
+                      'link_target': 'untrusted/project_1/'
+                      'review.example.com/common-config',
+                      'role_path': 'ansible/pre_playbook_1/role_1/'
+                      'common-config/roles'
+                      }
+                 ]}
+            ],
             'playbooks': [
                 {'path': 'untrusted/project_2/review.example.com/'
                  'project2/playbooks/child-job.yaml',
@@ -6257,7 +6293,8 @@ class TestRoleBranches(RoleTestCase):
                       'common-config/roles'
                       }
                  ]}
-            ]
+            ],
+            'post_playbooks': [],
         }
 
         self.assertEqual(expected, zuul['playbook_context'])
