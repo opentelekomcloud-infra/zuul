@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cfc15143_2623effd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 27952
+      },
+      "writtenOn": "2026-01-12T13:23:42Z",
+      "side": 1,
+      "message": "Hmm, I think we have to solve the merge conflict first to make a recheck work here.",
+      "revId": "11ea3346fd5d664771397a3d2b2248f94b3bb0bf",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
