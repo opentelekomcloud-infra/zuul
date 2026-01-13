@@ -22,6 +22,30 @@
       },
       "revId": "c950ab516338595f017b29205c0bfb57ca6a93a2",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "81e76be9_e9fc3463",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1282,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-13T11:07:56Z",
+      "side": 1,
+      "message": "Could there also be a race condition where we receive an event for a change to be added to a dependent pipeline and that change (B) has a dependency on a change (A) that\u0027s about to be merged?\n\nI imagine the following sequence:\n1. source event for B is processed (A still open); dependency to A added\n2. A is merged and change cache for A is updated\n3. enqueue of B fails because `areChangesReadyToBeEnqueued()` uses `canMerge(A)` which returns False",
+      "parentUuid": "2eb158dd_69b0cc48",
+      "range": {
+        "startLine": 1280,
+        "startChar": 0,
+        "endLine": 1282,
+        "endChar": 54
+      },
+      "revId": "c950ab516338595f017b29205c0bfb57ca6a93a2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
