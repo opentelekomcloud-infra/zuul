@@ -18,6 +18,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff604697_9ae2ed79",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-13T19:00:19Z",
+      "side": 1,
+      "message": "Agreed.  I think the additional processing should be small; most of the time we\u0027re not processing large amounts of input.  The main change would be that an *authenticated* user could potentially DOS by uploading giant data blobs to methods that read JSON from the http request.  But we can at least perform the authentication check early, so only authn users would be able to do that.\n\n(Also, if that\u0027s really a problem, we should tune the http server to disallow that.)",
+      "parentUuid": "18f1257a_b132df79",
+      "revId": "a46b709360dbe41a8bf880a984a23ada1b09cce5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9efcae1f_f8fe732a",
@@ -35,6 +53,24 @@
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "29baac8b_a8968639",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-13T19:00:19Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "9efcae1f_f8fe732a",
+      "revId": "a46b709360dbe41a8bf880a984a23ada1b09cce5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "eb58266b_4777e2ff",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-01-13T01:02:09Z",
       "side": 1,
       "message": "Not every request has a json attribute so this needs to be something like:\n\n```\nif hasattr(cherrypy.request, \u0027json\u0027):\n    check_params \u003d cherrypy.request.json.copy()\nelse:\n    check_params \u003d {}\n```\n\nBut when implemented this way the existing read access test case also passes.",
+      "revId": "a46b709360dbe41a8bf880a984a23ada1b09cce5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2b82a516_1407294e",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1872,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-13T19:00:19Z",
+      "side": 1,
+      "message": "Acknowledged",
+      "parentUuid": "eb58266b_4777e2ff",
       "revId": "a46b709360dbe41a8bf880a984a23ada1b09cce5",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
