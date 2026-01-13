@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18f1257a_b132df79",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2026-01-13T01:02:09Z",
+      "side": 1,
+      "message": "The upshot to this approach is that mistakes are centralized so theoretically more likely to be detected via existing tests when making changes. Versus adding a new api method and needing to add additional checks or even additional decorators as these may not come with the same level of testing in all cases. Keeping things in check_tenant_auth so that there is a single decorator to handle all of this would be nice.\n\nThe downside is that we\u0027re going to do more processing before rejecting invalid requests. Given that Zuul is largely driven through code review system events and not admin api interactions I suspect that this is fine.\n\nLong story short I like the proposed approach here as long as we aren\u0027t too concerned about the performance impact and don\u0027t think there are security implications to checking basic auth info as early as possible.",
+      "revId": "a46b709360dbe41a8bf880a984a23ada1b09cce5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9efcae1f_f8fe732a",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2026-01-13T01:02:09Z",
+      "side": 1,
+      "message": "I think that your example shows that we can probably get away without D. In particular it looks like we are very consistent about request parameter names so we should be able to map them centrally and capture that via a mapping dictionary as described in E.",
+      "revId": "a46b709360dbe41a8bf880a984a23ada1b09cce5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eb58266b_4777e2ff",
+        "filename": "zuul/web/__init__.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1872,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2026-01-13T01:02:09Z",
+      "side": 1,
+      "message": "Not every request has a json attribute so this needs to be something like:\n\n```\nif hasattr(cherrypy.request, \u0027json\u0027):\n    check_params \u003d cherrypy.request.json.copy()\nelse:\n    check_params \u003d {}\n```\n\nBut when implemented this way the existing read access test case also passes.",
+      "revId": "a46b709360dbe41a8bf880a984a23ada1b09cce5",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
