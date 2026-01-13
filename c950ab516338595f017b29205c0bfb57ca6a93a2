@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2eb158dd_69b0cc48",
+        "filename": "zuul/driver/gerrit/gerritconnection.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1282,
+      "author": {
+        "id": 27582
+      },
+      "writtenOn": "2026-01-13T11:02:31Z",
+      "side": 1,
+      "message": "I\u0027m wondering if we first need to check whether the changes is merged (and return True in that case) before returning False here. From line 1273 it at least seems like it should return True in that case.",
+      "range": {
+        "startLine": 1280,
+        "startChar": 0,
+        "endLine": 1282,
+        "endChar": 54
+      },
+      "revId": "c950ab516338595f017b29205c0bfb57ca6a93a2",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
