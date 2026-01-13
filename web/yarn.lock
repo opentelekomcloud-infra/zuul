@@ -727,10 +727,10 @@
   resolved "https://registry.yarnpkg.com/@scarf/scarf/-/scarf-1.4.0.tgz#3bbb984085dbd6d982494538b523be1ce6562972"
   integrity sha512-xxeapPiUXdZAE3che6f3xogoJPeZgig6omHEy1rIY5WVsB3H2BHNnZH+gHG6x91SCWyQCzWGsuL2Hh3ClO5/qQ==
 
-"@softwarefactory-project/re-ansi@^0.7.4":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@softwarefactory-project/re-ansi/-/re-ansi-0.7.4.tgz#7b4607ce0cae35ab93874fdf1fd7a99d4d03b44d"
-  integrity sha512-KNgiEwMy/1mQqpYdtUnwd3Y5I5/NhZgvNJrIKycqjj3pUEVlz4clQ1GMpBx6GEHah2pwrzysHsNS90lecO/m4Q==
+"@softwarefactory-project/re-ansi@^0.7.5":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@softwarefactory-project/re-ansi/-/re-ansi-0.7.5.tgz#aff3d911eaf8933b1e5acf5ee3281e60a9331345"
+  integrity sha512-2uv2IBjICzolo2AJcLgBHMYePSd+H6oyrJbh4xrO2Rt2uezW87dJHtSMh0lfJg/w399Udw8x+9i4wesLW5v4kw==
 
 "@standard-schema/spec@^1.0.0":
   version "1.0.0"
