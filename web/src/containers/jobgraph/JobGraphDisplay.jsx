@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-import React, { useState, useEffect} from 'react'
+import React, { useEffect, useMemo} from 'react'
 import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 import * as d3 from 'd3'
@@ -110,7 +110,6 @@ GraphViz.propTypes = {
 }
 
 function JobGraphDisplay(props) {
-  const [dot, setDot] = useState()
   const {fetchJobGraphIfNeeded, tenant, project, pipeline, branch, preferences } = props
 
   useEffect(() => {
@@ -122,11 +121,11 @@ function JobGraphDisplay(props) {
                                       props.pipeline,
                                       props.branch)
   const jobGraph = tenantJobGraph ? tenantJobGraph[jobGraphKey] : undefined
-  useEffect(() => {
-    if (jobGraph) {
-      setDot(makeDot(tenant, pipeline, project, branch, jobGraph, preferences.darkMode))
-    }
-  }, [tenant, pipeline, project, branch, jobGraph, preferences])
+
+  const dot = useMemo(() => jobGraph? makeDot(tenant, pipeline, project, branch, jobGraph,
+                                              preferences.darkMode): null,
+                                [tenant, pipeline, project, branch, jobGraph, preferences])
+
   return (
     <>
       {dot && <GraphViz dot={dot}/>}

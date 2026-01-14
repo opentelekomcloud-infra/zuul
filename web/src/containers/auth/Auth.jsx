@@ -43,7 +43,7 @@ import { withAuth } from 'oidc-react'
 import { getHomepageUrl } from '../../api'
 
 
-class AuthContainer extends React.Component {
+class AuthContainerComponent extends React.Component {
   static propTypes = {
     user: PropTypes.object,
     tenant: PropTypes.object,
@@ -279,10 +279,12 @@ class AuthContainer extends React.Component {
   }
 }
 
-export default connect(state => ({
+const AuthContainer = connect(state => ({
   auth: state.auth,
   user: state.user,
   tenant: state.tenant,
   timezone: state.timezone,
   info: state.info,
-}))(withAuth(AuthContainer))
+}))(withAuth(AuthContainerComponent))
+
+export default AuthContainer

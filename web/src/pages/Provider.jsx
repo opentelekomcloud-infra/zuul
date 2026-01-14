@@ -33,7 +33,7 @@ import FlavorTable from '../containers/provider/FlavorTable'
 import LabelTable from '../containers/provider/LabelTable'
 import { ReloadButton } from '../containers/Fetching'
 
-function ProviderPage(props) {
+function ProviderPageComponent(props) {
   const providerName = props.match.params.providerName
   const tenant = useSelector((state) => state.tenant)
   const providers = useSelector((state) => state.providers.providers[tenant.name])
@@ -114,8 +114,9 @@ function ProviderPage(props) {
   )
 }
 
-ProviderPage.propTypes = {
+ProviderPageComponent.propTypes = {
   match: PropTypes.object.isRequired,
 }
 
-export default withRouter(ProviderPage)
+const ProviderPage = withRouter(ProviderPageComponent)
+export default ProviderPage

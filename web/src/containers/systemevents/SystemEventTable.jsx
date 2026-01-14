@@ -34,7 +34,7 @@ import {
   TableVariant,
 } from '@patternfly/react-table'
 
-import { IconProperty } from '../../Misc'
+import { IconProperty } from '../../MiscComponents'
 
 function SystemEventTable({
   events,
