@@ -295,15 +295,15 @@ class ZKBranchCacheMixin:
             valid_flags, branch_infos = self._fetchProjectBranches(
                 project, required_flags)
             self._branch_cache.setProjectBranches(
-                project.name, valid_flags, branch_infos)
+                project.name, valid_flags, branch_infos, zuul_event_id)
 
         merge_modes = self._fetchProjectMergeModes(project)
         self._branch_cache.setProjectMergeModes(
-            project.name, merge_modes)
+            project.name, merge_modes, zuul_event_id)
 
         default_branch = self._fetchProjectDefaultBranch(project)
         self._branch_cache.setProjectDefaultBranch(
-            project.name, default_branch)
+            project.name, default_branch, zuul_event_id)
         log.info("Updated branches for %s", project.name)
 
     def getProjectBranches(self, project, tenant, min_ltime=-1):
@@ -532,7 +532,7 @@ class ZKBranchCacheMixin:
                               "changed to %s",
                               project_name, event.branch, protected)
                 self._branch_cache.setProtected(project_name, event.branch,
-                                                protected)
+                                                protected, event)
                 event.branch_cache_ltime = self._branch_cache.ltime
 
             event.branch_protected = protected

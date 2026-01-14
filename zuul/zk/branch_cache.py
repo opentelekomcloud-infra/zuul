@@ -18,6 +18,7 @@ from enum import IntFlag
 import logging
 import json
 
+from zuul.lib.logutil import get_annotated_logger
 from zuul.zk.zkobject import ZKContext, ShardedZKObject
 from zuul.zk.locks import (
     SessionAwareReadLock,
@@ -308,7 +309,7 @@ class BranchCache:
         return list(project_info.branches.values())
 
     def setProjectBranches(self, project_name,
-                           valid_flags, branch_infos):
+                           valid_flags, branch_infos, zuul_event_id=None):
         """Set the branch names for the given project.
 
         Use None as a sentinel value for the branches to indicate that
@@ -321,11 +322,15 @@ class BranchCache:
         :param list[str] branches:
             The list of branches or None to indicate a fetch error.
         """
+        log = get_annotated_logger(self.log, zuul_event_id)
 
+        log.debug("Acquiring branch cache write lock: set project branches")
         with (zk_locked(self.wlock),
-              self.zk_context as ctx,
-              self.cache.activeContext(ctx)):
+                self.zk_context as ctx,
+                self.cache.activeContext(ctx)):
 
+            log.debug("Updating project branches for %s (lock acquired)",
+                      project_name)
             project_info = self.cache.projects.get(project_name)
             if project_info is None:
                 project_info = ProjectInfo(project_name)
@@ -364,18 +369,25 @@ class BranchCache:
                 if (branch_info.valid_flags & valid_flags ==
                     branch_info.valid_flags):
                     del project_info.branches[branch_name]
+        log.debug("Done updating project branches (lock released)")
 
-    def setProtected(self, project_name, branch, protected):
+    def setProtected(self, project_name, branch, protected,
+                     zuul_event_id=None):
         """Correct the protection state of a branch.
 
         This may be called if a branch has changed state without us
         receiving an explicit event.
         """
+        log = get_annotated_logger(self.log, zuul_event_id)
 
+        log.debug("Acquiring branch cache write lock: set protected")
         with (zk_locked(self.wlock),
               self.zk_context as ctx,
               self.cache.activeContext(ctx)):
 
+            log.debug(
+                "Setting protected flag for %s branch %s (lock acquired)",
+                project_name, branch)
             project_info = self.cache.projects.get(project_name)
             if project_info is None:
                 project_info = ProjectInfo(project_name)
@@ -387,6 +399,7 @@ class BranchCache:
                 project_info.branches[branch] = branch_info
 
             branch_info.protected = protected
+        log.debug("Done setting protected flag (lock released)")
 
     def getProjectMergeModes(self, project_name,
                              min_ltime=-1, default=RAISE_EXCEPTION):
@@ -432,7 +445,8 @@ class BranchCache:
 
         return project_info.merge_modes
 
-    def setProjectMergeModes(self, project_name, merge_modes):
+    def setProjectMergeModes(self, project_name, merge_modes,
+                             zuul_event_id=None):
         """Set the supported merge modes for the given project.
 
         Use None as a sentinel value for the merge modes to indicate
@@ -444,13 +458,18 @@ class BranchCache:
             The list of merge modes (by model ID) or None.
 
         """
+        log = get_annotated_logger(self.log, zuul_event_id)
 
+        log.debug("Acquiring branch cache write lock: set project merge modes")
         with zk_locked(self.wlock):
+            log.debug("Updating project %s merge modes (lock acquired)",
+                      project_name)
             with self.cache.activeContext(self.zk_context):
                 project_info = self.cache.projects.get(project_name)
                 if project_info is None:
                     project_info = ProjectInfo(project_name)
                 project_info.merge_modes = merge_modes
+        log.debug("Done updating project merge modes (lock released)")
 
     def getProjectDefaultBranch(self, project_name,
                                 min_ltime=-1, default=RAISE_EXCEPTION):
@@ -497,7 +516,8 @@ class BranchCache:
 
         return project_info.default_branch
 
-    def setProjectDefaultBranch(self, project_name, default_branch):
+    def setProjectDefaultBranch(self, project_name, default_branch,
+                                zuul_event_id=None):
         """Set the upstream default branch for the given project.
 
         Use None as a sentinel value for the default branch to indicate
@@ -509,13 +529,19 @@ class BranchCache:
             The default branch or None.
 
         """
+        log = get_annotated_logger(self.log, zuul_event_id)
 
+        log.debug(
+            "Acquiring branch cache write lock: set project default branch")
         with zk_locked(self.wlock):
+            log.debug("Updating project %s default branch (lock acquired)",
+                      project_name)
             with self.cache.activeContext(self.zk_context):
                 project_info = self.cache.projects.get(project_name)
                 if project_info is None:
                     project_info = ProjectInfo(project_name)
                 project_info.default_branch = default_branch
+        log.debug("Done updating project default branch (lock released)")
 
     @property
     def ltime(self):
