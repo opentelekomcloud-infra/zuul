@@ -1687,6 +1687,9 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                     # processing since we can't load a corresponding change
                     raise GerritEventProcessingException(
                         f"Did not find change for number {number}") from e
+                except RecursionError:
+                    # do not retry when maximum recursion depth was exceeded
+                    raise
                 except Exception as e:
                     if attempt >= 3:
                         raise
