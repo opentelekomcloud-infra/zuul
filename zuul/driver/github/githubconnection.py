@@ -681,7 +681,7 @@ class GithubEventProcessor(object):
                        project,
                        self.body.get('rule').get('name'),
                        self.body.get('action'))
-        self.connection.updateProjectBranches(project)
+        self.connection.updateProjectBranches(project, self.zuul_event_id)
 
         # Get all protected branches
         new_protected_branches =\
