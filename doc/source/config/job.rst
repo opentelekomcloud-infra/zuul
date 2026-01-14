@@ -270,6 +270,8 @@ Here is an example of two job definitions:
         * files
         * irrelevant-files
         * required-projects
+        * include-projects
+        * exclude-projects
         * vars
         * extra-vars
         * host-vars
@@ -951,6 +953,109 @@ Here is an example of two job definitions:
          use this value instead of the branch of the item being tested
          when collecting any jobs to run which are defined in this
          project.
+
+   .. attr:: include-projects
+      :default: null
+
+      A list of projects that should be included when preparing the
+      workspace for this job.  Any projects that are required for
+      playbooks, roles, include-vars, or required-projects will be
+      present and prepared regardless.  This may only be used to
+      filter projects that would otherwise already be present in the
+      workspace for other reasons.  That includes projects for changes
+      related to any items ahead in the queue, dependencies of those
+      changes, and also the changes under test for the current queue
+      item, and any required projects for the job.
+
+      Note that `include-projects` alone is not sufficient to cause a
+      project to be prepared in the workspace.  It must be selected
+      due to one of the preceding reasons.  See
+      :attr:`job.required-projects` to force a project to appear in
+      the workspace.
+
+      This feature may be useful for jobs which are known to interact
+      with a known set of repositories (or even no repositories).
+      Such jobs may be able to run faster if only the necessary
+      projects are prepared in the workspace.
+
+      The default value of ``null`` indicates no filtering is to be
+      performed.
+
+      Supports override control.  The default is ``!inherit``: values
+      are merged without duplication.
+
+      The items in the list may either be a string, in which case they
+      are interpreted as the name of a project, or a dictionary with
+      the following form:
+
+      .. attr:: type
+
+         The type of entry.  May be one of the following values:
+
+         .. attr:: name
+
+            The entry is the name of a project (equivalent to a bare
+            string).  If this entry is supplied, the ``name`` key in the
+            dictionary must also be present.
+
+         .. attr:: change
+
+            The entry matches the project of the current change under test.
+
+         .. attr:: item
+
+            The entry matches any project in the current queue item.
+
+      .. attr:: name
+
+         Only used with the ``name`` type, this string is the name of
+         the project to match.
+
+   .. attr:: exclude-projects
+      :default: null
+
+      A :ref:`regular expression <regex>` or list of regular
+      expressions of names of projects that should be excluded when
+      preparing the workspace for this job.
+
+      See :attr:`job.include-projects` for a general description of
+      the feature.
+
+      This filter is applied after :attr:`job.include-projects`, so it
+      may further refine a list of projects.
+
+      The default value of ``null`` indicates no filtering is to be
+      performed.
+
+      Supports override control.  The default is ``!inherit``: values
+      are merged without duplication.
+
+      The items in the list may either be a string, in which case they
+      are interpreted as the name of a project, or a dictionary with
+      the following form:
+
+      .. attr:: type
+
+         The type of entry.  May be one of the following values:
+
+         .. attr:: name
+
+            The entry is the name of a project (equivalent to a bare
+            string).  If this entry is supplied, the ``name`` key in the
+            dictionary must also be present.
+
+         .. attr:: change
+
+            The entry matches the project of the current change under test.
+
+         .. attr:: item
+
+            The entry matches any project in the current queue item.
+
+      .. attr:: name
+
+         Only used with the ``name`` type, this string is the name of
+         the project to match.
 
    .. attr:: vars
 
