@@ -245,6 +245,7 @@ class BuildConverter:
                 'pipeline': buildset.pipeline,
                 'event_id': buildset.event_id,
                 'event_timestamp': event_timestamp,
+                'queue_item_uuid': buildset.queue_item_uuid,
                 'buildset': {
                     'uuid': buildset.uuid,
                 },
@@ -349,6 +350,7 @@ class BuildsetConverter:
             'pipeline': buildset.pipeline,
             'event_id': buildset.event_id,
             'event_timestamp': event_timestamp,
+            'queue_item_uuid': buildset.queue_item_uuid,
             'first_build_start_time': start,
             'last_build_end_time': end,
             'refs': [
@@ -2717,8 +2719,8 @@ class ZuulWebAPI(object):
     def builds(self, tenant_name, tenant, auth, project=None,
                pipeline=None, change=None, branch=None, patchset=None,
                ref=None, newrev=None, uuid=None, job_name=None,
-               voting=None, nodeset=None, result=None, final=None,
-               held=None, complete=None, limit=50, skip=0,
+               queue_item_uuid=None, voting=None, nodeset=None, result=None,
+               final=None, held=None, complete=None, limit=50, skip=0,
                idx_min=None, idx_max=None, exclude_result=None):
         """
         List the executed builds
@@ -2747,7 +2749,8 @@ class ZuulWebAPI(object):
         builds = connection.getBuilds(
             tenant=tenant_name, project=project, pipeline=pipeline,
             change=change, branch=branch, patchset=patchset, ref=ref,
-            newrev=newrev, uuid=uuid, job_name=job_name, voting=voting,
+            newrev=newrev, uuid=uuid, job_name=job_name,
+            queue_item_uuid=queue_item_uuid, voting=voting,
             nodeset=nodeset, result=result, final=final, held=held,
             complete=complete, limit=limit, offset=skip, idx_min=_idx_min,
             idx_max=_idx_max, exclude_result=exclude_result,
@@ -2892,7 +2895,8 @@ class ZuulWebAPI(object):
     def buildsets(self, tenant_name, tenant, auth, project=None,
                   pipeline=None, change=None, branch=None,
                   patchset=None, ref=None, newrev=None, uuid=None,
-                  result=None, complete=None, limit=50, skip=0,
+                  queue_item_uuid=None, result=None,
+                  complete=None, limit=50, skip=0,
                   idx_min=None, idx_max=None, exclude_result=None):
         connection = self._get_connection()
 
@@ -2908,7 +2912,8 @@ class ZuulWebAPI(object):
         buildsets = connection.getBuildsets(
             tenant=tenant_name, project=project, pipeline=pipeline,
             change=change, branch=branch, patchset=patchset, ref=ref,
-            newrev=newrev, uuid=uuid, result=result, complete=complete,
+            newrev=newrev, uuid=uuid, queue_item_uuid=queue_item_uuid,
+            result=result, complete=complete,
             limit=limit, offset=skip, idx_min=_idx_min, idx_max=_idx_max,
             exclude_result=exclude_result, query_timeout=self.query_timeout)
 
