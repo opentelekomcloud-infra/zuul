@@ -174,19 +174,21 @@ def construct_build_params(uuid, connections, job, item, pipeline,
                 params['projects'].append(make_project_dict(project))
                 projects.add(project)
 
-    for change in dependent_changes:
+    for dep_change in dependent_changes:
         try:
             (_, project) = item.manager.tenant.getProject(
-                change['project']['canonical_name'])
+                dep_change['project']['canonical_name'])
             if not project:
                 raise KeyError()
         except Exception:
             # We have to find the project this way because it may not
             # be registered in the tenant (ie, a foreign project).
             source = connections.getSourceByCanonicalHostname(
-                change['project']['canonical_hostname'])
-            project = source.getProject(change['project']['name'])
+                dep_change['project']['canonical_hostname'])
+            project = source.getProject(dep_change['project']['name'])
 
+        if not job.includesProject(project, change, item):
+            continue
         if project not in projects:
             params['projects'].append(make_project_dict(project))
             projects.add(project)
