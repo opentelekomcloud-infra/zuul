@@ -15,7 +15,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
 import { Provider } from 'react-redux'
-import configureStore from '../../store'
+import configureStore from '../../store.prod'
 import BuildOutput from './BuildOutput'
 
 const fakeOutput = (width, height) => ({
@@ -34,6 +34,7 @@ it('BuildOutput renders big task', () => {
   const output = fakeOutput(512, 1024)
   const begin = performance.now()
   const store = configureStore()
+  // eslint-disable-next-line
   ReactDOM.render(
     <Provider store={store}>
     <BuildOutput output={output} />

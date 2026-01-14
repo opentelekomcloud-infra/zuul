@@ -13,7 +13,6 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-
 function getFiltersFromUrl(location, filterCategories) {
   const urlParams = new URLSearchParams(location.search)
   const _filters = filterCategories.reduce((filterDict, item) => {
