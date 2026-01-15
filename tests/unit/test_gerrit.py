@@ -1366,6 +1366,35 @@ class TestGerritConnectionDelay(ZuulTestCase):
                                            files=file_dict)
         A.setMerged()
         self.fake_gerrit.addEvent(A.getRefUpdatedEvent())
+        # We add a delay here so that we exercise the behavior at the end
+        # of the ZK queue.
+        time.sleep(1)
+        self.fake_gerrit.addEvent(A.getChangeMergedEvent())
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-post', result='SUCCESS'),
+            dict(name='new-post-job', result='SUCCESS'),
+        ], ordered=False)
+
+    def test_ref_updated_reconfig_immediate(self):
+        # Same as the above test, but with no delay between the two
+        # events.
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: new-post-job
+                parent: project-post
+            - project:
+                post:
+                  jobs:
+                    - new-post-job
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+        A.setMerged()
+        self.fake_gerrit.addEvent(A.getRefUpdatedEvent())
         self.fake_gerrit.addEvent(A.getChangeMergedEvent())
         self.waitUntilSettled()
         self.assertHistory([
