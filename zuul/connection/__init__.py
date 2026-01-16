@@ -266,25 +266,28 @@ class ZKBranchCacheMixin:
                 # know if branch protection has been disabled before deletion
                 # of the branch.
                 # FIXME(tobiash): Find a way to handle that case
-                self.updateProjectBranches(project)
+                self.updateProjectBranches(project, event)
             elif event.branch_created:
                 # In GitHub, a new branch never can be protected
                 # because that needs to be configured after it has
                 # been created.  Other drivers could optimize this,
                 # but for the moment, implement the lowest common
                 # denominator and clear the cache so that we query.
-                self.updateProjectBranches(project)
+                self.updateProjectBranches(project, event)
             event.branch_cache_ltime = self._branch_cache.ltime
         return event
 
-    def updateProjectBranches(self, project):
+    def updateProjectBranches(self, project, zuul_event_id=None):
         """Update the branch cache for the project.
 
         :param zuul.model.Project project:
             The project for which the branches are returned.
+        :param zuul_event_id:
+            Unique id associated to the handled event.
         """
-        # Figure out which queries we have a cache for
+        log = get_annotated_logger(self.log, event=zuul_event_id)
 
+        # Figure out which queries we have a cache for
         required_flags = self._branch_cache.getProjectCompletedFlags(
             project.name)
         if required_flags:
@@ -301,7 +304,7 @@ class ZKBranchCacheMixin:
         default_branch = self._fetchProjectDefaultBranch(project)
         self._branch_cache.setProjectDefaultBranch(
             project.name, default_branch)
-        self.log.info("Updated branches for %s" % project.name)
+        log.info("Updated branches for %s", project.name)
 
     def getProjectBranches(self, project, tenant, min_ltime=-1):
         """Get the branch names for the given project.
