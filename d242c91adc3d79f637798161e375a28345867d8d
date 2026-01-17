@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d8de37d_ed431779",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2026-01-17T19:41:46Z",
+      "side": 1,
+      "message": "I\u0027m a fan of this approach due to how it simplifies the model.py objects and the process of validating authorization. I think simplifying that is a good way to ensure we\u0027re getting it right.\n\nThat said I discovered this additional compromise with this approach as I built it out a bit more. Specifically we have methods that maybe don\u0027t have all the parameters associated with them that we would want to implicitly check. If we delegate the authorization aspect to the methods I think (though didn\u0027t try writing this approach) we could keep the existing methods as is then add explicit magic to check things.\n\nFor example in the autohold delete case we could lookup the request by id using the existing api call. Then inspect the autohold request for attributes like project and ref etc. If they don\u0027t match the RBAC rule then we can return 403.\n\nIt is possible that we could solve this problem for some methods with additional decorator information, but I\u0027m not sure that is the case for something like autohold deletions where we need to fetch the resource from the database and verify we have write permissions to it before proceeding with a delete in the db.\n\nOpen to thoughts on this. I think the compromise of adding new methods may be good enough? But I haven\u0027t done a full audit of the methods to say for certain.",
+      "revId": "d242c91adc3d79f637798161e375a28345867d8d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
