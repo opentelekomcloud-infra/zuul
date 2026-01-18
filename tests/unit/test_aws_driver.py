@@ -802,6 +802,16 @@ class TestAwsSnapshot(AnsibleZuulTestCase, AwsBaseTest):
                    '_getInstanceConfiguration',
                    getInstanceConfiguration)
 
+        orig_updateNodeFromInstance = zuul.launcher.server.Launcher.\
+            _updateNodeFromInstance
+
+        def _updateNodeFromInstance(self, node, instance):
+            orig_updateNodeFromInstance(self, node, instance)
+            node.connection_type = 'local'
+        self.patch(zuul.launcher.server.Launcher,
+                   '_updateNodeFromInstance',
+                   _updateNodeFromInstance)
+
     def _waitForArtifacts(self, image_name, count):
         for _ in iterate_timeout(30, "artifacts to settle"):
             artifacts = self.launcher.image_build_registry.\
