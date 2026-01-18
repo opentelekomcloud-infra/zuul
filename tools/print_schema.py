@@ -207,7 +207,7 @@ class SchemaWalker:
 
     def toDoc(self):
         data = self.toDict()
-        out = ':orphan:\n\n'
+        out = ''
 
         provider = {
             'value': {
