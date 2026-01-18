@@ -32,6 +32,7 @@ import zuul.driver.pagure
 import zuul.driver.gitlab
 import zuul.driver.elasticsearch
 import zuul.driver.aws
+import zuul.driver.azure
 import zuul.driver.openstack
 import zuul.driver.static
 import zuul.driver.kubernetes
@@ -74,6 +75,7 @@ class ConnectionRegistry(object):
         self.registerDriver(zuul.driver.gitlab.GitlabDriver())
         self.registerDriver(zuul.driver.elasticsearch.ElasticsearchDriver())
         self.registerDriver(zuul.driver.aws.AwsDriver())
+        self.registerDriver(zuul.driver.azure.AzureDriver())
         self.registerDriver(zuul.driver.openstack.OpenstackDriver())
         self.registerDriver(zuul.driver.static.StaticDriver())
         self.registerDriver(zuul.driver.kubernetes.KubernetesDriver())

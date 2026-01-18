@@ -88,6 +88,7 @@ from zuul.driver.gitlab import GitlabDriver
 from zuul.driver.gerrit import GerritDriver
 from zuul.driver.elasticsearch import ElasticsearchDriver
 from zuul.driver.aws import AwsDriver
+from zuul.driver.azure import AzureDriver
 from zuul.driver.openstack import OpenstackDriver
 from zuul.driver.static import StaticDriver
 from zuul.driver.kubernetes import KubernetesDriver
@@ -492,6 +493,7 @@ class TestConnectionRegistry(ConnectionRegistry):
             self, test_config, config, upstream_root, additional_event_queues))
         self.registerDriver(ElasticsearchDriver())
         self.registerDriver(AwsDriver())
+        self.registerDriver(AzureDriver())
         self.registerDriver(OpenstackDriver())
         self.registerDriver(StaticDriver())
         self.registerDriver(KubernetesDriver())
@@ -1539,10 +1541,12 @@ class ResponsesFixture(fixtures.Fixture):
         super().__init__()
         self.requests_mock = responses.RequestsMock(
             assert_all_requests_are_fired=False)
+        self.requests_mock.add_passthru("http://localhost")
 
     def _setUp(self):
         self.requests_mock.start()
         self.addCleanup(self.requests_mock.stop)
+        self.addCleanup(self.requests_mock.reset)
 
 
 class ChrootedKazooFixture(fixtures.Fixture):

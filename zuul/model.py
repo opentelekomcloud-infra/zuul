@@ -30,6 +30,7 @@ from collections import OrderedDict, defaultdict, namedtuple, UserDict
 from enum import StrEnum, IntEnum
 from functools import partial, total_ordering
 from uuid import uuid4
+import voluptuous as vs
 
 import re2
 import jsonpath_rw
@@ -1930,6 +1931,9 @@ class ProviderConfig(ConfigObject):
                 schema = schema_class.getInheritableZuulImageSchema()
             else:
                 schema = schema_class.getInheritableCloudImageSchema()
+
+        while isinstance(schema.schema, vs.Schema):
+            schema = schema.schema
         # If schema.schema.keys ever becomes problematic due to
         # schema complexity, we could convert the above methods
         # into methods that just return a list of keys.
