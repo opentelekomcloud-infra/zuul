@@ -3107,7 +3107,7 @@ class TestNodesetRequestPriority(LauncherBaseTestCase):
             dict(name='project-post', result='SUCCESS'),
         ], ordered=False)
 
-    @simple_layout('layouts/two-projects-integrated.yaml',
+    @simple_layout('layouts/two-projects-integrated-launcher.yaml',
                    enable_nodepool=True)
     def test_relative_priority_check(self):
         "Test that nodes are requested at the relative priority"
@@ -3177,7 +3177,7 @@ class TestNodesetRequestPriority(LauncherBaseTestCase):
         self.releaseNodesetRequests(*reqs)
         self.waitUntilSettled()
 
-    @simple_layout('layouts/two-projects-integrated.yaml',
+    @simple_layout('layouts/two-projects-integrated-launcher.yaml',
                    enable_nodepool=True)
     def test_relative_priority_long(self):
         "Test that nodes are requested at the relative priority"
@@ -3216,7 +3216,7 @@ class TestNodesetRequestPriority(LauncherBaseTestCase):
         self.releaseNodesetRequests(*reqs)
         self.waitUntilSettled()
 
-    @simple_layout('layouts/two-projects-integrated.yaml',
+    @simple_layout('layouts/two-projects-integrated-launcher.yaml',
                    enable_nodepool=True)
     def test_relative_priority_gate(self):
         "Test that nodes are requested at the relative priority"

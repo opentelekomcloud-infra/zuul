@@ -1864,14 +1864,21 @@ class TenantParser(object):
         self.statsd = statsd
         self.unparsed_config_cache = unparsed_config_cache
 
-    classes = vs.Any('pipeline', 'job', 'semaphore', 'project',
-                     'project-template', 'nodeset', 'secret', 'queue',
-                     'image', 'flavor', 'label', 'section', 'provider')
+    job_classes = (
+        'pipeline', 'job', 'semaphore', 'project',
+        'project-template', 'nodeset', 'secret', 'queue',
+    )
+    provider_classes = (
+        'image', 'flavor', 'label', 'section', 'provider',
+    )
+    all_classes = job_classes + provider_classes
+    classes = vs.Any(*all_classes)
 
     inner_config_project_dict = {
         'include': to_list(classes),
         'exclude': to_list(classes),
         'shadow': to_list(str),
+        'include-provider-config': bool,
         'exclude-unprotected-branches': bool,
         'exclude-locked-branches': bool,
         'extra-config-paths': no_dup_config_paths,
@@ -1894,11 +1901,13 @@ class TenantParser(object):
     config_group = {
         'include': to_list(classes),
         'exclude': to_list(classes),
+        'include-provider-config': bool,
         vs.Required('projects'): to_list(config_project),
     }
     untrusted_group = {
         'include': to_list(classes),
         'exclude': to_list(classes),
+        'include-provider-config': bool,
         vs.Required('projects'): to_list(untrusted_project),
     }
 
@@ -2162,6 +2171,13 @@ class TenantParser(object):
             else:
                 project_include = frozenset(
                     as_list(conf[project_name]['include']))
+
+            # If the user set this to true, add the extra classes;
+            # ignore false.
+            if conf[project_name].get("include-provider-config"):
+                project_include = frozenset(
+                    tuple(project_include) + TenantParser.provider_classes)
+
             project_exclude = frozenset(
                 as_list(conf[project_name].get('exclude', [])))
             if project_exclude:
@@ -2251,6 +2267,13 @@ class TenantParser(object):
                 current_include = set(as_list(conf['include']))
             else:
                 current_include = current_include.copy()
+
+            # If the user set this to true, add the extra classes;
+            # ignore false.
+            if conf.get("include-provider-config"):
+                current_include = frozenset(
+                    tuple(current_include) + TenantParser.provider_classes)
+
             if 'exclude' in conf:
                 exclude = set(as_list(conf['exclude']))
                 current_include = current_include - exclude
@@ -2272,9 +2295,8 @@ class TenantParser(object):
 
         # TODO: Add nodepool objects here (image, etc) when ready to
         # use zuul-launcher.
-        default_include = frozenset(['pipeline', 'job', 'semaphore', 'project',
-                                     'secret', 'project-template', 'nodeset',
-                                     'queue'])
+        untrusted_default_include = frozenset(self.job_classes)
+        config_default_include = frozenset(self.all_classes)
 
         futures = []
         for source_name, conf_source in conf_tenant.get('source', {}).items():
@@ -2282,7 +2304,8 @@ class TenantParser(object):
 
             for conf_repo in conf_source.get('config-projects', []):
                 # tpcs = TenantProjectConfigs
-                tpcs = self._getProjects(source, conf_repo, default_include)
+                tpcs = self._getProjects(source, conf_repo,
+                                         config_default_include)
                 for tpc in tpcs:
                     tpc.trusted = True
                     futures.append(executor.submit(
@@ -2291,7 +2314,7 @@ class TenantParser(object):
 
             for conf_repo in conf_source.get('untrusted-projects', []):
                 tpcs = self._getProjects(source, conf_repo,
-                                         default_include)
+                                         untrusted_default_include)
                 for tpc in tpcs:
                     tpc.trusted = False
                     futures.append(executor.submit(
