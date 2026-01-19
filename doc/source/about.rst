@@ -29,9 +29,11 @@ Zuul works with a wide range of code review systems, and can work with
 multiple systems (including integrating projects on different systems)
 simultaneously.  See :ref:`drivers` for a complete list.
 
-Zuul uses a separate component called `Nodepool`_ to provide the
-resources to run jobs.  Nodepool works with several cloud providers
-as well as statically defined nodes (again, simultaneously).
+Previous versions of Zuul required a separate component called
+`Nodepool`_ to provide the resources to run jobs.  Nodepool works with
+several cloud providers as well as statically defined nodes (again,
+simultaneously).  Nodepool's functionality is now incorporated into
+Zuul.
 
 Because Zuul is designed from the ground up to run jobs in a
 multi-node environment (whether those nodes are bare metal machines,

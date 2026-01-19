@@ -45,8 +45,8 @@ multiple alternative node configurations to run a job.  When a Nodeset
 specifies a list of :attr:`nodeset.alternatives`, Zuul will request
 the first Nodeset in the series, and if allocation fails for any
 reason, Zuul will re-attempt the request with the subsequent Nodeset
-and so on.  The first Nodeset which is successfully supplied by
-Nodepool will be used to run the job.  Additionally, if Zuul
+and so on.  The first Nodeset which is fulfilled
+will be used to run the job.  Additionally, if Zuul
 encounters an unrechable node during the build, it will use the next
 alternative when retrying the job.  An example of a nodeset
 configuration with alternatives follows.
@@ -107,7 +107,7 @@ specify nodes and groups, or alternative nodesets, but not both.
       .. attr:: label
          :required:
 
-         The Nodepool label for the node.  Zuul will request a node with
+         The label for the node.  Zuul will request a node with
          this label.
 
    .. attr:: groups

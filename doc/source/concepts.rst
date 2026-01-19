@@ -72,12 +72,9 @@ effect temporarily as part of the proposed change, or immediately
 after the change merges, depending on the type of project in which the
 change appears.
 
-Jobs specify the type and quantity of nodes which they require.
-Before executing each job, Zuul will contact its companion program,
-Nodepool, to supply them.  Nodepool may be configured to supply static
-nodes or contact cloud providers to create or delete nodes as
-necessary.  The types of nodes available to Zuul are determined by the
-Nodepool administrator.
+Jobs specify the type and quantity of nodes which they require.  Zuul
+may be configured to supply static nodes or contact cloud providers to
+create or delete nodes as necessary.
 
 The executable contents of jobs themselves are Ansible playbooks.
 Ansible's support for orchestrating tasks on remote nodes is
