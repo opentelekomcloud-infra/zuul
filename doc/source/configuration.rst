@@ -1038,6 +1038,45 @@ sections of ``zuul.conf`` are used by the web server:
 
       Encryption password for private data stored in Zookeeper.
 
+.. _launcher:
+
+Launcher
+--------
+
+The launcher is responsible for the lifecycle of worker nodes and
+other resources.  They may be virtual machines (ephemeral or
+long-lived), real hardware with static addresses, containers, or other
+resources.  There are a number of drivers that implement functionality
+for static hosts and various cloud providers.
+
+The launcher must communicate with ZooKeeper and also the worker nodes
+that it is responsible for.  Multiple launchers may be run, and they
+will work cooperatively to scale out their handling of requests.
+Certain launchers may be restricetd by configuration to servicing only
+certain connections.
+
+In addition to the common configuration sections, the following
+sections of ``zuul.conf`` are used by the launcher:
+
+.. attr:: launcher
+
+   .. attr:: command_socket
+      :default: /var/lib/zuul/launcher.socket
+
+      Path to command socket file for the launcher process.
+
+   .. attr:: temp_dir
+      :default: /tmp
+
+      Temporary directory used for downloading images while uploading
+      them to providers.  Depending on the number of images and their
+      sizes that are managed by Zuul, this space may need to be very
+      large.
+
+   .. attr:: connection_filter
+
+      If this launcher should only be used for certain connections,
+      specify them here as a comma separated string.
 
 Authentication
 ~~~~~~~~~~~~~~
@@ -1381,6 +1420,9 @@ In order to interact with external systems, Zuul must have a
 :ref:`drivers <drivers>`, each of which implements the functionality
 necessary to connect to a system.  Each connection in Zuul is
 associated with a driver.
+
+Connections are also used for communicating with cloud providers used
+by the Zuul launcher.
 
 To configure a connection in Zuul, select a unique name for the
 connection and add a section to ``zuul.conf`` with the form
