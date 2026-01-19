@@ -16,6 +16,24 @@
       "message": "I\u0027m a fan of this approach due to how it simplifies the model.py objects and the process of validating authorization. I think simplifying that is a good way to ensure we\u0027re getting it right.\n\nThat said I discovered this additional compromise with this approach as I built it out a bit more. Specifically we have methods that maybe don\u0027t have all the parameters associated with them that we would want to implicitly check. If we delegate the authorization aspect to the methods I think (though didn\u0027t try writing this approach) we could keep the existing methods as is then add explicit magic to check things.\n\nFor example in the autohold delete case we could lookup the request by id using the existing api call. Then inspect the autohold request for attributes like project and ref etc. If they don\u0027t match the RBAC rule then we can return 403.\n\nIt is possible that we could solve this problem for some methods with additional decorator information, but I\u0027m not sure that is the case for something like autohold deletions where we need to fetch the resource from the database and verify we have write permissions to it before proceeding with a delete in the db.\n\nOpen to thoughts on this. I think the compromise of adding new methods may be good enough? But I haven\u0027t done a full audit of the methods to say for certain.",
       "revId": "d242c91adc3d79f637798161e375a28345867d8d",
       "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1cacb5e8_927c3f7a",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-19T22:35:37Z",
+      "side": 1,
+      "message": "I agree that adding new methods would be a good solution to the point you raised, but I don\u0027t want to end up with multiple methods that do the same thing (and I think we\u0027re using methods to also mean \"REST api endpoints\", ie, \"URLs\" here).  I would be slightly more in favor of doing it as a transition where we remove the old ones eventually.\n\nBut the main thing is that the API should be as restful as possible.  Right now we have an endpoint that lets us create an autohold for a project, and thus its rbac is scoped to the project.  There is one to list all the autoholds, not scoped to project, and I think we want to keep that.  If we added an endpoint for deleting that was scoped to the project, there would be two ways of deleting autoholds, and the URL for deleting wouldn\u0027t be the natural restufl url we get from listing.\n\nThe mismatch from listing to deleting probably isn\u0027t the worst thing in the world.  But I\u0027m still not a fan of having two ways of deleting autoholds.\n\nSo if we decided to go that way, I think I\u0027d want to remove the current autohold delete endpoint.  After all, I think that both the web client and CLI would need to just always use the new endpoint, so probably nothing would use the old one anyway.\n\nNow, having said all that, I am actually inclined to defer this a bit.  We didn\u0027t actually say that we would add any new conditions to existing endpoints, and I do agree with you that create and delete should be paired as far as scoping goes, but to keep things simple, let\u0027s go with the *minimal* instead of *maximal* set of conditions.  In other words, let\u0027s start by having autohold be only tenant scoped.\n\nThen maybe once this is in place, in the future we can look into adding a new autohold delete endpoint.  I think handling that transition and the details around it will involve painting several bikesheds.",
+      "parentUuid": "1d8de37d_ed431779",
+      "revId": "d242c91adc3d79f637798161e375a28345867d8d",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
     }
   ]
 }
