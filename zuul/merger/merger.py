@@ -69,9 +69,51 @@ class SparsePaths(enum.Enum):
     FULL = 1   # Checkout everything (disable)
 
 
+class LineMapper:
+    hunk_re = re.compile(r'^@@ -\d+,\d+ \+(\d+),(\d+) @@$')
+
+    def __init__(self, diff_output):
+        hunk_start = None
+        hunk_range = None
+        hunk_line = None
+        offsets = []
+        last_offset = None
+        for l in diff_output.split('\n'):
+            m = self.hunk_re.match(l)
+            if m:
+                hunk_start = int(m.group(1))
+                hunk_range = int(m.group(2))
+                hunk_line = 0
+                continue
+            if not hunk_start:
+                continue
+            if hunk_line > hunk_range:
+                # We have somehow run off the end of the hunk;
+                # shouldn't happen.
+                hunk_start = None
+                continue
+            if l[0] == ' ':
+                last_offset = None
+                hunk_line += 1
+                continue
+            if not last_offset:
+                last_offset = [(hunk_start + hunk_line), 0]
+                offsets.append(last_offset)
+            if l[0] == '+':
+                last_offset[1] -= 1
+            elif l[0] == '-':
+                last_offset[1] += 1
+        self.offsets = offsets
+
+    def mapLine(self, lineno):
+        new_lineno = lineno
+        for (start, offset) in self.offsets:
+            if lineno > start:
+                new_lineno += offset
+        return new_lineno
+
+
 class Repo(object):
-    commit_re = re.compile(r'^commit ([0-9a-f]{40})$')
-    diff_re = re.compile(r'^@@ -\d+,\d \+(\d+),\d @@$')
     retry_attempts = 3
     retry_interval = 30
 
@@ -997,23 +1039,11 @@ class Repo(object):
             self.remote_url = None
             raise
 
-    def mapLine(self, commit, filename, lineno, zuul_event_id=None):
-        # Trace the specified line back to the specified commit and
-        # return the line number in that commit.
-        cur_commit = None
+    def getLineMapper(self, commit, head, filename, zuul_event_id=None):
         with self.createRepoObject(zuul_event_id) as repo:
-            out = repo.git.log(L='%s,%s:%s' % (lineno, lineno, filename))
-        for l in out.split('\n'):
-            if cur_commit is None:
-                m = self.commit_re.match(l)
-                if m:
-                    if m.group(1) == commit:
-                        cur_commit = commit
-                continue
-            m = self.diff_re.match(l)
-            if m:
-                return int(m.group(1))
-        return None
+            diff_output = repo.git.diff(
+                f"{commit}..{head}", filename, no_color=True)
+            return LineMapper(diff_output)
 
     def contains(self, hexsha, zuul_event_id=None):
         with self.createRepoObject(zuul_event_id) as repo:
