@@ -1893,6 +1893,7 @@ class AnsibleJob(object):
             return
 
         new_lines = {}
+        mappers = {}
         for (filename, lineno) in lines:
             # Gerrit has several special file names (like /COMMIT_MSG) that
             # start with "/" and should not have mapping done on them
@@ -1900,7 +1901,11 @@ class AnsibleJob(object):
                 continue
 
             try:
-                new_lineno = repo.mapLine(commit, filename, lineno)
+                mapper = mappers.get(filename)
+                if not mapper:
+                    mapper = repo.getLineMapper(commit, filename)
+                    mappers[filename] = mapper
+                new_lineno = mapper.mapLine(lineno)
             except Exception as e:
                 # Log at debug level since it's likely a job issue
                 self.log.debug("Error mapping line:", exc_info=True)

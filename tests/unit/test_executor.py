@@ -1197,22 +1197,35 @@ class TestLineMapping(AnsibleZuulTestCase):
     config_file = 'zuul-gerrit-web.conf'
     tenant_config_file = 'config/line-mapping/main.yaml'
 
-    def test_line_mapping(self):
-        header = 'add something to the top\n'
-        footer = 'this is the change\n'
-
+    def _test_line_mapping(self, method):
         with open(os.path.join(FIXTURE_DIR,
                                'config/line-mapping/git/',
                                'org_project/README')) as f:
-            content = f.read()
+            content = f.read().split('\n')
 
         # The change under test adds a line to the end.
-        file_dict = {'README': content + footer}
+        change_content = content + ['end line']
+        file_dict = {'README': '\n'.join(change_content)}
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
                                            files=file_dict)
+        if method == 'merge':
+            pass
+        elif method == 'cherry_pick':
+            A.cherry_pick = True
+        else:
+            raise Exception("unsupported method")
 
-        # An intervening change adds a line to the top.
-        file_dict = {'README': header + content}
+        # An intervening change adds a line near the top.
+        # And changes a line in the middle (no net offset from that),
+        # just to make sure we have more than one diff hunk.
+        head_content = (
+            content[:4] +
+            ['new line 5'] +
+            content[4:50] +
+            ['changed line 51'] +
+            content[51:]
+        )
+        file_dict = {'README': '\n'.join(head_content)}
         B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B',
                                            files=file_dict)
         B.setMerged()
@@ -1221,35 +1234,120 @@ class TestLineMapping(AnsibleZuulTestCase):
         self.waitUntilSettled()
         self.assertEqual(self.getJobFromHistory('file-comments').result,
                          'SUCCESS')
-        self.assertEqual(len(A.comments), 2)
+        self.assertEqual(len(A.comments), 5)
         comments = sorted(A.comments, key=lambda x: x['line'])
-        self.assertEqual(comments[0],
-                         {'file': 'README',
-                          'line': 14,
-                          'message': 'interesting comment',
-                          'reviewer': {'email': 'zuul@example.com',
-                                       'name': 'Zuul',
-                                       'username': 'jenkins'}}
-        )
-        self.assertEqual(
-            comments[1],
-            {
-                "file": "README",
-                "line": 14,
-                "message": "That's a cool section",
-                "range": {
-                    "end_character": 26,
-                    "end_line": 14,
-                    "start_character": 0,
-                    "start_line": 12
-                },
-                "reviewer": {
-                    "email": "zuul@example.com",
-                    "name": "Zuul",
-                    "username": "jenkins"
-                }
+        reviewer = {'email': 'zuul@example.com',
+                    'name': 'Zuul',
+                    'username': 'jenkins'}
+        self.assertEqual(comments[0], {
+            'file': 'README',
+            'line': 3,
+            'message': 'line 3 comment',
+            'reviewer': reviewer,
+        })
+        self.assertEqual(comments[1], {
+            'file': 'README',
+            'line': 7,
+            'message': 'line 7 comment',
+            'reviewer': reviewer,
+        })
+        self.assertEqual(comments[2], {
+            "file": "README",
+            "line": 14,
+            "message": "range comment for line 14",
+            "range": {
+                "end_character": 26,
+                "end_line": 14,
+                "start_character": 0,
+                "start_line": 11,
+            },
+            "reviewer": {
+                "email": "zuul@example.com",
+                "name": "Zuul",
+                "username": "jenkins",
             }
-        )
+        })
+        self.assertEqual(comments[3], {
+            'file': 'README',
+            'line': 100,
+            'message': 'line 100 comment',
+            'reviewer': reviewer,
+        })
+        self.assertEqual(comments[4], {
+            'file': 'README',
+            'line': 101,
+            'message': 'line 101 comment',
+            'reviewer': reviewer,
+        })
+
+    def test_line_mapping_merge(self):
+        self._test_line_mapping(method='merge')
+
+    def test_line_mapping_cherry_pick(self):
+        self._test_line_mapping(method='cherry_pick')
+
+    def test_line_mapping_fast_forward(self):
+        with open(os.path.join(FIXTURE_DIR,
+                               'config/line-mapping/git/',
+                               'org_project/README')) as f:
+            content = f.read().split('\n')
+
+        # The change under test adds a line to the end and also the middle.
+        change_content = (content[:4] + ['new line 5'] +
+                          content[4:] + ['end line'])
+        file_dict = {'README': '\n'.join(change_content)}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(self.getJobFromHistory('file-comments').result,
+                         'SUCCESS')
+        self.assertEqual(len(A.comments), 5)
+        comments = sorted(A.comments, key=lambda x: x['line'])
+        reviewer = {'email': 'zuul@example.com',
+                    'name': 'Zuul',
+                    'username': 'jenkins'}
+        self.assertEqual(comments[0], {
+            'file': 'README',
+            'line': 3,
+            'message': 'line 3 comment',
+            'reviewer': reviewer,
+        })
+        self.assertEqual(comments[1], {
+            'file': 'README',
+            'line': 8,
+            'message': 'line 7 comment',
+            'reviewer': reviewer,
+        })
+        self.assertEqual(comments[2], {
+            "file": "README",
+            "line": 15,
+            "message": "range comment for line 14",
+            "range": {
+                "end_character": 26,
+                "end_line": 15,
+                "start_character": 0,
+                "start_line": 12,
+            },
+            "reviewer": {
+                "email": "zuul@example.com",
+                "name": "Zuul",
+                "username": "jenkins",
+            }
+        })
+        self.assertEqual(comments[3], {
+            'file': 'README',
+            'line': 101,
+            'message': 'line 100 comment',
+            'reviewer': reviewer,
+        })
+        self.assertEqual(comments[4], {
+            'file': 'README',
+            'line': 102,
+            'message': 'line 101 comment',
+            'reviewer': reviewer,
+        })
 
 
 class ExecutorFactsMixin:
