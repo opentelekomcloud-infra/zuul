@@ -525,6 +525,7 @@ class GerritEventProcessor:
         self.zuul_event_id = connection_event["zuul_event_id"]
         self.log = get_annotated_logger(logger, self.zuul_event_id)
         self.events = []
+        self.event_type = connection_event["payload"].get('type')
 
     def run(self):
         if self.connector._stopped:
@@ -541,7 +542,8 @@ class GerritEventProcessor:
             self.log.warning("Skipping event due to %s", e)
         except Exception:
             self.log.exception("Skipping event due to:")
-        return self.events, self.connection_event
+        return (self.events, self.connection_event, self.zuul_event_id,
+                self.event_type)
 
     def _handleEvent(self, connection_event):
         timestamp = connection_event["timestamp"]

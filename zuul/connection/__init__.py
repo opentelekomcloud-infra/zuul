@@ -18,6 +18,7 @@ import concurrent.futures
 import logging
 import os
 import threading
+import time
 
 from zuul.lib.logutil import get_annotated_logger
 from zuul import model
@@ -712,8 +713,13 @@ class BaseThreadPoolEventConnector:
                 if not self._event_forward_queue[0].done():
                     return
                 future = self._event_forward_queue.popleft()
-                events, connection_event = future.result()
+                (events, connection_event, zuul_event_id,
+                 event_type) = future.result()
+                log = get_annotated_logger(self.log, zuul_event_id)
                 try:
+                    if not event:
+                        log.debug('Nothing to be forwarded, '
+                                  'event type: %s', event_type)
                     for event in events:
                         self.connection.logEvent(event)
                         if isinstance(event, model.DequeueEvent):
