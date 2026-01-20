@@ -1040,15 +1040,15 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                        f"{register_response['ImageId']}")
         return register_response['ImageId']
 
-    def _uploadImageSnapshot(self, provider_image, image_name,
-                             image_format, metadata,
-                             bucket_name, object_filename, timeout,
-                             delete_object):
-        # Import snapshot
-        self.log.debug(f"Importing {image_name} as snapshot")
-        timeout_ts = time.time()
-        if timeout:
-            timeout_ts += timeout
+    def _getOrStartImportSnapshot(self, image_format, bucket_name,
+                                  object_filename, timeout_ts, metadata):
+        for task in self._listImportSnapshotTasks():
+            candidate_tags = tag_list_to_dict(task['Tags'])
+            if metadata.items() <= candidate_tags.items():
+                task_id = task['ImportTaskId']
+                self.log.debug("Found existing import task %s",
+                               task_id)
+                return task_id
         while True:
             try:
                 with self.rate_limiter:
@@ -1078,6 +1078,25 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                         continue
                 raise
         task_id = import_snapshot_task['ImportTaskId']
+        self.log.debug("Started new import task %s",
+                       task_id)
+        return task_id
+
+    def _uploadImageSnapshot(self, provider_image, image_name,
+                             image_format, metadata,
+                             bucket_name, object_filename, timeout,
+                             delete_object):
+        # Import snapshot
+        self.log.debug(f"Importing {image_name} as snapshot")
+        timeout_ts = time.time()
+        if timeout:
+            timeout_ts += timeout
+
+        # Get the task id of an already running snapshot import if we
+        # have one, otherwise start a new one.
+        task_id = self._getOrStartImportSnapshot(
+            image_format, bucket_name,
+            object_filename, timeout_ts, metadata)
 
         paginator = self.ec2_client.get_paginator(
             'describe_import_snapshot_tasks')
@@ -1123,15 +1142,16 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                        f"{register_response['ImageId']}")
         return register_response['ImageId']
 
-    def _uploadImageImage(self, provider_image, image_name,
-                          image_format, metadata,
-                          bucket_name, object_filename, timeout,
-                          delete_object):
-        # Import image as AMI
-        self.log.debug(f"Importing {image_name} as AMI")
-        timeout_ts = time.time()
-        if timeout:
-            timeout_ts += timeout
+    def _getOrStartImportImage(self, provider_image, image_format,
+                               bucket_name, object_filename,
+                               timeout_ts, metadata):
+        for task in self._listImportImageTasks():
+            candidate_tags = tag_list_to_dict(task['Tags'])
+            if metadata.items() <= candidate_tags.items():
+                task_id = task['ImportTaskId']
+                self.log.debug("Found existing import task %s",
+                               task_id)
+                return task_id
         while True:
             try:
                 with self.rate_limiter:
@@ -1162,6 +1182,22 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                         continue
                 raise
         task_id = import_image_task['ImportTaskId']
+        self.log.debug("Started new import task %s",
+                       task_id)
+        return task_id
+
+    def _uploadImageImage(self, provider_image, image_name,
+                          image_format, metadata,
+                          bucket_name, object_filename, timeout,
+                          delete_object):
+        # Import image as AMI
+        self.log.debug(f"Importing {image_name} as AMI")
+        timeout_ts = time.time()
+        if timeout:
+            timeout_ts += timeout
+        task_id = self._getOrStartImportImage(
+            provider_image, image_format, bucket_name,
+            object_filename, timeout_ts, metadata)
 
         paginator = self.ec2_client.get_paginator(
             'describe_import_image_tasks')
@@ -1237,9 +1273,15 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                        f"{register_response['ImageId']}")
         return register_response['ImageId']
 
-    def _copyImage(self, provider_image, image_name,
-                   image_format, metadata,
-                   source_region, source_ami):
+    def _getOrStartCopyImage(self, image_name, source_ami,
+                             source_region, metadata):
+        for ami in self._listAmis():
+            candidate_tags = tag_list_to_dict(ami['Tags'])
+            if metadata.items() <= candidate_tags.items():
+                image_id = ami['ImageId']
+                self.log.debug("Found existing image %s",
+                               image_id)
+                return image_id
         with self.rate_limiter:
             resp = self.ec2_client.copy_image(
                 Name=image_name,
@@ -1254,6 +1296,14 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 ]
             )
         image_id = resp['ImageId']
+        self.log.debug("Copied new image %s", image_id)
+        return image_id
+
+    def _copyImage(self, provider_image, image_name,
+                   image_format, metadata,
+                   source_region, source_ami):
+        image_id = self._getOrStartCopyImage(image_name, source_ami,
+                                             source_region, metadata)
         while True:
             time.sleep(self.IMAGE_UPLOAD_SLEEP)
             for ami in self._listAmis():
@@ -1447,6 +1497,14 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 else:
                     raise
         return None
+
+    def _listImportImageTasks(self):
+        paginator = self.ec2_client.get_paginator(
+            'describe_import_image_tasks')
+        with self.non_mutating_rate_limiter:
+            for page in paginator.paginate():
+                for task in page['ImportImageTasks']:
+                    yield task
 
     def _listImportSnapshotTasks(self):
         paginator = self.ec2_client.get_paginator(

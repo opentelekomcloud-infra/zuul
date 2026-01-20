@@ -355,6 +355,79 @@ class TestAwsDriver(AwsBaseTest):
     def test_aws_diskimage_snapshot(self):
         self._test_diskimage()
 
+    @simple_layout('layouts/aws/nodepool-image-snapshot.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        AwsBaseTest.debian_return_data,
+    )
+    def test_aws_diskimage_snapshot_resume(self):
+        self.waitUntilSettled()
+
+        system_id = self.launcher.system.system_id
+        image_tags = [
+            {'Key': 'zuul_system_id', 'Value': system_id},
+            {'Key': 'zuul_upload_uuid', 'Value': 'upload-uuid'},
+        ]
+        task = self.fake_aws.import_snapshot(
+            DiskContainer={
+                'Format': 'ova',
+                'UserBucket': {
+                    'S3Bucket': 'zuul',
+                    'S3Key': 'testfile',
+                }
+            },
+            TagSpecifications=[{
+                'ResourceType': 'import-snapshot-task',
+                'Tags': image_tags,
+            }])
+        self.fake_aws.finish_import_snapshot(task)
+
+        provider = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-main')
+        endpoint = provider.getEndpoint()
+        image = list(provider.images.values())[0]
+        self.assertEqual('debian-local', image.name)
+        # create an IBA and an upload
+        with self.createZKContext(None) as ctx:
+            # This starts with an unknown state, then
+            # createImageUploads will set it to ready.
+            iba = model.ImageBuildArtifact.new(
+                ctx,
+                uuid='iba-uuid',
+                name=image.name,
+                canonical_name=image.canonical_name,
+                project_canonical_name=image.project_canonical_name,
+                url='http://example.com/image.raw.zst',
+                md5sum=ImageMocksFixture.raw_md5sum,
+                sha256=ImageMocksFixture.raw_sha256,
+                timestamp=time.time(),
+            )
+            with iba.locked(ctx):
+                model.ImageUpload.new(
+                    ctx,
+                    uuid='upload-uuid',
+                    artifact_uuid='iba-uuid',
+                    endpoint_name=endpoint.canonical_name,
+                    providers=[provider.canonical_name],
+                    canonical_name=image.canonical_name,
+                    config_hash=image.config_hash,
+                    timestamp=time.time(),
+                    _state=model.ImageUpload.State.UPLOADING,
+                    state_time=time.time(),
+                )
+                with iba.activeContext(ctx):
+                    iba.state = iba.State.READY
+        self.waitUntilSettled()
+        pending_uploads = [
+            u for u in self.launcher.image_upload_registry.getItems()
+            if u.state == u.State.PENDING]
+        self.assertEqual(0, len(pending_uploads))
+        # If we reused the task, there should be two: the original
+        # from test setup and our fake.
+        self.assertEqual(2, len(list(endpoint._listImportSnapshotTasks())))
+
     @simple_layout('layouts/aws/nodepool-image-image.yaml',
                    enable_nodepool=True)
     @return_data(
@@ -364,6 +437,83 @@ class TestAwsDriver(AwsBaseTest):
     )
     def test_aws_diskimage_image(self):
         self._test_diskimage()
+
+    @simple_layout('layouts/aws/nodepool-image-image.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        AwsBaseTest.debian_return_data,
+    )
+    def test_aws_diskimage_image_resume(self):
+        self.waitUntilSettled()
+
+        system_id = self.launcher.system.system_id
+        image_format = 'raw'
+        bucket_name = 'zuul'
+        object_filename = 's3://zuul/image.raw'
+        image_tags = [
+            {'Key': 'zuul_system_id', 'Value': system_id},
+            {'Key': 'zuul_upload_uuid', 'Value': 'upload-uuid'},
+        ]
+
+        task = self.fake_aws.import_image(
+            DiskContainers=[{
+                'Format': image_format,
+                'UserBucket': {
+                    'S3Bucket': bucket_name,
+                    'S3Key': object_filename,
+                },
+            }],
+            TagSpecifications=[{
+                'ResourceType': 'import-image-task',
+                'Tags': image_tags,
+            }])
+        image_id, snapshot_id = self.fake_aws.finish_import_image(task)
+
+        provider = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-main')
+        endpoint = provider.getEndpoint()
+        image = list(provider.images.values())[0]
+        self.assertEqual('debian-local', image.name)
+        # create an IBA and an upload
+        with self.createZKContext(None) as ctx:
+            # This starts with an unknown state, then
+            # createImageUploads will set it to ready.
+            iba = model.ImageBuildArtifact.new(
+                ctx,
+                uuid='iba-uuid',
+                name=image.name,
+                canonical_name=image.canonical_name,
+                project_canonical_name=image.project_canonical_name,
+                url='http://example.com/image.raw.zst',
+                md5sum=ImageMocksFixture.raw_md5sum,
+                sha256=ImageMocksFixture.raw_sha256,
+                timestamp=time.time(),
+            )
+            with iba.locked(ctx):
+                model.ImageUpload.new(
+                    ctx,
+                    uuid='upload-uuid',
+                    artifact_uuid='iba-uuid',
+                    endpoint_name=endpoint.canonical_name,
+                    providers=[provider.canonical_name],
+                    canonical_name=image.canonical_name,
+                    config_hash=image.config_hash,
+                    timestamp=time.time(),
+                    _state=model.ImageUpload.State.UPLOADING,
+                    state_time=time.time(),
+                )
+                with iba.activeContext(ctx):
+                    iba.state = iba.State.READY
+        self.waitUntilSettled()
+        pending_uploads = [
+            u for u in self.launcher.image_upload_registry.getItems()
+            if u.state == u.State.PENDING]
+        self.assertEqual(0, len(pending_uploads))
+        # If we reused the task, there should be two: the original
+        # from test setup and our fake.
+        self.assertEqual(2, len(list(endpoint._listImportImageTasks())))
 
     @simple_layout('layouts/aws/nodepool-image-ebs-direct.yaml',
                    enable_nodepool=True)
@@ -439,6 +589,62 @@ class TestAwsDriver(AwsBaseTest):
         bucket.put_object(Body=ImageMocksFixture.raw_body.encode('utf8'),
                           Key='image.raw')
         self._test_diskimage(expected_uploads=2)
+        self.assertEqual(1, len(self.copy_image_calls))
+
+    @simple_layout('layouts/aws/nodepool-image-copy.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        AwsBaseTest.s3_debian_return_data,
+    )
+    def test_aws_diskimage_copy_resume(self):
+        bucket = self.s3.Bucket('zuul')
+        bucket.put_object(Body=ImageMocksFixture.raw_body.encode('utf8'),
+                          Key='image.raw')
+        self.waitUntilSettled()
+
+        west_provider = self.launcher._getProvider(
+            'tenant-one', 'aws-us-west-1-main')
+        west_endpoint = west_provider.getEndpoint()
+
+        for upload in self.launcher.image_upload_registry.getItems():
+            if upload.endpoint_name == 'aws/aws-us-west-1':
+                target_upload = upload
+
+        # Tag the image since moto copy image doesn't
+        system_id = self.launcher.system.system_id
+        image_tags = [
+            {'Key': 'zuul_system_id', 'Value': system_id},
+            {'Key': 'zuul_upload_uuid', 'Value': target_upload.uuid},
+        ]
+        west_ec2_client = boto3.client('ec2', region_name='us-west-1')
+        west_ec2_client.create_tags(
+            Resources=[target_upload.external_id],
+            Tags=image_tags)
+        for _ in iterate_timeout(30, 'ami cache'):
+            found = False
+            for ami in west_endpoint._listAmis():
+                if ami['Tags'] == image_tags:
+                    found = True
+                    break
+            if found:
+                break
+
+        with self.createZKContext(None) as ctx:
+            with target_upload.activeContext(ctx):
+                self.log.debug("Resetting upload %s to pending",
+                               target_upload)
+                target_upload.state = target_upload.State.PENDING
+                target_upload.external_id = None
+
+        for _ in iterate_timeout(30, 'copy complete'):
+            pending_uploads = [
+                u for u in self.launcher.image_upload_registry.getItems()
+                if u.state == u.State.PENDING]
+            if not pending_uploads:
+                break
+        # If we reused the image, there should be one.
         self.assertEqual(1, len(self.copy_image_calls))
 
     @simple_layout('layouts/nodepool-multi-provider.yaml',
