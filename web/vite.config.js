@@ -4,10 +4,7 @@ import path from 'path';
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   return {
-    // base defaults to /; change it to '' so that index.html
-    // references "assets/..." instead of "/asserts/..." so that it
-    // will work in our static hosting configuration.
-    base: '',
+    base: '/',
     envPrefix: 'REACT_APP',
     test: {
       globals: true,
