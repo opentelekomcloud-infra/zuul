@@ -18,6 +18,7 @@ import concurrent.futures
 import logging
 import os
 import threading
+import time
 
 from zuul.lib.logutil import get_annotated_logger
 from zuul import model
@@ -712,8 +713,11 @@ class BaseThreadPoolEventConnector:
                 if not self._event_forward_queue[0].done():
                     return
                 future = self._event_forward_queue.popleft()
-                events, connection_event = future.result()
+                events, connection_event, zuul_event_id = future.result()
+                log = get_annotated_logger(self.log, zuul_event_id)
+                start = time.monotonic()
                 try:
+                    log.debug('Starting event forwarding')
                     for event in events:
                         self.connection.logEvent(event)
                         if isinstance(event, model.DequeueEvent):
@@ -727,6 +731,9 @@ class BaseThreadPoolEventConnector:
                     # Ack event in Zookeeper
                     self.event_queue.ack(connection_event)
                     self._events_in_progress.remove(connection_event.ack_ref)
+                    duration = round(time.monotonic() - start, 3)
+                    self.log.debug("Finished event forwarding (duration: %s seconds)",
+                                   duration)
             except Exception:
                 self.log.exception("Exception moving %s %s event:",
                                    self.connection.connection_name,
