@@ -82,12 +82,22 @@ def construct_build_params(uuid, connections, job, item, pipeline,
             job.workspace_scheme)
     # Fixup the src_dir for the refs based on this job
     for r in zuul_params['buildset_refs']:
+        r['project']['src_dir'] = make_src_dir(
+            r['project']['canonical_hostname'],
+            r['project']['name'],
+            job.workspace_scheme)
+        # TODO: backwards compat, remove after zuul 14
         r['src_dir'] = make_src_dir(
             r['project']['canonical_hostname'],
             r['project']['name'],
             job.workspace_scheme)
     for r in zuul_params['build_refs']:
         r['src_dir'] = make_src_dir(
+            r['project']['canonical_hostname'],
+            r['project']['name'],
+            job.workspace_scheme)
+        # TODO: backwards compat, remove after zuul 14
+        r['project']['src_dir'] = make_src_dir(
             r['project']['canonical_hostname'],
             r['project']['name'],
             job.workspace_scheme)
