@@ -308,6 +308,9 @@ class TestAwsDriver(AwsBaseTest):
     @simple_layout('layouts/aws/fleet.yaml', enable_nodepool=True)
     @driver_config('aws', node_checks=check_fleet_node_attrs)
     def test_aws_node_lifecycle_fleet(self):
+        self.log.debug("Start cleanup worker")
+        self.launcher.cleanup_worker.INTERVAL = 1
+        self.launcher.cleanup_worker.start()
         self._test_node_lifecycle('debian-normal')
         self.waitUntilSettled()
 
@@ -330,9 +333,11 @@ class TestAwsDriver(AwsBaseTest):
         self.waitUntilSettled()
 
         # Verify that there are no launch templates.
-        launch_tempaltes = self.ec2_client.\
-            describe_launch_templates()['LaunchTemplates']
-        self.assertEqual(len(launch_tempaltes), 0)
+        for _ in iterate_timeout(30, 'template deletion'):
+            launch_templates = self.ec2_client.\
+                describe_launch_templates()['LaunchTemplates']
+            if len(launch_templates) == 0:
+                break
 
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     @driver_config('aws', ec2_quotas={

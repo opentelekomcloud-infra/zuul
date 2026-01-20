@@ -197,6 +197,14 @@ class AwsCreateStateMachine(statemachine.StateMachine):
             self.node.node_properties['fleet'] = bool(self.flavor.fleet)
             self.node.node_properties['spot'] = bool(
                 self.flavor.market_type == 'spot')
+            # If this label uses a launch template (fleet api), get
+            # its name now since the label and the set of launch
+            # templates may change later.
+            label_template_names = \
+                self.endpoint.provider_label_template_names.get(
+                    self.provider.canonical_name, {})
+            self.node.aws_launch_template_name =\
+                label_template_names.get(self.label.name)
 
             if self.flavor.dedicated_host:
                 self.state = self.HOST_ALLOCATING_START
@@ -237,7 +245,9 @@ class AwsCreateStateMachine(statemachine.StateMachine):
                 self.create_future = self.endpoint._submitCreateInstance(
                     self.provider, self.label, self.flavor, self.image,
                     self.image_external_id, self.tags, self.hostname,
-                    self.node.aws_dedicated_host_id, self.log)
+                    self.node.aws_dedicated_host_id,
+                    self.node.aws_launch_template_name,
+                    self.log)
 
             instance = self.endpoint._completeCreateInstance(
                 self.create_future)
@@ -582,6 +592,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             maxsize=8192, ttl=(5 * 60))
 
         self.provider_label_template_names = {}
+        self._post_config_run = False
         # In listResources, we reconcile AMIs which appear to be
         # imports but have no nodepool tags, however it's possible
         # that these aren't nodepool images.  If we determine that's
@@ -674,6 +685,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self._listObjects = LazyExecutorTTLCache(
             CACHE_TTL, self.api_executor)(
                 self._listObjects)
+        self._listLaunchTemplates = LazyExecutorTTLCache(
+            CACHE_TTL, self.api_executor)(
+                self._listLaunchTemplates)
         self._listEC2Quotas = LazyExecutorTTLCache(
             SERVICE_QUOTA_CACHE_TTL, self.api_executor)(
                 self._listEC2Quotas)
@@ -692,6 +706,29 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
     def postConfig(self, provider):
         self._createLaunchTemplates(provider)
+        self._post_config_run = True
+
+    def listRequiredInfrastructureResources(self):
+        # In case the cleanup worker runs before our first full
+        # configuration (eg, if there are errors at startup).
+        if not self._post_config_run:
+            raise Exception("Unable to list resources "
+                            "until configuration complete")
+
+        in_use_template_names = set()
+        for provider_name, template_names in \
+                self.provider_label_template_names.items():
+            for label_name, template_name in template_names.items():
+                in_use_template_names.add(template_name)
+
+        for template in self._listLaunchTemplates():
+            template_name = template['LaunchTemplateName']
+            if template_name not in in_use_template_names:
+                continue
+            tags = tag_list_to_dict(template.get('Tags', []))
+            yield AwsResource(tags,
+                              AwsResource.TYPE_LAUNCH_TEMPLATE,
+                              template_name)
 
     def listResources(self, providers):
         bucket_names = set()
@@ -755,6 +792,10 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 yield AwsResource(tag_list_to_dict(tags['TagSet']),
                                   AwsResource.TYPE_OBJECT, obj.key,
                                   bucket_name=bucket_name)
+        for template in self._listLaunchTemplates():
+            yield AwsResource(tag_list_to_dict(template.get('Tags')),
+                              AwsResource.TYPE_LAUNCH_TEMPLATE,
+                              template['LaunchTemplateName'])
 
     def deleteResource(self, resource):
         self.log.info(f"Deleting leaked {resource.type}: {resource.id}")
@@ -770,6 +811,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             self._deleteSnapshot(resource.id)
         if resource.type == AwsResource.TYPE_OBJECT:
             self._deleteObject(resource.bucket_name, resource.id)
+        if resource.type == AwsResource.TYPE_LAUNCH_TEMPLATE:
+            self._deleteLaunchTemplate(resource.id)
 
     def listInstances(self):
         volumes = {}
@@ -1711,6 +1754,19 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 self.log.debug, "Listed S3 objects"):
             return list(bucket.objects.all())
 
+    def _listLaunchTemplates(self):
+        name_filter = {
+            'Name': 'launch-template-name',
+            'Values': [f'{self.LAUNCH_TEMPLATE_PREFIX}-*'],
+        }
+        with self.non_mutating_rate_limiter:
+            paginator = self.ec2_client.get_paginator(
+                'describe_launch_templates')
+            templates = []
+            for page in paginator.paginate(Filters=[name_filter]):
+                templates.extend(page['LaunchTemplates'])
+            return templates
+
     def _getLatestImageIdByFilters(self, image_filters):
         # Normally we would decorate this method, but our cache key is
         # complex, so we serialize it to JSON and manage the cache
@@ -1810,11 +1866,11 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
     def _submitCreateInstance(self, provider, label, flavor, image,
                               image_external_id, tags, hostname,
-                              dedicated_host_id, log):
+                              dedicated_host_id, launch_template_name, log):
         return self.create_executor.submit(
             self._createInstance,
             provider, label, flavor, image, image_external_id,
-            tags, hostname, dedicated_host_id, log)
+            tags, hostname, dedicated_host_id, launch_template_name, log)
 
     def _completeCreateInstance(self, future):
         if not future.done():
@@ -1836,7 +1892,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
     def _createInstance(self, provider, label, flavor, image,
                         image_external_id, tags, hostname,
-                        dedicated_host_id, log):
+                        dedicated_host_id, launch_template_name, log):
         if image_external_id:
             image_id = image_external_id
         else:
@@ -1844,7 +1900,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
         if flavor.fleet:
             return self._createFleet(provider, label, flavor,
-                                     image_id, tags, hostname, log)
+                                     image_id, tags, hostname,
+                                     launch_template_name, log)
         else:
             return self._runInstance(label, flavor, image_id, tags,
                                      hostname, dedicated_host_id, log)
@@ -1859,30 +1916,25 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             fleet_labels.append(label)
 
         self.log.info("Creating launch templates")
+        # Include the provider name here so that identical templates
+        # used by different providers get different hashes (tags are
+        # included in the hash).  This way each provider can be sure
+        # it's managing its own templates.
         tags = {
             'zuul_system_id': self.system_id,
             'zuul_provider_name': provider.canonical_name,
         }
-        existing_templates = dict()  # for clean up and avoid creation attempt
-        created_templates = set()  # for avoid creation attempt
-        configured_templates = set()  # for clean up
+        existing_templates = dict()  # to avoid creation attempt
+        created_templates = set()  # to avoid creation attempt
 
-        name_filter = {
-            'Name': 'launch-template-name',
-            'Values': [f'{self.LAUNCH_TEMPLATE_PREFIX}-*'],
-        }
-        paginator = self.ec2_client.get_paginator(
-            'describe_launch_templates')
-        with self.non_mutating_rate_limiter:
-            for page in paginator.paginate(Filters=[name_filter]):
-                for template in page['LaunchTemplates']:
-                    existing_templates[
-                        template['LaunchTemplateName']] = template
+        for template in self._listLaunchTemplates():
+            existing_templates[template['LaunchTemplateName']] = template
 
         # To replace the provider->label->template dictionary on this
         # endpoint.
         label_template_names = {}
 
+        created = False
         for label in fleet_labels:
             template_data = {
                 'KeyName': label.key_name,
@@ -1920,7 +1972,6 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             )
 
             template_name = self._getLaunchTemplateName(template_args)
-            configured_templates.add(template_name)
 
             label_template_names[label.name] = template_name
 
@@ -1936,6 +1987,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 self.ec2_client.create_launch_template(**template_args)
                 created_templates.add(template_name)
                 self.log.debug('Launch template %s created', template_name)
+                created = True
             except botocore.exceptions.ClientError as e:
                 if (e.response['Error']['Code'] ==
                     'InvalidLaunchTemplateName.AlreadyExistsException'):
@@ -1950,18 +2002,19 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
 
         self.provider_label_template_names[provider.canonical_name] =\
             label_template_names
+        if created:
+            # Clear the cache so that if we run this method again for
+            # a very similar provider, our newly created templates
+            # will be in the list so we don't try to create them
+            # again.
+            self._listLaunchTemplates.cache_clear()
 
-        # remove unused templates
-        for template_name, template in existing_templates.items():
-            if template_name not in configured_templates:
-                # check if the template was created by the current provider
-                tags = tag_list_to_dict(template.get('Tags', []))
-                if (tags.get('zuul_system_id') == self.system_id and
-                    tags.get('zuul_provider_name') == provider.canonical_name):
-                    self.ec2_client.delete_launch_template(
-                        LaunchTemplateName=template_name)
-                    self.log.debug("Deleted unused launch template: %s",
-                                   template_name)
+    def _deleteLaunchTemplate(self, template_name):
+        with self.rate_limiter(self.log.debug, "Deleted launch template"):
+            self.ec2_client.delete_launch_template(
+                LaunchTemplateName=template_name)
+        self.log.info("Deleted unused launch template: %s",
+                      template_name)
 
     def _getLaunchTemplateName(self, args):
         hasher = hashlib.sha256()
@@ -1970,7 +2023,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         return (f'{self.LAUNCH_TEMPLATE_PREFIX}-{sha}')
 
     def _createFleet(self, provider, label, flavor, image_id, tags,
-                     hostname, log):
+                     hostname, launch_template_name, log):
         overrides = []
 
         instance_types = flavor.fleet.get('instance_types', [])
@@ -2036,16 +2089,12 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 },
             }
 
-        label_template_names = self.provider_label_template_names[
-            provider.canonical_name]
-        template_name = label_template_names[label.name]
-
         args = {
             **capacity_type_option,
             'LaunchTemplateConfigs': [
                 {
                     'LaunchTemplateSpecification': {
-                        'LaunchTemplateName': template_name,
+                        'LaunchTemplateName': launch_template_name,
                         'Version': '$Latest',
                     },
                     'Overrides': overrides,

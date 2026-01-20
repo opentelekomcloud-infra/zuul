@@ -160,16 +160,20 @@ class LazyExecutorTTLCache:
     def __init__(self, ttl, executor):
         self.ttl = ttl
         self.executor = executor
-        # If we have an outstanding update being run by the executor,
-        # this is the future.
-        self.future = None
-        # The last time the underlying method completed.
-        self.last_time = None
-        # The last value from the underlying method.
-        self.last_value = None
         # A lock to make all of this thread safe (especially to ensure
         # we don't fire off multiple updates).
         self.lock = threading.Lock()
+        self.cache_clear()
+
+    def cache_clear(self):
+        with self.lock:
+            # If we have an outstanding update being run by the executor,
+            # this is the future.
+            self.future = None
+            # The last time the underlying method completed.
+            self.last_time = None
+            # The last value from the underlying method.
+            self.last_value = None
 
     def __call__(self, func):
         def decorator(*args, **kw):
@@ -206,6 +210,7 @@ class LazyExecutorTTLCache:
                     self.last_value = func(*args, **kw)
                     self.last_time = time.monotonic()
                 return self.last_value
+        decorator.cache_clear = self.cache_clear
         return decorator
 
 

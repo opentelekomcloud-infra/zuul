@@ -153,3 +153,8 @@ class Resource:
 
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.type} {self.metadata}>'
+
+    @property
+    def unique_id(self):
+        """Return a unique id string for this resource"""
+        raise NotImplementedError()
