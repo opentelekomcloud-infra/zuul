@@ -5,7 +5,7 @@ include zuul/ansible/*/*/*
 include zuul/driver/github/graphql/*
 include zuul/lib/ansible-config.conf
 include zuul/web/static/*
-include zuul/web/static/static/*/*
+include zuul/web/static/assets/*
 
 exclude .gitignore
 exclude .gitreview
