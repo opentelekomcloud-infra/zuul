@@ -541,7 +541,7 @@ class GerritEventProcessor:
             self.log.warning("Skipping event due to %s", e)
         except Exception:
             self.log.exception("Skipping event due to:")
-        return self.events, self.connection_event
+        return self.events, self.connection_event, self.zuul_event_id
 
     def _handleEvent(self, connection_event):
         timestamp = connection_event["timestamp"]
