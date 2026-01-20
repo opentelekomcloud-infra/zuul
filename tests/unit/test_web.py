@@ -1348,7 +1348,9 @@ class TestWeb(BaseTestWeb):
                          'canonical_name':
                          'review.example.com/org/project1',
                          'name': 'org/project1',
-                         'short_name': 'project1'},
+                         'short_name': 'project1',
+                         'src_dir': 'src/review.example.com/org/project1',
+                     },
                      'src_dir': 'src/review.example.com/org/project1'}],
                 'buildset_refs': [
                     {'branch': 'master',
@@ -1358,7 +1360,9 @@ class TestWeb(BaseTestWeb):
                          'canonical_name':
                          'review.example.com/org/project1',
                          'name': 'org/project1',
-                         'short_name': 'project1'},
+                         'short_name': 'project1',
+                         'src_dir': 'src/review.example.com/org/project1',
+                     },
                      'src_dir': 'src/review.example.com/org/project1'}],
                 'pipeline': 'check',
                 'post_review': False,
@@ -1457,7 +1461,10 @@ class TestWeb(BaseTestWeb):
                          'canonical_name':
                          'review.example.com/org/noop-project',
                          'name': 'org/noop-project',
-                         'short_name': 'noop-project'},
+                         'short_name': 'noop-project',
+                         'src_dir':
+                         'src/review.example.com/org/noop-project',
+                     },
                      'src_dir':
                      'src/review.example.com/org/noop-project'}],
                 'buildset_refs': [
@@ -1468,7 +1475,10 @@ class TestWeb(BaseTestWeb):
                          'canonical_name':
                          'review.example.com/org/noop-project',
                          'name': 'org/noop-project',
-                         'short_name': 'noop-project'},
+                         'short_name': 'noop-project',
+                         'src_dir':
+                         'src/review.example.com/org/noop-project',
+                     },
                      'src_dir':
                      'src/review.example.com/org/noop-project'}],
                 'tenant': 'tenant-one',
