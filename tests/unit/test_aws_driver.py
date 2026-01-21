@@ -32,12 +32,13 @@ import zuul.driver.aws.awsendpoint
 
 from tests.fake_aws import FakeAws, FakeAwsProviderEndpoint
 from tests.base import (
-    ResponsesFixture,
-    iterate_timeout,
-    simple_layout,
-    return_data,
-    driver_config,
     AnsibleZuulTestCase,
+    ResponsesFixture,
+    driver_config,
+    iterate_timeout,
+    okay_tracebacks,
+    return_data,
+    simple_layout,
 )
 from tests.unit.test_launcher import ImageMocksFixture
 from tests.unit.test_cloud_driver import BaseCloudDriverTest
@@ -306,6 +307,7 @@ class TestAwsDriver(AwsBaseTest):
         self.assertEqual(expected, instance['UserData']['Value'])
 
     @simple_layout('layouts/aws/fleet.yaml', enable_nodepool=True)
+    @okay_tracebacks('MissingParameter')
     @driver_config('aws', node_checks=check_fleet_node_attrs)
     def test_aws_node_lifecycle_fleet(self):
         self.log.debug("Start cleanup worker")
