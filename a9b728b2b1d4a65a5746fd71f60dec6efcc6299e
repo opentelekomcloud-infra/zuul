@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d5d4b3d8_285ae457",
+        "filename": "doc/source/installation.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 4146
+      },
+      "writtenOn": "2026-01-21T19:59:37Z",
+      "side": 1,
+      "message": "I guess we don\u0027t need to indicate the default is `/` since we\u0027re in content specific to hosting at a subdir location?",
+      "revId": "a9b728b2b1d4a65a5746fd71f60dec6efcc6299e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
