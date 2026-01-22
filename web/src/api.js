@@ -35,8 +35,8 @@ function getHomepageUrl() {
   //
   let url = new URL(window.location.href)
 
-  if ('PUBLIC_URL' in import.meta.env) {
-    url.pathname = import.meta.env.PUBLIC_URL
+  if ('BASE_URL' in import.meta.env) {
+    url.pathname = import.meta.env.BASE_URL
   } else {
     url.pathname = ''
   }

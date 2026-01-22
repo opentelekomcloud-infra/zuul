@@ -153,10 +153,10 @@ application as the document root and add rewrite rules::
 Sub directory serving
 ~~~~~~~~~~~~~~~~~~~~~
 
-The web application needs to be rebuilt to update the internal location of
-the static files. Set the homepage setting in the package.json to an
-absolute path or url. For example, to deploy the web interface through a
-'/zuul/' sub directory:
+The web application needs to be rebuilt to update the internal
+location of the static files. Set the environment variable
+`PUBLIC_URL` to an absolute path when building. For example, to deploy
+the web interface through a `/zuul` sub directory:
 
 .. note::
 
@@ -166,8 +166,7 @@ absolute path or url. For example, to deploy the web interface through a
 
 .. code-block:: bash
 
-   sed -e 's#"homepage": "/"#"homepage": "/zuul/"#' -i package.json
-   yarn build
+   PUBLIC_URL=/zuul yarn build
 
 Then assuming the web application is unpacked in /usr/share/zuul,
 enable the ``mod_rewrite`` Apache module and add the following rewrite

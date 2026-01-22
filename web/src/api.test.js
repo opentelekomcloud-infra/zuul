@@ -40,33 +40,31 @@ it('should should return the homepage url', () => {
 })
 
 it('should return the subdir homepage url', () => {
-   const homepage = 'https://example.com/zuul/'
-   Object.defineProperty(window, 'location', {
-     value: new URL(homepage)
-   })
-   // The build process strips trailing slashes from PUBLIC_URL,
-  // so make sure we don't include any in our tests
-  vi.stubEnv('PUBLIC_URL', '/zuul')
+  const homepage = 'https://example.com/zuul/'
+  Object.defineProperty(window, 'location', {
+    value: new URL(homepage)
+  })
+  vi.stubEnv('BASE_URL', '/zuul')
 
-   // Test some of the known, possible, URLs to verify
-   // that the origin is returned.
-   const urls = [
-       // auth_callback test  as some providers build
-       // different callback urls
-       'https://example.com/zuul/auth_callback',
-       'https://example.com/zuul/auth_callback#state=12345',
+  // Test some of the known, possible, URLs to verify
+  // that the origin is returned.
+  const urls = [
+    // auth_callback test  as some providers build
+    // different callback urls
+    'https://example.com/zuul/auth_callback',
+    'https://example.com/zuul/auth_callback#state=12345',
 
-       // Regular browser navigation urls
-       'https://example.com/zuul/status',
-       'https://example.com/zuul/t/zuul-tenant/status',
-       'https://example.com/zuul/t/zuul-tenant/jobs',
-   ]
+    // Regular browser navigation urls
+    'https://example.com/zuul/status',
+    'https://example.com/zuul/t/zuul-tenant/status',
+    'https://example.com/zuul/t/zuul-tenant/jobs',
+  ]
 
-   for (let url of urls) {
-     window.location.href = url
-     expect(getHomepageUrl()).toEqual(homepage)
-   }
- })
+  for (let url of urls) {
+    window.location.href = url
+    expect(getHomepageUrl()).toEqual(homepage)
+  }
+})
 
 it('should not request logs with auth header per default', () => {
   vi.stubEnv('REACT_APP_ZUUL_API', 'https://example.com/api/')

@@ -4,7 +4,7 @@ import path from 'path';
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   return {
-    base: '/',
+    base: process.env.PUBLIC_URL ? process.env.PUBLIC_URL : '/',
     envPrefix: 'REACT_APP',
     test: {
       globals: true,
