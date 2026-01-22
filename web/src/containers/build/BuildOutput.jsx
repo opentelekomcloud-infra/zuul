@@ -132,12 +132,11 @@ class BuildOutput extends React.Component {
     const [stderr_early_lines, stderr_late_lines] = this.getLines(task.stderr_lines)
     // If there is an ANSI color escape string, set a white-on-black
     // color scheme so the output looks more like what we would expect in a console.
-    let term_style = {}
     if (ANSI_REGEX.test(stdout_early_lines) ||
         ANSI_REGEX.test(stdout_late_lines) ||
         ANSI_REGEX.test(stderr_early_lines) ||
         ANSI_REGEX.test(stderr_late_lines)) {
-      term_style = {backgroundColor: 'black', color: 'white'}
+      zuulOutputClass = 'zuul-build-output-dark'
     }
     return (
       <Card key={host + task.zuul_log_id} className="zuul-task-summary-failed" style={this.props.preferences.darkMode ? {background: 'var(--pf-global--BackgroundColor--300)'} : {}}>
@@ -163,11 +162,11 @@ class BuildOutput extends React.Component {
             <Fragment>
               {stdout_early_lines.length > 0 && (
                 <details className={`${'foldable'} ${'stdout'}`}><summary></summary>
-                  <pre key="stdout" title="stdout" className={zuulOutputClass} style={term_style}>
+                  <pre key="stdout" title="stdout" className={zuulOutputClass}>
                     <ReAnsi log={stdout_early_lines} />
                   </pre>
                 </details>)}
-              <pre key="stdout" title="stdout" className={zuulOutputClass} style={term_style}>
+              <pre key="stdout" title="stdout" className={zuulOutputClass}>
                 <ReAnsi log={stdout_late_lines} />
               </pre>
             </Fragment>
@@ -176,12 +175,12 @@ class BuildOutput extends React.Component {
             <Fragment>
               {stderr_early_lines.length > 0 && (
                 <details className={`${'foldable'} ${'stderr'}`}><summary></summary>
-                  <pre key="stderr" title="stderr" className={zuulOutputClass} style={term_style}>
+                  <pre key="stderr" title="stderr" className={zuulOutputClass}>
                     <ReAnsi log={stderr_early_lines} />
                   </pre>
                 </details>
               )}
-              <pre key="stderr" title="stderr" className={zuulOutputClass} style={term_style}>
+              <pre key="stderr" title="stderr" className={zuulOutputClass}>
                 <ReAnsi log={stderr_late_lines} />
               </pre>
             </Fragment>
