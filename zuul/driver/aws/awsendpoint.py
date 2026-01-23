@@ -1938,6 +1938,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         for label in fleet_labels:
             template_data = {
                 'KeyName': label.key_name,
+                'MaintenanceOptions': {
+                    'AutoRecovery': 'disabled',
+                },
             }
 
             if label.security_group_ids:
@@ -2157,7 +2160,10 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     'ResourceType': 'volume',
                     'Tags': tag_dict_to_list(tags),
                 },
-            ]
+            ],
+            MaintenanceOptions={
+                'AutoRecovery': 'disabled',
+            },
         )
 
         if label.security_group_ids:
