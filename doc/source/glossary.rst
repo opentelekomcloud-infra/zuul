@@ -107,7 +107,7 @@ Glossary
 
       By convention, the name of a continuous-deployment pipeline.
       Such a pipeline typically interacts with production systems
-      rather than ephemeral test nodes.  By triggering on merge events
+      rather than ephemeral build nodes.  By triggering on merge events
       the results of deployment can be reported back to the
       originating change.  The :value:`serial
       <pipeline.manager.serial>` pipeline manager, is recommended if

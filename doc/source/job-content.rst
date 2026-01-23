@@ -70,7 +70,7 @@ in this format.
 
 Note that these git repositories are located on the executor; in order
 to be useful to most kinds of jobs, they will need to be present on
-the test nodes.  The ``base`` job in the standard library (see
+the build nodes.  The ``base`` job in the standard library (see
 `zuul-base-jobs documentation`_ for details) contains a
 pre-playbook which copies the repositories to all of the job's nodes.
 It is recommended to always inherit from this base job to ensure that
@@ -1836,6 +1836,6 @@ A job build may have the following status:
   One of the build dependencies failed and this job was not executed.
 
 **NODE_FAILURE**
-  The test instance provider was unable to fulfill the nodeset request.
-  This can happen if Nodepool is unable to provide the requested node(s)
-  for the request.
+  The :ref:`provider` was unable to fulfill the nodeset request.  This
+  can happen if Zuul (or Nodepool) is unable to provide the requested
+  node(s) for the request.
