@@ -3395,8 +3395,10 @@ class Launcher:
         for image_cname, uploads in uploads_by_image.items():
             upload_states_by_endpoint = collections.defaultdict(
                 collections.Counter)
-            upload_states_by_endpoint[upload.endpoint_name].update(
-                u.state for u in uploads)
+
+            for upload in uploads:
+                upload_states_by_endpoint[upload.endpoint_name][
+                    upload.state] += 1
 
             for endpoint_name, state_counter in (
                     upload_states_by_endpoint.items()):

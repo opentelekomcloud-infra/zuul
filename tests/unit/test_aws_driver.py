@@ -598,6 +598,16 @@ class TestAwsDriver(AwsBaseTest):
         self._test_diskimage(expected_uploads=2)
         self.assertEqual(1, len(self.copy_image_calls))
 
+        self.launcher._runStats()
+        self.assertReportedStat('zuul.uploads.state.ready',
+                                value='2', kind='g')
+        iname = 'review_example_com%2Forg%2Fcommon-config_debian-local'
+        for region in ('us-east-1', 'us-west-1'):
+            self.assertReportedStat(
+                f'zuul.image.{iname}.upload.aws_aws-{region}.state.ready',
+                value='1',
+                kind='g')
+
     @simple_layout('layouts/aws/nodepool-image-copy.yaml',
                    enable_nodepool=True)
     @return_data(
