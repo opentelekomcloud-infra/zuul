@@ -486,7 +486,7 @@ need to run standalone mergers.
 
 Executors need to be able to connect to the ZooKeeper cluster, any
 services for which connections are configured (Gerrit, GitHub, etc),
-as well as directly to the worker nodes.
+as well as directly to the build nodes.
 
 Trusted and Untrusted Playbooks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -607,7 +607,7 @@ The following sections of ``zuul.conf`` are used by the executor:
    .. attr:: private_key_file
       :default: ~/.ssh/id_rsa
 
-      SSH private key file to be used when logging into worker nodes.
+      SSH private key file to be used when logging into build nodes.
 
       .. note:: If you use an RSA key, ensure it is encoded in the PEM
                 format (use the ``-t rsa -m PEM`` arguments to
@@ -616,7 +616,7 @@ The following sections of ``zuul.conf`` are used by the executor:
    .. attr:: default_username
       :default: zuul
 
-      Username to use when logging into worker nodes, if none is
+      Username to use when logging into build nodes, if none is
       supplied by the image configuration.
 
    .. attr:: winrm_cert_key_file
@@ -1043,13 +1043,13 @@ sections of ``zuul.conf`` are used by the web server:
 Launcher
 --------
 
-The launcher is responsible for the lifecycle of worker nodes and
+The launcher is responsible for the lifecycle of build nodes and
 other resources.  They may be virtual machines (ephemeral or
 long-lived), real hardware with static addresses, containers, or other
 resources.  There are a number of drivers that implement functionality
 for static hosts and various cloud providers.
 
-The launcher must communicate with ZooKeeper and also the worker nodes
+The launcher must communicate with ZooKeeper and also the build nodes
 that it is responsible for.  Multiple launchers may be run, and they
 will work cooperatively to scale out their handling of requests.
 Certain launchers may be restricetd by configuration to servicing only

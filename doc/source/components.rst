@@ -54,7 +54,7 @@ which is described below.
 Each of the Zuul processes may run on the same host, or different
 hosts.
 
-Previous versions of Zuul used Nodepool to provide worker nodes; new
+Previous versions of Zuul used Nodepool to provide build nodes; new
 installations should use Zuul's internal resource management and not
 Nodepool.
 

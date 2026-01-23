@@ -1402,9 +1402,10 @@ Here is an example of two job definitions:
       Whether to perform a full checkout of projects in the workspace.
 
       This only applies to the workspace on the executor.  Most Zuul
-      jobs copy repositories to remote worker nodes and independently
-      checkout the appropriate refs.  Changing this setting should
-      typically not affect the contents on remote nodes.
+      jobs copy repositories to remote :ref:`build_nodes` and
+      independently checkout the appropriate refs.  Changing this
+      setting should typically not affect the contents on remote
+      nodes.
 
       Setting this option may be useful to save time or space when
       preparing large repositories which are not expected to be used

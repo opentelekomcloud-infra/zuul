@@ -5,7 +5,7 @@
 AWS
 ===
 
-Zuul can use AWS as a source for test nodes.
+Zuul can use AWS as a source for build nodes.
 
 If using the AWS driver to upload images, see `VM Import/Export
 service role`_ for information on configuring the required permissions
