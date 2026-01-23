@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13c5588d_05ac8a27",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1
+      },
+      "writtenOn": "2026-01-23T17:26:19Z",
+      "side": 1,
+      "message": "The MQTT topic can absolutely contain information about the zuul instance; it\u0027s configurable here: https://zuul-ci.org/docs/zuul/latest/drivers/mqtt.html#attr-pipeline.%3Creporter%3E.%3Cmqtt%3E.topic\n\nIf you put information about the instance in the topic, then you can have the consumer subscribe to just messages from the instance it\u0027s interested in.",
+      "revId": "f24fd2663ba97f8cdbc36ebd429c60f938d74c1e",
+      "serverId": "4a232e18-c5a9-48ee-94c0-e04e7cca6543"
+    }
+  ]
+}
