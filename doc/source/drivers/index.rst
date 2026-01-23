@@ -12,19 +12,37 @@ Drivers may support any of the following functions:
   enqueued.
 * Reporters -- outputs information when a pipeline is finished
   processing an item.
+* Providers -- manages build nodes in a cloud.
 
-Zuul includes the following drivers:
+Zuul includes the following source drivers (most support trigger and
+reporting as well):
 
 .. toctree::
    :maxdepth: 2
 
    gerrit
-   github
-   pagure
-   gitlab
    git
-   mqtt
+   github
+   gitlab
+   pagure
+
+Zuul includes the following trigger or reporting-only drivers:
+
+.. toctree::
+   :maxdepth: 2
+
    elasticsearch
+   mqtt
    smtp
    timer
    zuul
+
+Zuul includes the following provider drivers:
+
+.. toctree::
+   :maxdepth: 2
+
+   aws
+   azure
+   openstack
+   static
