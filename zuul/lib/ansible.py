@@ -256,7 +256,7 @@ class AnsibleManager:
             else:
                 to_be_installed = None
             # We check manually so that we can log the missing packages
-            # properly. We also need to check the the JSON output to determine
+            # properly. We also need to check the JSON output to determine
             # if any changes were necessary.
             if to_be_installed:
                 missing = ["%s %s" %

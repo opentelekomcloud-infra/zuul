@@ -252,7 +252,7 @@ class LocalAccumulator:
                 )
             else:
                 pointer = (
-                    f'The problem appears in the the {name} {stanza} stanza:'
+                    f'The problem appears in the {name} {stanza} stanza:'
                 )
             msg.append(pointer)
 

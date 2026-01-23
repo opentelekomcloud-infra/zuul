@@ -273,7 +273,7 @@
 
          .. value:: on-demand
 
-            This is the the typical EC2 instance where continued
+            This is the typical EC2 instance where continued
             availability is guaranteed after allocation.
 
          .. value:: spot
