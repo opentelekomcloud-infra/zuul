@@ -1,5 +1,3 @@
-:orphan:
-
 .. _section:
 
 Section
