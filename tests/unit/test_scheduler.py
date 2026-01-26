@@ -643,7 +643,7 @@ class TestScheduler(ZuulTestCase):
     def test_branch_repo_state(self):
         """
         Test that we schedule no initial merge for branch/ref events
-        and the the global repo state only if there are jobs to run.
+        and the global repo state only if there are jobs to run.
         """
         del self.merge_job_history
 

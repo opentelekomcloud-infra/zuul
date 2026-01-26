@@ -424,7 +424,7 @@ class AwsProviderFlavor(BaseProviderFlavor):
             Constant(
                 'on-demand',
                 doc="""\
-                This is the the typical EC2 instance where continued
+                This is the typical EC2 instance where continued
                 availability is guaranteed after allocation.""",
             ),
             Constant(

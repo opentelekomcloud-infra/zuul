@@ -671,7 +671,7 @@ class PipelineState(zkobject.ZKObject):
         obj = klass()
         obj._set(manager=manager, **kw)
         # Bind the state to the manager, so child objects can access
-        # the the full pipeline state.
+        # the full pipeline state.
         manager.state = obj
         obj._load(context, path=path)
         return obj
