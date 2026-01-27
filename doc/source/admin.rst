@@ -10,6 +10,7 @@ Service Administration
    configuration
    drivers/index
    tenants
+   workers
    operation
    authentication
    monitoring

@@ -1,5 +1,3 @@
-:orphan:
-
 :title: Azure Driver
 
 Azure
