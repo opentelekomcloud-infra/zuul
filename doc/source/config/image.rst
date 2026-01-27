@@ -4,12 +4,12 @@ Image
 =====
 
 An image is used by :ref:`provider` objects to configure the images
-that are available for launching worker nodes.  Zuul can work with
-images that already exist in a provider (whether they are externally
-managed, or supplied by the provider itself), or images where it
-manages the lifecycle (building, uploading or snapshotting, and
-deleting).  Regardless of what type of image is used, it needs to be
-configured in Zuul, and the image configuration object is used for
+that are available for launching :ref:`build_nodes`.  Zuul can work
+with images that already exist in a provider (whether they are
+externally managed, or supplied by the provider itself), or images
+where it manages the lifecycle (building, uploading or snapshotting,
+and deleting).  Regardless of what type of image is used, it needs to
+be configured in Zuul, and the image configuration object is used for
 that.
 
 The standalone image configuration object itself is little more than a
@@ -23,8 +23,8 @@ the driver-specific options for images are available and may be
 applied to it.  See the driver-specific provider options for details.
 
 For example, a user might decide to use the latest Debian release
-available in their cloud for launching worker nodes.  They would then
-define an image object:
+available in their cloud for launching nodes.  They would then define
+an image object:
 
 .. code-block:: yaml
 

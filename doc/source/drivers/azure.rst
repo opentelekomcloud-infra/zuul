@@ -3,7 +3,7 @@
 Azure
 =====
 
-Zuul can use Azure as a source for test nodes.
+Zuul can use Azure as a source for build nodes.
 
 Before using the Azure driver, make sure you have created a service
 principal.

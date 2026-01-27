@@ -211,8 +211,8 @@ the YAML files:
    config/pragma
 
 Some additional items may be available if the project is allowed to
-load items related to provider config.  See :ref:`workers` for more
-information about these:
+load items related to provider config.  See :ref:`build_nodes` for
+more information about these:
 
 .. toctree::
    :maxdepth: 1

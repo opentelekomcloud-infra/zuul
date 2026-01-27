@@ -3,10 +3,10 @@
 Provider
 ========
 
-A provider is responsible for managing worker nodes (which may be VMs,
-real servers, containers, or other resources) for Zuul.  A provider
-may appear in more than one tenant; if it does, it is still treated as
-a single provider that is shared by those tenants.
+A provider is responsible for managing :ref:`build_nodes` (which may
+be VMs, real servers, containers, or other resources) for Zuul.  A
+provider may appear in more than one tenant; if it does, it is still
+treated as a single provider that is shared by those tenants.
 
 The provider may have resource limits applied to it; if it does, those
 limits are shared across all tenants (in other words, if a provider
