@@ -165,7 +165,15 @@ class GiteaReporter(BaseReporter):
                     job_result = build.result if build.result else "RUNNING"
                     
                     # Format duration if available
-                    du
+                    duration = ""
+                    if build.start_time and build.end_time:
+                        seconds = int(build.end_time - build.start_time)
+                        minutes, secs = divmod(seconds, 60)
+                        duration = f" in {minutes}m {secs:02d}s"
+                    
+                    message += f"**{job.name}**: {job_result}{duration}\n"
+        
+        return message
 
     def mergePull(self, item, change):
         """Merge a pull request using Gitea API
@@ -231,12 +239,4 @@ class GiteaReporter(BaseReporter):
 
     def getSubmitAllowNeeds(self):
         """Return list of allowed needs for merge submission"""
-        return []ration = ""
-                    if build.start_time and build.end_time:
-                        seconds = int(build.end_time - build.start_time)
-                        minutes, secs = divmod(seconds, 60)
-                        duration = f" in {minutes}m {secs:02d}s"
-                    
-                    message += f"**{job.name}**: {job_result}{duration}\n"
-        
-        return message
+        return []
