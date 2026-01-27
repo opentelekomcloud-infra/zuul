@@ -412,7 +412,7 @@ the following options.
 
       This is only used for ``pull_request_review`` events.  It
       accepts a list of strings each of which is matched to the review
-      state, which can be one of ``approved``, ``comment``,
+      state, which can be one of ``approved``, ``commented``,
       ``changes_requested``, ``dismissed``, or ``pending``.
 
    .. attr:: status
