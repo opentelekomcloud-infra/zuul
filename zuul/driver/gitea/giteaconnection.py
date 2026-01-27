@@ -903,8 +903,6 @@ class GiteaEventConnector(threading.Thread):
 
         return event
 
-        return event
-
 
 class GiteaWebController(BaseWebController):
     """Handle Gitea webhooks"""
