@@ -353,22 +353,22 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
 
     def _updateBranchProtection(self, change):
         """Update branch protection information for a change
-        
+
         Fetches branch protection settings from Gitea API and updates
         the change object with protection requirements.
         """
         if not hasattr(change, 'branch') or not change.branch:
             return
-        
+
         try:
             protection = self.getBranchProtection(change.project.name, change.branch)
-            
+
             if protection:
                 change.branch_protected = protection.get('protected', False)
                 change.required_approvals = protection.get('required_approvals', 0)
                 change.enable_status_check = protection.get('enable_status_check', False)
                 change.required_contexts = protection.get('status_check_contexts', [])
-                
+
                 # Check if PR has enough approvals
                 if change.required_approvals > 0 and hasattr(change, 'pr'):
                     reviews = change.pr.get('reviews', [])
@@ -387,7 +387,7 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
                 change.enable_status_check = False
                 change.required_contexts = []
                 change.approved = True
-                
+
         except Exception as e:
             self.log.warning("Failed to fetch branch protection for %s/%s: %s",
                            change.project.name, change.branch, e)
@@ -472,13 +472,13 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
             MergeFailure: If the merge fails
         """
         from zuul.exceptions import MergeFailure
-        
+
         try:
             # Prepare merge request payload
             data = {
                 'Do': method,  # Gitea uses 'Do' field with values 'merge', 'squash', etc.
             }
-            
+
             # Add optional fields
             if merge_title:
                 data['MergeTitleField'] = merge_title
@@ -487,22 +487,22 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
             if sha:
                 data['MergeWhenChecksSucceed'] = False
                 data['head_commit_id'] = sha
-            
+
             # Perform the merge
             result = self._makeRequest(
                 'POST',
                 f'/repos/{project_name}/pulls/{pr_number}/merge',
                 json=data)
-            
+
             if result and result.get('merged'):
                 self.log.info("Successfully merged PR %s#%s with method %s",
                             project_name, pr_number, method)
                 return
-            
+
             # If we got here, merge didn't succeed
             error_msg = result.get('message', 'Unknown error') if result else 'No response from API'
             raise MergeFailure(f"Failed to merge PR {project_name}#{pr_number}: {error_msg}")
-            
+
         except MergeFailure:
             raise
         except Exception as e:
@@ -531,10 +531,10 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
             data = self._makeRequest(
                 'GET',
                 f'/repos/{project_name}/branch_protections/{branch_name}')
-            
+
             if not data:
                 return None
-            
+
             protection = {
                 'protected': True,
                 'required_approvals': data.get('required_approvals', 0),
@@ -543,16 +543,16 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
                 'user_can_push': data.get('user_can_push', False),
                 'user_can_merge': data.get('user_can_merge', True),
             }
-            
+
             self.log.debug("Branch protection for %s/%s: %s",
                          project_name, branch_name, protection)
             return protection
-            
+
         except Exception as e:
             # If branch protection endpoint fails, check basic protected status
             self.log.debug("Failed to get branch protection details for %s/%s: %s",
                          project_name, branch_name, e)
-            
+
             # Fall back to basic branch info
             try:
                 branch_data = self._makeRequest('GET', f'/repos/{project_name}/branches/{branch_name}')
@@ -567,7 +567,7 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
                     }
             except Exception:
                 pass
-            
+
             return None
 
     def _getProjectBranchesRequiredFlags(self, exclude_unprotected, exclude_locked):
@@ -709,7 +709,7 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
 
     def canMerge(self, change, allow_needs, event=None):
         """Check if a change can be merged
-        
+
         Takes into account:
         - Basic mergeable status from Gitea
         - Branch protection requirements
@@ -718,12 +718,12 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         """
         if not hasattr(change, 'mergeable'):
             return True
-        
+
         # Basic mergeable check
         if not change.mergeable:
             self.log.debug("Change %s is not mergeable according to Gitea", change)
             return False
-        
+
         # If branch is protected, check requirements
         if hasattr(change, 'branch_protected') and change.branch_protected:
             # Check approval requirements
@@ -733,7 +733,7 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
                         "Change %s does not have required approvals (%d required)",
                         change, change.required_approvals)
                     return False
-            
+
             # Check status check requirements if enabled
             if hasattr(change, 'enable_status_check') and change.enable_status_check:
                 if hasattr(change, 'required_contexts') and change.required_contexts:
@@ -743,7 +743,7 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
                     self.log.debug(
                         "Change %s has status check requirements: %s",
                         change, change.required_contexts)
-        
+
         return True
 
     def getChangesDependingOn(self, change, projects, tenant):
@@ -825,6 +825,10 @@ class GiteaEventConnector(threading.Thread):
         event = None
         if event_type == 'pull_request':
             event = self._handlePullRequestEvent(body)
+        elif event_type == 'pull_request_review':
+            event = self._handlePullRequestReviewEvent(body)
+        elif event_type == 'pull_request_review_dismissed':
+            event = self._handlePullRequestReviewDismissedEvent(body)
         elif event_type == 'issue_comment':
             event = self._handleIssueCommentEvent(body)
         elif event_type == 'push':
@@ -856,10 +860,17 @@ class GiteaEventConnector(threading.Thread):
         event.patchset = pr.get('head', {}).get('sha')
         event.title = pr.get('title')
 
-        # Extract label names for label_updated action
+        # Handle label changes
         if event.action == 'label_updated':
             labels = pr.get('labels', [])
             event.label = [label.get('name') for label in labels]
+
+        # Handle PR edits (title/body changes)
+        if event.action == 'edited':
+            changes = payload.get('changes', {})
+            # Track if body/description was edited
+            if 'body' in changes:
+                event.message_edited = True
 
         return event
 
@@ -874,6 +885,57 @@ class GiteaEventConnector(threading.Thread):
         event.newrev = payload.get('after')
         event.oldrev = payload.get('before')
         event.timestamp = time.time()
+
+        return event
+
+    def _handlePullRequestReviewEvent(self, payload):
+        """Handle pull request review webhook"""
+        event = GiteaTriggerEvent()
+        event.type = 'gt_pull_request_review'
+        event.action = payload.get('action', 'submitted')
+        event.project_hostname = self.connection.canonical_hostname
+        event.timestamp = time.time()
+
+        pr = payload.get('pull_request', {})
+        review = payload.get('review', {})
+
+        event.project_name = payload.get('repository', {}).get('full_name')
+        event.change_number = pr.get('number')
+        event.branch = pr.get('base', {}).get('ref')
+        event.ref = f"refs/pull/{pr.get('number')}/head"
+        event.patchset = pr.get('head', {}).get('sha')
+
+        # Map Gitea review states to Zuul states
+        review_state = review.get('state', '').lower()
+        if review_state == 'approved':
+            event.state = 'approved'
+        elif review_state == 'request_changes':
+            event.state = 'request_changes'
+        elif review_state == 'comment':
+            event.state = 'comment'
+            event.comment = review.get('body', '')
+        else:
+            event.state = review_state
+
+        return event
+
+    def _handlePullRequestReviewDismissedEvent(self, payload):
+        """Handle pull request review dismissal webhook"""
+        event = GiteaTriggerEvent()
+        event.type = 'gt_pull_request_review'
+        event.action = 'dismissed'
+        event.project_hostname = self.connection.canonical_hostname
+        event.timestamp = time.time()
+
+        pr = payload.get('pull_request', {})
+        review = payload.get('review', {})
+
+        event.project_name = payload.get('repository', {}).get('full_name')
+        event.change_number = pr.get('number')
+        event.branch = pr.get('base', {}).get('ref')
+        event.ref = f"refs/pull/{pr.get('number')}/head"
+        event.patchset = pr.get('head', {}).get('sha')
+        event.state = 'dismissed'
 
         return event
 

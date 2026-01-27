@@ -27,6 +27,7 @@ def getSchema():
         'comment': v.Any(str, [str]),
         'label': v.Any(str, [str]),
         'unlabel': v.Any(str, [str]),
+        'state': v.Any(str, [str]),  # For review events (approved, comment, request_changes)
     }
     return gitea_trigger
 
@@ -41,7 +42,7 @@ class GiteaTrigger(BaseTrigger):
         from zuul.driver.gitea.giteamodel import GiteaEventFilter
         efilters = []
         pcontext = parse_context
-        
+
         for trigger in to_list(trigger_config):
             with pcontext.confAttr(trigger, 'event') as attr:
                 types = [make_regex(x, pcontext)
@@ -64,7 +65,10 @@ class GiteaTrigger(BaseTrigger):
             with pcontext.confAttr(trigger, 'unlabel') as attr:
                 unlabels = [make_regex(x, pcontext)
                            for x in to_list(attr)]
-            
+            with pcontext.confAttr(trigger, 'state') as attr:
+                states = [make_regex(x, pcontext)
+                         for x in to_list(attr)]
+
             f = GiteaEventFilter(
                 connection_name=connection_name,
                 trigger=self,
@@ -75,7 +79,8 @@ class GiteaTrigger(BaseTrigger):
                 comments=comments,
                 labels=labels,
                 unlabels=unlabels,
+                states=states,
             )
             efilters.append(f)
-        
+
         return efilters

@@ -110,9 +110,11 @@ class GiteaTriggerEvent(TriggerEvent):
         self.action = None
         self.label = None
         self.unlabel = None
+        self.state = None  # For review events: approved, comment, request_changes
         self.change_number = None
         self.commits = []
         self.tag = None
+        self.message_edited = None  # Track if PR description was edited
 
     def toDict(self):
         d = super().toDict()
@@ -121,6 +123,8 @@ class GiteaTriggerEvent(TriggerEvent):
         d["action"] = self.action
         d["label"] = self.label
         d["unlabel"] = self.unlabel
+        d["state"] = self.state
+        d["message_edited"] = self.message_edited
         d["change_number"] = self.change_number
         d["commits"] = self.commits
         d["tag"] = self.tag
@@ -133,6 +137,8 @@ class GiteaTriggerEvent(TriggerEvent):
         self.action = d["action"]
         self.label = d.get("label")
         self.unlabel = d.get("unlabel")
+        self.state = d.get("state")
+        self.message_edited = d.get("message_edited")
         self.change_number = d["change_number"]
         self.commits = d.get("commits", [])
         self.tag = d.get("tag")
@@ -148,6 +154,8 @@ class GiteaTriggerEvent(TriggerEvent):
             r.append("label:%s" % self.label)
         if self.unlabel:
             r.append("unlabel:%s" % self.unlabel)
+        if self.state:
+            r.append("state:%s" % self.state)
         return ' '.join(r)
 
     def isPatchsetCreated(self):
@@ -160,6 +168,10 @@ class GiteaTriggerEvent(TriggerEvent):
             return self.action == 'closed'
         return False
 
+    def isMessageChanged(self):
+        """Check if PR message/description was edited"""
+        return bool(self.message_edited)
+
 
 class GiteaEventFilter(EventFilter):
     """Event filter for Gitea events"""
@@ -167,12 +179,13 @@ class GiteaEventFilter(EventFilter):
     def __init__(
             self, connection_name, trigger, types=None, actions=None,
             branches=[], comments=None, refs=None, labels=None, unlabels=None,
-            ignore_deletes=True, debug=None):
+            states=None, ignore_deletes=True, debug=None):
         super().__init__(connection_name, trigger, debug)
 
         types = types if types is not None else []
         refs = refs if refs is not None else []
         comments = comments if comments is not None else []
+        states = states if states is not None else []
 
         self._refs = [x.pattern for x in refs]
         self.refs = refs
@@ -185,6 +198,9 @@ class GiteaEventFilter(EventFilter):
 
         self._branches = [x.pattern for x in branches]
         self.branches = branches
+
+        self._states = [x.pattern for x in states]
+        self.states = states
 
         self.actions = actions or []
         self.labels = labels or []
@@ -209,9 +225,29 @@ class GiteaEventFilter(EventFilter):
             ret += ' labels: %s' % ', '.join(str(l) for l in self.labels)
         if self.unlabels:
             ret += ' unlabels: %s' % ', '.join(str(u) for u in self.unlabels)
+        if self._states:
+            ret += ' states: %s' % ', '.join(str(s) for s in self._states)
         ret += '>'
 
         return ret
+
+    def matches(self, event, change):
+        """Check if event matches filter criteria"""
+        # First check parent class matches
+        if not super().matches(event, change):
+            return False
+
+        # Check state filter (for review events)
+        if self._states and hasattr(event, 'state') and event.state:
+            matches_state = False
+            for state_regex in self.states:
+                if state_regex.match(event.state):
+                    matches_state = True
+                    break
+            if not matches_state:
+                return False
+
+        return True
 
 
 class GiteaRefFilter(RefFilter):
