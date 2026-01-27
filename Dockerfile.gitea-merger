@@ -7,14 +7,17 @@ USER root
 COPY zuul/driver/gitea/ /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/
 COPY zuul/lib/connections.py /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py
 COPY zuul/configloader.py /usr/local/lib/python3.11/site-packages/zuul/configloader.py
+COPY zuul/merger/server.py /usr/local/lib/python3.11/site-packages/zuul/merger/server.py
 
 # Ensure proper permissions
 RUN chown -R zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/ && \
     chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py && \
     chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/configloader.py && \
+    chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/merger/server.py && \
     chmod 644 /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/*.py && \
     chmod 644 /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py && \
-    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/configloader.py
+    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/configloader.py && \
+    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/merger/server.py
 
 USER zuul
 
