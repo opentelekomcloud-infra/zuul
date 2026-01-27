@@ -291,6 +291,7 @@ class BaseMergeServer(metaclass=ABCMeta):
     def merge(self, merge_request, args):
         self.log.debug("Got merge job: %s", merge_request.uuid)
         zuul_event_id = merge_request.event_id
+        log = get_annotated_logger(self.log, zuul_event_id)
 
         errors = []
         result = dict(merged=False,
@@ -305,6 +306,7 @@ class BaseMergeServer(metaclass=ABCMeta):
             except Exception:
                 msg = (f"Unable to update {item['connection']}/"
                        f"{item['project']}")
+                log.exception(msg)
                 errors.append(msg)
                 return result
 
