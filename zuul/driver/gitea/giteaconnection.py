@@ -58,6 +58,10 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         self.api_token = self.connection_config.get('api_token')
         self.webhook_token = self.connection_config.get('webhook_token')
 
+        # Initialize project storage early (also in onLoad for scheduler)
+        self.projects = {}
+        self.project_locks = {}
+
         # Initialize source for change cache
         self.source = driver.getSource(self)
 
