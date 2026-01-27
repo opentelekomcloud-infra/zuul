@@ -15,6 +15,9 @@
 import logging
 import voluptuous as v
 from zuul.reporter import BaseReporter
+from zuul.exceptions import MergeFailure
+from zuul.lib.logutil import get_annotated_logger
+from zuul.model import MERGER_MERGE, MERGER_MERGE_RESOLVE, MERGER_SQUASH_MERGE, MERGER_MAP
 
 
 def getSchema():
@@ -23,6 +26,7 @@ def getSchema():
         'status': v.Any('pending', 'success', 'failure', 'error'),
         'status-url': str,
         'comment': bool,
+        'merge': bool,
     }
     return gitea_reporter
 
@@ -31,11 +35,19 @@ class GiteaReporter(BaseReporter):
     name = 'gitea'
     log = logging.getLogger("zuul.GiteaReporter")
 
+    # Merge modes supported by Gitea (matching GitHub driver)
+    merge_modes = {
+        MERGER_MERGE: 'merge',
+        MERGER_MERGE_RESOLVE: 'merge',
+        MERGER_SQUASH_MERGE: 'squash',
+    }
+
     def __init__(self, driver, connection, pipeline, config=None, parse_context=None):
         super(GiteaReporter, self).__init__(driver, connection, config, parse_context)
         self.pipeline = pipeline
         self._commit_status = self.config.get('status', None) if self.config else None
         self._create_comment = self.config.get('comment', False) if self.config else False
+        self._merge = self.config.get('merge', False) if self.config else False
 
     def report(self, item, phase1=True, phase2=True):
         """Report build results to Gitea"""
@@ -73,6 +85,14 @@ class GiteaReporter(BaseReporter):
         # Comments can only be added to pull requests
         if phase2 and self._create_comment and hasattr(change, 'number'):
             self.addComment(item, change)
+
+        # Merge can only be performed on pull requests
+        if phase2 and self._merge and hasattr(change, 'number'):
+            errors_received = False
+            err = self.mergePull(item, change)
+            if err:
+                errors_received = True
+            return err if errors_received else None
 
     def setCommitStatus(self, item, change):
         """Set commit status on Gitea"""
@@ -145,7 +165,73 @@ class GiteaReporter(BaseReporter):
                     job_result = build.result if build.result else "RUNNING"
                     
                     # Format duration if available
-                    duration = ""
+                    du
+
+    def mergePull(self, item, change):
+        """Merge a pull request using Gitea API
+        
+        Supports different merge modes based on project configuration:
+        - merge: Standard merge commit
+        - squash: Squash and merge
+        """
+        log = get_annotated_logger(self.log, item.event)
+        merge_mode = item.current_build_set.getMergeMode(change)
+
+        if merge_mode not in self.merge_modes:
+            mode = [x[0] for x in MERGER_MAP.items() if x[1] == merge_mode][0]
+            log.warning('Merge mode %s not supported by Gitea', mode)
+            raise MergeFailure('Merge mode %s not supported by Gitea' % mode)
+
+        merge_mode = self.merge_modes[merge_mode]
+        project = change.project.name
+        pr_number = change.number
+        sha = change.patchset
+
+        log.debug(
+            f"Merging PR {change} via Gitea API with mode {merge_mode}"
+        )
+
+        try:
+            self.connection.mergePull(
+                project, pr_number,
+                merge_title=change.title,
+                merge_message=self._formatMergeMessage(change),
+                sha=sha,
+                method=merge_mode,
+                zuul_event_id=item.event)
+            change.is_merged = True
+            return None
+        except MergeFailure as e:
+            log.exception(
+                'Merge attempt of change %s failed: %s' %
+                (change, str(e)))
+            return str(e)
+
+    def _formatMergeMessage(self, change):
+        """Format merge commit message with review information"""
+        merge_message = ''
+        
+        # Add review information if available
+        if hasattr(change, 'pr') and change.pr:
+            reviews = change.pr.get('reviews', [])
+            if reviews:
+                review_users = []
+                for r in reviews:
+                    # Get full name or fallback to login
+                    name = r.get('user', {}).get('full_name') or r.get('user', {}).get('login', 'Unknown')
+                    email = r.get('user', {}).get('email', 'unknown@example.com')
+                    
+                    if r.get('state') == 'APPROVED':
+                        review_users.append('Reviewed-by: {} <{}>'.format(name, email))
+                
+                if review_users:
+                    merge_message = '\n'.join(review_users)
+        
+        return merge_message
+
+    def getSubmitAllowNeeds(self):
+        """Return list of allowed needs for merge submission"""
+        return []ration = ""
                     if build.start_time and build.end_time:
                         seconds = int(build.end_time - build.start_time)
                         minutes, secs = divmod(seconds, 60)

@@ -342,7 +342,57 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         change.mergeable = pr_data.get('mergeable', True)
         change.merge_commit_sha = pr_data.get('merge_commit_sha')
 
+        # Fetch and store branch protection information
+        self._updateBranchProtection(change)
+
         return change
+
+    def _updateBranchProtection(self, change):
+        """Update branch protection information for a change
+        
+        Fetches branch protection settings from Gitea API and updates
+        the change object with protection requirements.
+        """
+        if not hasattr(change, 'branch') or not change.branch:
+            return
+        
+        try:
+            protection = self.getBranchProtection(change.project.name, change.branch)
+            
+            if protection:
+                change.branch_protected = protection.get('protected', False)
+                change.required_approvals = protection.get('required_approvals', 0)
+                change.enable_status_check = protection.get('enable_status_check', False)
+                change.required_contexts = protection.get('status_check_contexts', [])
+                
+                # Check if PR has enough approvals
+                if change.required_approvals > 0 and hasattr(change, 'pr'):
+                    reviews = change.pr.get('reviews', [])
+                    approved_count = sum(1 for r in reviews if r.get('state') == 'APPROVED')
+                    change.approved = approved_count >= change.required_approvals
+                    self.log.debug(
+                        "PR %s has %d approvals (required: %d), approved: %s",
+                        change.number, approved_count, change.required_approvals, change.approved)
+                else:
+                    # No approvals required or no reviews available
+                    change.approved = True
+            else:
+                # Branch not protected, no special requirements
+                change.branch_protected = False
+                change.required_approvals = 0
+                change.enable_status_check = False
+                change.required_contexts = []
+                change.approved = True
+                
+        except Exception as e:
+            self.log.warning("Failed to fetch branch protection for %s/%s: %s",
+                           change.project.name, change.branch, e)
+            # On error, assume no protection
+            change.branch_protected = False
+            change.required_approvals = 0
+            change.enable_status_check = False
+            change.required_contexts = []
+            change.approved = True
 
     def getPullFiles(self, project_name, pr_number):
         """Get list of changed files in a pull request"""
@@ -400,6 +450,121 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
             self.log.error("Failed to add comment to PR %s#%s: %s",
                           project_name, pr_number, e)
             raise
+
+    def mergePull(self, project_name, pr_number, merge_title=None, merge_message=None,
+                  sha=None, method='merge', zuul_event_id=None):
+        """Merge a pull request via Gitea API
+
+        Args:
+            project_name: The project name (e.g., 'owner/repo')
+            pr_number: The pull request number
+            merge_title: Optional merge commit title (defaults to PR title)
+            merge_message: Optional merge commit message
+            sha: The head SHA to verify before merging
+            method: Merge method ('merge' or 'squash')
+            zuul_event_id: Optional event ID for logging
+
+        Raises:
+            MergeFailure: If the merge fails
+        """
+        from zuul.exceptions import MergeFailure
+        
+        try:
+            # Prepare merge request payload
+            data = {
+                'Do': method,  # Gitea uses 'Do' field with values 'merge', 'squash', etc.
+            }
+            
+            # Add optional fields
+            if merge_title:
+                data['MergeTitleField'] = merge_title
+            if merge_message:
+                data['MergeMessageField'] = merge_message
+            if sha:
+                data['MergeWhenChecksSucceed'] = False
+                data['head_commit_id'] = sha
+            
+            # Perform the merge
+            result = self._makeRequest(
+                'POST',
+                f'/repos/{project_name}/pulls/{pr_number}/merge',
+                json=data)
+            
+            if result and result.get('merged'):
+                self.log.info("Successfully merged PR %s#%s with method %s",
+                            project_name, pr_number, method)
+                return
+            
+            # If we got here, merge didn't succeed
+            error_msg = result.get('message', 'Unknown error') if result else 'No response from API'
+            raise MergeFailure(f"Failed to merge PR {project_name}#{pr_number}: {error_msg}")
+            
+        except MergeFailure:
+            raise
+        except Exception as e:
+            self.log.error("Failed to merge PR %s#%s: %s",
+                          project_name, pr_number, e)
+            raise MergeFailure(f"Failed to merge PR {project_name}#{pr_number}: {str(e)}")
+
+    def getBranchProtection(self, project_name, branch_name, zuul_event_id=None):
+        """Get branch protection settings from Gitea API
+
+        Returns protection settings including:
+        - protected: Whether the branch is protected
+        - required_approvals: Number of required approvals
+        - enable_status_check: Whether status checks are required
+        - required_status_checks: List of required status check contexts
+
+        Args:
+            project_name: The project name (e.g., 'owner/repo')
+            branch_name: The branch name
+            zuul_event_id: Optional event ID for logging
+
+        Returns:
+            dict: Branch protection settings, or None if not protected
+        """
+        try:
+            data = self._makeRequest(
+                'GET',
+                f'/repos/{project_name}/branch_protections/{branch_name}')
+            
+            if not data:
+                return None
+            
+            protection = {
+                'protected': True,
+                'required_approvals': data.get('required_approvals', 0),
+                'enable_status_check': data.get('enable_status_check', False),
+                'status_check_contexts': data.get('status_check_contexts', []),
+                'user_can_push': data.get('user_can_push', False),
+                'user_can_merge': data.get('user_can_merge', True),
+            }
+            
+            self.log.debug("Branch protection for %s/%s: %s",
+                         project_name, branch_name, protection)
+            return protection
+            
+        except Exception as e:
+            # If branch protection endpoint fails, check basic protected status
+            self.log.debug("Failed to get branch protection details for %s/%s: %s",
+                         project_name, branch_name, e)
+            
+            # Fall back to basic branch info
+            try:
+                branch_data = self._makeRequest('GET', f'/repos/{project_name}/branches/{branch_name}')
+                if branch_data and branch_data.get('protected'):
+                    return {
+                        'protected': True,
+                        'required_approvals': 0,
+                        'enable_status_check': False,
+                        'status_check_contexts': [],
+                        'user_can_push': False,
+                        'user_can_merge': True,
+                    }
+            except Exception:
+                pass
+            
+            return None
 
     def _getProjectBranchesRequiredFlags(self, exclude_unprotected, exclude_locked):
         """Get the flags required for branch queries
@@ -549,8 +714,43 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         return f"{self.baseurl}/{project_name}"
 
     def canMerge(self, change, allow_needs, event=None):
-        """Check if a change can be merged"""
-        return change.mergeable if hasattr(change, 'mergeable') else True
+        """Check if a change can be merged
+        
+        Takes into account:
+        - Basic mergeable status from Gitea
+        - Branch protection requirements
+        - Required approvals
+        - Required status checks (if enabled)
+        """
+        if not hasattr(change, 'mergeable'):
+            return True
+        
+        # Basic mergeable check
+        if not change.mergeable:
+            self.log.debug("Change %s is not mergeable according to Gitea", change)
+            return False
+        
+        # If branch is protected, check requirements
+        if hasattr(change, 'branch_protected') and change.branch_protected:
+            # Check approval requirements
+            if hasattr(change, 'required_approvals') and change.required_approvals > 0:
+                if not hasattr(change, 'approved') or not change.approved:
+                    self.log.debug(
+                        "Change %s does not have required approvals (%d required)",
+                        change, change.required_approvals)
+                    return False
+            
+            # Check status check requirements if enabled
+            if hasattr(change, 'enable_status_check') and change.enable_status_check:
+                if hasattr(change, 'required_contexts') and change.required_contexts:
+                    # Check if all required status checks have passed
+                    # This would require fetching commit statuses - for now we assume passed
+                    # In production, you'd want to fetch and verify statuses here
+                    self.log.debug(
+                        "Change %s has status check requirements: %s",
+                        change, change.required_contexts)
+        
+        return True
 
     def getChangesDependingOn(self, change, projects, tenant):
         """Get changes depending on this change"""

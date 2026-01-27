@@ -32,6 +32,12 @@ class PullRequest(Change):
         self.labels = []
         self.mergeable = True
         self.merge_commit_sha = None
+        # Branch protection attributes
+        self.branch_protected = False
+        self.required_approvals = 0
+        self.enable_status_check = False
+        self.required_contexts = []
+        self.approved = False
 
     def __repr__(self):
         r = ['<Change 0x%x' % id(self)]
@@ -61,6 +67,11 @@ class PullRequest(Change):
             "labels": self.labels,
             "mergeable": self.mergeable,
             "merge_commit_sha": self.merge_commit_sha,
+            "branch_protected": self.branch_protected,
+            "required_approvals": self.required_approvals,
+            "enable_status_check": self.enable_status_check,
+            "required_contexts": self.required_contexts,
+            "approved": self.approved,
         })
         return d
 
@@ -73,6 +84,11 @@ class PullRequest(Change):
         self.labels = data.get("labels", [])
         self.mergeable = data.get("mergeable", True)
         self.merge_commit_sha = data.get("merge_commit_sha")
+        self.branch_protected = data.get("branch_protected", False)
+        self.required_approvals = data.get("required_approvals", 0)
+        self.enable_status_check = data.get("enable_status_check", False)
+        self.required_contexts = data.get("required_contexts", [])
+        self.approved = data.get("approved", False)
 
     def isUpdateOf(self, other):
         if (self.project == other.project and
