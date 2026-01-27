@@ -20,3 +20,4 @@ documentation instead.
    init-jobs
    reporter-jobs
    branch-assigned-queues
+   web-rbac
