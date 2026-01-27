@@ -685,11 +685,10 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         else:
             project_name = project
 
-        # If SSH key is configured, use scp-style SSH URL
-        # The SSH config file handles port and other settings
+        # If SSH key is configured, use ssh:// URL with explicit port
         if self.git_ssh_key:
-            # Always use scp-style format (git@host:path) to work with SSH config
-            url = f'{self.git_user}@{self.git_host}:{project_name}.git'
+            # Use ssh:// format with explicit port since SSH config isn't consulted by git
+            url = f'ssh://{self.git_user}@{self.git_host}:{self.git_port}/{project_name}.git'
             self.log.debug(f'Returning SSH URL for {project_name}: {url}')
             return url
 
