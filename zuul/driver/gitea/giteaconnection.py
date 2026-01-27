@@ -681,26 +681,17 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         else:
             project_name = project
 
-        # Debug logging
-        self.log.info(f'getGitUrl called for {project_name}: git_ssh_key={self.git_ssh_key}, '
-                     f'git_port={self.git_port}, git_host={self.git_host}, git_user={self.git_user}')
-
-        # If SSH key is configured, use SSH URL with custom port if needed
+        # If SSH key is configured, use scp-style SSH URL
+        # The SSH config file handles port and other settings
         if self.git_ssh_key:
-            if self.git_port != 22:
-                # Use ssh:// URL format for custom ports
-                url = f'ssh://{self.git_user}@{self.git_host}:{self.git_port}/{project_name}.git'
-                self.log.info(f'Returning SSH URL with custom port: {url}')
-                return url
-            else:
-                # Use scp-like format for standard port
-                url = f'{self.git_user}@{self.git_host}:{project_name}.git'
-                self.log.info(f'Returning SSH URL with standard port: {url}')
-                return url
+            # Always use scp-style format (git@host:path) to work with SSH config
+            url = f'{self.git_user}@{self.git_host}:{project_name}.git'
+            self.log.debug(f'Returning SSH URL for {project_name}: {url}')
+            return url
 
         # Fall back to HTTPS URL
         url = f"{self.baseurl}/{project_name}.git"
-        self.log.info(f'Falling back to HTTPS URL: {url}')
+        self.log.debug(f'Returning HTTPS URL for {project_name}: {url}')
         return url
 
     def getWebController(self, zuul_web):
