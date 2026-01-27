@@ -237,6 +237,6 @@ class GiteaReporter(BaseReporter):
         
         return merge_message
 
-    def getSubmitAllowNeeds(self):
+    def getSubmitAllowNeeds(self, manager):
         """Return list of allowed needs for merge submission"""
         return []
