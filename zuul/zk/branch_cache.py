@@ -321,49 +321,52 @@ class BranchCache:
         :param list[str] branches:
             The list of branches or None to indicate a fetch error.
         """
-
         with (zk_locked(self.wlock),
               self.zk_context as ctx,
               self.cache.activeContext(ctx)):
+            self._setProjectBranches(project_name,
+                                     valid_flags, branch_infos)
 
-            project_info = self.cache.projects.get(project_name)
-            if project_info is None:
-                project_info = ProjectInfo(project_name)
-                self.cache.projects[project_name] = project_info
+    def _setProjectBranches(self, project_name,
+                            valid_flags, branch_infos):
+        project_info = self.cache.projects.get(project_name)
+        if project_info is None:
+            project_info = ProjectInfo(project_name)
+            self.cache.projects[project_name] = project_info
 
-            if branch_infos is None:
-                # We're storing an error, set the bits accordingly
-                project_info.failed_flags |= valid_flags
-                project_info.completed_flags &= ~valid_flags
-                return
+        if branch_infos is None:
+            # We're storing an error, set the bits accordingly
+            project_info.failed_flags |= valid_flags
+            project_info.completed_flags &= ~valid_flags
+            return
 
-            # Set the bits indicating a good query.
-            project_info.failed_flags &= ~valid_flags
-            project_info.completed_flags |= valid_flags
+        # Set the bits indicating a good query.
+        project_info.failed_flags &= ~valid_flags
+        project_info.completed_flags |= valid_flags
 
-            # Add or update branch info
-            for branch_info in branch_infos:
-                existing = project_info.branches.get(branch_info.name)
-                if existing:
-                    existing.update(branch_info)
-                else:
-                    project_info.branches[branch_info.name] = branch_info
+        # Add or update branch info
+        for branch_info in branch_infos:
+            existing = project_info.branches.get(branch_info.name)
+            if existing:
+                existing.update(branch_info)
+            else:
+                project_info.branches[branch_info.name] = branch_info
 
-            # Delete any existing branches which we would expect to be
-            # in the results but aren't.  At the time of writing, this
-            # isn't strictly necessary because we clear the branch
-            # cache on branch deletion, but this may enable us to
-            # change that in the future.
-            valid_branches = set(bi.name for bi in branch_infos)
-            for branch_name in list(project_info.branches.keys()):
-                if branch_name in valid_branches:
-                    continue
-                branch_info = project_info.branches[branch_name]
-                # If the branch_info flags are a subset of the valid
-                # flags, we can delete it.
-                if (branch_info.valid_flags & valid_flags ==
-                    branch_info.valid_flags):
-                    del project_info.branches[branch_name]
+        # Delete any existing branches which we would expect to be
+        # in the results but aren't.  At the time of writing, this
+        # isn't strictly necessary because we clear the branch
+        # cache on branch deletion, but this may enable us to
+        # change that in the future.
+        valid_branches = set(bi.name for bi in branch_infos)
+        for branch_name in list(project_info.branches.keys()):
+            if branch_name in valid_branches:
+                continue
+            branch_info = project_info.branches[branch_name]
+            # If the branch_info flags are a subset of the valid
+            # flags, we can delete it.
+            if (branch_info.valid_flags & valid_flags ==
+                branch_info.valid_flags):
+                del project_info.branches[branch_name]
 
     def setProtected(self, project_name, branch, protected):
         """Correct the protection state of a branch.
@@ -371,7 +374,6 @@ class BranchCache:
         This may be called if a branch has changed state without us
         receiving an explicit event.
         """
-
         with (zk_locked(self.wlock),
               self.zk_context as ctx,
               self.cache.activeContext(ctx)):
@@ -418,8 +420,9 @@ class BranchCache:
             an error when fetching the merge modes.
         """
         if self.ltime < min_ltime:
-            with zk_locked(self.rlock):
-                self.cache.refresh(self.zk_context)
+            with (zk_locked(self.rlock),
+                  self.zk_context as ctx):
+                self.cache.refresh(ctx)
 
         project_info = None
         try:
@@ -444,13 +447,16 @@ class BranchCache:
             The list of merge modes (by model ID) or None.
 
         """
+        with (zk_locked(self.wlock),
+              self.zk_context as ctx,
+              self.cache.activeContext(ctx)):
+            self._setProjectMergeModes(project_name, merge_modes)
 
-        with zk_locked(self.wlock):
-            with self.cache.activeContext(self.zk_context):
-                project_info = self.cache.projects.get(project_name)
-                if project_info is None:
-                    project_info = ProjectInfo(project_name)
-                project_info.merge_modes = merge_modes
+    def _setProjectMergeModes(self, project_name, merge_modes):
+        project_info = self.cache.projects.get(project_name)
+        if project_info is None:
+            project_info = ProjectInfo(project_name)
+        project_info.merge_modes = merge_modes
 
     def getProjectDefaultBranch(self, project_name,
                                 min_ltime=-1, default=RAISE_EXCEPTION):
@@ -483,8 +489,9 @@ class BranchCache:
 
         """
         if self.ltime < min_ltime:
-            with zk_locked(self.rlock):
-                self.cache.refresh(self.zk_context)
+            with (zk_locked(self.rlock),
+                  self.zk_context as ctx):
+                self.cache.refresh(ctx)
 
         project_info = None
         try:
@@ -509,13 +516,52 @@ class BranchCache:
             The default branch or None.
 
         """
+        with (zk_locked(self.wlock),
+              self.zk_context as ctx,
+              self.cache.activeContext(ctx)):
+            self._setProjectDefaultBranch(project_name, default_branch)
 
-        with zk_locked(self.wlock):
-            with self.cache.activeContext(self.zk_context):
-                project_info = self.cache.projects.get(project_name)
-                if project_info is None:
-                    project_info = ProjectInfo(project_name)
-                project_info.default_branch = default_branch
+    def _setProjectDefaultBranch(self, project_name, default_branch):
+        """Set the upstream default branch for the given project.
+
+        Use None as a sentinel value for the default branch to indicate
+        that there was a fetch error.
+
+        :param str project_name:
+            The project for the default branch.
+        :param str default_branch:
+            The default branch or None.
+
+        """
+        project_info = self.cache.projects.get(project_name)
+        if project_info is None:
+            project_info = ProjectInfo(project_name)
+        project_info.default_branch = default_branch
+
+    def setAllProjectData(self, project_name, valid_flags,
+                          branches, merge_modes, default_branch):
+        """Set all the branch info for a project at once
+
+        :param str project_name:
+            The project for the branches.
+        :param BranchFlag valid_flags:
+            The queries this list of branches is able to satisfy.
+        :param list[str] branches:
+            The list of branches or None to indicate a fetch error.
+        :param list[int] merge_modes:
+            The list of merge modes (by model ID) or None.
+        :param str default_branch:
+            The default branch or None.
+        """
+        # Set all three pieces of info with one lock and one active
+        # context so that we only write the cache out once.
+        with (zk_locked(self.wlock),
+              self.zk_context as ctx,
+              self.cache.activeContext(ctx)):
+            if valid_flags is not None:
+                self._setProjectBranches(project_name, valid_flags, branches)
+            self._setProjectMergeModes(project_name, merge_modes)
+            self._setProjectDefaultBranch(project_name, default_branch)
 
     @property
     def ltime(self):
