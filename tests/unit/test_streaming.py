@@ -712,7 +712,7 @@ class TestAuthWebsocketStreaming(TestStreamingBase):
                  'sub': 'testuser',
                  'groups': ['users'],
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         client2 = self.runWSClient(web.port, build.uuid, tenant='tenant-two',
                                    token=token)
