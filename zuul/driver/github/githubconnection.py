@@ -1023,7 +1023,7 @@ class GithubClientManager:
         now = datetime.datetime.now(utc)
         expiry = now + datetime.timedelta(minutes=5)
 
-        data = {'iat': now, 'exp': expiry, 'iss': self.app_id}
+        data = {'iat': now, 'exp': expiry, 'iss': str(self.app_id)}
         app_token = jwt.encode(data,
                                self.app_key,
                                algorithm='RS256')
