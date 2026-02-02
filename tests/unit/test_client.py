@@ -873,6 +873,12 @@ class TestImageOperations(LauncherBaseTestCase):
                 return_value="test_external_id")
     def test_image_export_import(self, mock_image_upload_run):
         # Test a round trip export/import of images
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),

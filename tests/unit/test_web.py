@@ -1560,6 +1560,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_web_images(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.startWebServer()
         self.assertHistory([
@@ -1625,6 +1631,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_web_image_delete(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.startWebServer()
         self.assertHistory([
@@ -1677,6 +1689,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_web_upload_delete(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.startWebServer()
         self.assertHistory([
@@ -1726,6 +1744,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="ami-785db401")
     def test_web_upload_validate(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.executor_server.hold_jobs_in_build = True
         self.startWebServer()
         self.waitUntilSettled()
@@ -1808,6 +1832,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_web_image_post(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.startWebServer()
         self.executor_server.hold_jobs_in_build = False
@@ -1869,6 +1899,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     def test_web_image_post_duplicate(self, mock_image_upload_run):
         # Test that we can enqueue multiple items for the same project
         # if they are different image builds.
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.startWebServer()
         self.executor_server.hold_jobs_in_build = False
