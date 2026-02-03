@@ -147,6 +147,8 @@ class GiteaReporter(BaseReporter):
             message = "Build succeeded"
         elif result == 'FAILURE':
             message = "Build failed"
+        elif result is None:
+            message = "Build started"
         else:
             message = f"Build {result.lower()}"
 
