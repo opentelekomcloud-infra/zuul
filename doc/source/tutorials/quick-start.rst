@@ -18,8 +18,8 @@ This tutorial supplies a working Gerrit for code review, though the
 concepts you will learn apply equally to GitHub.
 
 .. note:: Even if you don't ultimately intend to use Gerrit, you are
-	  encouraged to follow this tutorial to learn how to set up
-	  and use Zuul.
+          encouraged to follow this tutorial to learn how to set up
+          and use Zuul.
 
 At the end of the tutorial, you will find further information about
 how to configure your Zuul to interact with GitHub.
@@ -52,7 +52,7 @@ Clone the Zuul repository:
    git clone https://opendev.org/zuul/zuul
 
 Then cd into the directory containing this document, and run
-docker compose in order to start Zuul, Nodepool and Gerrit.
+docker compose in order to start Zuul and Gerrit.
 
 .. code-block:: shell
 
@@ -74,14 +74,14 @@ complete, you will have the following services running:
 
 * Zookeeper
 * Gerrit
-* Nodepool Launcher
 * Zuul Scheduler
 * Zuul Web Server
 * Zuul Executor
+* Zuul Launcher
 * Apache HTTPD
 
-And a long-running static test node used by Nodepool and Zuul upon
-which to run tests.
+And a long-running static test node used by Zuul upon which to run
+tests.
 
 The Zuul scheduler is configured to connect to Gerrit via a connection
 named ``gerrit``.  Zuul can interact with as many systems as

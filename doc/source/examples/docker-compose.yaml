@@ -135,14 +135,13 @@ services:
     networks:
       - zuul
   launcher:
-    image: quay.io/zuul-ci/nodepool-launcher
+    image: quay.io/zuul-ci/zuul-launcher
     volumes:
+      - "${ZUUL_TUTORIAL_CONFIG:-./etc_zuul/}:/etc/zuul/:z"
       - "./playbooks/:/var/playbooks/:z"
-      - "./etc_nodepool/:/etc/nodepool/:z"
       - "certs:/var/certs:z"
-    ports:
-      - "8005:8005"
-    command: "sh -c '/var/playbooks/wait-to-start-certs.sh && exec nodepool-launcher -f'"
+      - "lib-zuul-launcher:/var/lib/zuul"
+    command: "sh -c '/var/playbooks/wait-to-start-certs.sh && exec zuul-launcher -f'"
     networks:
       - zuul
   logs:
@@ -168,6 +167,7 @@ volumes:
   lib-zuul-scheduler:
   lib-zuul-web:
   lib-zuul-executor:
+  lib-zuul-launcher:
   zk-data:
   zk-datalog:
   lib-mysql:
