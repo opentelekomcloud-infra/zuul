@@ -293,14 +293,34 @@ class GiteaEventFilter(EventFilter):
             if not matches_comment:
                 return False
 
-        # labels are ORed
+        # labels are ORed - check if any event label matches any filter label pattern
         if self.labels:
-            if not hasattr(event, 'label') or event.label not in self.labels:
+            matches_label = False
+            if hasattr(event, 'label') and event.label:
+                event_labels = event.label if isinstance(event.label, list) else [event.label]
+                for event_label in event_labels:
+                    for label_re in self.labels:
+                        if label_re.match(event_label):
+                            matches_label = True
+                            break
+                    if matches_label:
+                        break
+            if not matches_label:
                 return False
 
-        # unlabels are ORed
+        # unlabels are ORed - check if any event unlabel matches any filter unlabel pattern
         if self.unlabels:
-            if not hasattr(event, 'unlabel') or event.unlabel not in self.unlabels:
+            matches_unlabel = False
+            if hasattr(event, 'unlabel') and event.unlabel:
+                event_unlabels = event.unlabel if isinstance(event.unlabel, list) else [event.unlabel]
+                for event_unlabel in event_unlabels:
+                    for unlabel_re in self.unlabels:
+                        if unlabel_re.match(event_unlabel):
+                            matches_unlabel = True
+                            break
+                    if matches_unlabel:
+                        break
+            if not matches_unlabel:
                 return False
 
         # Check state filter (for review events)
