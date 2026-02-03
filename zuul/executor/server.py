@@ -1867,32 +1867,11 @@ class AnsibleJob(object):
         if not repo:
             return
 
-        # Check out the selected ref again in case the job altered the
-        # repo state.
-        p = args['zuul']['projects'][project['canonical_name']]
-        selected_ref = p['checkout']
-
+        selected_ref = args['zuul']['projects'][project['canonical_name']
+                                                ]['checkout']
         lines = filecomments.extractLines(fc)
-        sparse_paths = set()
-        for (filename, lineno) in lines:
-            # Gerrit has several special file names (like /COMMIT_MSG) that
-            # start with "/" and should not have mapping done on them
-            if filename[0] == "/":
-                continue
-            sparse_paths.add(os.path.dirname(filename))
-
-        self.log.info("Checking out %s %s for line mapping",
-                      project['canonical_name'], selected_ref)
-        try:
-            repo.checkout(selected_ref, sparse_paths=list(sparse_paths))
-        except Exception:
-            # If checkout fails, abort
-            self.log.exception("Error checking out repo for line mapping")
-            warnings.append("Job %s: unable to check out repo "
-                            "for file comments" % (args['zuul']['job']))
-            return
-
         new_lines = {}
+        mappers = {}
         for (filename, lineno) in lines:
             # Gerrit has several special file names (like /COMMIT_MSG) that
             # start with "/" and should not have mapping done on them
@@ -1900,7 +1879,11 @@ class AnsibleJob(object):
                 continue
 
             try:
-                new_lineno = repo.mapLine(commit, filename, lineno)
+                mapper = mappers.get(filename)
+                if not mapper:
+                    mapper = repo.getLineMapper(commit, selected_ref, filename)
+                    mappers[filename] = mapper
+                new_lineno = mapper.mapLine(lineno)
             except Exception as e:
                 # Log at debug level since it's likely a job issue
                 self.log.debug("Error mapping line:", exc_info=True)
