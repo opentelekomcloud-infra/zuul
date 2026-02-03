@@ -240,6 +240,69 @@ class GiteaEventFilter(EventFilter):
         if not super().matches(event, change):
             return False
 
+        # event types are ORed
+        matches_type = False
+        for etype in self.types:
+            if etype.match(event.type):
+                matches_type = True
+        if self.types and not matches_type:
+            return False
+
+        # branches are ORed
+        if self.branches:
+            matches_branch = False
+            for branch in self.branches:
+                if hasattr(event, 'branch') and event.branch:
+                    if branch.match(event.branch):
+                        matches_branch = True
+            if not matches_branch:
+                return False
+
+        # refs are ORed
+        if self.refs:
+            matches_ref = False
+            if hasattr(event, 'ref') and event.ref is not None:
+                for ref in self.refs:
+                    if ref.match(event.ref):
+                        matches_ref = True
+            if not matches_ref:
+                return False
+
+        # Check ignore_deletes
+        if self.ignore_deletes and hasattr(event, 'newrev'):
+            if event.newrev == EMPTY_GIT_REF:
+                return False
+
+        # actions are ORed
+        if self.actions:
+            matches_action = False
+            for action in self.actions:
+                if hasattr(event, 'action') and event.action:
+                    if action.match(event.action):
+                        matches_action = True
+            if not matches_action:
+                return False
+
+        # comments are ORed - only match if comment filter is specified
+        if self.comments:
+            matches_comment = False
+            if hasattr(event, 'comment') and event.comment is not None:
+                for comment_re in self.comments:
+                    if comment_re.search(event.comment):
+                        matches_comment = True
+            if not matches_comment:
+                return False
+
+        # labels are ORed
+        if self.labels:
+            if not hasattr(event, 'label') or event.label not in self.labels:
+                return False
+
+        # unlabels are ORed
+        if self.unlabels:
+            if not hasattr(event, 'unlabel') or event.unlabel not in self.unlabels:
+                return False
+
         # Check state filter (for review events)
         if self._states and hasattr(event, 'state') and event.state:
             matches_state = False
