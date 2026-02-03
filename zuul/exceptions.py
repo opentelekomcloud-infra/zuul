@@ -294,6 +294,17 @@ class DuplicateGroupError(ConfigurationSyntaxError):
         super(DuplicateGroupError, self).__init__(message)
 
 
+class ReporterJobNotPermittedError(ConfigurationSyntaxError):
+    zuul_error_name = 'Reporter Job Not Permitted'
+
+    def __init__(self, project):
+        message = textwrap.dedent(f"""\
+        The project {project} is not permitted to configure a
+        reporter job.""")
+        message = textwrap.fill(message)
+        super().__init__(message)
+
+
 class ProjectNotFoundError(ConfigurationSyntaxError):
     zuul_error_name = 'Project Not Found'
 

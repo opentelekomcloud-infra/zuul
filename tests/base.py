@@ -2056,6 +2056,7 @@ class BaseTestCase(testtools.TestCase):
         log_defaults_from_env = os.environ.get(
             'OS_LOG_DEFAULTS',
             'git.cmd=INFO,'
+            'git.util=INFO,'
             'kazoo.client=WARNING,kazoo.recipe=WARNING,'
             'botocore=WARNING'
         )

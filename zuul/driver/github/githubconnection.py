@@ -1596,6 +1596,8 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         # after a successful merge.
         if not change.is_merged:
             change.is_merged = change.pr.get('merged')
+        if change.is_merged:
+            change.merge_commit_sha = change.pr.get('merge_commit_sha')
 
         change.reviews = self.getPullReviews(
             pr_obj, change.project, change.number, event)
@@ -2205,6 +2207,8 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         if not result:
             raise MergeFailure('Pull request was not merged')
         log.debug("Merged PR %s#%s", project, pr_number)
+        # This is the new merge_commit_sha
+        return data["sha"]
 
     def _getCommit(self, repository, sha, retries=5):
         try:

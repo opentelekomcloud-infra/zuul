@@ -244,6 +244,39 @@ Here is an example of two job definitions:
          were declared with a dependency on this job using
          :attr:`job.dependencies`.
 
+      .. value:: reporter
+
+         An reporter job is run after all other jobs in the buildset
+         have completed, and after all pipeline reporters have
+         reported.  It only runs if the buildset is successful and no
+         errors were encountered by the pipeline reporters.  Because
+         of this, its results may not be used to influence the result
+         of a buildset, or whether a change is merged.  In the case of
+         a change that is merged (for example, in a :term:`gate`
+         pipeline), the reporter job runs after the merge is complete.
+
+         If a reporter job runs after a change is merged, the job
+         variable :var:`zuul.buildset_refs.merge_commit_id` is
+         available with information about the merged commit id.
+
+         A reporter job may be used to synchronously update external
+         references to git repositories that are gated by Zuul.
+
+         While a reporter job is running, no action is taken for other
+         items in the pipeline's shared queue.  It is recommended that
+         reporter jobs run only on the executor and complete quickly
+         in order to minimize delays.
+
+         If a reporter job fails, any changes in the pipeline behind
+         it will be reset and their jobs restarted with the current
+         state of all relevant repositories.
+
+         Normally, reporter jobs may only be attached to a
+         project-pipeline within a config-project.  To allow an
+         untrusted project to add its own reporter jobs, see the
+         :attr:`tenant.untrusted-projects.<project>.allow-reporter-jobs`
+         tenant configuration option.
+
    .. attr:: attribute-control
 
       Individual attributes may be set to final so that any attempt to

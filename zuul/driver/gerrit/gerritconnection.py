@@ -1240,22 +1240,21 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                            (change,))
             return False
 
-        if self._waitForRefSha(change.project, ref, change._ref_sha):
+        if sha := self._waitForRefSha(change.project, ref, change._ref_sha):
             self.log.debug("Change %s is in the git repo" %
                            (change))
-            return True
+            return sha
         self.log.debug("Change %s did not appear in the git repo" %
                        (change))
         return False
 
-    def _waitForRefSha(self, project: Project,
-                       ref: str, old_sha: str='') -> bool:
+    def _waitForRefSha(self, project, ref, old_sha=''):
         # Wait for the ref to show up in the repo
         start = time.time()
         while time.time() - start < self.is_merged_replication_timeout:
             sha = self.getRefSha(project, ref)
             if old_sha != sha:
-                return True
+                return sha
             time.sleep(self.replication_retry_interval)
         return False
 

@@ -353,6 +353,17 @@ configuration. Some examples of tenant definitions are:
             in-repo configuration for its own testing (which may not
             be relevant to other users of the project).
 
+         .. attr:: allow-reporter-jobs
+            :type: bool
+
+            Set to ``true`` to allow this project to configure
+            :value:`job.type.reporter` jobs to run on its changes (or
+            the changes of other projects it is permitted to configure
+            via
+            :attr:`tenant.untrusted-projects.<project>.configure-projects`).
+            This behavior is normally reserved for for :term:`config
+            projects <config-project>`.
+
          .. attr:: configure-projects
 
             A list of project names (or :ref:`regular expressions
