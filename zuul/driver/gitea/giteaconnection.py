@@ -12,24 +12,73 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import collections
 import logging
+import re
 import threading
 import requests
 import json
 import hmac
 import hashlib
 import time
+import urllib.parse
+import uuid
+
 import cherrypy
+import cachetools
+
+from opentelemetry import trace
+
 from urllib.parse import quote_plus
+
+
+def _sign_request(body, secret):
+    """Create HMAC signature for webhook verification.
+
+    Args:
+        body: The raw request body bytes
+        secret: The webhook secret string
+
+    Returns:
+        The hex digest of the HMAC-SHA256 signature
+    """
+    signature = hmac.new(
+        secret.encode('utf-8'),
+        body if isinstance(body, bytes) else body.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+    return signature
+
+
+def _verify_signature(body, secret, signature):
+    """Verify HMAC signature for webhook payload.
+
+    Args:
+        body: The raw request body bytes
+        secret: The webhook secret string
+        signature: The signature from x-gitea-signature header
+
+    Returns:
+        True if signature is valid, False otherwise
+    """
+    expected = _sign_request(body, secret)
+    return hmac.compare_digest(expected, signature)
 
 from zuul.connection import BaseConnection, ZKBranchCacheMixin
 from zuul.web.handler import BaseWebController
+from zuul.lib.logutil import get_annotated_logger
+from zuul.lib import tracing
 from zuul.driver.gitea.giteamodel import GiteaTriggerEvent, PullRequest
 from zuul.zk.change_cache import AbstractChangeCache
 from zuul.zk.branch_cache import BranchInfo, BranchFlag
 from zuul.model import Ref, Tag, Branch
 
 TIMEOUT = 30
+
+# EventTuple for structured webhook event data
+EventTuple = collections.namedtuple(
+    "EventTuple", ["timestamp", "body", "event_type", "delivery"]
+)
 
 
 class GiteaChangeCache(AbstractChangeCache):
@@ -41,6 +90,56 @@ class GiteaChangeCache(AbstractChangeCache):
         "Branch": Branch,
         "PullRequest": PullRequest,
     }
+
+
+class GiteaShaCache:
+    """Cache for mapping SHA to PR numbers.
+
+    This cache helps quickly look up which PRs are associated with a
+    given commit SHA, improving performance when processing webhooks
+    that reference commits by SHA.
+    """
+
+    def __init__(self):
+        self.projects = {}
+
+    def update(self, project_name, pr):
+        """Update the cache with PR information.
+
+        Args:
+            project_name: The project name (owner/repo)
+            pr: Pull request data dict containing 'head.sha' and 'number'
+        """
+        project_cache = self.projects.setdefault(
+            project_name,
+            # Cache up to 4k shas for each project
+            # Note we cache the actual sha for a PR and the
+            # merge_commit_sha so we make this fairly large.
+            cachetools.LRUCache(4096)
+        )
+        sha = pr.get('head', {}).get('sha')
+        number = pr.get('number')
+        if sha and number is not None:
+            cached_prs = project_cache.setdefault(sha, set())
+            cached_prs.add(number)
+        merge_commit_sha = pr.get('merge_commit_sha')
+        if merge_commit_sha and number is not None:
+            cached_prs = project_cache.setdefault(merge_commit_sha, set())
+            cached_prs.add(number)
+
+    def get(self, project_name, sha):
+        """Get PR numbers associated with a SHA.
+
+        Args:
+            project_name: The project name (owner/repo)
+            sha: The commit SHA to look up
+
+        Returns:
+            Set of PR numbers associated with the SHA, or empty set
+        """
+        project_cache = self.projects.get(project_name, {})
+        cached_prs = project_cache.get(sha, set())
+        return cached_prs
 
 
 class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
@@ -56,11 +155,14 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         self.baseurl = self.connection_config.get(
             'baseurl', 'https://%s' % self.server)
         self.api_token = self.connection_config.get('api_token')
-        self.webhook_token = self.connection_config.get('webhook_token')
+        self.webhook_secret = self.connection_config.get('webhook_secret')
 
         # Initialize project storage early (also in onLoad for scheduler)
         self.projects = {}
         self.project_locks = {}
+
+        # Initialize SHA cache for PR lookups
+        self._sha_pr_cache = GiteaShaCache()
 
         # Initialize source for change cache
         self.source = driver.getSource(self)
@@ -124,18 +226,73 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
     def getWebController(self, zuul_web):
         return GiteaWebController(zuul_web, self)
 
-    def _makeRequest(self, method, path, **kwargs):
-        """Make an HTTP request to Gitea API"""
+    def _makeRequest(self, method, path, retries=3, **kwargs):
+        """Make an HTTP request to Gitea API with retry logic.
+
+        Args:
+            method: HTTP method (GET, POST, etc.)
+            path: API path (e.g., '/repos/owner/repo/pulls')
+            retries: Number of retry attempts for transient failures
+            **kwargs: Additional arguments passed to requests
+
+        Returns:
+            Parsed JSON response or None if no content
+
+        Raises:
+            requests.exceptions.RequestException: If all retries fail
+        """
         url = f"{self.baseurl}/api/v1{path}"
         kwargs.setdefault('timeout', TIMEOUT)
 
-        try:
-            response = self.session.request(method, url, **kwargs)
-            response.raise_for_status()
-            return response.json() if response.content else None
-        except requests.exceptions.RequestException as e:
-            self.log.error("Gitea API request failed: %s", e)
-            raise
+        last_exception = None
+        for attempt in range(retries):
+            try:
+                response = self.session.request(method, url, **kwargs)
+                response.raise_for_status()
+                return response.json() if response.content else None
+            except requests.exceptions.HTTPError as e:
+                # Don't retry client errors (4xx) except rate limiting
+                if e.response is not None:
+                    if e.response.status_code == 429:
+                        # Rate limited - wait and retry
+                        retry_after = int(e.response.headers.get('Retry-After', 60))
+                        self.log.warning(
+                            "Rate limited by Gitea API, waiting %d seconds",
+                            retry_after)
+                        time.sleep(retry_after)
+                        last_exception = e
+                        continue
+                    elif 400 <= e.response.status_code < 500:
+                        # Client error - don't retry
+                        self.log.error("Gitea API client error: %s", e)
+                        raise
+                # Server error - retry
+                last_exception = e
+                if attempt < retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff
+                    self.log.warning(
+                        "Gitea API request failed (attempt %d/%d), "
+                        "retrying in %d seconds: %s",
+                        attempt + 1, retries, wait_time, e)
+                    time.sleep(wait_time)
+            except requests.exceptions.ConnectionError as e:
+                # Connection error - retry
+                last_exception = e
+                if attempt < retries - 1:
+                    wait_time = 2 ** attempt
+                    self.log.warning(
+                        "Gitea API connection error (attempt %d/%d), "
+                        "retrying in %d seconds: %s",
+                        attempt + 1, retries, wait_time, e)
+                    time.sleep(wait_time)
+            except requests.exceptions.RequestException as e:
+                self.log.error("Gitea API request failed: %s", e)
+                raise
+
+        # All retries exhausted
+        self.log.error("Gitea API request failed after %d attempts: %s",
+                      retries, last_exception)
+        raise last_exception
 
     def getRefSha(self, project_name, ref):
         """Get SHA for a given ref"""
@@ -145,6 +302,21 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         except Exception as e:
             self.log.error("Failed to get ref SHA: %s", e)
             return None
+
+    def getPRsBySha(self, project_name, sha):
+        """Get PR numbers associated with a SHA from cache.
+
+        Uses the GiteaShaCache to quickly look up which PRs contain
+        a specific commit SHA, avoiding full PR searches.
+
+        Args:
+            project_name: The project name (owner/repo)
+            sha: The commit SHA to look up
+
+        Returns:
+            Set of PR numbers, or empty set if not found
+        """
+        return self._sha_pr_cache.get(project_name, sha)
 
     def getPullRequest(self, project_name, pr_number):
         """Get pull request details"""
@@ -290,6 +462,10 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         """Update a Change object with PR data from Gitea API"""
         self.log.info("Updating %s", change)
         change.pr = pr_data
+
+        # Update SHA cache for quick PR lookups by SHA
+        self._sha_pr_cache.update(change.project.name, pr_data)
+
         # Set patchset to HEAD SHA if not already set
         head_sha = pr_data.get('head', {}).get('sha')
         if not change.patchset or change.patchset == 'None':
@@ -346,10 +522,54 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         change.mergeable = pr_data.get('mergeable', True)
         change.merge_commit_sha = pr_data.get('merge_commit_sha')
 
+        # Fetch and store reviews for this PR
+        self._updateReviews(change)
+
         # Fetch and store branch protection information
         self._updateBranchProtection(change)
 
         return change
+
+    def _updateReviews(self, change):
+        """Fetch and store PR reviews.
+
+        Fetches review data from Gitea API and stores it on the change
+        object for use in merge commit messages and approval checking.
+        """
+        if not hasattr(change, 'number') or not change.number:
+            return
+
+        try:
+            reviews = self.getPullReviews(change.project.name, change.number)
+            change.reviews = reviews
+            # Store reviews in pr dict as well for compatibility
+            if hasattr(change, 'pr') and change.pr:
+                change.pr['reviews'] = reviews
+        except Exception as e:
+            self.log.warning("Failed to fetch reviews for PR %s: %s",
+                           change.number, e)
+            change.reviews = []
+
+    def getPullReviews(self, project_name, pr_number):
+        """Get reviews for a pull request from Gitea API.
+
+        Args:
+            project_name: The project name (e.g., 'owner/repo')
+            pr_number: The pull request number
+
+        Returns:
+            List of review dictionaries with user info and state
+        """
+        try:
+            data = self._makeRequest(
+                'GET',
+                f'/repos/{project_name}/pulls/{pr_number}/reviews'
+            )
+            return data if data else []
+        except Exception as e:
+            self.log.warning("Failed to get reviews for PR %s#%s: %s",
+                           project_name, pr_number, e)
+            return []
 
     def _updateBranchProtection(self, change):
         """Update branch protection information for a change
@@ -737,18 +957,183 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
             # Check status check requirements if enabled
             if hasattr(change, 'enable_status_check') and change.enable_status_check:
                 if hasattr(change, 'required_contexts') and change.required_contexts:
-                    # Check if all required status checks have passed
-                    # This would require fetching commit statuses - for now we assume passed
-                    # In production, you'd want to fetch and verify statuses here
-                    self.log.debug(
-                        "Change %s has status check requirements: %s",
-                        change, change.required_contexts)
+                    # Fetch and verify commit statuses
+                    if not self._checkRequiredStatuses(change):
+                        self.log.debug(
+                            "Change %s failed required status checks: %s",
+                            change, change.required_contexts)
+                        return False
 
         return True
 
+    def _checkRequiredStatuses(self, change):
+        """Check if all required status checks have passed.
+
+        Args:
+            change: The change object with required_contexts set
+
+        Returns:
+            True if all required status checks passed, False otherwise
+        """
+        if not hasattr(change, 'patchset') or not change.patchset:
+            return True
+
+        try:
+            statuses = self.getCommitStatuses(change.project.name, change.patchset)
+            if not statuses:
+                return False
+
+            # Build a dict of context -> latest status
+            context_status = {}
+            for status in statuses:
+                ctx = status.get('context', '')
+                # Only keep the most recent status per context
+                if ctx not in context_status:
+                    context_status[ctx] = status.get('status', '')
+
+            # Check each required context
+            for required_ctx in change.required_contexts:
+                if required_ctx not in context_status:
+                    self.log.debug("Required context %s not found", required_ctx)
+                    return False
+                if context_status[required_ctx] != 'success':
+                    self.log.debug(
+                        "Required context %s has status %s, not success",
+                        required_ctx, context_status[required_ctx])
+                    return False
+
+            return True
+        except Exception as e:
+            self.log.warning("Failed to check required statuses: %s", e)
+            return False
+
+    def getCommitStatuses(self, project_name, sha):
+        """Get commit statuses from Gitea API.
+
+        Args:
+            project_name: The project name (e.g., 'owner/repo')
+            sha: The commit SHA
+
+        Returns:
+            List of status dictionaries
+        """
+        try:
+            data = self._makeRequest(
+                'GET',
+                f'/repos/{project_name}/statuses/{sha}')
+            return data if data else []
+        except Exception as e:
+            self.log.warning("Failed to get commit statuses for %s/%s: %s",
+                           project_name, sha[:8], e)
+            return []
+
     def getChangesDependingOn(self, change, projects, tenant):
-        """Get changes depending on this change"""
-        return []
+        """Get changes that depend on this change via Depends-On.
+
+        Searches for open pull requests that reference this change
+        in their body using the 'Depends-On:' syntax.
+
+        Args:
+            change: The change to find dependents for
+            projects: List of projects to search in
+            tenant: The tenant context
+
+        Returns:
+            List of Change objects that depend on this change
+        """
+        changes = []
+        if not hasattr(change, 'number'):
+            return changes
+
+        # Construct the URL that would be used in Depends-On references
+        change_url = f"https://{self.canonical_hostname}/{change.project.name}/pulls/{change.number}"
+
+        self.log.debug("Searching for changes depending on %s", change_url)
+
+        # Search for PRs mentioning this change URL
+        for project in projects:
+            try:
+                prs = self._searchPullRequests(
+                    project.name,
+                    query=change_url,
+                    state='open'
+                )
+                for pr in prs:
+                    # Verify the Depends-On reference is in the body
+                    body = pr.get('body', '') or ''
+                    if f"Depends-On: {change_url}" in body:
+                        # Get the change object for this PR
+                        from zuul.zk.change_cache import ChangeKey
+                        pr_number = pr.get('number')
+                        pr_sha = pr.get('head', {}).get('sha')
+                        change_key = ChangeKey(
+                            self.connection_name,
+                            project.name,
+                            'PullRequest',
+                            str(pr_number),
+                            str(pr_sha)
+                        )
+                        dep_change = self._getChange(change_key)
+                        if dep_change:
+                            changes.append(dep_change)
+            except Exception as e:
+                self.log.warning(
+                    "Error searching for dependencies in %s: %s",
+                    project.name, e)
+
+        return changes
+
+    def _searchPullRequests(self, project_name, query=None, state='open'):
+        """Search for pull requests in a project.
+
+        Args:
+            project_name: The project name
+            query: Optional search query string
+            state: PR state to filter ('open', 'closed', 'all')
+
+        Returns:
+            List of pull request dictionaries
+        """
+        try:
+            params = {'state': state}
+            # Gitea doesn't have a direct search API for PR bodies,
+            # so we fetch all open PRs and filter
+            data = self._makeRequest(
+                'GET',
+                f'/repos/{project_name}/pulls',
+                params=params
+            )
+            if not data:
+                return []
+
+            if query:
+                # Filter PRs that contain the query in their body
+                filtered = []
+                for pr in data:
+                    body = pr.get('body', '') or ''
+                    if query in body:
+                        filtered.append(pr)
+                return filtered
+            return data
+        except Exception as e:
+            self.log.warning("Failed to search PRs in %s: %s", project_name, e)
+            return []
+
+    def getPull(self, project_name, pr_number, event=None):
+        """Get pull request data from Gitea API.
+
+        This is a convenience wrapper around getPullRequest that matches
+        the interface expected by getChangeByURL.
+
+        Args:
+            project_name: The project name
+            pr_number: The pull request number
+            event: Optional event context
+
+        Returns:
+            Pull request dictionary or None
+        """
+        return self.getPullRequest(project_name, pr_number)
 
     def getProjectBranchSha(self, project_name, branch_name):
         """Get SHA for a project branch"""
@@ -773,6 +1158,7 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
 class GiteaEventConnector(threading.Thread):
     """Move events from Gitea event queue into the scheduler"""
     log = logging.getLogger("zuul.GiteaEventConnector")
+    tracer = trace.get_tracer("zuul")
 
     def __init__(self, connection):
         super(GiteaEventConnector, self).__init__()
@@ -805,10 +1191,18 @@ class GiteaEventConnector(threading.Thread):
     def _run(self):
         while not self._stopped:
             for event_data in self.event_queue:
-                try:
-                    self._handleEvent(event_data)
-                finally:
-                    self.event_queue.ack(event_data)
+                # Restore span context from event for distributed tracing
+                event_span = tracing.restoreSpanContext(
+                    event_data.get("span_context"))
+                attributes = {"rel": "GiteaEvent"}
+                link = trace.Link(event_span.get_span_context(),
+                                  attributes=attributes)
+                with self.tracer.start_as_current_span(
+                        "GiteaEventProcessing", links=[link]):
+                    try:
+                        self._handleEvent(event_data)
+                    finally:
+                        self.event_queue.ack(event_data)
                 if self._stopped:
                     return
             self._process_event.wait(10)
@@ -816,11 +1210,14 @@ class GiteaEventConnector(threading.Thread):
 
     def _handleEvent(self, event_data):
         """Process a queued event and create trigger event"""
+        zuul_event_id = str(uuid.uuid4())
+        log = get_annotated_logger(self.log, zuul_event_id)
+
         headers = event_data.get('headers', {})
         body = event_data.get('body', {})
         event_type = headers.get('x-gitea-event')
 
-        self.log.debug("Processing Gitea event: %s", event_type)
+        log.debug("Processing Gitea event: %s", event_type)
 
         event = None
         if event_type == 'pull_request':
@@ -835,6 +1232,7 @@ class GiteaEventConnector(threading.Thread):
             event = self._handlePushEvent(body)
 
         if event:
+            event.zuul_event_id = zuul_event_id
             event.connection_name = self.connection.connection_name
             # Ensure timestamp is always set (fallback for old cached events)
             if not hasattr(event, 'timestamp') or event.timestamp is None:
@@ -969,6 +1367,7 @@ class GiteaEventConnector(threading.Thread):
 class GiteaWebController(BaseWebController):
     """Handle Gitea webhooks"""
     log = logging.getLogger("zuul.GiteaWebController")
+    tracer = trace.get_tracer("zuul")
 
     def __init__(self, zuul_web, connection):
         self.connection = connection
@@ -979,23 +1378,81 @@ class GiteaWebController(BaseWebController):
             self.connection.connection_name,
             None
         )
+        self.webhook_secret = self.connection.connection_config.get(
+            'webhook_secret')
+
+    def _validate_signature(self, body, headers):
+        """Validate webhook signature using HMAC-SHA256.
+
+        Args:
+            body: Raw request body bytes
+            headers: Request headers dict (lowercase keys)
+
+        Returns:
+            True if signature is valid
+
+        Raises:
+            cherrypy.HTTPError: If signature is missing or invalid
+        """
+        if not self.webhook_secret:
+            # No secret configured, skip validation (but log warning)
+            self.log.warning(
+                "No webhook_secret configured - skipping signature "
+                "validation. This is a security risk!")
+            return True
+
+        try:
+            request_signature = headers['x-gitea-signature']
+        except KeyError:
+            raise cherrypy.HTTPError(401, 'X-Gitea-Signature header missing.')
+
+        # Gitea sends just the hex digest, not "sha256=..." format
+        payload_signature = _sign_request(body, self.webhook_secret)
+        # Extract just the hex part if it has a prefix
+        if '=' in payload_signature:
+            payload_signature = payload_signature.split('=', 1)[1]
+
+        self.log.debug("Payload Signature: %s", payload_signature)
+        self.log.debug("Request Signature: %s", request_signature)
+
+        if not hmac.compare_digest(payload_signature, request_signature):
+            raise cherrypy.HTTPError(
+                401,
+                'Request signature does not match calculated payload '
+                'signature. Check that webhook_secret is correct.')
+
+        return True
 
     @cherrypy.expose
-    @cherrypy.tools.json_in()
+    @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
+    @tracer.start_as_current_span("GiteaEvent")
     def payload(self):
-        """Handle incoming webhook payloads"""
+        """Handle incoming webhook payloads.
+
+        Reads raw body to validate HMAC signature before processing.
+        """
+        # Normalize headers to lowercase for consistent access
         headers = dict()
         for key, value in cherrypy.request.headers.items():
             headers[key.lower()] = value
 
-        event_type = headers.get('x-gitea-event')
-        payload = cherrypy.request.json
+        # Read raw body for signature validation
+        body = cherrypy.request.body.read()
 
+        # Validate webhook signature
+        self._validate_signature(body, headers)
+
+        # Parse JSON body after validation
+        json_body = json.loads(body.decode('utf-8'))
+
+        event_type = headers.get('x-gitea-event')
         self.log.info("Received Gitea webhook: %s", event_type)
 
+        # Include tracing span context for distributed tracing
         data = {
             'headers': headers,
-            'body': payload
+            'body': json_body,
+            'span_context': tracing.getSpanContext(trace.get_current_span()),
         }
         self.event_queue.put(data)
 

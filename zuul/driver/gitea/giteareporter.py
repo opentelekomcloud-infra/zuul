@@ -52,7 +52,7 @@ class GiteaReporter(BaseReporter):
     def report(self, item, phase1=True, phase2=True):
         """Report build results to Gitea"""
         self.log.info("Reporting to Gitea for item: %s", item)
-        
+
         ret = []
         for change in item.changes:
             err = self._reportChange(item, change, phase1, phase2)
@@ -65,7 +65,7 @@ class GiteaReporter(BaseReporter):
         # Only report to Gitea if the source is GiteaSource
         if not hasattr(change.project, 'source'):
             return
-        
+
         from zuul.driver.gitea.giteasource import GiteaSource
         if not isinstance(change.project.source, GiteaSource):
             return
@@ -107,7 +107,7 @@ class GiteaReporter(BaseReporter):
 
         # Compute context dynamically from item (tenant/pipeline format)
         context = "{}/{}".format(item.manager.tenant.name, item.manager.pipeline.name)
-        
+
         state = self._commit_status
         url = item.formatItemUrl() if hasattr(item, 'formatItemUrl') else None
         description = '%s status: %s (%s)' % (
@@ -141,7 +141,7 @@ class GiteaReporter(BaseReporter):
     def _formatComment(self, item, change):
         """Format comment message with job results"""
         result = item.current_build_set.result
-        
+
         # Build header with result
         if result == 'SUCCESS':
             message = "Build succeeded"
@@ -149,35 +149,35 @@ class GiteaReporter(BaseReporter):
             message = "Build failed"
         else:
             message = f"Build {result.lower()}"
-        
+
         # Add buildset URL
         if hasattr(item, 'formatItemUrl'):
             url = item.formatItemUrl()
             message += f". {url}\n\n"
         else:
             message += "\n\n"
-        
+
         # Add individual job results
         if hasattr(item, 'getJobs'):
             for job in item.getJobs():
                 build = item.current_build_set.getBuild(job)
                 if build:
                     job_result = build.result if build.result else "RUNNING"
-                    
+
                     # Format duration if available
                     duration = ""
                     if build.start_time and build.end_time:
                         seconds = int(build.end_time - build.start_time)
                         minutes, secs = divmod(seconds, 60)
                         duration = f" in {minutes}m {secs:02d}s"
-                    
+
                     message += f"**{job.name}**: {job_result}{duration}\n"
-        
+
         return message
 
     def mergePull(self, item, change):
         """Merge a pull request using Gitea API
-        
+
         Supports different merge modes based on project configuration:
         - merge: Standard merge commit
         - squash: Squash and merge
@@ -218,7 +218,7 @@ class GiteaReporter(BaseReporter):
     def _formatMergeMessage(self, change):
         """Format merge commit message with review information"""
         merge_message = ''
-        
+
         # Add review information if available
         if hasattr(change, 'pr') and change.pr:
             reviews = change.pr.get('reviews', [])
@@ -228,13 +228,13 @@ class GiteaReporter(BaseReporter):
                     # Get full name or fallback to login
                     name = r.get('user', {}).get('full_name') or r.get('user', {}).get('login', 'Unknown')
                     email = r.get('user', {}).get('email', 'unknown@example.com')
-                    
+
                     if r.get('state') == 'APPROVED':
                         review_users.append('Reviewed-by: {} <{}>'.format(name, email))
-                
+
                 if review_users:
                     merge_message = '\n'.join(review_users)
-        
+
         return merge_message
 
     def getSubmitAllowNeeds(self, manager):

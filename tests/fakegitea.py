@@ -252,6 +252,73 @@ class FakeGiteaConnection(giteaconnection.GiteaConnection):
         """Add a project by its name for test registration"""
         pass  # Projects are automatically available via upstream_root
 
+    def _searchPullRequests(self, project_name, query=None, state='open'):
+        """Override to search fake pull requests.
+
+        Args:
+            project_name: Project name to search in
+            query: Optional body text to search for
+            state: PR state filter ('open', 'closed', 'all')
+
+        Returns:
+            List of PR data dicts matching criteria
+        """
+        results = []
+        project_prs = self.pull_requests.get(project_name, {})
+
+        for pr_num, pr in project_prs.items():
+            # Filter by state
+            if state != 'all':
+                if state == 'open' and pr.state != 'open':
+                    continue
+                if state == 'closed' and pr.state == 'open':
+                    continue
+
+            # Filter by query (body text search)
+            if query:
+                if not pr.body or query not in pr.body:
+                    continue
+
+            results.append(pr.getPRData())
+
+        return results
+
+    def getPullReviews(self, project_name, pr_number):
+        """Override to return reviews from fake PR.
+
+        Args:
+            project_name: Project name
+            pr_number: PR number
+
+        Returns:
+            List of review dicts
+        """
+        pr = self.pull_requests.get(project_name, {}).get(str(pr_number))
+        if not pr:
+            return []
+        return pr.reviews
+
+    def getCommitStatuses(self, project_name, sha):
+        """Override to return fake commit statuses.
+
+        Args:
+            project_name: Project name
+            sha: Commit SHA
+
+        Returns:
+            List of status dicts
+        """
+        statuses = self.statuses.get(sha, {})
+        result = []
+        for state, info in statuses.items():
+            result.append({
+                'status': state,
+                'context': info.get('context'),
+                'description': info.get('description'),
+                'target_url': info.get('url'),
+            })
+        return result
+
     def _makeRequest(self, method, path, **kwargs):
         """Override to prevent actual HTTP requests"""
         self.log.debug("Fake Gitea request: %s %s", method, path)

@@ -30,6 +30,7 @@ class PullRequest(Change):
         self.title = None
         self.body_text = None
         self.labels = []
+        self.reviews = []  # List of review dicts with user info and state
         self.mergeable = True
         self.merge_commit_sha = None
         # Branch protection attributes
@@ -65,6 +66,7 @@ class PullRequest(Change):
             "title": self.title,
             "body_text": self.body_text,
             "labels": self.labels,
+            "reviews": self.reviews,
             "mergeable": self.mergeable,
             "merge_commit_sha": self.merge_commit_sha,
             "branch_protected": self.branch_protected,
@@ -82,6 +84,7 @@ class PullRequest(Change):
         self.title = data.get("title")
         self.body_text = data.get("body_text")
         self.labels = data.get("labels", [])
+        self.reviews = data.get("reviews", [])
         self.mergeable = data.get("mergeable", True)
         self.merge_commit_sha = data.get("merge_commit_sha")
         self.branch_protected = data.get("branch_protected", False)

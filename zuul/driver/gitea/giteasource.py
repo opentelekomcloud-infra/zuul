@@ -13,6 +13,8 @@
 # under the License.
 
 import logging
+import re
+import urllib.parse
 import voluptuous as v
 from zuul.source import BaseSource
 from zuul.model import Project, ChangeKey, Branch, Ref, Tag
@@ -152,10 +154,65 @@ class GiteaSource(BaseSource):
         self.log.warning("Unknown change type: %s" % change_key.change_type)
         return None
 
+    # Regex to parse Gitea pull request URLs
+    # Matches: https://gitea.example.com/owner/repo/pulls/123
+    change_re = re.compile(r"/(.*?)/(.*?)/pulls/(\d+)[\w]*")
+
     def getChangeByURL(self, url, event):
-        """Get a change from a URL"""
-        # TODO: Parse URL and get change
-        return None
+        """Get a change from a Gitea pull request URL.
+
+        Parses URLs like:
+        - https://gitea.example.com/owner/repo/pulls/123
+        - https://gitea.example.com/org/project/pulls/456
+
+        Args:
+            url: The pull request URL to parse
+            event: The event context
+
+        Returns:
+            Change object if found, None otherwise
+        """
+        self.log.debug("getChangeByURL: %s", url)
+        try:
+            parsed = urllib.parse.urlparse(url)
+        except ValueError:
+            return None
+
+        # Check if this URL is for our connection
+        if parsed.hostname != self.connection.canonical_hostname:
+            return None
+
+        m = self.change_re.match(parsed.path)
+        if not m:
+            return None
+
+        org = m.group(1)
+        proj = m.group(2)
+        try:
+            num = int(m.group(3))
+        except ValueError:
+            return None
+
+        project_name = f'{org}/{proj}'
+        self.log.debug("Parsed URL: project=%s, pr=%d", project_name, num)
+
+        # Fetch the pull request data
+        pull = self.connection.getPull(project_name, num, event=event)
+        if not pull:
+            self.log.debug("Pull request not found: %s#%d", project_name, num)
+            return None
+
+        # Create a change key and get the change
+        pr_sha = pull.get('head', {}).get('sha')
+        change_key = ChangeKey(
+            self.connection.connection_name,
+            project_name,
+            'PullRequest',
+            str(num),
+            str(pr_sha)
+        )
+        change = self.connection._getChange(change_key, event=event)
+        return change
 
     def getProject(self, name):
         """Get a project object"""
@@ -265,8 +322,37 @@ class GiteaSource(BaseSource):
         return self.connection._branch_cache.ltime if hasattr(self.connection, '_branch_cache') else -1
 
     def getProjectOpenChanges(self, project):
-        """Get open changes for a project"""
-        return []
+        """Get open changes (pull requests) for a project.
+
+        Fetches all open pull requests from the Gitea API and returns
+        them as Change objects.
+
+        Args:
+            project: The project to get open changes for
+
+        Returns:
+            List of Change objects for open pull requests
+        """
+        changes = []
+        try:
+            prs = self.connection._searchPullRequests(project.name, state='open')
+            for pr in prs:
+                pr_number = pr.get('number')
+                pr_sha = pr.get('head', {}).get('sha')
+                change_key = ChangeKey(
+                    self.connection.connection_name,
+                    project.name,
+                    'PullRequest',
+                    str(pr_number),
+                    str(pr_sha)
+                )
+                change = self.connection._getChange(change_key)
+                if change:
+                    changes.append(change)
+        except Exception as e:
+            self.log.warning("Failed to get open changes for %s: %s",
+                           project.name, e)
+        return changes
 
     def isMerged(self, change):
         """Check if a change is merged"""
