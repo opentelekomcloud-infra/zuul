@@ -46,6 +46,7 @@ import {
   OutlinedClockIcon,
   PackageIcon,
   RedoIcon,
+  TopologyIcon,
   WrenchIcon
 } from '@patternfly/react-icons'
 
@@ -116,6 +117,18 @@ class JobVariant extends React.Component {
       status.push({
         icon: <LockedIcon />,
         name: 'Protected'
+      })
+    }
+    if (variant.type === 'initializer') {
+      status.push({
+        icon: <TopologyIcon />,
+        name: 'Initializer'
+      })
+    }
+    if (variant.type === 'reporter') {
+      status.push({
+        icon: <TopologyIcon />,
+        name: 'Reporter'
       })
     }
 
