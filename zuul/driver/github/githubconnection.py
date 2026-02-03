@@ -386,7 +386,8 @@ class GithubEventProcessor(object):
             duration = round(time.monotonic() - start, 3)
             self.log.debug("Finished event processing (duration: %s seconds)",
                            duration)
-        return self.events, self.connection_event
+        return (self.events, self.connection_event, self.zuul_event_id,
+                self.event_type)
 
     def _process_event(self):
         if self.connector._stopped:
