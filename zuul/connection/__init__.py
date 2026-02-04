@@ -294,16 +294,14 @@ class ZKBranchCacheMixin:
             # Update them if we have them
             valid_flags, branch_infos = self._fetchProjectBranches(
                 project, required_flags)
-            self._branch_cache.setProjectBranches(
-                project.name, valid_flags, branch_infos)
-
+        else:
+            valid_flags = None
+            branch_infos = None
         merge_modes = self._fetchProjectMergeModes(project)
-        self._branch_cache.setProjectMergeModes(
-            project.name, merge_modes)
-
         default_branch = self._fetchProjectDefaultBranch(project)
-        self._branch_cache.setProjectDefaultBranch(
-            project.name, default_branch)
+        self._branch_cache.setAllProjectData(
+            project.name, valid_flags, branch_infos,
+            merge_modes, default_branch)
         log.info("Updated branches for %s", project.name)
 
     def getProjectBranches(self, project, tenant, min_ltime=-1):
