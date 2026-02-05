@@ -46,6 +46,7 @@ from tests.base import (
     AnsibleZuulTestCase,
     FIXTURE_DIR,
     ZuulTestCase,
+    gerrit_config,
     iterate_timeout,
     okay_tracebacks,
     simple_layout,
@@ -12382,6 +12383,8 @@ class TestAttributeControl(ZuulTestCase):
                 'files',
                 'irrelevant-files',
                 'required-projects',
+                'include-projects',
+                'exclude-projects',
                 'vars',
                 'extra-vars',
                 'host-vars',
@@ -12400,4 +12403,105 @@ class TestAttributeControl(ZuulTestCase):
 
         self.assertHistory([
             dict(name='final-job', result='SUCCESS'),
+        ], ordered=False)
+
+
+class TestIncludeExcludeProjects(ZuulTestCase):
+    config_file = "zuul-gerrit-github.conf"
+    tenant_config_file = "config/circular-dependencies/main.yaml"
+
+    @simple_layout('layouts/include-exclude-projects.yaml')
+    def test_include_exclude_projects(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project2', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        B.setDependsOn(A, 1)
+        self.fake_gerrit.addEvent(C.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(len(self.builds), 7)
+
+        expected_map = {
+            'normal-job': ['org/project', 'org/project1', 'org/project2'],
+            'include-job': ['org/project'],
+            'exclude-job': ['org/project', 'org/project2'],
+            'both-job': ['org/project', 'org/project1'],
+            'exclude-all-job': [],
+            'exclude-all-but-change-job': ['org/project'],
+            'exclude-all-but-item-job': ['org/project'],
+        }
+        for build in self.builds:
+            expected = expected_map[build.job.name]
+            projects = build.parameters['projects']
+            workspace_repos = build.getWorkspaceRepos(
+                [p['canonical_name'] for p in projects])
+            workspace_cnames = set(workspace_repos.keys())
+            expected_cnames = set(
+                f'review.example.com/{p}' for p in expected
+            )
+            self.assertEqual(expected_cnames, workspace_cnames,
+                             f'for {build.job.name}')
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='normal-job', result='SUCCESS'),
+            dict(name='include-job', result='SUCCESS'),
+            dict(name='exclude-job', result='SUCCESS'),
+            dict(name='both-job', result='SUCCESS'),
+            dict(name='exclude-all-job', result='SUCCESS'),
+            dict(name='exclude-all-but-change-job', result='SUCCESS'),
+            dict(name='exclude-all-but-item-job', result='SUCCESS'),
+        ], ordered=False)
+
+    @gerrit_config(submit_whole_topic=True)
+    @simple_layout('layouts/include-exclude-projects.yaml')
+    def test_include_exclude_projects_cycle(self):
+        self.executor_server.hold_jobs_in_build = True
+        self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                       topic='test')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B',
+                                           topic='test')
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(len(self.builds), 7)
+
+        expected_map = {
+            'normal-job': ['org/project', 'org/project1'],
+            'include-job': ['org/project'],
+            'exclude-job': ['org/project'],
+            'both-job': ['org/project', 'org/project1'],
+            'exclude-all-job': [],
+            'exclude-all-but-change-job': ['org/project'],
+            'exclude-all-but-item-job': ['org/project', 'org/project1'],
+        }
+        for build in self.builds:
+            expected = expected_map[build.job.name]
+            projects = build.parameters['projects']
+            workspace_repos = build.getWorkspaceRepos(
+                [p['canonical_name'] for p in projects])
+            workspace_cnames = set(workspace_repos.keys())
+            expected_cnames = set(
+                f'review.example.com/{p}' for p in expected
+            )
+            self.assertEqual(expected_cnames, workspace_cnames,
+                             f'for {build.job.name}')
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='normal-job', result='SUCCESS'),
+            dict(name='include-job', result='SUCCESS'),
+            dict(name='exclude-job', result='SUCCESS'),
+            dict(name='both-job', result='SUCCESS'),
+            dict(name='exclude-all-job', result='SUCCESS'),
+            dict(name='exclude-all-but-change-job', result='SUCCESS'),
+            dict(name='exclude-all-but-item-job', result='SUCCESS'),
         ], ordered=False)

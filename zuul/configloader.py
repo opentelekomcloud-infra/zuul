@@ -705,6 +705,16 @@ class JobParser(object):
                    'override-branch': str,
                    'override-checkout': str}
 
+    include_project_name = {'type': 'name', 'name': str}
+    include_project_change = {'type': 'change'}
+    include_project_item = {'type': 'item'}
+    job_include_project = vs.Any(
+        str,
+        include_project_name,
+        include_project_change,
+        include_project_item,
+    )
+
     job_dependency = {vs.Required('name'): str,
                       'soft': bool}
 
@@ -789,6 +799,8 @@ class JobParser(object):
                       'roles': to_list(role),
                       'required-projects': override_list(
                           vs.Any(job_project, str)),
+                      'include-projects': override_list(job_include_project),
+                      'exclude-projects': override_list(job_include_project),
                       'vars': override_value(ansible_vars_dict),
                       'extra-vars': override_value(ansible_vars_dict),
                       'host-vars': override_value({str: ansible_vars_dict}),
@@ -817,6 +829,8 @@ class JobParser(object):
                               'files',
                               'irrelevant-files',
                               'required-projects',
+                              'include-projects',
+                              'exclude-projects',
                               'vars',
                               'extra-vars',
                               'host-vars',
@@ -874,6 +888,8 @@ class JobParser(object):
         'ansible-split-streams': 'ansible_split_streams',
         'ansible-version': 'ansible_version',
         'required-projects': 'required_projects',
+        'include-projects': 'include_projects',
+        'exclude-projects': 'exclude_projects',
         'vars': 'variables',
         'extra-vars': 'extra_variables',
         'host-vars': 'host_variables',
@@ -1080,6 +1096,31 @@ class JobParser(object):
                     new_projects[project_name] = job_project
 
                 job.required_projects = new_projects
+
+        for attr in ('include', 'exclude'):
+            if f'{attr}-projects' in conf:
+                with self.pcontext.confAttr(
+                        conf, f'{attr}-projects') as conf_projects:
+                    if isinstance(conf_projects, yaml.OverrideValue):
+                        job.override_control[f'{attr}_projects'] =\
+                            conf_projects.override
+                        conf_projects = conf_projects.value
+                    if conf_projects is None:
+                        new_projects = None
+                    else:
+                        new_projects = set()
+                        for conf_project in as_list(conf_projects):
+                            if isinstance(conf_project, str):
+                                conf_project = {
+                                    'type': 'name',
+                                    'name': conf_project,
+                                }
+                            conf_project = (
+                                conf_project['type'],
+                                conf_project.get('name'),
+                            )
+                            new_projects.add(conf_project)
+                    setattr(job, f'{attr}_projects', new_projects)
 
         if 'dependencies' in conf:
             with self.pcontext.confAttr(conf, 'dependencies') as conf_deps:

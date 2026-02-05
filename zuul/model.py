@@ -3738,6 +3738,8 @@ class FrozenJob(zkobject.ZKObject):
                   'pre_timeout',
                   'post_timeout',
                   'required_projects',
+                  'include_projects',
+                  'exclude_projects',
                   'semaphores',
                   'tags',
                   'timeout',
@@ -3950,6 +3952,10 @@ class FrozenJob(zkobject.ZKObject):
         # MODEL_API <= 33
         data.setdefault('pre_timeout', None)
 
+        # MODEL_API <= 36
+        data.setdefault('include_projects', None)
+        data.setdefault('exclude_projects', None)
+
         for job_data_key in self.job_data_attributes:
             job_data = data.pop(job_data_key, None)
             if job_data:
@@ -4140,6 +4146,46 @@ class FrozenJob(zkobject.ZKObject):
 
         return True
 
+    def includesProject(self, project, change, item):
+        # project is a Project object
+        include = False
+        if self.include_projects is None:
+            include = True
+        else:
+            for (ptype, pname) in self.include_projects:
+                include = False
+                if ptype == 'name':
+                    if pname == project.canonical_name:
+                        include = True
+                elif ptype == 'change':
+                    if change.project.canonical_name == project.canonical_name:
+                        include = True
+                elif ptype == 'item':
+                    for item_change in item.changes:
+                        if (item_change.project.canonical_name ==
+                            project.canonical_name):
+                            include = True
+                            break
+                if include:
+                    break
+        if not include:
+            return False
+        if self.exclude_projects is None:
+            return True
+        for (ptype, pname) in self.exclude_projects:
+            if ptype == 'name':
+                if pname == project.canonical_name:
+                    return False
+            elif ptype == 'change':
+                if change.project.canonical_name == project.canonical_name:
+                    return False
+            elif ptype == 'item':
+                for item_change in item.changes:
+                    if (item_change.project.canonical_name ==
+                        project.canonical_name):
+                        return False
+        return True
+
 
 class Job(ConfigObject):
     """A Job represents the defintion of actions to perform.
@@ -4183,6 +4229,10 @@ class Job(ConfigObject):
         d['required_projects'] = []
         for project in self.required_projects.values():
             d['required_projects'].append(project.toDict())
+        d['include_projects'] = self._makeIncludeExcludeProjectsList(
+            self.include_projects)
+        d['exclude_projects'] = self._makeIncludeExcludeProjectsList(
+            self.exclude_projects)
         d['semaphores'] = [s.toDict() for s in self.semaphores]
         d['variables'] = self.variables
         d['extra_variables'] = self.extra_variables
@@ -4291,6 +4341,8 @@ class Job(ConfigObject):
             protected=None,
             roles=(),
             required_projects={},
+            include_projects=None,
+            exclude_projects=None,
             allowed_projects=None,
             override_branch=None,
             override_checkout=None,
@@ -4315,6 +4367,8 @@ class Job(ConfigObject):
         override_control['group_variables'] = False
         override_control['include_vars'] = False
         override_control['required_projects'] = False
+        override_control['include_projects'] = False
+        override_control['exclude_projects'] = False
         override_control['failure_output'] = False
 
         final_control = defaultdict(lambda: False)
@@ -4348,6 +4402,18 @@ class Job(ConfigObject):
         self.attributes.update(self.other_attributes)
 
         self.name = name
+
+    def _makeIncludeExcludeProjectsList(self, projects):
+        # Used by toDict
+        if projects is None:
+            return None
+        ret = []
+        for ptype, pname in projects:
+            p = {'type': ptype}
+            if ptype == 'name':
+                p['name'] = pname
+            ret.append(p)
+        return ret
 
     def _getAffectedProjects(self, tenant):
         """
@@ -4628,6 +4694,38 @@ class Job(ConfigObject):
             raise ProjectNotFoundError(unknown_projects)
         return new_projects
 
+    def _resolveIncludeExcludeProjects(self, layout, projects):
+        new_projects = set()
+        unknown_projects = []
+        for p in projects:
+            ptype, pname = p
+            # We only need to resolve "name" types
+            if ptype == 'name':
+                (trusted, project) = layout.tenant.getProject(
+                    pname)
+                if project is None:
+                    unknown_projects.append(pname)
+                    continue
+                p = ('name', project.canonical_name)
+            new_projects.add(p)
+        if unknown_projects:
+            raise ProjectNotFoundError(unknown_projects)
+        return new_projects
+
+    def _resolveIncludeProjects(self, layout):
+        if self.include_projects is None:
+            return None
+        return self._resolveIncludeExcludeProjects(
+            layout,
+            self.include_projects)
+
+    def _resolveExcludeProjects(self, layout):
+        if self.exclude_projects is None:
+            return None
+        return self._resolveIncludeExcludeProjects(
+            layout,
+            self.exclude_projects)
+
     def _resolveAllowedProjects(self, layout):
         # This method does the inverse of other resolve methods: it
         # returns the unqualified project name even if the input is
@@ -4701,6 +4799,10 @@ class Job(ConfigObject):
             self.allowed_projects = set([self.source_context.project_name])
         if self._get('required_projects'):
             self.required_projects = self._resolveRequiredProjects(layout)
+        if self._get('include_projects'):
+            self.include_projects = self._resolveIncludeProjects(layout)
+        if self._get('exclude_projects'):
+            self.exclude_projects = self._resolveExcludeProjects(layout)
         if self._get('include_vars'):
             self.include_vars = self._resolveIncludeVars(layout)
         if self._get('roles'):
@@ -4961,6 +5063,43 @@ class Job(ConfigObject):
         required_projects.update(other._resolveRequiredProjects(layout))
         self.required_projects = required_projects
 
+    def _updateIncludeExclude(self, other, this_projects, other_projects,
+                              override, layout):
+        if override:
+            projects = other_projects
+        else:
+            projects = this_projects
+        if projects is not None:
+            projects = set(projects)
+        if projects is None and other_projects is not None:
+            projects = set()
+        if other_projects is not None and not override:
+            projects.update(other._resolveIncludeExcludeProjects(
+                layout, other_projects))
+        if projects is not None:
+            projects = list(projects)
+        return projects
+
+    def updateIncludeProjects(self, other, layout):
+        self._handleFinalControl(other, 'include_projects')
+        self.include_projects = self._updateIncludeExclude(
+            other,
+            self.include_projects,
+            other.include_projects,
+            other.override_control['include_projects'],
+            layout,
+        )
+
+    def updateExcludeProjects(self, other, layout):
+        self._handleFinalControl(other, 'exclude_projects')
+        self.exclude_projects = self._updateIncludeExclude(
+            other,
+            self.exclude_projects,
+            other.exclude_projects,
+            other.override_control['exclude_projects'],
+            layout,
+        )
+
     def updateAllowedProjects(self, other, layout):
         other_allowed_projects = other._resolveAllowedProjects(layout)
         if self._get('allowed_projects') is not None:
@@ -5045,7 +5184,8 @@ class Job(ConfigObject):
                 if k not in set(['pre_run', 'run', 'post_run', 'cleanup_run',
                                  'roles', 'variables', 'extra_variables',
                                  'host_variables', 'group_variables',
-                                 'required_projects', 'allowed_projects',
+                                 'required_projects', 'include_projects',
+                                 'exclude_projects', 'allowed_projects',
                                  'semaphores', 'failure_output',
                                  'include_vars']):
                     setattr(self, k, other._get(k))
@@ -5165,6 +5305,10 @@ class Job(ConfigObject):
             self.updateIncludeVars(other, layout)
         if other._get('required_projects') is not None:
             self.updateRequiredProjects(other, layout)
+        if other._get('include_projects') is not None:
+            self.updateIncludeProjects(other, layout)
+        if other._get('exclude_projects') is not None:
+            self.updateExcludeProjects(other, layout)
         if other._get('allowed_projects') is not None:
             self.updateAllowedProjects(other, layout)
         if other._get('semaphores') is not None:
@@ -10078,6 +10222,12 @@ class Layout(object):
         # exception; ignore the return value.
         if job.required_projects:
             job._resolveRequiredProjects(self)
+
+        if job.include_projects:
+            job._resolveIncludeProjects(self)
+
+        if job.exclude_projects:
+            job._resolveExcludeProjects(self)
 
         if job.include_vars:
             job._resolveIncludeVars(self)
