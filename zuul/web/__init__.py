@@ -651,6 +651,7 @@ class ProviderNodeConverter:
             'external_id': None,
             'state': node.state,
             'state_time': state_time,
+            'next_state': node.next_state,
             'comment': getattr(node, 'comment', None),
             'max_ready_age': node.max_ready_age,
             'max_age': node.max_age,
@@ -686,6 +687,7 @@ class ProviderNodeConverter:
             'external_id': str,
             'state': str,
             'state_time': str,
+            'next_state': str,
             'comment': str,
             'max_ready_age': int,
             'max_age': int,
@@ -2821,17 +2823,26 @@ class ZuulWebAPI(object):
 
         body = cherrypy.request.json
         state = body.get('state')
-        if state not in {node.State.HOLD, node.State.USED}:
+        if state not in {
+                node.State.HOLD,
+                node.State.USED,
+                node.State.OUTDATED,
+        }:
             raise cherrypy.HTTPError(400, 'Invalid request body')
 
-        # We just let the LockException propagate up if we can't lock
-        # it.
-        with self.zuulweb.createZKContext(None, self.log) as ctx:
-            with node.locked(ctx, blocking=False):
-                self.log.info(f'User {auth.uid} setting node '
-                              f'{node_id} to {state}')
-                with node.activeContext(ctx):
-                    node.setState(state)
+        # Make a request to the launcher to change the node state at
+        # its earliest convenience.  No locking is necessary.
+        self.log.info('User %s setting node %s to %s',
+                      auth.uid, node_id, state)
+        nodes = self.zuulweb.launcher.setNextNodeState(
+            node, state,
+            cache=self.zuulweb.nodes_cache)
+
+        # If this is a slot host, the actual nodes changed will be
+        # returned.
+        for n in nodes:
+            self.log.info('User %s set node %s to %s',
+                          auth.uid, n.uuid, state)
         cherrypy.response.status = 201
 
     @cherrypy.expose
