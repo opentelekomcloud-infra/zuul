@@ -11328,7 +11328,7 @@ class Abide(object):
         self.tenants = {}
         self.tenant_lock = threading.Lock()
         # tenant -> TenantTPCRegistry
-        self.tpc_registry = defaultdict(TenantTPCRegistry)
+        self.tpc_registry = {}
         # project -> branch -> ConfigObjectCache
         self.config_object_cache = {}
         self.api_root = None
@@ -11339,8 +11339,14 @@ class Abide(object):
         except KeyError:
             pass
 
+    def hasTPCRegistry(self, tenant_name):
+        return tenant_name in self.tpc_registry
+
     def getTPCRegistry(self, tenant_name):
-        return self.tpc_registry[tenant_name]
+        r = self.tpc_registry.get(tenant_name)
+        if r is None:
+            return TenantTPCRegistry()
+        return r
 
     def setTPCRegistry(self, tenant_name, tpc_registry):
         self.tpc_registry[tenant_name] = tpc_registry
@@ -11348,7 +11354,7 @@ class Abide(object):
     def getAllTPCs(self, tenant_name):
         # Hold a reference to the registry to make sure it doesn't
         # change between the two calls below.
-        registry = self.tpc_registry[tenant_name]
+        registry = self.getTPCRegistry(tenant_name)
         return list(itertools.chain(
             itertools.chain.from_iterable(
                 registry.config_tpcs.values()),

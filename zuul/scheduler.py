@@ -1429,6 +1429,8 @@ class Scheduler(threading.Thread):
                            tenant_name)
             self.layout_update_event.set()
             return False
+        if not self.abide.hasTPCRegistry(tenant_name):
+            return False
         return True
 
     def _checkTenantSourceConf(self, config):

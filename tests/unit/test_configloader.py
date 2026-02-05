@@ -1293,6 +1293,46 @@ class TestTenantDuplicate(TenantParserTestCase):
         pass
 
 
+class TestTenantTPCLoadingFailure(TenantParserTestCase):
+    tenant_config_file = ('config/tenant-parser/'
+                          'simple.yaml')
+    scheduler_count = 1
+
+    @okay_tracebacks('may not configure')
+    def test_tenant_tpc_loading_failure(self):
+        # This tests the behavior when we fail to load TPCs,
+        # especially after a previously successful loading.  If we
+        # fail to fully load information about a tenant, it can be
+        # dangerous to proceed with run loop or cleanup handling in
+        # the scheduler.
+
+        # The test starts with a valid configuration.  This next
+        # configuration raises an error during TPC loading
+        self.newTenantConfig('config/tenant-parser/'
+                             'superproject-config-project.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+
+        # Counter-intuitively, the tenant *is* up to date on this
+        # scheduler.  We are running with the previous configuration
+        # since the new one didn't load.
+        self.assertTrue(
+            self.scheds.first.sched.isTenantLayoutUpToDate('tenant-one')
+        )
+
+        # Start a second scheduler which will not have the benefit of
+        # a config in memory.
+        app = self.createScheduler()
+        app.start()
+        self.assertEqual(len(self.scheds), 2)
+
+        # In this case, the layout is not up to date since we don't
+        # have anything to fall back on.
+        self.assertFalse(
+            app.sched.isTenantLayoutUpToDate('tenant-one')
+        )
+
+
 class TestTenantSuperprojectConfigProject(TenantParserTestCase):
     tenant_config_file = ('config/tenant-parser/'
                           'superproject-config-project.yaml')
