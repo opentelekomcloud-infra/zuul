@@ -122,7 +122,7 @@ class WebMixin:
                  'exp': int(time.time()) + 3600}
         if groups:
             authz['groups'] = groups
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         return token
 
@@ -3319,7 +3319,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) - 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         resp = self.post_url(
             "api/tenant/tenant-one/project/org/project/autohold",
@@ -3354,7 +3354,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-six', 'tenant-ten', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         resp = self.post_url(
             "api/tenant/tenant-one/project/org/project/autohold",
@@ -3394,7 +3394,8 @@ class TestTenantScopedWebApi(BaseTestWeb):
                 'change': None,
                 'ref': None,
                 'node_hold_expiration': None}
-        good_token = jwt.encode(good_authz, key='NoDanaOnlyZuul',
+        good_token = jwt.encode(good_authz,
+                                key='ThisIsABadSecretOnlyUsedForTesting',
                                 algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/project/org/project/autohold',
@@ -3422,7 +3423,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/project/org/project/autohold',
@@ -3521,7 +3522,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
         self._test_autohold(args, code=400)
 
     def _init_autohold_delete(self, authz):
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
 
         self.addAutohold('tenant-one', 'review.example.com/org/project',
@@ -3556,7 +3557,8 @@ class TestTenantScopedWebApi(BaseTestWeb):
                          'admin': ['tenant-two', ]
                      },
                      'exp': int(time.time()) + 3600}
-        bad_token = jwt.encode(bad_authz, key='NoDanaOnlyZuul',
+        bad_token = jwt.encode(bad_authz,
+                               key='ThisIsABadSecretOnlyUsedForTesting',
                                algorithm='HS256')
         resp = self.delete_url(
             "api/tenant/tenant-one/autohold/%s" % request_id,
@@ -3574,7 +3576,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        bad_token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        bad_token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                                algorithm='HS256')
         resp = self.delete_url(
             "api/tenant/tenant-one/autohold/invalidid",
@@ -3614,7 +3616,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         path = "api/tenant/%(tenant)s/project/%(project)s/enqueue"
         enqueue_args = {'tenant': 'tenant-one',
@@ -3666,7 +3668,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(path % enqueue_args,
                             headers={'Authorization': 'Bearer %s' % token},
@@ -3710,7 +3712,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         path = "api/tenant/%(tenant)s/project/%(project)s/dequeue"
         dequeue_args = {'tenant': 'tenant-one',
@@ -3827,7 +3829,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/promote',
@@ -3915,7 +3917,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/promote',
@@ -4006,7 +4008,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/promote',
@@ -4054,7 +4056,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one'],
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.get_url(
             'api/tenant/tenant-one/authorizations',
@@ -4066,7 +4068,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
         self.assertTrue(data['zuul']['scope'] == ['tenant-one'], data)
         # change tenant
         authz['zuul']['admin'] = ['tenant-whatever', ]
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.get_url(
             'api/tenant/tenant-one/authorizations',
@@ -4096,7 +4098,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         args = {
             'trigger_queue_paused': True,
@@ -4200,7 +4202,7 @@ class TestTenantScopedWebApiWithAccessRules(TestTenantScopedWebApi):
                      'admin': ['tenant-one'],
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.get_url(
             'api/tenant/tenant-one/authorizations',
@@ -4212,7 +4214,7 @@ class TestTenantScopedWebApiWithAccessRules(TestTenantScopedWebApi):
         self.assertTrue(data['zuul']['scope'] == ['tenant-one'], data)
         # change tenant
         authz['zuul']['admin'] = ['tenant-whatever', ]
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         # The superclass verifies that the authorizations returned
         # correctly do not include the new tenant.  However in this
@@ -4243,7 +4245,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
                      'admin': ['tenant-one', ],
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/project/org/project/autohold',
@@ -4266,7 +4268,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
             enqueue_args = {'tenant': 'tenant-one',
                             'project': project, }
 
-            token = jwt.encode(authz, key='NoDanaOnlyZuul',
+            token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                                algorithm='HS256')
             req = self.post_url(path % enqueue_args,
                                 headers={'Authorization': 'Bearer %s' % token},
@@ -4310,7 +4312,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
                  'sub': 'melnitz',
                  'groups': ['ghostbusters', 'secretary'],
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         path = "api/tenant/%(tenant)s/project/%(project)s/enqueue"
         enqueue_args = {'tenant': 'tenant-one',
@@ -4336,7 +4338,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
                  'vehicle': {
                      'car': 'ecto-1'},
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         path = "api/tenant/%(tenant)s/project/%(project)s/enqueue"
         enqueue_args = {'tenant': 'tenant-one',
@@ -4364,7 +4366,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
                   'pipeline': 'gate', }
 
         def _test_project_enqueue_with_authz(authz, expected):
-            token = jwt.encode(authz, key='NoDanaOnlyZuul',
+            token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                                algorithm='HS256')
             req = self.post_url(path % enqueue_args,
                                 headers={'Authorization': 'Bearer %s' % token},
@@ -4394,7 +4396,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
                  'sub': 'testuser',
                  'zuul': {'admin': admin_tenants},
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.get_url('/api/tenant/tenant-one/authorizations',
                            headers={'Authorization': 'Bearer %s' % token})
@@ -4432,7 +4434,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
         for test_user in users:
             authz = test_user['authz']
             authz['exp'] = int(time.time()) + 3600
-            token = jwt.encode(authz, key='NoDanaOnlyZuul',
+            token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                                algorithm='HS256')
             req = self.get_url('/api/tenant/tenant-one/authorizations',
                                headers={'Authorization': 'Bearer %s' % token})
@@ -4472,7 +4474,7 @@ class TestTenantScopedWebApiTokenWithExpiry(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         resp = self.post_url(
             "api/tenant/tenant-one/project/org/project/autohold",
@@ -4508,7 +4510,7 @@ class TestTenantScopedWebApiTokenWithExpiry(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 7200,
                  'iat': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         resp = self.post_url(
             "api/tenant/tenant-one/project/org/project/autohold",
@@ -4544,7 +4546,7 @@ class TestTenantScopedWebApiTokenWithExpiry(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         time.sleep(10)
         resp = self.post_url(
@@ -4588,7 +4590,7 @@ class TestTenantScopedWebApiTokenWithExpiry(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/project/org/project/autohold',
@@ -4690,7 +4692,7 @@ class TestCLIViaWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         p = subprocess.Popen(
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
@@ -4729,7 +4731,7 @@ class TestCLIViaWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         p = subprocess.Popen(
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
@@ -4758,7 +4760,7 @@ class TestCLIViaWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         p = subprocess.Popen(
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
@@ -4797,7 +4799,7 @@ class TestCLIViaWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         p = subprocess.Popen(
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
@@ -4847,7 +4849,7 @@ class TestCLIViaWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         p = subprocess.Popen(
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
