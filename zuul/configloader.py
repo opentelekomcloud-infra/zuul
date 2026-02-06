@@ -1974,6 +1974,13 @@ class TenantParser(object):
     def validateTenantSource(self, value, path=[]):
         self.tenant_source(value)
 
+    def validateGlobalSemaphores(self, abide, global_semaphores):
+        # This is not implemented as a validator because it requires
+        # the abide.
+        for semaphore_name in global_semaphores:
+            if semaphore_name not in abide.semaphores:
+                raise GlobalSemaphoreNotFoundError(semaphore_name)
+
     def getSchema(self):
         tenant = {vs.Required('name'): str,
                   'max-changes-per-pipeline': int,
@@ -2047,9 +2054,7 @@ class TenantParser(object):
             tenant.default_auth_realm = conf['authentication-realm']
         if conf.get('semaphores') is not None:
             tenant.global_semaphores = set(as_list(conf['semaphores']))
-            for semaphore_name in tenant.global_semaphores:
-                if semaphore_name not in abide.semaphores:
-                    raise GlobalSemaphoreNotFoundError(semaphore_name)
+            self.validateGlobalSemaphores(abide, tenant.global_semaphores)
         tenant.web_root = conf.get('web-root', self.globals.web_root)
         if tenant.web_root and not tenant.web_root.endswith('/'):
             tenant.web_root += '/'
