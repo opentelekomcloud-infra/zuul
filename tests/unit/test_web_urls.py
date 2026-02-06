@@ -16,6 +16,7 @@ import json
 import urllib
 
 from bs4 import BeautifulSoup
+import testtools
 
 from tests.base import ZuulTestCase, WebProxyFixture
 from tests.base import ZuulWebFixture
@@ -73,6 +74,24 @@ class TestDirect(TestWebURLs):
         self._crawl('/')
         self._crawl('/t/tenant-one/status')
 
+    def test_forbidden(self):
+        for url in [
+                '/?path=/etc/os-release',
+                '/?path=../__init__.py',
+                '/../__init__.py',
+        ]:
+            with testtools.ExpectedException(Exception):
+                self._get(self.port, url).decode('utf-8')
+        index = self._get(self.port, '/zuul/').decode('utf-8')
+        for url in [
+                '/etc/os-release',
+                '//etc/os-release',
+                '/%2fetc%2fos-release',
+                '/%2e%2e%2f__init__.py',
+        ]:
+            data = self._get(self.port, url).decode('utf-8')
+            self.assertEqual(index, data)
+
 
 class TestWhiteLabel(TestWebURLs):
     # Test a zuul-web behind a whitelabel proxy (i.e., what
@@ -88,6 +107,24 @@ class TestWhiteLabel(TestWebURLs):
     def test_status_page(self):
         self._crawl('/')
         self._crawl('/status')
+
+    def test_forbidden(self):
+        for url in [
+                '/?path=/etc/os-release',
+                '/?path=../__init__.py',
+        ]:
+            with testtools.ExpectedException(Exception):
+                self._get(self.port, url).decode('utf-8')
+        index = self._get(self.port, '/zuul/').decode('utf-8')
+        for url in [
+                '/etc/os-release',
+                '//etc/os-release',
+                '/%2fetc%2fos-release',
+                '/../__init__.py',
+                '/%2e%2e%2f__init__.py',
+        ]:
+            data = self._get(self.port, url).decode('utf-8')
+            self.assertEqual(index, data)
 
 
 class TestWhiteLabelAPI(TestWebURLs):
@@ -122,3 +159,21 @@ class TestSuburl(TestWebURLs):
 
     def test_status_page(self):
         self._crawl('/zuul/')
+
+    def test_forbidden(self):
+        for url in [
+                '/zuul/?path=/etc/os-release',
+                '/zuul/?path=../__init__.py',
+        ]:
+            with testtools.ExpectedException(Exception):
+                self._get(self.port, url).decode('utf-8')
+        index = self._get(self.port, '/zuul/').decode('utf-8')
+        for url in [
+                '/zuul/etc/os-release',
+                '/zuul//etc/os-release',
+                '/zuul/%2fetc%2fos-release',
+                '/zuul/../__init__.py',
+                '/zuul/%2e%2e%2f__init__.py',
+        ]:
+            data = self._get(self.port, url).decode('utf-8')
+            self.assertEqual(index, data)
