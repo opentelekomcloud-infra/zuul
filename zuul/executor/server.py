@@ -1582,7 +1582,11 @@ class AnsibleJob(object):
             merged_repos = set()
 
             self._jobOutput(job_output, "Merging changes")
-            merge_items = [i for i in args['items'] if i.get('number')]
+            merge_items = [
+                i for i in args['items']
+                if (i.get('number') and
+                    (i['connection'], i['project']) in projects)
+            ]
             if merge_items:
                 with tracer.start_as_current_span(
                         'BuildMergeChanges'):

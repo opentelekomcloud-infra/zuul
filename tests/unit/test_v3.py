@@ -12432,12 +12432,18 @@ class TestIncludeExcludeProjects(ZuulTestCase):
             'exclude-all-but-change-job': ['org/project'],
             'exclude-all-but-item-job': ['org/project'],
         }
+        projects = [
+            'review.example.com/org/project',
+            'review.example.com/org/project1',
+            'review.example.com/org/project2',
+        ]
         for build in self.builds:
             expected = expected_map[build.job.name]
-            projects = build.parameters['projects']
-            workspace_repos = build.getWorkspaceRepos(
-                [p['canonical_name'] for p in projects])
-            workspace_cnames = set(workspace_repos.keys())
+            workspace_cnames = set()
+            for p in projects:
+                path = os.path.join(build.jobdir.src_root, p)
+                if os.path.exists(path):
+                    workspace_cnames.add(p)
             expected_cnames = set(
                 f'review.example.com/{p}' for p in expected
             )
@@ -12480,12 +12486,18 @@ class TestIncludeExcludeProjects(ZuulTestCase):
             'exclude-all-but-change-job': ['org/project'],
             'exclude-all-but-item-job': ['org/project', 'org/project1'],
         }
+        projects = [
+            'review.example.com/org/project',
+            'review.example.com/org/project1',
+            'review.example.com/org/project2',
+        ]
         for build in self.builds:
             expected = expected_map[build.job.name]
-            projects = build.parameters['projects']
-            workspace_repos = build.getWorkspaceRepos(
-                [p['canonical_name'] for p in projects])
-            workspace_cnames = set(workspace_repos.keys())
+            workspace_cnames = set()
+            for p in projects:
+                path = os.path.join(build.jobdir.src_root, p)
+                if os.path.exists(path):
+                    workspace_cnames.add(p)
             expected_cnames = set(
                 f'review.example.com/{p}' for p in expected
             )
