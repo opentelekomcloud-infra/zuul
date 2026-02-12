@@ -8173,7 +8173,9 @@ class QueueItem(zkobject.ZKObject):
                     return True
 
         for pb in job.all_playbooks:
-            if pb.source_context.project_canonical_name == project_cn:
+            # noop job playbook has no source context
+            if (pb.source_context and
+                pb.source_context.project_canonical_name == project_cn):
                 if pb.path in files:
                     log.debug("Playbook %s is altered in this change",
                               pb.path)
