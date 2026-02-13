@@ -94,7 +94,7 @@ The attributes available to top-level label objects are:
 
    .. attr:: min-ready
       :type: int
-      :required:
+      :default: 0
 
       Minimum number of instances that should be in a ready
       state. Zuul always creates more nodes as necessary in response
