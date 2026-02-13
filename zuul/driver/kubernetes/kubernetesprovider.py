@@ -17,6 +17,7 @@ import math
 
 from zuul.lib.voluputil import (
     AsList,
+    Constant,
     Nullable,
     Optional,
     Required,
@@ -53,23 +54,133 @@ class KubernetesProviderFlavor(BaseProviderFlavor):
 
 class KubernetesProviderLabel(BaseProviderLabel):
     kubernetes_pull_secrets = vs.Schema({
-        Required('name'): str,
-        Optional('namespace', default='default'): str,
+        Required(
+            'name',
+            doc="""\
+            Identifier for this secret.  The referenced secret must
+            already exist under this name so that Nodepool may copy
+            it.  It will be copied into the new namespace with the
+            same name, therefore, if multiple entries are provided,
+            they must have distinct names.
+            """,
+        ): str,
+        Optional(
+            'namespace',
+            default='default',
+            doc="""\
+            The namespace of the existing secret to copy.
+            """,
+        ): str,
     })
 
     kubernetes_label_schema = vs.Schema({
-        Required('kind'): vs.Any('pod', 'namespace'),
-        Required('spec'): dict,
+        Required(
+            'kind',
+            doc="""\
+            The Kubernetes driver supports two types of labels:
+            """,
+        ): vs.Any(
+            Constant(
+                'pod',
+                doc="""\
+                Pod labels provide a dedicated namespace with a single
+                pod and a service account that can exec and get the
+                logs of the pod.
+                """,
+            ),
+            Constant(
+                'namespace',
+                doc="""\
+                Namespace labels provide an empty namespace configured
+                with a service account that can create pods, services,
+                configmaps, etc.
+                """,
+            ),
+        ),
+        Required(
+            'spec',
+            doc="""\
+
+            Zuul will supply the contents of this value verbatim to
+            Kubernetes as the ``spec`` attribute of the Kubernetes
+            ``Pod`` definition.
+
+            This attribute allows for the creation of arbitrary
+            complex pod definitions but the user is responsible for
+            ensuring that they are suitable.  The first container in
+            the pod is expected to be a long-running container that
+            hosts a shell environment for running commands.  The
+            following minimal definition is recommended as a starting
+            point:
+
+            .. code-block:: yaml
+
+               labels:
+                 - name: custom-pod
+                   kind: pod
+                   spec:
+                     containers:
+                       - name: custom-pod
+                         image: ubuntu:jammy
+                         imagePullPolicy: IfNotPresent
+                         command: ["/bin/sh", "-c"]
+                         args: ["sleep infinity"]
+            """,
+        ): dict,
     })
 
     kubernetes_label_inheritable_schema = vs.Schema({
-        Optional('kind'): Nullable(vs.Any('pod', 'namespace')),
+        Optional(
+            'kind',
+            doc="""\
+            The Kubernetes driver supports two types of labels:
+            """,
+        ): Nullable(vs.Any(
+            Constant(
+                'pod',
+                doc="""\
+                Pod labels provide a dedicated namespace with a single
+                pod and a service account that can exec and get the
+                logs of the pod.
+                """,
+            ),
+            Constant(
+                'namespace',
+                doc="""\
+                Namespace labels provide an empty namespace configured
+                with a service account that can create pods, services,
+                configmaps, etc.
+                """,
+            ),
+        )),
     })
 
     kubernetes_label_common_schema = vs.Schema({
-        Optional('annotations'): Nullable(dict),
-        Optional('image-pull-secrets', default=[]): AsList(
-            kubernetes_pull_secrets),
+        Optional(
+            'annotations',
+            doc="""\
+            A dictionary of additional values to be added to the pod
+            metadata.  The value of this field is added to the
+            `metadata.annotations` field in Kubernetes.  This field
+            contains arbitrary key/value pairs that can be accessed by
+            tools and libraries.  """,
+        ): Nullable(dict),
+        Optional(
+            'image-pull-secrets',
+            default=[],
+            doc="""\
+
+            The imagePullSecrets needed to pull container images from
+            a private registry.  Because Zuul creates pods in a new
+            namespace, and image pull secrets must exist in the
+            namespace of the pods that use them, the referenced
+            secrets will be copied into the temporary namespace that
+            Zuul creates before creating the pod.  The new secrets
+            will have the same name as the old secrets.
+
+            Each entry is a dictionary with the following keys:
+            """,
+        ): AsList(kubernetes_pull_secrets),
     })
 
     inheritable_schema = assemble(
@@ -120,17 +231,37 @@ class KubernetesProviderSchema(BaseProviderSchema):
         schema = super().getProviderSchema()
 
         resource_limits = {
-            'pods': int,
-            'namespaces': int,
+            Optional(
+                'pods',
+                default=vs.UNDEFINED,
+                doc="""The number of pods.""",
+            ): Nullable(int),
+            Optional(
+                'namespaces',
+                default=vs.UNDEFINED,
+                doc="""The number of pods.""",
+            ): Nullable(int),
         }
 
         kubernetes_provider_schema = vs.Schema({
-            Optional('resource-limits', default=dict()): resource_limits,
+            Optional(
+                'resource-limits',
+                doc="""\
+                Resource limits for this provider.  Configure these
+                values to cause Zuul to attempt to limit the resource
+                usage.  This can be used to limit Zuul's usage to a
+                level below the cloud quota.""",
+                default=dict(),
+            ): resource_limits,
         })
 
         return assemble(
             schema,
             kubernetes_provider_schema,
+            doc="""\
+            The attributes available for configuring a Kubernetes
+            provider are below.
+            """,
         )
 
 
