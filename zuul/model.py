@@ -11779,6 +11779,10 @@ class AuthZConfigRole(AuthZRole):
                             if not params.get(cond) == val:
                                 return False
                         return True
+        elif self.permissions.get('read'):
+            # If we are called with permission=None we're checking
+            # read access.
+            return True
         return False
 
 
