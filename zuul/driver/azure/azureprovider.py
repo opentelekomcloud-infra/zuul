@@ -412,6 +412,11 @@ class AzureProviderLabel(BaseProviderLabel):
         AzureProviderImage.inheritable_azure_image_schema,
     )
 
+    def __init__(self, label_config, provider_config):
+        self.subnet_id = None
+        self.subnet_reference = None
+        super().__init__(label_config, provider_config)
+
 
 class AzureProviderSchema(BaseProviderSchema):
     def getLabelSchema(self):

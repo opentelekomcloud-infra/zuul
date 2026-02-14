@@ -594,7 +594,7 @@ class AzureProviderEndpoint(BaseProviderEndpoint):
             l = self._listVirtualMachines()
 
         for new_obj in l:
-            if new_obj['id'] == obj['id']:
+            if new_obj['id'].lower() == obj['id'].lower():
                 return new_obj
         return obj
 
@@ -610,7 +610,7 @@ class AzureProviderEndpoint(BaseProviderEndpoint):
             l = self._listVirtualMachines()
 
         for new_obj in l:
-            if new_obj['id'] == obj['id']:
+            if new_obj['id'].lower() == obj['id'].lower():
                 return new_obj
         return None
 
@@ -792,8 +792,9 @@ class AzureProviderEndpoint(BaseProviderEndpoint):
                 resource_group, hostname, spec)
 
     def _deleteVirtualMachine(self, vm_id):
+        vm_id_cmp = vm_id.lower() if vm_id else None
         for vm in self._listVirtualMachines():
-            if vm['id'] == vm_id:
+            if vm['id'].lower() == vm_id_cmp:
                 break
         else:
             self.log.warning("VM not found when deleting %s", vm_id)

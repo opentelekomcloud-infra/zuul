@@ -106,7 +106,9 @@
       host-key-checking: false
       boot-timeout: 120
       key-data: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC+mplenM+m6pNY9Un3fpO9eqf808Jrfb3d1gXg7BZVawCvtEZ/cDYvLQ3OF1AeL2kcIC0UAIglM5JXae7yO5CJbJRdkbXvv0u1LvpLxYSPM4ATR0r4IseC5YVxkfJQNi4ixSwTqD4ScEkuCXcSqSU9M+hB+KlnwXoR4IcYHf7vD2Z0Mdwm2ikk3SeERmspmMxx/uz0SPn58QxONuoTlNWQKqDWsV6bRyoPa6HWccMrIH1/e7E69Nw/30oioOQpKBgaDCauh+QkDtSkjRpRMOV47ZFh16Q9DqMgLx+FD8z6++9rsHlB65Zas1xyQsiRCFG09s00b7OR7Xz9ukQ5+vXV
-      subnet-id: /subscriptions/c35cf7df-ed75-4c85-be00-535409a85120/resourceGroups/nodepool/providers/Microsoft.Network/virtualNetworks/NodePool/subnets/default
+      subnet-reference:
+        resource-group: nodepool
+        network: nodepool
     flavors:
       - name: normal
         vm-size: Standard_B1ls
