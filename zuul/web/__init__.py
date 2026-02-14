@@ -2621,7 +2621,18 @@ class ZuulWebAPI(object):
     @cherrypy.tools.check_tenant_auth(require_admin=True)
     def nodes_put(self, tenant_name, tenant, auth, node_id):
         node = self.zuulweb.nodes_cache.getItem(node_id)
-        if not node or node.tenant_name != tenant.name:
+
+        if not node:
+            raise cherrypy.HTTPError(404, "Node not found")
+
+        if node.tenant_name is None:
+            # In this case, we need to see if the node is attached to
+            # one of the tenant providers
+            providers = self.zuulweb.tenant_providers.get(tenant.name)
+            provider_cnames = [p.canonical_name for p in providers]
+            if node.provider not in provider_cnames:
+                raise cherrypy.HTTPError(404, "Node not found")
+        elif node.tenant_name != tenant.name:
             raise cherrypy.HTTPError(404, "Node not found")
 
         body = cherrypy.request.json
