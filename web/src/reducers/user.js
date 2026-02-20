@@ -16,6 +16,8 @@
 import {
   USER_LOGGED_IN,
   USER_LOGGED_OUT,
+  USER_BROADCAST_WAIT_START,
+  USER_BROADCAST_WAIT_FINISH,
 } from '../actions/user'
 import {
   USER_ACL_REQUEST,
@@ -32,6 +34,8 @@ export default (state = {
   // outside of tenant context.
   tenant: undefined,
   redirect: null,
+  broadcastWaitStart: false,
+  broadcastWaitFinish: false,
 }, action) => {
   switch (action.type) {
     case USER_LOGGED_IN: {
@@ -43,6 +47,7 @@ export default (state = {
         scope: [],
         isAdmin: false,
         tenant: undefined,
+        broadcastWaitFinish: true,
       }
     }
     case USER_LOGGED_OUT:
@@ -74,6 +79,16 @@ export default (state = {
         isFetching: false,
         scope: action.scope,
         isAdmin: action.isAdmin
+      }
+    case USER_BROADCAST_WAIT_START:
+      return {
+        ...state,
+        broadcastWaitStart: true,
+      }
+    case USER_BROADCAST_WAIT_FINISH:
+      return {
+        ...state,
+        broadcastWaitFinish: true,
       }
     default:
       return state
