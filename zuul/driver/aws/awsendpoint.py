@@ -2322,7 +2322,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 log.debug("Deleting instance %s", del_id)
             count = len(ids)
             with self.rate_limiter(log.debug, f"Deleted {count} instances"):
-                self.ec2_client.terminate_instances(InstanceIds=ids)
+                self.ec2_client.terminate_instances(
+                    InstanceIds=ids, SkipOsShutdown=True)
 
         if not self._running:
             return
@@ -2367,7 +2368,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             with self.rate_limiter(log.debug, "Deleted instance"):
                 log.debug(f"Deleting instance {external_id}")
                 self.ec2_client.terminate_instances(
-                    InstanceIds=[instance['InstanceId']])
+                    InstanceIds=[instance['InstanceId']], SkipOsShutdown=True)
         else:
             self.delete_instance_queue.put((external_id, log))
         return instance
