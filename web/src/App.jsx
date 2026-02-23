@@ -66,6 +66,7 @@ import { fetchTenantsIfNeeded } from './actions/tenants'
 import { routes } from './routes'
 import { setTenantAction } from './actions/tenant'
 import { configureAuthFromTenant, configureAuthFromInfo } from './actions/auth'
+import { userBroadcastWaitStart, userBroadcastWaitFinish } from './actions/user'
 import { getHomepageUrl } from './api'
 import AuthCallbackPage from './pages/AuthCallback'
 import AuthRequiredPage from './pages/AuthRequired'
@@ -122,8 +123,9 @@ class AppComponent extends React.Component {
     return !(info.isFetching ||
              !auth.info ||
              auth.isFetching ||
-             (user.data && user.data.isFetching) ||
-             user.isFetching)
+             user.isFetching ||
+             (auth.info.read_protected && !user.data && !user.broadcastWaitFinish)
+            )
   }
 
   renderContent = (menu) => {
@@ -139,8 +141,10 @@ class AppComponent extends React.Component {
     if (!this.isAuthReady()) {
       return <Fetching />
     }
+    if (auth.info.read_protected && !user.data && !user.broadcastWaitFinish) {
+      return <Fetching />
+    }
     if (auth.info.read_protected && !user.data) {
-      console.log('Read-access login required')
       const redirect_target = window.location.href.slice(getHomepageUrl().length)
       // If the redirect_target is the root url, we set the zuul_auth_redirect to /
       // so that the auth callback page can redirect to the / after login
@@ -190,6 +194,14 @@ class AppComponent extends React.Component {
     if (info.ready) {
       let tenantName = null
       let whiteLabel
+
+      if (auth.info && auth.info.read_protected && !user.data && !user.broadcastWaitStart) {
+        console.log('Read-access login required')
+        this.props.dispatch(userBroadcastWaitStart());
+        setTimeout(() => {
+          this.props.dispatch(userBroadcastWaitFinish());
+        }, 100)
+      }
 
       if (info.tenant) {
         // White label

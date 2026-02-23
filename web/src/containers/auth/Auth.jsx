@@ -240,7 +240,7 @@ class AuthContainerComponent extends React.Component {
         </div>
       )
     } else {
-      return (user.data.isFetching ? <div style={containerStyles}>Loading...</div> :
+      return (user.isFetching ? <div style={containerStyles}>Loading...</div> :
         <div style={containerStyles}>
           {this.renderModal()}
           <Button
