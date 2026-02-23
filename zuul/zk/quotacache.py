@@ -103,7 +103,7 @@ class QuotaCache(ZuulTreeCache):
         elif len(parts) == 2 and parts[0] == QuotaCache.Kind.RESOURCE:
             key = self._makeKey(QuotaCache.Kind.RESOURCE, parts[1])
         # We should fetch if we have a matching key
-        return (key, bool(key))
+        return (key, bool(key), None)
 
     def hasLimits(self):
         key = self._makeKey(QuotaCache.Kind.LIMITS)
