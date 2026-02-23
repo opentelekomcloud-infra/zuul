@@ -57,6 +57,7 @@ from zuul.zk.locks import locked
 from zuul.zk.nodepool import ZooKeeperNodepool
 from zuul.zk.sharding import (
     RawShardIO,
+    RawExpandableIO,
     BufferedShardReader,
     BufferedShardWriter,
     NODE_BYTE_SIZE_LIMIT,
@@ -78,6 +79,7 @@ from tests.base import (
     ZOOKEEPER_SESSION_TIMEOUT,
 )
 from zuul.zk.zkobject import (
+    ExpandableZKObject,
     LockableZKObject,
     PolymorphicZKObjectMixin,
     ShardedZKObject,
@@ -360,6 +362,212 @@ class TestSharding(ZooKeeperBaseTestCase):
     @model_version(30)
     def test_write_old_read_old_3(self):
         self._test_write_old_read_old(3)
+
+
+class TestExpandableSharding(ZooKeeperBaseTestCase):
+
+    def test_read_write(self):
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable", create=True,
+        ) as expandable_io:
+            with testtools.ExpectedException(NoNodeError):
+                expandable_io.read()
+            expandable_io.write(b"foobar")
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable"
+        ) as expandable_io:
+            md = expandable_io.metadata
+            self.assertEqual(0, md.max_shard)
+            self.assertEqual(expandable_io.read(), b"foobar")
+            self.assertEqual(0, md.max_shard)
+
+    def test_read_write_one_shard(self):
+        # Just inside the limit for one
+        data = b"abcd" * int(NODE_BYTE_SIZE_LIMIT / 4)
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable", create=True,
+        ) as expandable_io:
+            expandable_io.write(data)
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable"
+        ) as expandable_io:
+            md = expandable_io.metadata
+            self.assertEqual(0, md.max_shard)
+            newdata = expandable_io.read()
+            self.assertEqual(len(data), len(newdata))
+            self.assertEqual(data, newdata)
+            self.assertEqual(0, md.max_shard)
+
+    def test_read_write_two_shards(self):
+        # Just over the limit for one
+        data = b"abcd" * int((NODE_BYTE_SIZE_LIMIT / 4) + 1)
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable", create=True,
+        ) as expandable_io:
+            expandable_io.write(data)
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable"
+        ) as expandable_io:
+            md = expandable_io.metadata
+            self.assertEqual(0, md.max_shard)
+            newdata = expandable_io.read()
+            self.assertEqual(len(data), len(newdata))
+            self.assertEqual(data, newdata)
+            self.assertEqual(1, md.max_shard)
+
+    def test_read_write_grow(self):
+        # Test writing a larger copy
+        data1 = b"abcd" * int((NODE_BYTE_SIZE_LIMIT / 4) + 1)  # 2 shards
+        data2 = b"abcd" * int((NODE_BYTE_SIZE_LIMIT / 4) * 3)  # 3 shards
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable", create=True,
+        ) as expandable_io:
+            expandable_io.write(data1)
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable"
+        ) as expandable_io:
+            md = expandable_io.metadata
+            self.assertEqual(0, md.max_shard)
+            newdata = expandable_io.read()
+            self.assertEqual(len(data1), len(newdata))
+            self.assertEqual(data1, newdata)
+            self.assertEqual(1, md.max_shard)
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable"))
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable/0000000001"))
+        self.assertIsNone(
+            self.zk_client.client.exists("/test/expandable/0000000002"))
+        self.assertIsNone(
+            self.zk_client.client.exists("/test/expandable/0000000003"))
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable", metadata=md,
+        ) as expandable_io:
+            expandable_io.write(data2)
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable"
+        ) as expandable_io:
+            md = expandable_io.metadata
+            self.assertEqual(0, md.max_shard)
+            newdata = expandable_io.read()
+            self.assertEqual(len(data2), len(newdata))
+            self.assertEqual(data2, newdata)
+            self.assertEqual(2, md.max_shard)
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable"))
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable/0000000001"))
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable/0000000002"))
+        self.assertIsNone(
+            self.zk_client.client.exists("/test/expandable/0000000003"))
+
+    def test_read_write_shrink(self):
+        # Test writing a smaller copy
+        data1 = b"abcd" * int((NODE_BYTE_SIZE_LIMIT / 4) * 3)  # 3 shards
+        data2 = b"abcd" * int((NODE_BYTE_SIZE_LIMIT / 4) + 1)  # 2 shards
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable", create=True,
+        ) as expandable_io:
+            expandable_io.write(data1)
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable"
+        ) as expandable_io:
+            md = expandable_io.metadata
+            self.assertEqual(0, md.max_shard)
+            newdata = expandable_io.read()
+            self.assertEqual(len(data1), len(newdata))
+            self.assertEqual(data1, newdata)
+            self.assertEqual(2, md.max_shard)
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable"))
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable/0000000001"))
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable/0000000002"))
+        self.assertIsNone(
+            self.zk_client.client.exists("/test/expandable/0000000003"))
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable", metadata=md,
+        ) as expandable_io:
+            expandable_io.write(data2)
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable"
+        ) as expandable_io:
+            md = expandable_io.metadata
+            self.assertEqual(0, md.max_shard)
+            newdata = expandable_io.read()
+            self.assertEqual(len(data2), len(newdata))
+            self.assertEqual(data2, newdata)
+            self.assertEqual(1, md.max_shard)
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable"))
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable/0000000001"))
+        self.assertIsNone(
+            self.zk_client.client.exists("/test/expandable/0000000002"))
+        self.assertIsNone(
+            self.zk_client.client.exists("/test/expandable/0000000003"))
+
+    def test_read_write_grow_no_metadata(self):
+        # Test overwriting with no metadata.  This forces the retry
+        # functionality when we guess the create/set call incorrectly.
+        data1 = b"abcd" * int((NODE_BYTE_SIZE_LIMIT / 4) + 1)  # 2 shards
+        data2 = b"abcd" * int((NODE_BYTE_SIZE_LIMIT / 4) * 3)  # 3 shards
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable", create=True,
+        ) as expandable_io:
+            expandable_io.write(data1)
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable"
+        ) as expandable_io:
+            md = expandable_io.metadata
+            self.assertEqual(0, md.max_shard)
+            newdata = expandable_io.read()
+            self.assertEqual(len(data1), len(newdata))
+            self.assertEqual(data1, newdata)
+            self.assertEqual(1, md.max_shard)
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable"))
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable/0000000001"))
+        self.assertIsNone(
+            self.zk_client.client.exists("/test/expandable/0000000002"))
+        self.assertIsNone(
+            self.zk_client.client.exists("/test/expandable/0000000003"))
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable",
+        ) as expandable_io:
+            expandable_io.write(data2)
+
+        with RawExpandableIO(
+                self.zk_client.client, "/test/expandable"
+        ) as expandable_io:
+            md = expandable_io.metadata
+            self.assertEqual(0, md.max_shard)
+            newdata = expandable_io.read()
+            self.assertEqual(len(data2), len(newdata))
+            self.assertEqual(data2, newdata)
+            self.assertEqual(2, md.max_shard)
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable"))
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable/0000000001"))
+        self.assertIsNotNone(
+            self.zk_client.client.exists("/test/expandable/0000000002"))
+        self.assertIsNone(
+            self.zk_client.client.exists("/test/expandable/0000000003"))
 
 
 class TestUnparsedConfigCache(ZooKeeperBaseTestCase):
@@ -1903,6 +2111,10 @@ class DummyShardedZKObject(DummyZKObjectMixin, ShardedZKObject):
     pass
 
 
+class DummyExpandableZKObject(DummyZKObjectMixin, ExpandableZKObject):
+    pass
+
+
 class TestZKObject(ZooKeeperBaseTestCase):
     def _test_zk_object(self, zkobject_class):
         stop_event = threading.Event()
@@ -2112,10 +2324,16 @@ class TestZKObject(ZooKeeperBaseTestCase):
     def test_sharded_zk_object(self):
         self._test_zk_object(DummyShardedZKObject)
 
+    def test_expandable_zk_object(self):
+        self._test_zk_object(DummyExpandableZKObject)
+
     def test_zk_object_exception(self):
         self._test_zk_object_exception(DummyZKObject)
 
     def test_sharded_zk_object_exception(self):
+        self._test_zk_object_exception(DummyShardedZKObject)
+
+    def test_expandable_zk_object_exception(self):
         self._test_zk_object_exception(DummyShardedZKObject)
 
     def test_zk_object_too_large(self):
