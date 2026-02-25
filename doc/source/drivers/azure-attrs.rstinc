@@ -21,7 +21,7 @@
 
       The name of the :ref:`connection <connections>` to
       use.  This attribute is only used by :attr:`section`
-      objects.
+      objects and may not be changed via inheritance.
 
    .. attr:: flavor-defaults
       :type: dict
