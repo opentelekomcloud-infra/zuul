@@ -1629,10 +1629,17 @@ class Image(ConfigObject):
         self.description = description
 
     @property
+    def project_canonical_name(self):
+        return self.source_context.project_canonical_name
+
+    @property
+    def branch(self):
+        return self.source_context.branch
+
+    @property
     def canonical_name(self):
         return '/'.join([
-            urllib.parse.quote_plus(
-                self.source_context.project_canonical_name),
+            urllib.parse.quote_plus(self.project_canonical_name),
             urllib.parse.quote_plus(self.name),
         ])
 
@@ -1649,14 +1656,6 @@ class Image(ConfigObject):
                 self.type == other.type and
                 self.description == other.description)
 
-    @property
-    def project_canonical_name(self):
-        return self.source_context.project_canonical_name
-
-    @property
-    def branch(self):
-        return self.source_context.branch
-
     def toDict(self):
         return {
             'project_canonical_name': self.project_canonical_name,
@@ -1668,9 +1667,7 @@ class Image(ConfigObject):
 
     def toConfig(self):
         return {
-            'project_canonical_name': self.project_canonical_name,
             'name': self.name,
-            'branch': self.branch,
             'type': self.type,
             'description': self.description,
         }
@@ -1688,10 +1685,13 @@ class Flavor(ConfigObject):
         self.description = description
 
     @property
+    def project_canonical_name(self):
+        return self.source_context.project_canonical_name
+
+    @property
     def canonical_name(self):
         return '/'.join([
-            urllib.parse.quote_plus(
-                self.source_context.project_canonical_name),
+            urllib.parse.quote_plus(self.project_canonical_name),
             urllib.parse.quote_plus(self.name),
         ])
 
@@ -1708,17 +1708,14 @@ class Flavor(ConfigObject):
                 self.description == other.description)
 
     def toDict(self):
-        sc = self.source_context
         return {
-            'project_canonical_name': sc.project_canonical_name,
+            'project_canonical_name': self.project_canonical_name,
             'name': self.name,
             'description': self.description,
         }
 
     def toConfig(self):
-        sc = self.source_context
         return {
-            'project_canonical_name': sc.project_canonical_name,
             'name': self.name,
             'description': self.description,
         }
@@ -1743,10 +1740,13 @@ class Label(ConfigObject):
         self.min_retention_time = min_retention_time
 
     @property
+    def project_canonical_name(self):
+        return self.source_context.project_canonical_name
+
+    @property
     def canonical_name(self):
         return '/'.join([
-            urllib.parse.quote_plus(
-                self.source_context.project_canonical_name),
+            urllib.parse.quote_plus(self.project_canonical_name),
             urllib.parse.quote_plus(self.name),
         ])
 
@@ -1769,9 +1769,8 @@ class Label(ConfigObject):
                 self.min_retention_time == other.min_retention_time)
 
     def toDict(self):
-        sc = self.source_context
         return {
-            'project_canonical_name': sc.project_canonical_name,
+            'project_canonical_name': self.project_canonical_name,
             'name': self.name,
             'image': self.image,
             'flavor': self.flavor,
@@ -1783,9 +1782,7 @@ class Label(ConfigObject):
         }
 
     def toConfig(self):
-        sc = self.source_context
         return {
-            'project_canonical_name': sc.project_canonical_name,
             'name': self.name,
             'image': self.image,
             'flavor': self.flavor,
@@ -2047,35 +2044,57 @@ class ProviderConfig(ConfigObject):
             config = ProviderConfig.applyConfig(
                 config, section, layout, schema_class)
 
-        # Set config hashes
-        image_hashes = {}
         for image in config.get('images', []):
             # Handle default inheritance for any non-final images.
             if not image.get('final'):
                 ProviderConfig.updateFromDefaults(
                     image, config.get('image-defaults', {}),
                     layout.images, None, schema_class)
-            # This is used for identifying unique image configurations
-            # across multiple providers.
-            image['config_hash'] = hashlib.sha256(
-                json.dumps(image, sort_keys=True).encode("utf8")).hexdigest()
-            image_hashes[image['name']] = image['config_hash']
-        flavor_hashes = {}
         flavor_defaults_schema = schema_class.getInheritableFlavorSchema()
         for flavor in config.get('flavors', []):
             if not flavor.get('final'):
                 ProviderConfig.updateFromDefaults(
                     flavor, config.get('flavor-defaults', {}),
                     layout.flavors, flavor_defaults_schema)
-            flavor['config_hash'] = hashlib.sha256(
-                json.dumps(flavor, sort_keys=True).encode("utf8")).hexdigest()
-            flavor_hashes[flavor['name']] = flavor['config_hash']
         label_defaults_schema = schema_class.getInheritableLabelSchema()
         for label in config.get('labels', []):
             if not label.get('final'):
                 ProviderConfig.updateFromDefaults(
                     label, config.get('label-defaults', {}),
                     layout.labels, label_defaults_schema)
+
+        # Validate the overall schema
+        schema = connection.driver.getProviderSchema()
+        config = schema(config)
+
+        # Set internal attributes
+        self._setInternalAttributes(layout, config)
+
+        return config
+
+    def _setInternalAttributes(self, layout, config):
+        # Set config hashes
+        image_hashes = {}
+        for image in config.get('images', []):
+            # This is used for identifying unique image configurations
+            # across multiple providers.
+            image_object = layout.images[image['name']]
+            image['config_hash'] = hashlib.sha256(
+                json.dumps(image, sort_keys=True).encode("utf8")).hexdigest()
+            image['project_canonical_name'] =\
+                image_object.project_canonical_name
+            image['branch'] = image_object.branch
+            image_hashes[image['name']] = image['config_hash']
+        flavor_hashes = {}
+        for flavor in config.get('flavors', []):
+            flavor_object = layout.flavors[flavor['name']]
+            flavor['config_hash'] = hashlib.sha256(
+                json.dumps(flavor, sort_keys=True).encode("utf8")).hexdigest()
+            flavor['project_canonical_name'] =\
+                flavor_object.project_canonical_name
+            flavor_hashes[flavor['name']] = flavor['config_hash']
+        for label in config.get('labels', []):
+            label_object = layout.labels[label['name']]
             try:
                 label['config_hash'] = self._getLabelConfigHash(
                     label, image_hashes, flavor_hashes)
@@ -2083,11 +2102,8 @@ class ProviderConfig(ConfigObject):
                 # We might miss some flavor or label, but this will be
                 # caught later during config validation.
                 label['config_hash'] = None
-
-        # Validate the overall schema
-        schema = connection.driver.getProviderSchema()
-        schema(config)
-        return config
+            label['project_canonical_name'] =\
+                label_object.project_canonical_name
 
     def _getLabelConfigHash(self, label, image_hashes, flavor_hashes):
         label_hash = hashlib.sha256(

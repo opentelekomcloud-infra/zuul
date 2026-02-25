@@ -116,8 +116,6 @@ common_label = vs.Schema({
 # The label attributes that can appear in a section/provider label or
 # a standalone label (but not in the section body).
 base_label = vs.Schema({
-    Required('project_canonical_name'): str,
-    Required('config_hash'): str,
     Required(
         'name',
         doc="""\
@@ -313,9 +311,6 @@ common_image_zuul = vs.Schema({
 # a section/provider image or a standalone image (but not in the
 # section body).
 base_image = vs.Schema({
-    Required('project_canonical_name'): str,
-    Required('config_hash'): str,
-    Required('branch', doc="UNDOCUMENTED"): str,
     Required(
         'name',
         doc="""\
@@ -344,8 +339,6 @@ base_image = vs.Schema({
 # The flavor attributes that can appear in a section/provider flavor or
 # a standalone flavor (but not in the section body).
 base_flavor = vs.Schema({
-    Required('project_canonical_name'): str,
-    Required('config_hash'): str,
     Required(
         'name',
         doc="""\
