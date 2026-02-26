@@ -860,6 +860,7 @@ pre.version {
     padding: 10px;
     border: 1px solid #bbb;
     margin-bottom: 8px;
+    overflow-x: scroll;
 }
 
 .zuul-console-dark pre {
@@ -869,6 +870,7 @@ pre.version {
     padding: 10px;
     border: 1px solid white;
     margin-bottom: 8px;
+    overflow-x: scroll;
 }
 
 /* Increase the font size slightly for the JSON tree to match the text */
@@ -1035,6 +1037,7 @@ details.foldable[open] summary::before {
   padding: 10px;
   border: 1px solid #bbb;
   margin-bottom: 8px;
+  overflow-x: scroll;
 }
 
 .zuul-build-output-dark {
@@ -1044,6 +1047,7 @@ details.foldable[open] summary::before {
   padding: 10px;
   border: 1px solid white;
   margin-bottom: 8px;
+  overflow-x: scroll;
 }
 
 .pf-theme-dark .zuul-log-sev-0 {
