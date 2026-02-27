@@ -259,6 +259,9 @@ class TestAwsDriver(AwsBaseTest):
         # options in the spot check (so that we don't have run a test
         # for every option).
         self.assertEqual(
+            'enabled',
+            self.run_instances_calls[0]['CpuOptions']['NestedVirtualization'])
+        self.assertEqual(
             'spot',
             self.run_instances_calls[0]['InstanceMarketOptions']['MarketType'])
         self.assertEqual(
