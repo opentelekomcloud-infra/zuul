@@ -723,6 +723,9 @@ a.refresh {
 .zuul-log-output {
     color: black;
 }
+.zuul-log-message {
+    white-space: pre;
+}
 
 .zuul-log-output a,
 .zuul-log-output a:hover {
