@@ -28,6 +28,7 @@ import {
 export default (state = {
   isFetching: false,
   data: null,
+  permissions: {},
   scope: [],
   isAdmin: false,
   // undefined tenant means we haven't loaded anything yet; null means
@@ -44,6 +45,7 @@ export default (state = {
         data: action.user,
         token: action.token,
         redirect: action.redirect,
+        permissions: {},
         scope: [],
         isAdmin: false,
         tenant: undefined,
@@ -56,6 +58,7 @@ export default (state = {
         data: null,
         token: null,
         redirect: null,
+        permissions: {},
         scope: [],
         isAdmin: false,
         tenant: undefined,
@@ -70,6 +73,7 @@ export default (state = {
       return {
         ...state,
         isFetching: false,
+        permissions: {},
         scope: [],
         isAdmin: false
       }
@@ -77,6 +81,7 @@ export default (state = {
       return {
         ...state,
         isFetching: false,
+        permissions: action.permissions,
         scope: action.scope,
         isAdmin: action.isAdmin
       }
