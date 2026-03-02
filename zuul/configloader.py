@@ -1784,6 +1784,9 @@ class AuthorizationRuleParser(object):
 
 
 class AuthorizationRoleParser(object):
+    read = {
+        'read': bool
+    }
     promote = {
         'promote': bool
     }
@@ -1851,6 +1854,7 @@ class AuthorizationRoleParser(object):
 
     def getSchema(self):
         permissions = {}
+        permissions.update(self.read)
         permissions.update(self.promote)
         permissions.update(self.set_tenant_state)
         permissions.update(self.build_image)
