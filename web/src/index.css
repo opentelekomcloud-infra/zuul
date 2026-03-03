@@ -1093,3 +1093,13 @@ details.foldable[open] summary::before {
 .sort-toolbar {
     padding: 0 !important;
 }
+
+/* The treeview components are buttons, but we frequently render text
+   that we want to copy out of them.  Override the cursor and
+   selection to allow that (since it's not normally allowed in a
+   button). */
+
+.pf-c-tree-view__node-text {
+    user-select: text;
+    cursor: text;
+}
