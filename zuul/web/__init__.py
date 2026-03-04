@@ -1843,7 +1843,10 @@ class ZuulWebAPI(object):
         root_realm = self.zuulweb.abide.api_root.default_auth_realm
         if root_realm:
             auth_info['default_realm'] = root_realm
-        read_protected = bool(self.zuulweb.abide.api_root.access_rules)
+        read_protected = (
+            (not self.zuulweb.abide.api_root.anonymous_read_access) or
+            bool(self.zuulweb.abide.api_root.access_rules)
+        )
         auth_info['read_protected'] = read_protected
         auth_info['auth_log_file_requests'] =\
             self.zuulweb.auth_log_file_requests
@@ -1865,7 +1868,10 @@ class ZuulWebAPI(object):
             # TODO: should we return 404 if tenant not found?
             if tenant.default_auth_realm is not None:
                 auth_info['default_realm'] = tenant.default_auth_realm
-            read_protected = bool(tenant.access_rules)
+            read_protected = (
+                (not tenant.anonymous_read_access) or
+                bool(tenant.access_rules)
+            )
             auth_info['read_protected'] = read_protected
             # TODO: remove this after NIZ transition is complete
             auth_info['niz'] = bool(self.zuulweb.tenant_providers[tenant_name])
