@@ -5518,6 +5518,12 @@ class TestWebApiAccessRules(BaseTestWeb):
                 info['info']['capabilities']['auth']['read_protected'])
 
 
+class TestWebApiRBACReadAccess(TestWebApiAccessRules):
+    # Test read-level access restrictions
+    config_file = 'zuul-admin-web.conf'
+    tenant_config_file = 'config/access-rules/main-rbac.yaml'
+
+
 class TestWebOIDCJobs(BaseTestWeb):
     tenant_config_file = 'config/secrets/main.yaml'
 
