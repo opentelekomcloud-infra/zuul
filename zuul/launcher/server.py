@@ -3382,7 +3382,7 @@ class Launcher:
                     f'zuul.provider.{safe_pname}.limit.{safe_res}',
                     value)
             usage = self.api.nodes_cache.getQuota(provider).getResources()
-            for res, value in usage.items():
+            for res, value in list(usage.items()):
                 safe_res = _normalize_statsd_name(res)
                 self.statsd.gauge(
                     f'zuul.provider.{safe_pname}.usage.{safe_res}',
