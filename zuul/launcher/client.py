@@ -330,8 +330,11 @@ class LauncherClient:
 
         failure = False
         for node_id in node_group['nodes']:
-            provider_node = self.getProviderNode(node_id)
-            if not provider_node:
+            try:
+                provider_node = self.getProviderNode(node_id)
+            except NoNodeError:
+                self.log.warning("Unable to find held provider node %s",
+                                 node_id)
                 continue
             if provider_node.state == provider_node.State.USED:
                 continue
