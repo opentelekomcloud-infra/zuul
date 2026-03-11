@@ -21,12 +21,15 @@ import voluptuous as vs
 UNDEFINED = object()
 
 
-def assemble(*schemas, doc=None):
+def assemble(*schemas, doc=None, extra=None):
     """Merge any number of voluptuous schemas into a single schema.  The
     input schemas must all be dictionary-based.
 
     """
-    ret = vs.Schema({})
+    args = {}
+    if extra:
+        args['extra'] = extra
+    ret = vs.Schema({}, **args)
     old_doc = None
     for x in schemas:
         ret = ret.extend(x.schema)

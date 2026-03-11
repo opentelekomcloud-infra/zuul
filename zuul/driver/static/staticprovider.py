@@ -72,6 +72,7 @@ class StaticProviderLabel(BaseProviderLabel):
     internal_schema = assemble(
         schema,
         provider_schema.internal_base_label,
+        extra=vs.ALLOW_EXTRA,
     )
     image_flavor_inheritable_schema = vs.Schema({})
 

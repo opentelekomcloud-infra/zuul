@@ -231,6 +231,7 @@ class AzureProviderImage(BaseProviderImage):
     internal_cloud_schema = vs.All(
         internal_main_cloud_schema,
         cloud_schema_exclusion,
+        extra=vs.ALLOW_EXTRA,
     )
     zuul_schema = assemble(
         BaseProviderImage.zuul_schema,
@@ -239,6 +240,7 @@ class AzureProviderImage(BaseProviderImage):
     internal_zuul_schema = assemble(
         zuul_schema,
         provider_schema.internal_base_image,
+        extra=vs.ALLOW_EXTRA,
     )
     inheritable_cloud_schema = assemble(
         BaseProviderImage.inheritable_cloud_schema,
@@ -342,6 +344,7 @@ class AzureProviderFlavor(BaseProviderFlavor):
     internal_schema = assemble(
         schema,
         provider_schema.internal_base_flavor,
+        extra=vs.ALLOW_EXTRA,
     )
 
 
@@ -428,6 +431,7 @@ class AzureProviderLabel(BaseProviderLabel):
     internal_main_schema = assemble(
         main_schema,
         provider_schema.internal_base_label,
+        extra=vs.ALLOW_EXTRA,
     )
 
     main_schema_exclusion = RequiredExclusive(

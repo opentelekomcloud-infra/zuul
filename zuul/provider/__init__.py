@@ -68,6 +68,7 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
     internal_cloud_schema = assemble(
         cloud_schema,
         provider_schema.internal_base_image,
+        extra=vs.ALLOW_EXTRA,
     )
     zuul_schema = assemble(
         provider_schema.common_image,
@@ -85,6 +86,7 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
     internal_zuul_schema = assemble(
         zuul_schema,
         provider_schema.internal_base_image,
+        extra=vs.ALLOW_EXTRA,
     )
     schema = vs.Union(
         cloud_schema, zuul_schema,
@@ -117,6 +119,7 @@ class BaseProviderFlavor(CNameMixin, metaclass=abc.ABCMeta):
     internal_schema = assemble(
         schema,
         provider_schema.internal_base_flavor,
+        extra=vs.ALLOW_EXTRA,
     )
 
     def __init__(self, flavor_config, provider_config):
@@ -135,6 +138,7 @@ class BaseProviderLabel(CNameMixin, metaclass=abc.ABCMeta):
     internal_schema = assemble(
         schema,
         provider_schema.internal_base_label,
+        extra=vs.ALLOW_EXTRA,
     )
     image_flavor_inheritable_schema = assemble()
 
