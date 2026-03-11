@@ -21,6 +21,7 @@ from zuul.model import (
     NodesetInfo,
     NodesetRequest,
     ProviderNode,
+    SnapshotStatus,
     STATE_HOLD,
     STATE_IN_USE,
     STATE_READY,
@@ -226,21 +227,22 @@ class LauncherClient:
                         wait_snapshots.add(provider_node.snapshot)
                         msg = f"Started snapshot on {provider_node}"
                         log.debug(msg)
-                        yield msg
+                        yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
                 except Exception:
                     msg = f"Unable to snapshot node {provider_node}"
                     log.exception(msg)
-                    yield msg
+                    yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
 
         if not wait_snapshots:
             msg = f"Nothing to snapshot in nodeset {nodeset}"
             log.debug(msg)
-            yield msg
+            yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
             return
         done = False
         log.debug("Waiting for snapshots in nodeset %s", nodeset)
         msg = "Waiting for snapshots"
-        yield msg
+        yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
+        yield SnapshotStatus(SnapshotStatus.Type.STARTED)
         while not done:
             wait_event.wait()
             wait_event.clear()
@@ -255,9 +257,10 @@ class LauncherClient:
                         msg = (f"Completed snapshot on {snapshot.node}, "
                                f"external id {snapshot.external_id}")
                         log.debug(msg)
-                        yield msg
+                        yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
         log.debug("Finished snapshots in nodeset %s", nodeset)
-        yield "Finished snapshots"
+        yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
+        yield SnapshotStatus(SnapshotStatus.Type.COMPLETED)
         return
 
     def addResources(self, target, source):

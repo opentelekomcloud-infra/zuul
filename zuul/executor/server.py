@@ -71,6 +71,7 @@ from zuul.lib import commandsocket
 from zuul.merger.server import BaseMergeServer, RepoLocks
 from zuul.model import (
     BuildCompletedEvent,
+    BuildEvent,
     BuildPausedEvent,
     BuildRequest,
     BuildStartedEvent,
@@ -1763,11 +1764,26 @@ class AnsibleJob(object):
 
         node_ids = [x['node'] for x in snapshot_nodes]
         with open(self.jobdir.job_output_file, 'a') as job_output:
-            for msg in self.executor_server.launcher.snapshotNodeset(
+            for status in self.executor_server.launcher.snapshotNodeset(
                     self.nodeset, node_ids, self.zuul_event_id):
-                job_output.write("{now} | {msg}\n".format(
-                    now=datetime.datetime.now(),
-                    msg=msg))
+                if status.type == status.Type.MESSAGE:
+                    job_output.write("{now} | {msg}\n".format(
+                        now=datetime.datetime.now(),
+                        msg=status.message))
+                elif status.type == status.Type.STARTED:
+                    self.executor_server.updateBuildStatus(
+                        self.build_request,
+                        {'snapshot':
+                         {'event': BuildEvent.TYPE_SNAPSHOT_STARTED,
+                          'time': time.time(),
+                          }})
+                elif status.type == status.Type.COMPLETED:
+                    self.executor_server.updateBuildStatus(
+                        self.build_request,
+                        {'snapshot':
+                         {'event': BuildEvent.TYPE_SNAPSHOT_COMPLETED,
+                          'time': time.time(),
+                          }})
 
         artifacts = zuul_data.setdefault('artifacts', [])
         for snapshot_info in snapshot_nodes:

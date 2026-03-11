@@ -3187,6 +3187,17 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         self.snapshot.internalCreate(context)
 
 
+class SnapshotStatus:
+    class Type(StrEnum):
+        MESSAGE = "message"
+        STARTED = "started"
+        COMPLETED = "completed"
+
+    def __init__(self, kind, message=None):
+        self.type = kind
+        self.message = message
+
+
 class ProviderNodeSnapshot(zkobject.LockableZKObject):
     # We don't want to re-create the node in case it was deleted
     makepath = False
@@ -6174,6 +6185,8 @@ class BuildReference:
 class BuildEvent:
     TYPE_PAUSED = "paused"
     TYPE_RESUMED = "resumed"
+    TYPE_SNAPSHOT_STARTED = "snapshot started"
+    TYPE_SNAPSHOT_COMPLETED = "snapshot completed"
 
     def __init__(self, event_time, event_type, description=None):
         self.event_time = event_time
