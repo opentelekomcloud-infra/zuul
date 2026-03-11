@@ -6249,6 +6249,7 @@ class Build(zkobject.ZKObject):
             # A list of build events like paused, resume, ...
             events=[],
             pre_fail=False,
+            snapshotting=False,
         )
 
     def serialize(self, context):
@@ -6265,6 +6266,7 @@ class Build(zkobject.ZKObject):
             "paused": self.paused,
             "pre_fail": self.pre_fail,
             "retry": self.retry,
+            "snapshotting": self.snapshotting,
             "held": self.held,
             "unreachable": self.unreachable,
             "zuul_event_id": self.zuul_event_id,
@@ -8194,6 +8196,7 @@ class QueueItem(zkobject.ZKObject):
                 'paused': build.paused if build else None,
                 'pre_fail': build.pre_fail if build else None,
                 'retry': build.retry if build else None,
+                'snapshotting': build.snapshotting if build else None,
                 'tries': self.current_build_set.getTries(job),
                 'queued': job.queued,
                 'waiting_status': waiting_status,
