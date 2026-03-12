@@ -1545,7 +1545,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                 if labels:
                     data['labels'] = labels
                 if file_comments:
-                    if self.version >= (2, 15, 0):
+                    if (2, 15, 0) <= self.version < (3, 13, 0):
                         file_comments = copy.deepcopy(file_comments)
                         url = item.formatItemUrl()
                         for comments in itertools.chain(
