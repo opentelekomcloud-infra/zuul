@@ -142,7 +142,7 @@ class GithubTriggerEvent(TriggerEvent):
         super().updateFromDict(d)
         self.title = d["title"]
         self.label = d["label"]
-        self.permission = d["permission"]
+        self.permission = d.get("permission")
         self.unlabel = d["unlabel"]
         self.action = d["action"]
         self.delivery = d["delivery"]
