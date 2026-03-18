@@ -238,6 +238,16 @@ into ``zuul.d/projects.yaml``:
 .. literalinclude:: /examples/zuul-config/zuul.d/projects.yaml
    :language: yaml
 
+To set up the environment for running jobs, we will need to configure
+a provider along with any other necessary settings.  In this tutorial,
+we will be using the static test node that is already running via
+Docker Compose.  This provider will define the connection details for
+the node, allowing Zuul to schedule jobs to it.  Copy the following
+into ``zuul.d/providers.yaml``:
+
+.. literalinclude:: /examples/zuul-config/zuul.d/providers.yaml
+   :language: yaml
+
 Every real job (i.e., all jobs other than ``noop``) must inherit from a
 :term:`base job`, and base jobs may only be defined in a
 :term:`config-project`.  Let's go ahead and add a simple base job that
