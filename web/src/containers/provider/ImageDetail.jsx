@@ -72,6 +72,15 @@ function ProviderDetail(props) {
     )
   }
 
+  const buildTenantArtifacts = image.build_artifacts.filter(
+    (x) => x.build_tenant
+  )
+  // If there are build artifacts, but none of them were built in this
+  // tenant, then this tenant is probably not responsible for building
+  // them.  Hide the button in that case.
+  const hideBuildButton = (
+    image.build_artifacts.length > 0 && buildTenantArtifacts.length == 0
+  )
   return (
     <>
       <DescriptionList isHorizontal
@@ -104,6 +113,8 @@ function ProviderDetail(props) {
       </DescriptionList>
 
       {isAuthorized(user, 'build-image') &&
+       image.type === 'zuul' &&
+       !hideBuildButton &&
        <Button onClick={() => {setShowBuildModal(true)}}>
          Build Image
        </Button>
