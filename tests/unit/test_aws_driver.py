@@ -348,6 +348,39 @@ class TestAwsDriver(AwsBaseTest):
             if len(launch_templates) == 0:
                 break
 
+    @simple_layout('layouts/aws/fleet-multi-flavor.yaml',
+                   enable_nodepool=True)
+    def test_aws_launch_templates_nested_virtualization(self):
+        self.waitUntilSettled()
+
+        provider = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-main')
+        endpoint = provider.getEndpoint()
+        template_names = endpoint.provider_label_template_names[
+            provider.canonical_name]
+
+        expected_nested_virt = {
+            'debian-no-nested-virt': False,
+            'debian-with-nested-virt': True,
+        }
+        launch_templates = self.ec2_client.describe_launch_templates()[
+            'LaunchTemplates']
+        self.assertEqual(len(expected_nested_virt), len(launch_templates))
+
+        for label_name, nested_virtualization in expected_nested_virt.items():
+            launch_template_name = template_names[label_name]
+            launch_template = \
+                self.ec2_client.describe_launch_template_versions(
+                    LaunchTemplateName=launch_template_name,
+                    Versions=['$Latest'])[
+                        'LaunchTemplateVersions'][0]['LaunchTemplateData']
+            if nested_virtualization:
+                self.assertEqual(
+                    'enabled',
+                    launch_template['CpuOptions']['NestedVirtualization'])
+            else:
+                self.assertNotIn('CpuOptions', launch_template)
+
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     @driver_config('aws', ec2_quotas={
         'L-1216C47A': 2,
