@@ -78,6 +78,7 @@ class OpenstackProviderImage(BaseProviderImage):
     internal_cloud_schema = assemble(
         cloud_schema,
         provider_schema.internal_base_image,
+        extra=vs.ALLOW_EXTRA,
     )
     inheritable_openstack_zuul_schema = vs.Schema({
         Optional(
@@ -96,6 +97,7 @@ class OpenstackProviderImage(BaseProviderImage):
     internal_zuul_schema = assemble(
         zuul_schema,
         provider_schema.internal_base_image,
+        extra=vs.ALLOW_EXTRA,
     )
     inheritable_cloud_schema = assemble(
         BaseProviderImage.inheritable_cloud_schema,
@@ -156,6 +158,7 @@ class OpenstackProviderFlavor(BaseProviderFlavor):
     internal_schema = assemble(
         schema,
         provider_schema.internal_base_flavor,
+        extra=vs.ALLOW_EXTRA,
     )
 
 
@@ -211,6 +214,7 @@ class OpenstackProviderLabel(BaseProviderLabel):
     internal_schema = assemble(
         schema,
         provider_schema.internal_base_label,
+        extra=vs.ALLOW_EXTRA,
     )
 
 
