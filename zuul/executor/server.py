@@ -1762,8 +1762,12 @@ class AnsibleJob(object):
             return success
 
         node_ids = [x['node'] for x in snapshot_nodes]
-        self.executor_server.launcher.snapshotNodeset(
-            self.nodeset, node_ids, self.zuul_event_id)
+        with open(self.jobdir.job_output_file, 'a') as job_output:
+            for msg in self.executor_server.launcher.snapshotNodeset(
+                    self.nodeset, node_ids, self.zuul_event_id):
+                job_output.write("{now} | {msg}\n".format(
+                    now=datetime.datetime.now(),
+                    msg=msg))
 
         artifacts = zuul_data.setdefault('artifacts', [])
         for snapshot_info in snapshot_nodes:

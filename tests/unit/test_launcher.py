@@ -3615,6 +3615,7 @@ class TestSnapshot(AnsibleZuulTestCase, LauncherBaseTestCase):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageImportJob.run',
                 return_value="test_external_id")
     def test_snapshot_e2e(self, import_mock):
+        self.executor_server.keep_jobdir = True
         self.addImageBuildEvent(
             'tenant-one',
             'review.example.com/common-config',
@@ -3631,6 +3632,13 @@ class TestSnapshot(AnsibleZuulTestCase, LauncherBaseTestCase):
         builds = connection.getBuilds()
         self.assertEqual(1, len(builds))
         self.assertEqual('SUCCESS', builds[0].result)
+
+        build = self.getJobFromHistory(
+            'build-debian-local-image', result='SUCCESS')
+        with open(build.jobdir.job_output_file) as f:
+            output = f.read()
+            self.log.debug(output)
+        self.assertIn('Waiting for snapshots', output)
 
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageImportJob.run',
                 return_value="test_external_id")
