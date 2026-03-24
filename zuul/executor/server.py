@@ -1732,7 +1732,8 @@ class AnsibleJob(object):
 
         # If we need to snapshot any nodes, do that here
         if result == 'SUCCESS':
-            self.handleSnapshots(data)
+            if not self.handleSnapshots(data):
+                result = 'SNAPSHOT_FAILURE'
 
         result_data = dict(result=result,
                            error_detail=error_detail,
@@ -1751,13 +1752,14 @@ class AnsibleJob(object):
         #   snapshot_nodes:
         #     - node: <node uuid>
         #       image_name: debian-local
+        success = True
         if ((not self.arguments.get('pipeline_builds_images', False)) or
             (not self.nodeset_request)):
-            return
+            return success
 
         zuul_data = result_data.get('zuul', {})
         if not (snapshot_nodes := zuul_data.get('snapshot_nodes', [])):
-            return
+            return success
 
         node_ids = [x['node'] for x in snapshot_nodes]
         self.executor_server.launcher.snapshotNodeset(
@@ -1771,9 +1773,11 @@ class AnsibleJob(object):
                     break
             else:
                 # Did not find the corresponding node
+                success = False
                 continue
             external_id = provider_node.snapshot.external_id
             if external_id is None:
+                success = False
                 continue
             artifact = dict(
                 name="Snapshot image",
@@ -1785,6 +1789,7 @@ class AnsibleJob(object):
                 )
             )
             artifacts.append(artifact)
+        return success
 
     def writeRepoStateFile(self, repos):
         # Write out the git operation performed up to this point
