@@ -38,8 +38,6 @@ function ImagesPageComponent() {
     dispatch(fetchImagesIfNeeded(tenant))
   }, [tenant, dispatch])
 
-  console.log(images)
-
   return (
     <>
       <PageSection variant={darkMode ? PageSectionVariants.dark : PageSectionVariants.light}>
