@@ -138,7 +138,7 @@ class TestModelUpgrade(ZuulTestCase):
         self.model_test_component_info.model_api = 37
 
         for _ in iterate_timeout(30, "model api to update"):
-            if component_registry.model_api == 37:
+            if first.sched.component_registry.model_api == 37:
                 break
 
         self.log.debug("Trigger upgrade on scheduler-0 and check")
@@ -224,7 +224,7 @@ class TestModelUpgrade(ZuulTestCase):
         # Upgrade our component
         self.model_test_component_info.model_api = 37
         for _ in iterate_timeout(30, "model api to update"):
-            if component_registry.model_api == 37:
+            if first.sched.component_registry.model_api == 37:
                 break
 
         self.log.debug("BranchCache start scheduler-1")
