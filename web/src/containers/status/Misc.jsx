@@ -78,6 +78,12 @@ const JOB_STATE_ICON_CONFIGS = {
     variant: 'info',
     labelColor: 'blue',
   },
+  SNAPSHOTTING: {
+    icon: PauseIcon,
+    color: 'var(--zuul-color-info)',
+    variant: 'info',
+    labelColor: 'blue',
+  },
   QUEUED: {
     icon: OutlinedClockIcon,
     color: 'var(--zuul-color-disabled)',
@@ -213,6 +219,8 @@ const getJobStrResult = (job) => {
       }
     } else if (job.paused !== null && job.paused) {
       result = 'paused'
+    } else if (job.snapshotting !== null && job.snapshotting) {
+      result = 'snapshotting'
     } else {
       result = 'in progress'
     }

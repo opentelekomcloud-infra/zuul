@@ -3029,6 +3029,10 @@ class Scheduler(threading.Thread):
                     BuildEvent(
                         event_time=snapshot['time'],
                         event_type=snapshot['event']))
+                if snapshot['event'] == BuildEvent.TYPE_SNAPSHOT_STARTED:
+                    build.snapshotting = True
+                if snapshot['event'] == BuildEvent.TYPE_SNAPSHOT_COMPLETED:
+                    build.snapshotting = False
 
     def _doBuildPausedEvent(self, event, manager):
         build = self._getBuildFromPipeline(event, manager)
