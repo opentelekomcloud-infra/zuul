@@ -101,6 +101,7 @@ function ImageUploadTable(props) {
     const state_style = STATE_STYLES[upload.state] || {}
     return {
       _uuid: upload.uuid,
+      _state: upload.state,
       canModify: build.build_tenant,
       cells: [
         {
@@ -168,7 +169,8 @@ function ImageUploadTable(props) {
           }
         })
       }
-      if (isAuthorized(user, 'upload-image')) {
+      if (isAuthorized(user, 'upload-image') &&
+          rowData._state === 'failed') {
         actions.push({
           title: 'Retry upload',
           onClick: () => {
