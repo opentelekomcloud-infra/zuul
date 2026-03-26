@@ -3019,13 +3019,16 @@ class Scheduler(threading.Thread):
         if not build:
             return
 
-        args = {}
-        if 'url' in event.data:
-            args['url'] = event.data['url']
-        if 'pre_fail' in event.data:
-            args['pre_fail'] = event.data['pre_fail']
-        build.updateAttributes(manager.current_context,
-                               **args)
+        with build.activeContext(manager.current_context):
+            if 'url' in event.data:
+                build.url = event.data['url']
+            if 'pre_fail' in event.data:
+                build.pre_fail = event.data['pre_fail']
+            if (snapshot := event.data.get('snapshot')) is not None:
+                build.addEvent(
+                    BuildEvent(
+                        event_time=snapshot['time'],
+                        event_type=snapshot['event']))
 
     def _doBuildPausedEvent(self, event, manager):
         build = self._getBuildFromPipeline(event, manager)

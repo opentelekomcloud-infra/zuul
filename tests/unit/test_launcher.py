@@ -3640,6 +3640,15 @@ class TestSnapshot(AnsibleZuulTestCase, LauncherBaseTestCase):
             self.log.debug(output)
         self.assertIn('Waiting for snapshots', output)
 
+        sql = self.scheds.first.connections.getSqlConnection()
+        with sql.getSession() as db:
+            build = list(reversed(db.getBuilds()))[0]
+            self.assertEqual(len(build.build_events), 2)
+            self.assertEqual(
+                build.build_events[0].event_type, "snapshot started")
+            self.assertEqual(
+                build.build_events[1].event_type, "snapshot completed")
+
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageImportJob.run',
                 return_value="test_external_id")
     @okay_tracebacks('_checkNodeSnapshot')
