@@ -1427,8 +1427,8 @@ class Launcher:
                 # Double check if it's still available
                 if (node.request_id or
                     node.state not in node.ASSIGNABLE_STATES):
-                    request_unassigned_nodes.getNode(node)
-                    unassigned_nodes.getNode(node)
+                    request_unassigned_nodes.removeNode(node)
+                    unassigned_nodes.removeNode(node)
                     continue
                 nearest_lock = (
                     lock_node and node._lock or request._lock
@@ -1450,7 +1450,7 @@ class Launcher:
                 return node
             except Exception:
                 log.exception(
-                    "Faild to assign unassigned node %s", node)
+                    "Failed to assign unassigned node %s", node)
                 continue
             finally:
                 if lock_node:
