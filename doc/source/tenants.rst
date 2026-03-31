@@ -441,6 +441,10 @@ configuration. Some examples of tenant definitions are:
       ``0`` does not disable this option; instead it limits Zuul to
       zero changes.
 
+      If the limit would be exceeded, Zuul will attempt to report a
+      message to the user using the pipeline's configure failure
+      reporters.
+
    .. attr:: max-nodes-per-job
       :default: 5
 
