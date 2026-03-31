@@ -83,12 +83,14 @@ class LockableZKObjectCache(ZuulTreeCache):
 
         object_type, item_uuid, *rest = parts
         if object_type == self.items_path:
-            key = (item_uuid,)
             fetch = True
-            if self.expandable_zkobject and len(rest) == 1:
+            if not rest:
+                key = (item_uuid,)
+            elif self.expandable_zkobject and len(rest) == 1:
                 if len(rest[0]) == 10:
                     try:
                         shard_index = int(rest[0])
+                        key = (item_uuid,)
                     except ValueError:
                         pass
         elif object_type == self.locks_path:
