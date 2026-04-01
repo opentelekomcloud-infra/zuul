@@ -454,6 +454,76 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual("test_external_id", uploads[0].external_id)
         self.assertFalse(uploads[0].validated)
 
+    @simple_layout('layouts/nodepool-image-no-validate.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="test_external_id")
+    def test_launcher_image_expire_no_validation(self, mock_uploadimage):
+        # Test a two-stage image-build where we don't actually run the
+        # validate stage (so all artifacts should be un-validated).
+        # Test that we expire the unvalidated images.
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
+        self.waitUntilSettled()
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-debian-local-image', result='SUCCESS'),
+        ])
+
+        name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
+        artifacts = self._waitForArtifacts(name, 2)
+        self.assertEqual('raw', artifacts[0].format)
+        self.assertFalse(artifacts[0].validated)
+        self.assertFalse(artifacts[1].validated)
+        uploads = self.launcher.image_upload_registry.getUploadsForImage(
+            name)
+        self.assertEqual(2, len(uploads))
+        self.assertFalse(uploads[0].validated)
+        self.assertFalse(uploads[1].validated)
+        upload_ids_1 = [u.uuid for u in uploads]
+
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-debian-local-image', result='SUCCESS'),
+        ])
+        # We should still only have two, because one of the old ones
+        # should be deleted.
+        artifacts = self._waitForArtifacts(name, 2)
+        self.assertEqual('raw', artifacts[0].format)
+        self.assertFalse(artifacts[0].validated)
+        self.assertFalse(artifacts[1].validated)
+        uploads = self.launcher.image_upload_registry.getUploadsForImage(
+            name)
+        self.assertEqual(2, len(uploads))
+        self.assertFalse(uploads[0].validated)
+        self.assertFalse(uploads[1].validated)
+        upload_ids_2 = [u.uuid for u in uploads]
+        self.assertNotEqual(upload_ids_1, upload_ids_2)
+
     @simple_layout('layouts/nodepool-image-validate.yaml',
                    enable_nodepool=True)
     @return_data(

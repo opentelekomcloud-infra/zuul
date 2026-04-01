@@ -3010,8 +3010,8 @@ class Launcher:
         # already sorted by timestamp)
         newest_valid_uploads = valid_uploads[-image.retain_count:]
         keep_uploads.update(set(newest_valid_uploads))
-        # And also keep any uploads (regardless of validation) newer
-        # than that (since they may have validation jobs running).
+        # And also keep uploads (regardless of validation) newer than
+        # that (since they may have validation jobs running).
         if newest_valid_uploads:
             oldest_good_timestamp = newest_valid_uploads[0].timestamp
         else:
@@ -3021,6 +3021,10 @@ class Launcher:
             if (upload.isPermittedForProvider(image, provider) and
                 upload.timestamp > oldest_good_timestamp)
         ]
+        # But only keep the same number of unvalidated uploads as
+        # validated ones, so that if a validation job is continuously
+        # failing, we don't store unlimited images.
+        new_uploads = new_uploads[-image.retain_count:]
         keep_uploads.update(set(new_uploads))
 
     def checkMissingUploads(self):
