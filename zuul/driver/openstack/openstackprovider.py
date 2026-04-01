@@ -252,6 +252,9 @@ class OpenstackProviderSchema(BaseProviderSchema):
     def getInheritableFlavorSchema(self):
         return OpenstackProviderFlavor.inheritable_schema
 
+    def getZuulImageSchema(self):
+        return OpenstackProviderImage.zuul_schema
+
     def getProviderSchema(self, internal=False):
         schema = super().getProviderSchema(internal)
 
