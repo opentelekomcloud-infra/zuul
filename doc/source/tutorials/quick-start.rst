@@ -543,10 +543,10 @@ You now have a Zuul system up and running, congratulations!
 
 The Zuul community would love to hear about how you plan to use Zuul.
 Please take a few moments to fill out the `Zuul User Survey
-<https://www.surveymonkey.com/r/K2B2MWL>`_ to provide feedback and
-information around your deployment.  All information is confidential
-to the OpenStack Foundation unless you designate that it can be
-public.
+<https://openinfrafoundation.formstack.com/forms/zuul_user_survey>`_
+to provide feedback and information around your deployment.  All
+information is confidential to the OpenInfra Foundation unless you
+designate that it can be public.
 
 If you would like to make further changes to Zuul, its configuration
 files are located in the ``zuul/doc/source/examples`` directory
