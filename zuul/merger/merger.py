@@ -1386,8 +1386,9 @@ class Merger(object):
         orig_hexsha = repo.revParse('FETCH_HEAD')
         return orig_hexsha, hexsha
 
-    def _mergeItem(self, item, recent, repo_state, zuul_event_id,
-                   ops, branches=None, process_worker=None):
+    def _mergeItem(self, item, recent, recent_by_item, repo_state,
+                   zuul_event_id, ops, branches=None,
+                   process_worker=None):
         log = get_annotated_logger(self.log, zuul_event_id)
         log.debug("Processing ref %s for project %s/%s / %s uuid %s" %
                   (item['ref'], item['connection'],
@@ -1395,6 +1396,17 @@ class Merger(object):
                    item['buildset_uuid']))
         repo = self.getRepo(item['connection'], item['project'])
         key = (item['connection'], item['project'], item['branch'])
+
+        # The buildset_uuid in the merge list lets us determine which
+        # queue items the merge item (change) belongs to.  Now that
+        # queue items have UUIDs, we should probably use that, but
+        # they are equivalent for this purpose.
+        item_id = item['buildset_uuid']
+        if item_id not in recent_by_item:
+            # We don't need any history older than the current item.
+            recent_by_item.clear()
+            recent_by_item[item_id] = recent.copy()
+        item_recent = recent_by_item[item_id]
 
         # We need to merge the change
         # Get the most recent commit for this project-branch
@@ -1427,7 +1439,10 @@ class Merger(object):
             # Set origin branch to the rev of the current (speculative) base.
             # This allows tools to determine the commits that are part of a
             # change by looking at origin/master..master.
-            repo.setRemoteRef(item['branch'], base,
+            # Within a single queue item, we set the speculative base
+            # to the previous item.
+            origin_base = item_recent.get(key) or base
+            repo.setRemoteRef(item['branch'], origin_base,
                               zuul_event_id=zuul_event_id)
 
         # Merge the change
@@ -1461,6 +1476,7 @@ class Merger(object):
         # connection+project+branch -> commit
         if recent is None:
             recent = {}
+        recent_by_item = {}
         hexsha = None
         # tuple(connection, project, branch) -> dict(config state)
         read_files = OrderedDict()
@@ -1486,7 +1502,8 @@ class Merger(object):
                           (item["number"], item["patchset"]))
                 try:
                     orig_hexsha, hexsha = self._mergeItem(
-                        item, recent, repo_state, zuul_event_id, ops,
+                        item, recent, recent_by_item, repo_state,
+                        zuul_event_id, ops,
                         branches=branches,
                         process_worker=process_worker)
                 except BrokenProcessPool:

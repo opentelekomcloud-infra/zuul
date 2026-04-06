@@ -28,6 +28,7 @@ from tests.base import (
     BaseTestCase,
     FIXTURE_DIR,
     ZuulTestCase,
+    gerrit_config,
     iterate_timeout,
     okay_tracebacks,
     simple_layout,
@@ -1766,3 +1767,41 @@ class TestExecutorWorkspaceCheckout(ZuulTestCase, ExecutorReposMixin):
                 result='SUCCESS'
             ),
         ], ordered=False)
+
+
+class TestExecutorOriginRemote(ZuulTestCase):
+    config_file = "zuul-gerrit-github.conf"
+
+    @gerrit_config(submit_whole_topic=True)
+    @simple_layout('layouts/executor-origin-remote.yaml')
+    def test_executor_origin_remote(self):
+        self.executor_server.keep_jobdir = True
+        self.executor_server.hold_jobs_in_build = True
+
+        A = self.fake_gerrit.addFakeChange("org/project", "master", "A")
+
+        B = self.fake_gerrit.addFakeChange("org/project", "master", "B",
+                                           topic='test-topic')
+        self.fake_gerrit.addFakeChange("org/project", "master", "C",
+                                       topic='test-topic')
+        D = self.fake_gerrit.addFakeChange("org/project", "master", "D",
+                                           topic='test-topic')
+
+        # B -> A (via commit-depends)
+        B.data["commitMessage"] = "{}\n\nDepends-On: {}\n".format(
+            B.subject, A.data["url"]
+        )
+
+        self.fake_gerrit.addEvent(D.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        p = 'review.example.com/org/project'
+        for build in self.builds:
+            work = build.getWorkspaceRepos([p])
+            repo = work[p]
+            # Verify that the previous queue item is the base
+            self.assertEqual(
+                "A-1", repo.remotes.origin.refs.master.commit.message)
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
