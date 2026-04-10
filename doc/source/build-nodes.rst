@@ -162,14 +162,14 @@ missing image is:
           - event: image-build
 
 To tell Zuul a job is an image build job, use the
-:attr:`job.image-name` attribute to indicate to Zuul that job is used
-to build an image with that name.  The name must match a :ref:`image`
-object, and the job must be defined in the same repository as the
-image object.  The job is responsible for building the image and
-uploading it to an object storage system.  It must return information
-about where the image is stored using :ref:`return_values`.  Here is
-an example `zuul_return` stanza showing the expected information for a
-qcow2 image:
+:attr:`job.image-build-name` attribute to indicate to Zuul that job is
+used to build an image with that name.  The name must match a
+:ref:`image` object, and the job must be defined in the same
+repository as the image object.  The job is responsible for building
+the image and uploading it to an object storage system.  It must
+return information about where the image is stored using
+:ref:`return_values`.  Here is an example `zuul_return` stanza showing
+the expected information for a qcow2 image:
 
 .. code-block:: yaml
 
