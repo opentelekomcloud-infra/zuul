@@ -254,6 +254,14 @@ class TestAwsDriver(AwsBaseTest):
     def test_aws_node_lifecycle(self):
         self._test_node_lifecycle('debian-normal')
 
+    def check_dedicated_host_node_attrs(self, pnode):
+        self.assertTrue(pnode.node_properties['host_id'].startswith('h-'))
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    @driver_config('aws', node_checks=check_dedicated_host_node_attrs)
+    def test_aws_node_lifecycle_dedicated_host(self):
+        self._test_node_lifecycle('debian-dedicated')
+
     def check_spot_node_attrs(self, pnode):
         # The basic test above sets few options; we set many more
         # options in the spot check (so that we don't have run a test
@@ -284,6 +292,7 @@ class TestAwsDriver(AwsBaseTest):
             self.run_instances_calls[0]['BlockDeviceMappings'][0]['Ebs']
             ['Encrypted'], True)
         self.assertTrue(pnode.node_properties['spot'])
+        self.assertTrue(pnode.node_properties['instance_id'].startswith('i-'))
         instance = self.ec2_client.describe_instance_attribute(
             InstanceId=pnode.aws_instance_id,
             Attribute='userData',
@@ -306,6 +315,7 @@ class TestAwsDriver(AwsBaseTest):
             self.create_fleet_calls[0]['OnDemandOptions'][
                 'AllocationStrategy'])
         self.assertTrue(pnode.node_properties['fleet'])
+        self.assertTrue(pnode.node_properties['instance_id'].startswith('i-'))
         instance = self.ec2_client.describe_instance_attribute(
             InstanceId=pnode.aws_instance_id,
             Attribute='userData',
