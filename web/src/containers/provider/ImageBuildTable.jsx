@@ -128,7 +128,7 @@ function ImageBuildTable(props) {
           title: build.state_time
         },
         {
-          title: build.locke_holder
+          title: build.lock_holder
         },
         {
           title: buildUUID
