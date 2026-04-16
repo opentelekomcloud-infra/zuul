@@ -27,6 +27,7 @@ import moment_tz from 'moment-timezone'
 import {
   PageSection,
   PageSectionVariants,
+  Tooltip,
 } from '@patternfly/react-core'
 import {
   BuildIcon,
@@ -57,6 +58,7 @@ class NodesPage extends React.Component {
     tenant: PropTypes.object,
     user: PropTypes.object,
     remoteData: PropTypes.object,
+    timezone: PropTypes.string,
     dispatch: PropTypes.func
   }
 
@@ -171,7 +173,17 @@ class NodesPage extends React.Component {
           {title: node.id, props: {column: 'ID'}},
           {title: node.type.join(','), props: {column: 'Label' }},
           {title: this.renderNodeState(node), props: {column: 'State'}},
-          {title: state_time.fromNow(), props: {column: 'Age'}},
+          {
+            title: <Tooltip
+                     content={
+                       moment_tz
+                         .utc(state_time)
+                         .tz(this.props.timezone)
+                         .format('YYYY-MM-DD HH:mm:ss')}>
+                     <span>{state_time.fromNow()}</span>
+                    </Tooltip>,
+            props: {column: 'Age'}
+          },
           {title: node.lock_holder, props: {column: 'Locked'}},
           {title: formatProviderName(node.provider), props: {column: 'Provider'}},
           {title: node.comment, props: {column: 'Comment'}},
@@ -225,4 +237,5 @@ export default connect(state => ({
   tenant: state.tenant,
   remoteData: state.nodes,
   user: state.user,
+  timezone: state.timezone,
 }))(NodesPage)

@@ -41,6 +41,7 @@ import {
   validateImageUpload,
 } from '../../api'
 import { isAuthorized } from '../../Misc'
+import moment_tz from 'moment-timezone'
 
 const STATE_STYLES = {
   ready: {
@@ -65,6 +66,7 @@ function ImageUploadTable(props) {
   const [pendingActionRow, setPendingActionRow] = useState(null)
   const tenant = useSelector((state) => state.tenant)
   const user = useSelector((state) => state.user)
+  const timezone = useSelector((state) => state.timezone)
   const dispatch = useDispatch()
 
   const columns = [
@@ -123,7 +125,10 @@ function ImageUploadTable(props) {
           title: <span style={state_style}>{upload.state}</span>
         },
         {
-          title: upload.state_time
+          title: moment_tz
+            .utc(build.state_time)
+            .tz(timezone)
+            .format('YYYY-MM-DD HH:mm:ss')
         },
         {
           title: upload.lock_holder

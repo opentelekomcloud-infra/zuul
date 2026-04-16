@@ -39,6 +39,7 @@ import { fetchProviders } from '../../actions/providers'
 import { addNotification, addApiError } from '../../actions/notifications'
 import { deleteImageBuildArtifact } from '../../api'
 import { isAuthorized } from '../../Misc'
+import moment_tz from 'moment-timezone'
 
 const STATE_STYLES = {
   ready: {
@@ -63,6 +64,7 @@ function ImageBuildTable(props) {
   const isRowCollapsed = idx => collapsedRows.includes(idx)
   const tenant = useSelector((state) => state.tenant)
   const user = useSelector((state) => state.user)
+  const timezone = useSelector((state) => state.timezone)
   const dispatch = useDispatch()
 
   const columns = [
@@ -116,7 +118,10 @@ function ImageBuildTable(props) {
           title: build.uuid
         },
         {
-          title: build.timestamp
+          title: moment_tz
+            .utc(build.timestamp)
+            .tz(timezone)
+            .format('YYYY-MM-DD HH:mm:ss')
         },
         {
           title: build.validated ? 'validated' : 'unvalidated'
@@ -125,7 +130,10 @@ function ImageBuildTable(props) {
           title: <span style={state_style}>{build.state}</span>
         },
         {
-          title: build.state_time
+          title: moment_tz
+            .utc(build.state_time)
+            .tz(timezone)
+            .format('YYYY-MM-DD HH:mm:ss')
         },
         {
           title: build.lock_holder
