@@ -1615,7 +1615,7 @@ Here is an example of two job definitions:
          This scheme will produce unique workspace paths for every repository
          and won't cause collisions.
 
-   .. attr:: image-name
+   .. attr:: image-build-name
       :type: str
 
       If this is an image build job (see :ref:`image-creation`), set

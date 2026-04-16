@@ -102,7 +102,7 @@ Reporter Configuration
 
       If this value is set to `true`, then any jobs in the buildset
       which are configured as image jobs (i.e., they have
-      :attr:`job.image-name` set) will have their image build
+      :attr:`job.image-build-name` set) will have their image build
       artifacts stored in Zuul's image registry, and the zuul-launcher
       will begin uploading those artifacts to providers.
 
