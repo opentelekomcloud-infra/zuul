@@ -489,6 +489,7 @@ class BranchCacheOld:
                 self._setProjectBranches(project_name, valid_flags, branches)
             self._setProjectMergeModes(project_name, merge_modes)
             self._setProjectDefaultBranch(project_name, default_branch)
+        return self.ltime
 
     @property
     def ltime(self):
