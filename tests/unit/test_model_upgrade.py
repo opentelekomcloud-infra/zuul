@@ -290,6 +290,77 @@ class TestModelUpgrade(ZuulTestCase):
         self.assertEqual(['master'], branches2)
 
 
+class TestModel36BackwardsCompat(ZuulTestCase):
+    scheduler_count = 1
+    config_file = "zuul-gerrit-github.conf"
+    tenant_config_file = "config/in-repo/main.yaml"
+
+    @model_version(36)
+    def test_model_36_create_branch(self):
+        # Test that creating a branch works when running in model 36
+        # backwards compat mode.
+        component_registry = ComponentRegistry(self.zk_client)
+        self.assertEqual(component_registry.model_api, 36)
+        self.waitUntilSettled()
+
+        self.create_branch('org/project', 'stable')
+        self.fake_gerrit.addEvent(
+            self.fake_gerrit.getFakeBranchCreatedEvent(
+                'org/project', 'stable'))
+        self.waitUntilSettled()
+
+        first = self.scheds.first
+        for _ in iterate_timeout(10, "until priming is complete"):
+            state_one = first.sched.local_layout_state.get("tenant-one")
+            if state_one:
+                break
+
+        second = self.createScheduler()
+        second.start()
+        self.waitUntilSettled()
+
+        for _ in iterate_timeout(
+                10, "all schedulers to have the same layout state"):
+            if (second.sched.local_layout_state.get(
+                    "tenant-one") == state_one):
+                break
+
+        A = self.fake_gerrit.addFakeChange('org/project', 'stable', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+
+    @model_version(36)
+    def test_model_36_delete_branch(self):
+        # Test that deleting a branch works when running in model 36
+        # backwards compat mode.
+        component_registry = ComponentRegistry(self.zk_client)
+        self.assertEqual(component_registry.model_api, 36)
+        self.waitUntilSettled()
+
+        self.create_branch('org/project', 'stable')
+        first = self.scheds.first
+        first.sched.reconfigure(first.config)
+
+        self.fake_gerrit.addEvent(
+            self.fake_gerrit.getFakeBranchDeletedEvent(
+                'org/project', 'stable'))
+        self.waitUntilSettled()
+
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='project-test1', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+
+
 class TestModelUpgradeGerritCircularDependencies(ZuulTestCase):
     config_file = "zuul-gerrit-github.conf"
     tenant_config_file = "config/circular-dependencies/main.yaml"
