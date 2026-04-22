@@ -1809,6 +1809,20 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                             "project %s" % project.name)
 
         resp = resp.json()
+
+        # GitHub may no longer return allow_merge_commit,
+        # allow_squash_merge, allow_rebase_merge fields. If none of
+        # these keys are present, assume all merge modes are allowed.
+        has_merge_fields = any(
+            k in resp for k in ('allow_merge_commit',
+                                'allow_squash_merge',
+                                'allow_rebase_merge'))
+        if not has_merge_fields:
+            self.log.warning(
+                "GitHub API did not return merge mode fields for "
+                "project %s, assuming all modes allowed", project.name)
+            return ALL_MERGE_MODES
+
         if resp.get('allow_merge_commit'):
             merge_modes.append(model.MERGER_MERGE)
             merge_modes.append(model.MERGER_MERGE_RESOLVE)
