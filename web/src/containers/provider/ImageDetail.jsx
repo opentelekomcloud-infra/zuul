@@ -72,14 +72,15 @@ function ProviderDetail(props) {
     )
   }
 
-  const buildTenantArtifacts = image.build_artifacts.filter(
+  const buildArtifacts = image.build_artifacts ? image.build_artifacts : []
+  const buildTenantArtifacts = buildArtifacts.filter(
     (x) => x.build_tenant
   )
   // If there are build artifacts, but none of them were built in this
   // tenant, then this tenant is probably not responsible for building
   // them.  Hide the button in that case.
   const hideBuildButton = (
-    image.build_artifacts.length > 0 && buildTenantArtifacts.length == 0
+    buildArtifacts.length > 0 && buildTenantArtifacts.length == 0
   )
   return (
     <>
