@@ -65,7 +65,13 @@ class GiteaSource(BaseSource):
 
         # For pull requests, delegate to connection
         if change_key.change_type == 'PullRequest':
-            return self.connection.getChange(change_key, refresh=refresh, event=event)
+            change = self.connection.getChange(
+                change_key, refresh=refresh, event=event)
+            if change is None:
+                self.log.error(
+                    "Gitea getChange returned None for PullRequest key %s",
+                    change_key)
+            return change
 
         # For branch push events, create a Branch object
         if change_key.change_type == 'Branch':
@@ -288,12 +294,18 @@ class GiteaSource(BaseSource):
         """Get change key from event"""
         connection_name = self.connection.connection_name
         if event.change_number:
-            # For pull requests, patchset is the head SHA
-            patchset = getattr(event, 'patchset', getattr(event, 'patch_set', None))
+            # The PR head SHA is exposed as 'patchset' on trigger events but
+            # as 'patch_number' on change-management (enqueue) events. Fall
+            # back across both so admin enqueue ("<num>,<sha>") resolves to a
+            # real PullRequest key instead of patchset "None" (which makes
+            # getChange fail and the enqueue silently drop).
+            patchset = (getattr(event, 'patchset', None)
+                        or getattr(event, 'patch_set', None)
+                        or getattr(event, 'patch_number', None))
             return ChangeKey(connection_name, event.project_name,
                              'PullRequest',
                              str(event.change_number),
-                             str(patchset))
+                             str(patchset) if patchset else None)
         revision = f'{event.oldrev}..{event.newrev}'
         if event.ref and event.ref.startswith('refs/tags/'):
             tag = event.ref[len('refs/tags/'):]
