@@ -466,19 +466,33 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         # Update SHA cache for quick PR lookups by SHA
         self._sha_pr_cache.update(change.project.name, pr_data)
 
-        # Set patchset to HEAD SHA if not already set
+        # Always track the PR's authoritative current head SHA from the API.
+        # Previously this only set patchset when it was unset, so a cached
+        # change kept the first-seen commit forever: after new pushes Zuul
+        # never re-evaluated the real head and kept testing stale in-repo
+        # config (e.g. old nodesets -> NODE_FAILURE). Update unconditionally
+        # and invalidate per-commit data when the head moves.
         head_sha = pr_data.get('head', {}).get('sha')
-        if not change.patchset or change.patchset == 'None':
+        if head_sha and change.patchset != head_sha:
+            if change.patchset and change.patchset != 'None':
+                self.log.info(
+                    "PR %s head moved %s -> %s; refreshing change",
+                    change.number, change.patchset, head_sha)
+                # Head advanced: drop cached per-commit data so it is refetched
+                change.files = None
+            else:
+                self.log.info(
+                    "Set patchset to %s for PR %s", head_sha, change.number)
             change.patchset = head_sha
-            self.log.info("Set patchset to %s for PR %s", head_sha, change.number)
-        change.is_current_patchset = (head_sha == change.patchset)
+        change.is_current_patchset = True
         change.ref = f"refs/pull/{change.number}/head"
         change.branch = pr_data.get('base', {}).get('ref')
         change.base_sha = pr_data.get('base', {}).get('sha')
         change.commit_id = head_sha
+        change.newrev = head_sha
         change.owner = pr_data.get('user', {}).get('login')
 
-        # Fetch changed files for the PR
+        # Fetch changed files for the PR (also re-fetched if invalidated above)
         if not change.files:
             change.files = self.getPullFiles(change.project.name, change.number)
 
@@ -1257,6 +1271,28 @@ class GiteaEventConnector(threading.Thread):
         event.ref = f"refs/pull/{pr.get('number')}/head"
         event.patchset = pr.get('head', {}).get('sha')
         event.title = pr.get('title')
+
+        # The webhook payload's embedded pull_request object can carry a stale
+        # head SHA (Gitea does not always refresh it on synchronize), which
+        # would pin the change-key to an old commit and make Zuul re-test stale
+        # code. Resolve the authoritative current head from the API so the
+        # change-key always reflects the real PR head.
+        if event.project_name and event.change_number is not None:
+            try:
+                pr_api = self.getPullRequest(
+                    event.project_name, event.change_number)
+                api_sha = (pr_api or {}).get('head', {}).get('sha')
+                if api_sha and api_sha != event.patchset:
+                    self.log.info(
+                        "PR %s webhook head %s differs from API head %s; "
+                        "using API head", event.change_number,
+                        event.patchset, api_sha)
+                    event.patchset = api_sha
+            except Exception:
+                self.log.exception(
+                    "Failed to resolve authoritative head for PR %s; "
+                    "using webhook head %s",
+                    event.change_number, event.patchset)
 
         # Handle label changes
         if event.action == 'label_updated':
