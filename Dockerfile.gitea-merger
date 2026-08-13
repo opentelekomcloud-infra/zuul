@@ -1,5 +1,5 @@
 # Dockerfile for Zuul Merger with Gitea driver
-FROM quay.io/opentelekomcloud/zuul-merger:13.1.1
+FROM swr.eu-de.otc.t-systems.com/opentelekomcloud/hardened-zuul-merger:13.1.1
 
 USER root
 
@@ -20,6 +20,13 @@ COPY zuul/merger/server.py /usr/local/lib/python3.11/site-packages/zuul/merger/s
 
 # Copy GitHub driver fix (merge-mode fallback for missing API fields)
 COPY zuul/driver/github/githubconnection.py /usr/local/lib/python3.11/site-packages/zuul/driver/github/githubconnection.py
+
+# Ensure the zuul user/group exists (hardened base images do not create it)
+RUN groupadd -g 10001 zuul 2>/dev/null || true && \
+    useradd -u 10001 -g zuul -m -d /var/lib/zuul -c "Zuul Daemon" zuul 2>/dev/null || true && \
+# Hardened base installs zuul binaries under /opt/python/bin but CMD expects /usr/local/bin
+    mkdir -p /usr/local/bin && \
+    ln -sf /opt/python/bin/zuul-merger /usr/local/bin/zuul-merger
 
 # Ensure proper permissions
 RUN chown -R zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/ && \
