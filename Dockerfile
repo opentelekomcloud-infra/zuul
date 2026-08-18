@@ -123,7 +123,10 @@ RUN ln -s /usr/local/bin/oc /usr/local/bin/kubectl
 RUN apt-get update \
   && apt-get install -y libgpgme11 libdevmapper1.02.1 \
   && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  # bwrap unconditionally binds /etc/localtime -- create it so
+  # the hardened image works with bubblewrap sandboxing.
+  && ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
 
 CMD ["/usr/local/bin/zuul-executor", "-f"]
 

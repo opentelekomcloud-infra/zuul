@@ -17,13 +17,18 @@ COPY zuul/ansible/base/callback/zuul_stream.py /usr/local/lib/python3.11/site-pa
 # Also create subuid/subgid entries — bwrap needs these for UID namespace
 # mapping inside its sandbox. Hardened base images strip them; bwrap parses
 # them in colon-separated format: name start count (e.g. "zuul:100000:65536").
+#
+# Also create /etc/localtime — bwrap unconditionally binds it (--ro-bind
+# /etc/localtime /etc/localtime) so without it the validation call fails
+# with "Failed to create bind mount: No such file or directory".
 RUN groupadd -g 10001 zuul 2>/dev/null || true && \
     useradd -u 10001 -g zuul -m -d /var/lib/zuul -c "Zuul Daemon" zuul 2>/dev/null || true && \
     echo "zuul:100000:65536" > /etc/subuid && \
     echo "zuul:100000:65536" > /etc/subgid && \
 # Hardened base installs zuul binaries under /opt/python/bin but CMD expects /usr/local/bin
     mkdir -p /usr/local/bin && \
-    ln -sf /opt/python/bin/zuul-executor /usr/local/bin/zuul-executor
+    ln -sf /opt/python/bin/zuul-executor /usr/local/bin/zuul-executor && \
+    ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
 
 # Ensure proper permissions
 RUN chown -R zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/ && \
