@@ -1,7 +1,7 @@
 # Dockerfile for Zuul with Gitea driver
 # Based on existing OTC Zuul image
 
-FROM swr.eu-de.otc.t-systems.com/opentelekomcloud/hardened-zuul-scheduler:13.1.1
+FROM swr.eu-de.otc.t-systems.com/t-cloud-public/hardened-zuul-scheduler:13.1.1
 
 USER root
 
