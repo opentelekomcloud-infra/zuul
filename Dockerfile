@@ -124,9 +124,10 @@ RUN apt-get update \
   && apt-get install -y libgpgme11 libdevmapper1.02.1 \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* \
-  # bwrap unconditionally binds /etc/localtime -- create it so
-  # the hardened image works with bubblewrap sandboxing.
-  && ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
+  # bwrap unconditionally binds /etc/localtime and /etc/ld.so.cache —
+  # create/regenerate them so the hardened image works with bubblewrap.
+  && ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime \
+  && ldconfig
 
 CMD ["/usr/local/bin/zuul-executor", "-f"]
 

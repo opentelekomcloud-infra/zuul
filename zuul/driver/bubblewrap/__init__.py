@@ -216,7 +216,7 @@ class BubblewrapDriver(Driver, WrapperInterface):
                                      ssh_auth_sock='/dev/null')
             p = popen(['id'],
                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            p.communicate()
+            out = p.communicate()
             if p.returncode != 0:
                 self.log.error("Non zero return code executing: %s",
                                " ".join(shlex.quote(c)

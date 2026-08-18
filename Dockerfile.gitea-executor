@@ -1,5 +1,5 @@
 # Dockerfile for Zuul Executor with Gitea driver
-FROM swr.eu-de.otc.t-systems.com/t-cloud-public/hardened-zuul-executor:13.1.1-v2
+FROM swr.eu-de.otc.t-systems.com/t-cloud-public/hardened-zuul-executor:13.1.1-v6
 
 USER root
 
@@ -21,14 +21,24 @@ COPY zuul/ansible/base/callback/zuul_stream.py /usr/local/lib/python3.11/site-pa
 # Also create /etc/localtime — bwrap unconditionally binds it (--ro-bind
 # /etc/localtime /etc/localtime) so without it the validation call fails
 # with "Failed to create bind mount: No such file or directory".
-RUN groupadd -g 10001 zuul 2>/dev/null || true && \
-    useradd -u 10001 -g zuul -m -d /var/lib/zuul -c "Zuul Daemon" zuul 2>/dev/null || true && \
+# And regenerate /etc/ld.so.cache — bwrap also unconditionally binds this.
+# Hardened images strip it; ldconfig rebuilds it from available libraries.
+RUN if getent group zuul >/dev/null 2>&1; then \
+        groupmod -g 10001 zuul; \
+    else \
+        groupadd -g 10001 zuul; \
+    fi && \
+    if id zuul >/dev/null 2>&1; then \
+        usermod -u 10001 -g 10001 -d /var/lib/zuul zuul 2>/dev/null || true; \
+    else \
+        useradd -u 10001 -g 10001 -m -d /var/lib/zuul -c "Zuul Daemon" zuul 2>/dev/null || true; \
+    fi && \
     echo "zuul:100000:65536" > /etc/subuid && \
     echo "zuul:100000:65536" > /etc/subgid && \
-# Hardened base installs zuul binaries under /opt/python/bin but CMD expects /usr/local/bin
     mkdir -p /usr/local/bin && \
     ln -sf /opt/python/bin/zuul-executor /usr/local/bin/zuul-executor && \
-    ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
+    ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
+    (ldconfig || true)
 
 # Ensure proper permissions
 RUN chown -R zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/ && \
