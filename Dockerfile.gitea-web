@@ -1,5 +1,5 @@
 # Dockerfile for Zuul Web with Gitea driver
-FROM swr.eu-de.otc.t-systems.com/t-cloud-public/hardened-zuul-web:13.1.1
+FROM swr.eu-de.otc.t-systems.com/t-cloud-public/hardened-zuul-web:14.2.0
 
 USER root
 

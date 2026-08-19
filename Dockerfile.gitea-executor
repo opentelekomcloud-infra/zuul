@@ -1,5 +1,5 @@
 # Dockerfile for Zuul Executor with Gitea driver
-FROM swr.eu-de.otc.t-systems.com/t-cloud-public/hardened-zuul-executor:13.1.1-v6
+FROM swr.eu-de.otc.t-systems.com/t-cloud-public/hardened-zuul-executor:14.2.0
 
 USER root
 
