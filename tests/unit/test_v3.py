@@ -46,6 +46,7 @@ from tests.base import (
     AnsibleZuulTestCase,
     FIXTURE_DIR,
     ZuulTestCase,
+    gerrit_config,
     iterate_timeout,
     okay_tracebacks,
     simple_layout,
@@ -1543,6 +1544,25 @@ class TestInRepoConfig(ZuulTestCase):
                       'is already defined',
                       A.messages[0],
                       "A should have failed the check pipeline")
+
+    def test_noop_final(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: custom-noop
+                parent: noop
+                run: playbooks/noop.yaml
+            """)
+
+        file_dict = {'.zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(A.reported, 1, 'A should report failure')
+        self.assertIn('"noop" is final and can not act as a parent',
+                      A.messages[0])
 
     def test_dynamic_config_errors_not_accumulated(self):
         """Test that requesting broken dynamic configs
@@ -4330,18 +4350,19 @@ class FunctionalAnsibleMixIn(object):
         build_timeout = self.getJobFromHistory('timeout', result='TIMED_OUT')
         with self.jobLog(build_timeout):
             post_flag_path = os.path.join(
-                self.jobdir_root, build_timeout.uuid + '.post.flag')
+                self.jobdir_root, build_timeout.uuid, 'work', 'post_flag')
             self.assertTrue(os.path.exists(post_flag_path))
         build_multiple_run_timeout = self.getJobFromHistory(
             'multiple-run-timeout', result='TIMED_OUT')
         with self.jobLog(build_multiple_run_timeout):
             post_flag_path = os.path.join(
                 self.jobdir_root,
-                build_multiple_run_timeout.uuid + '.post.flag')
+                build_multiple_run_timeout.uuid, 'work', 'post_flag')
             self.assertTrue(os.path.exists(post_flag_path))
             post_zuul_success_flag_path = os.path.join(
                 self.jobdir_root,
-                build_multiple_run_timeout.uuid + '.post-zuul-success.flag')
+                build_multiple_run_timeout.uuid,
+                'work', 'post_zuul_success_flag')
             self.assertFalse(os.path.exists(post_zuul_success_flag_path))
         build_pre_timeout = self.getJobFromHistory('pre-timeout')
         with self.jobLog(build_pre_timeout):
@@ -4349,7 +4370,7 @@ class FunctionalAnsibleMixIn(object):
             # if they should be retried from there.
             self.assertEqual(build_pre_timeout.result, None)
             post_flag_path = os.path.join(
-                self.jobdir_root, build_pre_timeout.uuid + '.post.flag')
+                self.jobdir_root, build_pre_timeout.uuid, 'work', 'post_flag')
             self.assertTrue(os.path.exists(post_flag_path))
         build_post_timeout = self.getJobFromHistory('post-timeout')
         with self.jobLog(build_post_timeout):
@@ -4393,26 +4414,26 @@ class FunctionalAnsibleMixIn(object):
         with self.jobLog(build_python27):
             self.assertEqual(build_python27.result, 'SUCCESS')
             flag_path = os.path.join(self.jobdir_root,
-                                     build_python27.uuid + '.flag')
+                                     build_python27.uuid, 'work', 'flag')
             self.assertTrue(os.path.exists(flag_path))
-            copied_path = os.path.join(self.jobdir_root, build_python27.uuid +
-                                       '.copied')
+            copied_path = os.path.join(self.jobdir_root, build_python27.uuid,
+                                       'work', 'copied')
             self.assertTrue(os.path.exists(copied_path))
-            failed_path = os.path.join(self.jobdir_root, build_python27.uuid +
-                                       '.failed')
+            failed_path = os.path.join(self.jobdir_root, build_python27.uuid,
+                                       'work', 'failed')
             self.assertFalse(os.path.exists(failed_path))
             pre_flag_path = os.path.join(
-                self.jobdir_root, build_python27.uuid + '.pre.flag')
+                self.jobdir_root, build_python27.uuid, 'work', 'pre_flag')
             self.assertTrue(os.path.exists(pre_flag_path))
             post_flag_path = os.path.join(
-                self.jobdir_root, build_python27.uuid + '.post.flag')
+                self.jobdir_root, build_python27.uuid, 'work', 'post_flag')
             self.assertTrue(os.path.exists(post_flag_path))
             bare_role_flag_path = os.path.join(self.jobdir_root,
-                                               build_python27.uuid +
-                                               '.bare-role.flag')
+                                               build_python27.uuid,
+                                               'work', 'bare_role_flag')
             self.assertTrue(os.path.exists(bare_role_flag_path))
             secrets_path = os.path.join(self.jobdir_root,
-                                        build_python27.uuid + '.secrets')
+                                        build_python27.uuid, 'work', 'secrets')
             with open(secrets_path) as f:
                 self.assertEqual(f.read(), "test-username test-password")
         build_bubblewrap = self.getJobFromHistory('bubblewrap')
@@ -4455,20 +4476,21 @@ class TestPrePlaybooks(AnsibleZuulTestCase):
     def test_pre_playbook_fail(self):
         # Test that we run the post playbooks (but not the actual
         # playbook) when a pre-playbook fails.
+        self.executor_server.keep_jobdir = True
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
         self.waitUntilSettled()
         build = self.getJobFromHistory('python27')
         self.assertIsNone(build.result)
         self.assertIn('RETRY_LIMIT', A.messages[0])
-        flag_path = os.path.join(self.test_root, build.uuid +
-                                 '.main.flag')
+        flag_path = os.path.join(self.test_root, build.uuid, 'work',
+                                 'main_flag')
         self.assertFalse(os.path.exists(flag_path))
-        pre_flag_path = os.path.join(self.test_root, build.uuid +
-                                     '.pre.flag')
+        pre_flag_path = os.path.join(self.test_root, build.uuid, 'work',
+                                     'pre_flag')
         self.assertFalse(os.path.exists(pre_flag_path))
         post_flag_path = os.path.join(
-            self.jobdir_root, build.uuid + '.post.flag')
+            self.jobdir_root, build.uuid, 'work', 'post_flag')
         self.assertTrue(os.path.exists(post_flag_path),
                         "The file %s should exist" % post_flag_path)
 
@@ -4533,6 +4555,7 @@ class TestPostPlaybooks(AnsibleZuulTestCase):
         # Test that when we abort a job in the post playbook, that we
         # don't send back POST_FAILURE.
         self.executor_server.verbose = True
+        self.executor_server.keep_jobdir = True
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
 
@@ -4541,8 +4564,8 @@ class TestPostPlaybooks(AnsibleZuulTestCase):
                 break
         build = self.builds[0]
 
-        post_start = os.path.join(self.jobdir_root, build.uuid +
-                                  '.post_start.flag')
+        post_start = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                  'post_start_flag')
         for _ in iterate_timeout(60, 'job post running'):
             if os.path.exists(post_start):
                 break
@@ -4553,8 +4576,8 @@ class TestPostPlaybooks(AnsibleZuulTestCase):
         build = self.getJobFromHistory('python27')
         self.assertEqual('ABORTED', build.result)
 
-        post_end = os.path.join(self.jobdir_root, build.uuid +
-                                '.post_end.flag')
+        post_end = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                'post_end_flag')
         self.assertTrue(os.path.exists(post_start))
         self.assertFalse(os.path.exists(post_end))
 
@@ -4565,6 +4588,7 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
     def test_cleanup_playbook_success(self):
         # Test that the cleanup run is performed
         self.executor_server.verbose = True
+        self.executor_server.keep_jobdir = True
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
 
@@ -4573,26 +4597,28 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
                 break
         build = self.builds[0]
 
-        post_start = os.path.join(self.jobdir_root, build.uuid +
-                                  '.post_start.flag')
+        post_start = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                  'post_start_flag')
         for _ in iterate_timeout(60, 'job post running'):
             if os.path.exists(post_start):
                 break
-        with open(os.path.join(self.jobdir_root, build.uuid, 'test_wait'),
+        with open(os.path.join(self.jobdir_root, build.uuid,
+                               'work', 'test_wait'),
                   "w") as of:
             of.write("continue")
         self.waitUntilSettled()
 
         build = self.getJobFromHistory('python27')
         self.assertEqual('SUCCESS', build.result)
-        cleanup_flag = os.path.join(self.jobdir_root, build.uuid +
-                                    '.cleanup.flag')
+        cleanup_flag = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                    'cleanup_flag')
         self.assertTrue(os.path.exists(cleanup_flag))
         with open(cleanup_flag) as f:
             self.assertEqual('True', f.readline())
 
     def test_cleanup_playbook_failure(self):
         # Test that the cleanup run is performed
+        self.executor_server.keep_jobdir = True
         self.executor_server.verbose = True
 
         in_repo_conf = textwrap.dedent(
@@ -4612,14 +4638,15 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
 
         build = self.getJobFromHistory('python27-failure')
         self.assertEqual('FAILURE', build.result)
-        cleanup_flag = os.path.join(self.jobdir_root, build.uuid +
-                                    '.cleanup.flag')
+        cleanup_flag = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                    'cleanup_flag')
         self.assertTrue(os.path.exists(cleanup_flag))
         with open(cleanup_flag) as f:
             self.assertEqual('False', f.readline())
 
     def test_cleanup_playbook_abort(self):
         # Test that when we abort a job the cleanup run is performed
+        self.executor_server.keep_jobdir = True
         self.executor_server.verbose = True
         A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
         self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
@@ -4629,8 +4656,8 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
                 break
         build = self.builds[0]
 
-        post_start = os.path.join(self.jobdir_root, build.uuid +
-                                  '.post_start.flag')
+        post_start = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                  'post_start_flag')
         for _ in iterate_timeout(60, 'job post running'):
             if os.path.exists(post_start):
                 break
@@ -4641,10 +4668,10 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
         build = self.getJobFromHistory('python27')
         self.assertEqual('ABORTED', build.result)
 
-        post_end = os.path.join(self.jobdir_root, build.uuid +
-                                '.post_end.flag')
-        cleanup_flag = os.path.join(self.jobdir_root, build.uuid +
-                                    '.cleanup.flag')
+        post_end = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                'post_end_flag')
+        cleanup_flag = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                    'cleanup_flag')
         self.assertTrue(os.path.exists(cleanup_flag))
         self.assertTrue(os.path.exists(post_start))
         self.assertFalse(os.path.exists(post_end))
@@ -4673,6 +4700,7 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
 
     def test_cleanup_playbook_inheritance(self):
         # Test nested level aborting
+        self.executor_server.keep_jobdir = True
         self.executor_server.verbose = True
 
         in_repo_conf = textwrap.dedent(
@@ -4692,8 +4720,8 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
 
         build = self.getJobFromHistory('child-cleanup-failure')
         self.assertEqual('FAILURE', build.result)
-        cleanup_flag = os.path.join(self.jobdir_root, build.uuid +
-                                    '.cleanup.flag')
+        cleanup_flag = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                    'cleanup_flag')
         self.assertTrue(os.path.exists(cleanup_flag))
         with open(cleanup_flag) as f:
             self.assertEqual('False', f.readline())
@@ -4734,6 +4762,7 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
 
     def test_cleanup_playbook_inheritance_old_syntax(self):
         # Test nested level aborting with the old cleanup-run syntax
+        self.executor_server.keep_jobdir = True
         self.executor_server.verbose = True
 
         in_repo_conf = textwrap.dedent(
@@ -4753,8 +4782,8 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
 
         build = self.getJobFromHistory('child-cleanup-failure-old-syntax')
         self.assertEqual('FAILURE', build.result)
-        cleanup_flag = os.path.join(self.jobdir_root, build.uuid +
-                                    '.cleanup.flag')
+        cleanup_flag = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                    'cleanup_flag')
         self.assertTrue(os.path.exists(cleanup_flag))
         with open(cleanup_flag) as f:
             self.assertEqual('False', f.readline())
@@ -4835,6 +4864,7 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
     def test_cleanup_playbook_unreachable(self):
         # Test that an unreachable cleanup-run playbook produces a
         # POST_FAILURE
+        self.executor_server.keep_jobdir = True
         self.executor_server.verbose = True
 
         in_repo_conf = textwrap.dedent(
@@ -4854,8 +4884,8 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
 
         build = self.getJobFromHistory('child-cleanup-failure-unreachable')
         self.assertEqual('POST_FAILURE', build.result)
-        cleanup_flag = os.path.join(self.jobdir_root, build.uuid +
-                                    '.cleanup.flag')
+        cleanup_flag = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                    'cleanup_flag')
         self.assertTrue(os.path.exists(cleanup_flag))
         with open(cleanup_flag) as f:
             self.assertEqual('False', f.readline())
@@ -4863,6 +4893,7 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
     def test_cleanup_playbook_unreachable_old_syntax(self):
         # Test that an unreachable cleanup-run playbook produces a
         # does not override the normal FAILURE using the old syntax
+        self.executor_server.keep_jobdir = True
         self.executor_server.verbose = True
 
         in_repo_conf = textwrap.dedent(
@@ -4883,8 +4914,8 @@ class TestCleanupPlaybooks(AnsibleZuulTestCase):
         build = self.getJobFromHistory(
             'child-cleanup-failure-unreachable-old-syntax')
         self.assertEqual('FAILURE', build.result)
-        cleanup_flag = os.path.join(self.jobdir_root, build.uuid +
-                                    '.cleanup.flag')
+        cleanup_flag = os.path.join(self.jobdir_root, build.uuid, 'work',
+                                    'cleanup_flag')
         self.assertTrue(os.path.exists(cleanup_flag))
         with open(cleanup_flag) as f:
             self.assertEqual('False', f.readline())
@@ -4904,8 +4935,8 @@ class TestPlaybookSemaphore(AnsibleZuulTestCase):
         build1 = self.builds[0]
 
         # Wait for the first job to be running the mutexed playbook
-        run1_start = os.path.join(self.jobdir_root, build1.uuid +
-                                  '.run_start.flag')
+        run1_start = os.path.join(self.jobdir_root, build1.uuid, 'work',
+                                  'run_start_flag')
         for _ in iterate_timeout(60, 'job1 running'):
             if os.path.exists(run1_start):
                 break
@@ -4927,19 +4958,21 @@ class TestPlaybookSemaphore(AnsibleZuulTestCase):
                 break
 
         # Wait for build1 to finish
-        with open(os.path.join(self.jobdir_root, build1.uuid, 'test_wait'),
+        with open(os.path.join(self.jobdir_root, build1.uuid,
+                               'work', 'test_wait'),
                   "w") as of:
             of.write("continue")
 
         # Wait for the second job to be running the mutexed playbook
-        run2_start = os.path.join(self.jobdir_root, build2.uuid +
-                                  '.run_start.flag')
+        run2_start = os.path.join(self.jobdir_root, build2.uuid, 'work',
+                                  'run_start_flag')
         for _ in iterate_timeout(60, 'job2 running'):
             if os.path.exists(run2_start):
                 break
 
         # Release build2 and wait to finish
-        with open(os.path.join(self.jobdir_root, build2.uuid, 'test_wait'),
+        with open(os.path.join(self.jobdir_root, build2.uuid,
+                               'work', 'test_wait'),
                   "w") as of:
             of.write("continue")
         self.waitUntilSettled()
@@ -5017,8 +5050,8 @@ class TestPlaybookSemaphore(AnsibleZuulTestCase):
         build1 = self.builds[0]
 
         # Wait for the first job to be running the mutexed playbook
-        run1_start = os.path.join(self.jobdir_root, build1.uuid +
-                                  '.run_start.flag')
+        run1_start = os.path.join(self.jobdir_root, build1.uuid, 'work',
+                                  'run_start_flag')
         for _ in iterate_timeout(60, 'job1 running'):
             if os.path.exists(run1_start):
                 break
@@ -5056,7 +5089,8 @@ class TestPlaybookSemaphore(AnsibleZuulTestCase):
                 break
 
         # Wait for build1 to finish
-        with open(os.path.join(self.jobdir_root, build1.uuid, 'test_wait'),
+        with open(os.path.join(self.jobdir_root, build1.uuid,
+                               'work', 'test_wait'),
                   "w") as of:
             of.write("continue")
 
@@ -5079,8 +5113,8 @@ class TestPlaybookSemaphore(AnsibleZuulTestCase):
         build1 = self.builds[0]
 
         # Wait for the first job to be running the mutexed playbook
-        run1_start = os.path.join(self.jobdir_root, build1.uuid +
-                                  '.run_start.flag')
+        run1_start = os.path.join(self.jobdir_root, build1.uuid, 'work',
+                                  'run_start_flag')
         for _ in iterate_timeout(60, 'job1 running'):
             if os.path.exists(run1_start):
                 break
@@ -5117,7 +5151,8 @@ class TestPlaybookSemaphore(AnsibleZuulTestCase):
                 break
 
         # Wait for build1 to finish
-        with open(os.path.join(self.jobdir_root, build1.uuid, 'test_wait'),
+        with open(os.path.join(self.jobdir_root, build1.uuid,
+                               'work', 'test_wait'),
                   "w") as of:
             of.write("continue")
 
@@ -7020,6 +7055,250 @@ class TestInitJobs(ZuulTestCase):
         self.assertIn('Dependency cycle detected', A.messages[0])
 
 
+class TestReporterJobs(ZuulTestCase):
+    tenant_config_file = 'config/single-tenant/main.yaml'
+
+    @simple_layout('layouts/reporter-job.yaml')
+    def test_reporter_job(self):
+        # Test a successful reporter job, with a change behind it
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+
+        self.executor_server.returnData(
+            'reporter-job', A,
+            {'zuul':
+             {'log_url': 'http://example.com/logs/',
+              }},
+        )
+
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertBuilds([dict(name='test-job', changes='1,1')])
+
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        self.executor_server.returnData(
+            'reporter-job', B,
+            {'zuul':
+             {'log_url': 'http://example.com/logs2/',
+              }},
+        )
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertBuilds([
+            dict(name='test-job', changes='1,1'),
+            dict(name='test-job', changes='1,1 2,1'),
+        ])
+
+        # Make sure that reporter jobs show up in the status json
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        status = tenant.layout.pipeline_managers['gate'].formatStatusJSON()
+        jobs = status['change_queues'][0]['heads'][0][0]['jobs']
+        self.assertEqual(2, len(jobs))
+        self.assertEqual('reporter-job', jobs[0]['name'])
+        self.assertEqual('test-job', jobs[1]['name'])
+
+        # Release first test job
+        test1 = self.builds[0]
+        test1.release()
+        self.waitUntilSettled()
+        self.assertBuilds([
+            dict(name='test-job', changes='1,1 2,1'),
+            dict(name='reporter-job', changes='1,1'),
+        ])
+
+        # Start a second scheduler to exercise serialization
+        app = self.createScheduler()
+        app.start()
+        self.assertEqual(len(self.scheds), 2)
+        self.waitUntilSettled()
+
+        # Hold the lock on the first scheduler so that only the second
+        # will act.
+        with self.scheds.first.sched.run_handler_lock:
+            self.assertEqual(A.data['status'], 'MERGED')
+            # This doesn't happen with Gerrit, but other drivers may
+            # "close" the PR (change), which is treated as abandoning
+            # the change.  Simulate that here to make sure we don't
+            # cancel builds.
+            self.fake_gerrit.addEvent(A.getChangeAbandonedEvent())
+            self.waitUntilSettled(matcher=[app])
+
+        reporter1 = self.builds[1]
+        # Release first reporter job
+        reporter1.release()
+        self.waitUntilSettled()
+
+        # Ensure that the reporter job does not appear in the gerrit
+        # report
+        self.assertEqual(2, len(A.messages))
+        self.assertIn('Starting gate jobs', A.messages[0])
+        self.assertIn('Build succeeded', A.messages[1])
+        self.assertNotIn('Skipped', A.messages[1])
+        self.assertIn('test-job', A.messages[1])
+        self.assertNotIn('reporter-job', A.messages[1])
+
+        # The reporter job should appear in the database
+        conn = self.scheds.first.sched.sql.connection
+        buildsets = list(reversed(conn.getBuildsets()))
+        results = {build.job_name: build.result
+                   for build in conn.getBuilds()
+                   if build.buildset_id == buildsets[0].id}
+        self.assertEqual({
+            'test-job': 'SUCCESS',
+            'reporter-job': 'SUCCESS',
+        }, results)
+        # The buildset for the first change:
+        self.assertEqual('SUCCESS', buildsets[0].result)
+
+        # Check the commit sha
+        upstream_path = os.path.join(self.upstream_root, 'org/project')
+        upstream_repo = git.Repo(upstream_path)
+        master_sha = upstream_repo.heads.master.commit.hexsha
+        reporter_job = self.getJobFromHistory('reporter-job')
+        self.assertEqual(
+            master_sha,
+            reporter_job.parameters['zuul']['buildset_refs'][0]
+            ['merge_commit_id'])
+
+        # Release the second change
+        self.executor_server.hold_jobs_in_build = False
+        self.orderedRelease()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='test-job', result='SUCCESS', changes='1,1'),
+            dict(name='reporter-job', result='SUCCESS', changes='1,1'),
+            dict(name='test-job', result='SUCCESS', changes='1,1 2,1'),
+            dict(name='reporter-job', result='SUCCESS', changes='1,1 2,1'),
+        ])
+        buildsets = list(reversed(conn.getBuildsets()))
+        self.assertEqual(2, len(buildsets))
+        # The buildset for the second change:
+        self.assertEqual('SUCCESS', buildsets[1].result)
+
+        # Make sure we store the return data
+        connection = self.scheds.first.sched.sql.connection
+        builds = connection.getBuilds()
+        self.assertEqual('http://example.com/logs/', builds[1].log_url)
+        self.assertEqual('http://example.com/logs2/', builds[0].log_url)
+
+    @simple_layout('layouts/reporter-job.yaml')
+    def test_reporter_job_failure(self):
+        # Test a failed reporter job, with a change behind it
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.executor_server.failJob('reporter-job', A)
+
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertBuilds([dict(name='test-job', changes='1,1')])
+
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B')
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        self.assertBuilds([
+            dict(name='test-job', changes='1,1'),
+            dict(name='test-job', changes='1,1 2,1'),
+        ])
+        test1 = self.builds[0]
+        # Release first test job
+        test1.release()
+        self.waitUntilSettled()
+        self.assertBuilds([
+            dict(name='test-job', changes='1,1 2,1'),
+            dict(name='reporter-job', changes='1,1'),
+        ])
+        reporter1 = self.builds[1]
+        # Release first reporter job
+        reporter1.release()
+        self.waitUntilSettled()
+
+        # Ensure that the reporter job does not appear in the gerrit
+        # report
+        self.assertEqual(2, len(A.messages))
+        self.assertIn('Starting gate jobs', A.messages[0])
+        self.assertIn('Build succeeded', A.messages[1])
+        self.assertNotIn('Skipped', A.messages[1])
+        self.assertIn('test-job', A.messages[1])
+        self.assertNotIn('reporter-job', A.messages[1])
+
+        # The reporter job should appear in the database
+        conn = self.scheds.first.sched.sql.connection
+        buildsets = list(reversed(conn.getBuildsets()))
+        results = {build.job_name: build.result
+                   for build in conn.getBuilds()
+                   if build.buildset_id == buildsets[0].id}
+        self.assertEqual({
+            'test-job': 'SUCCESS',
+            'reporter-job': 'FAILURE',
+        }, results)
+        # We report the buildset to the db before the reporter jobs
+        # finish, so it gets the original value.  Currently unclear
+        # whether this is worth changing.
+        # The first buildset for the first change:
+        self.assertEqual('SUCCESS', buildsets[0].result)
+        # The first buildset for the second change:
+        self.assertEqual('DEQUEUED', buildsets[1].result)
+
+        # Check the commit sha
+        upstream_path = os.path.join(self.upstream_root, 'org/project')
+        upstream_repo = git.Repo(upstream_path)
+        master_sha = upstream_repo.heads.master.commit.hexsha
+        reporter_job = self.getJobFromHistory('reporter-job')
+        self.assertEqual(
+            master_sha,
+            reporter_job.parameters['zuul']['buildset_refs'][0]
+            ['merge_commit_id'])
+
+        # Release the second change
+        self.executor_server.hold_jobs_in_build = False
+        self.orderedRelease()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='test-job', result='SUCCESS', changes='1,1'),
+            dict(name='reporter-job', result='FAILURE', changes='1,1'),
+            dict(name='test-job', result='ABORTED', changes='1,1 2,1'),
+            dict(name='test-job', result='SUCCESS', changes='2,1'),
+            # We didn't configure this job to fail specifically, but
+            # after A merges, it does run with the contents of change
+            # A in it, which is how we trigger the failure.
+            dict(name='reporter-job', result='FAILURE', changes='2,1'),
+        ])
+        buildsets = list(reversed(conn.getBuildsets()))
+        self.assertEqual(3, len(buildsets))
+        # The second buildset for the second change:
+        self.assertEqual('SUCCESS', buildsets[2].result)
+
+    @okay_tracebacks('prepareItem')
+    def test_configure_reporter_job_error(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - job: {name: 'reporter-job', type: 'reporter'}
+            - project:
+                name: org/project
+                check:
+                  jobs:
+                    - reporter-job
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(A.reported, 1)
+        self.assertIn('The project org/project is not permitted '
+                      'to configure a reporter job',
+                      A.messages[0])
+        self.assertHistory([])
+
+
 class TestDiskAccounting(AnsibleZuulTestCase):
     config_file = 'zuul-disk-accounting.conf'
     tenant_config_file = 'config/disk-accountant/main.yaml'
@@ -7047,8 +7326,8 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             if len(self.builds) == 1:
                 break
         A_build = self.builds[0]
-        start = os.path.join(self.jobdir_root, A_build.uuid +
-                             '.failure_start.flag')
+        start = os.path.join(self.jobdir_root, A_build.uuid, 'work',
+                             'failure_start_flag')
         for _ in iterate_timeout(30, 'job A running'):
             if os.path.exists(start):
                 break
@@ -7063,14 +7342,14 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             if len(self.builds) == 2:
                 break
         B_build = self.builds[1]
-        start = os.path.join(self.jobdir_root, B_build.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, B_build.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job B running'):
             if os.path.exists(start):
                 break
 
         self.log.debug("Continue the first job which will fail early")
-        flag_path = os.path.join(self.jobdir_root, A_build.uuid,
+        flag_path = os.path.join(self.jobdir_root, A_build.uuid, 'work',
                                  'failure_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7085,14 +7364,14 @@ class TestEarlyFailure(AnsibleZuulTestCase):
                     break
 
         self.log.debug("Wait for the first job to be in its post-run playbook")
-        start = os.path.join(self.jobdir_root, A_build.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, A_build.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job A post running'):
             if os.path.exists(start):
                 break
 
         self.log.debug("Allow the first job to finish")
-        flag_path = os.path.join(self.jobdir_root, A_build.uuid,
+        flag_path = os.path.join(self.jobdir_root, A_build.uuid, 'work',
                                  'wait_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7104,7 +7383,7 @@ class TestEarlyFailure(AnsibleZuulTestCase):
                 break
 
         self.log.debug("Allow the restarted second job to finish")
-        flag_path = os.path.join(self.jobdir_root, B_build2.uuid,
+        flag_path = os.path.join(self.jobdir_root, B_build2.uuid, 'work',
                                  'wait_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7132,8 +7411,8 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             if len(self.builds) == 1:
                 break
         A_build = self.builds[0]
-        start = os.path.join(self.jobdir_root, A_build.uuid +
-                             '.failure_start.flag')
+        start = os.path.join(self.jobdir_root, A_build.uuid, 'work',
+                             'failure_start_flag')
         for _ in iterate_timeout(30, 'job A running'):
             if os.path.exists(start):
                 break
@@ -7148,14 +7427,14 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             if len(self.builds) == 2:
                 break
         B_build = self.builds[1]
-        start = os.path.join(self.jobdir_root, B_build.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, B_build.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job B running'):
             if os.path.exists(start):
                 break
 
         self.log.debug("Continue the first job which will fail early")
-        flag_path = os.path.join(self.jobdir_root, A_build.uuid,
+        flag_path = os.path.join(self.jobdir_root, A_build.uuid, 'work',
                                  'failure_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7171,8 +7450,9 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             for b in self.builds[:]:
                 if b.name == 'pre-failure':
                     try:
-                        flag_path = os.path.join(self.jobdir_root, b.uuid,
-                                                 'failure_continue_flag')
+                        flag_path = os.path.join(
+                            self.jobdir_root, b.uuid,
+                            'work', 'failure_continue_flag')
                         with open(flag_path, "w") as of:
                             of.write("continue")
                     except Exception:
@@ -7189,14 +7469,14 @@ class TestEarlyFailure(AnsibleZuulTestCase):
                     break
 
         self.log.debug("Wait for the second change to start its job")
-        start = os.path.join(self.jobdir_root, B_build2.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, B_build2.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job B running'):
             if os.path.exists(start):
                 break
 
         self.log.debug("Allow the restarted second job to finish")
-        flag_path = os.path.join(self.jobdir_root, B_build2.uuid,
+        flag_path = os.path.join(self.jobdir_root, B_build2.uuid, 'work',
                                  'wait_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7228,8 +7508,8 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             if len(self.builds) == 1:
                 break
         A_build = self.builds[0]
-        start = os.path.join(self.jobdir_root, A_build.uuid +
-                             '.failure_start.flag')
+        start = os.path.join(self.jobdir_root, A_build.uuid, 'work',
+                             'failure_start_flag')
         for _ in iterate_timeout(30, 'job A running'):
             if os.path.exists(start):
                 break
@@ -7244,14 +7524,14 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             if len(self.builds) == 2:
                 break
         B_build = self.builds[1]
-        start = os.path.join(self.jobdir_root, B_build.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, B_build.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job B running'):
             if os.path.exists(start):
                 break
 
         self.log.debug("Continue the first job which will fail early")
-        flag_path = os.path.join(self.jobdir_root, A_build.uuid,
+        flag_path = os.path.join(self.jobdir_root, A_build.uuid, 'work',
                                  'failure_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7267,8 +7547,9 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             for b in self.builds[:]:
                 if b.name == 'pre-post-failure':
                     try:
-                        flag_path = os.path.join(self.jobdir_root, b.uuid,
-                                                 'failure_continue_flag')
+                        flag_path = os.path.join(
+                            self.jobdir_root, b.uuid, 'work',
+                            'failure_continue_flag')
                         with open(flag_path, "w") as of:
                             of.write("continue")
                     except Exception:
@@ -7285,14 +7566,14 @@ class TestEarlyFailure(AnsibleZuulTestCase):
                     break
 
         self.log.debug("Wait for the second change to start its job")
-        start = os.path.join(self.jobdir_root, B_build2.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, B_build2.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job B running'):
             if os.path.exists(start):
                 break
 
         self.log.debug("Allow the restarted second job to finish")
-        flag_path = os.path.join(self.jobdir_root, B_build2.uuid,
+        flag_path = os.path.join(self.jobdir_root, B_build2.uuid, 'work',
                                  'wait_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7319,8 +7600,8 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             if len(self.builds) == 1:
                 break
         A_build = self.builds[0]
-        start = os.path.join(self.jobdir_root, A_build.uuid +
-                             '.failure_start.flag')
+        start = os.path.join(self.jobdir_root, A_build.uuid, 'work',
+                             'failure_start_flag')
         for _ in iterate_timeout(30, 'job A running'):
             if os.path.exists(start):
                 break
@@ -7335,14 +7616,14 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             if len(self.builds) == 3:
                 break
         B_build = self.builds[2]
-        start = os.path.join(self.jobdir_root, B_build.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, B_build.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job B running'):
             if os.path.exists(start):
                 break
 
         self.log.debug("Continue the first job which will fail early")
-        flag_path = os.path.join(self.jobdir_root, A_build.uuid,
+        flag_path = os.path.join(self.jobdir_root, A_build.uuid, 'work',
                                  'failure_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7357,14 +7638,14 @@ class TestEarlyFailure(AnsibleZuulTestCase):
                     break
 
         self.log.debug("Wait for the first job to be in its post-run playbook")
-        start = os.path.join(self.jobdir_root, A_build.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, A_build.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job A post running'):
             if os.path.exists(start):
                 break
 
         self.log.debug("Allow the first job to finish")
-        flag_path = os.path.join(self.jobdir_root, A_build.uuid,
+        flag_path = os.path.join(self.jobdir_root, A_build.uuid, 'work',
                                  'wait_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7376,14 +7657,14 @@ class TestEarlyFailure(AnsibleZuulTestCase):
                 break
 
         self.log.debug("Wait for the second change to start its job")
-        start = os.path.join(self.jobdir_root, B_build2.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, B_build2.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job B running'):
             if os.path.exists(start):
                 break
 
         self.log.debug("Allow the restarted second job to finish")
-        flag_path = os.path.join(self.jobdir_root, B_build2.uuid,
+        flag_path = os.path.join(self.jobdir_root, B_build2.uuid, 'work',
                                  'wait_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7410,8 +7691,8 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             if len(self.builds) == 1:
                 break
         A_build = self.builds[0]
-        start = os.path.join(self.jobdir_root, A_build.uuid +
-                             '.output_failure_start.flag')
+        start = os.path.join(self.jobdir_root, A_build.uuid, 'work',
+                             'output_failure_start_flag')
         for _ in iterate_timeout(30, 'job A running'):
             if os.path.exists(start):
                 break
@@ -7426,14 +7707,14 @@ class TestEarlyFailure(AnsibleZuulTestCase):
             if len(self.builds) == 2:
                 break
         B_build = self.builds[1]
-        start = os.path.join(self.jobdir_root, B_build.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, B_build.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job B running'):
             if os.path.exists(start):
                 break
 
         self.log.debug("Continue the first job which will output failure text")
-        flag_path = os.path.join(self.jobdir_root, A_build.uuid,
+        flag_path = os.path.join(self.jobdir_root, A_build.uuid, 'work',
                                  'output_failure_continue1_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7448,15 +7729,15 @@ class TestEarlyFailure(AnsibleZuulTestCase):
                     break
 
         self.log.debug("Continue the first job on to actual failure")
-        flag_path = os.path.join(self.jobdir_root, A_build.uuid,
+        flag_path = os.path.join(self.jobdir_root, A_build.uuid, 'work',
                                  'output_failure_continue2_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
             of.write("continue")
 
         self.log.debug("Wait for the first job to be in its post-run playbook")
-        start = os.path.join(self.jobdir_root, A_build.uuid +
-                             '.wait_start.flag')
+        start = os.path.join(self.jobdir_root, A_build.uuid, 'work',
+                             'wait_start_flag')
         for _ in iterate_timeout(30, 'job A post running'):
             if os.path.exists(start):
                 break
@@ -7470,7 +7751,7 @@ class TestEarlyFailure(AnsibleZuulTestCase):
                             '"^.*output indicates failure.*$"' in output)
 
         self.log.debug("Allow the first job to finish")
-        flag_path = os.path.join(self.jobdir_root, A_build.uuid,
+        flag_path = os.path.join(self.jobdir_root, A_build.uuid, 'work',
                                  'wait_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -7482,7 +7763,7 @@ class TestEarlyFailure(AnsibleZuulTestCase):
                 break
 
         self.log.debug("Allow the restarted second job to finish")
-        flag_path = os.path.join(self.jobdir_root, B_build2.uuid,
+        flag_path = os.path.join(self.jobdir_root, B_build2.uuid, 'work',
                                  'wait_continue_flag')
         self.log.debug("Writing %s", flag_path)
         with open(flag_path, "w") as of:
@@ -9658,7 +9939,7 @@ class TestUnreachable(AnsibleZuulTestCase):
         retried_builds = set()
         for build in self.history:
             will_retry_flag = os.path.join(
-                self.jobdir_root, f'{build.uuid}.will-retry.flag')
+                self.jobdir_root, build.uuid, 'work', 'will_retry_flag')
             self.assertTrue(os.path.exists(will_retry_flag))
             with open(will_retry_flag) as f:
                 will_retry = f.readline()
@@ -11257,6 +11538,20 @@ class TestConnectionVars(AnsibleZuulTestCase):
         # self.assertNotIn("/bin/du", job_output)
 
 
+class TestSymlinkEscape(AnsibleZuulTestCase):
+    tenant_config_file = 'config/symlink-escape/main.yaml'
+
+    @okay_tracebacks('ValueError: Symlink detected')
+    def test_symlink_escape(self):
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertHistory([])
+        self.assertEqual(A.reported, 1)
+        self.assertIn("ERROR", A.messages[0])
+        self.assertIn("Symlink detected", A.messages[0])
+
+
 class IncludeBranchesTestCase(ZuulTestCase):
     def _test_include_branches(self, history1, history2, history3, history4):
         self.create_branch('org/project', 'stable')
@@ -11867,6 +12162,25 @@ class TestSuperproject(ZuulTestCase):
                       A.messages[0])
         self.assertHistory([])
 
+    def test_configure_reporter_job(self):
+        # Ensure we can configure a reporter job
+        in_repo_conf = textwrap.dedent(
+            """
+            - job: {name: 'reporter-job', type: 'reporter'}
+            - project:
+                name: submodule1
+                check:
+                  jobs:
+                    - reporter-job
+            """)
+
+        file_dict = {'zuul.yaml': in_repo_conf}
+        A = self.fake_gerrit.addFakeChange('superproject', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+        self.assertEqual(A.reported, 0)
+
 
 class TestIncludeVars(ZuulTestCase):
     tenant_config_file = 'config/include-vars/main.yaml'
@@ -11994,6 +12308,46 @@ class TestIncludeVars(ZuulTestCase):
             'missing-vars.yaml not found',
             A.messages[-1]))
 
+    def test_include_vars_config_update(self):
+        # Regression test to make sure we can deal with None values
+        # for include-vars from the current project when checking if
+        # the job updates config.
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: dynamic-job
+                include-vars:
+                  - name: foo.yaml
+                    required: true
+                    zuul-project: true
+                # Empty file matcher, so we are checking
+                # if the job updates config
+                files: []
+
+            - project:
+                check:
+                  jobs:
+                    - dynamic-job
+            """)
+
+        vars_file = textwrap.dedent(
+            """
+            foo: bar
+            """)
+
+        file_dict = {
+            'zuul.yaml': in_repo_conf,
+            'foo.yaml': vars_file,
+        }
+        A = self.fake_gerrit.addFakeChange('org/project2', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='dynamic-job', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+
     def test_include_vars_config_error(self):
         # Test the mutual exclusion of project and zuul-project
         in_repo_conf = textwrap.dedent(
@@ -12119,6 +12473,8 @@ class TestAttributeControl(ZuulTestCase):
                 'files',
                 'irrelevant-files',
                 'required-projects',
+                'include-projects',
+                'exclude-projects',
                 'vars',
                 'extra-vars',
                 'host-vars',
@@ -12137,4 +12493,316 @@ class TestAttributeControl(ZuulTestCase):
 
         self.assertHistory([
             dict(name='final-job', result='SUCCESS'),
+        ], ordered=False)
+
+
+class TestIncludeExcludeProjects(ZuulTestCase):
+    config_file = "zuul-gerrit-github.conf"
+    tenant_config_file = "config/circular-dependencies/main.yaml"
+
+    @simple_layout('layouts/include-exclude-projects.yaml')
+    def test_include_exclude_projects(self):
+        self.executor_server.hold_jobs_in_build = True
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
+        B = self.fake_gerrit.addFakeChange('org/project2', 'master', 'B')
+        C = self.fake_gerrit.addFakeChange('org/project', 'master', 'C')
+        C.setDependsOn(B, 1)
+        B.setDependsOn(A, 1)
+        self.fake_gerrit.addEvent(C.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(len(self.builds), 7)
+
+        expected_map = {
+            'normal-job': ['org/project', 'org/project1', 'org/project2'],
+            'include-job': ['org/project'],
+            'exclude-job': ['org/project', 'org/project2'],
+            'both-job': ['org/project', 'org/project1'],
+            'exclude-all-job': [],
+            'exclude-all-but-change-job': ['org/project'],
+            'exclude-all-but-item-job': ['org/project'],
+        }
+        projects = [
+            'review.example.com/org/project',
+            'review.example.com/org/project1',
+            'review.example.com/org/project2',
+        ]
+        for build in self.builds:
+            expected = expected_map[build.job.name]
+            workspace_cnames = set()
+            for p in projects:
+                path = os.path.join(build.jobdir.src_root, p)
+                if os.path.exists(path):
+                    workspace_cnames.add(p)
+            expected_cnames = set(
+                f'review.example.com/{p}' for p in expected
+            )
+            self.assertEqual(expected_cnames, workspace_cnames,
+                             f'for {build.job.name}')
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='normal-job', result='SUCCESS'),
+            dict(name='include-job', result='SUCCESS'),
+            dict(name='exclude-job', result='SUCCESS'),
+            dict(name='both-job', result='SUCCESS'),
+            dict(name='exclude-all-job', result='SUCCESS'),
+            dict(name='exclude-all-but-change-job', result='SUCCESS'),
+            dict(name='exclude-all-but-item-job', result='SUCCESS'),
+        ], ordered=False)
+
+    @gerrit_config(submit_whole_topic=True)
+    @simple_layout('layouts/include-exclude-projects.yaml')
+    def test_include_exclude_projects_cycle(self):
+        self.executor_server.hold_jobs_in_build = True
+        self.fake_gerrit.addFakeChange('org/project1', 'master', 'A',
+                                       topic='test')
+        B = self.fake_gerrit.addFakeChange('org/project', 'master', 'B',
+                                           topic='test')
+        self.fake_gerrit.addEvent(B.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertEqual(len(self.builds), 7)
+
+        expected_map = {
+            'normal-job': ['org/project', 'org/project1'],
+            'include-job': ['org/project'],
+            'exclude-job': ['org/project'],
+            'both-job': ['org/project', 'org/project1'],
+            'exclude-all-job': [],
+            'exclude-all-but-change-job': ['org/project'],
+            'exclude-all-but-item-job': ['org/project', 'org/project1'],
+        }
+        projects = [
+            'review.example.com/org/project',
+            'review.example.com/org/project1',
+            'review.example.com/org/project2',
+        ]
+        for build in self.builds:
+            expected = expected_map[build.job.name]
+            workspace_cnames = set()
+            for p in projects:
+                path = os.path.join(build.jobdir.src_root, p)
+                if os.path.exists(path):
+                    workspace_cnames.add(p)
+            expected_cnames = set(
+                f'review.example.com/{p}' for p in expected
+            )
+            self.assertEqual(expected_cnames, workspace_cnames,
+                             f'for {build.job.name}')
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='normal-job', result='SUCCESS'),
+            dict(name='include-job', result='SUCCESS'),
+            dict(name='exclude-job', result='SUCCESS'),
+            dict(name='both-job', result='SUCCESS'),
+            dict(name='exclude-all-job', result='SUCCESS'),
+            dict(name='exclude-all-but-change-job', result='SUCCESS'),
+            dict(name='exclude-all-but-item-job', result='SUCCESS'),
+        ], ordered=False)
+
+    def test_dynamic_playbook_checkout(self):
+        in_repo_conf = textwrap.dedent(
+            """
+            - job:
+                name: project-test
+                run: playbooks/project-test.yaml
+                workspace-checkout: false
+                include-projects: []
+
+            - project:
+                check:
+                  jobs:
+                    - project-test
+            """)
+        in_repo_playbook = textwrap.dedent(
+            """
+            - hosts: all
+              tasks: []
+            """)
+        file_dict = {'.zuul.yaml': in_repo_conf,
+                     'playbooks/project-test.yaml': in_repo_playbook}
+
+        A = self.fake_gerrit.addFakeChange('org/project4', 'master', 'A',
+                                           files=file_dict)
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='project-test', result='SUCCESS', changes='1,1'),
+        ], ordered=False)
+
+
+class TestBranchAssignedQueues(ZuulTestCase):
+    @simple_layout('layouts/branch-assigned.yaml')
+    def test_branch_assigned_queues(self):
+        self.executor_server.hold_jobs_in_build = True
+        self.create_branch('org/project1', 'red-one')
+        self.create_branch('org/project1', 'gold-one')
+        self.create_branch('org/project2', 'red-two')
+        self.create_branch('org/project2', 'gold-two')
+
+        # 1
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # 2
+        B = self.fake_gerrit.addFakeChange('org/project2', 'master', 'B')
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # 3
+        C = self.fake_gerrit.addFakeChange('org/project1', 'red-one', 'C')
+        C.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        # 4
+        D = self.fake_gerrit.addFakeChange('org/project2', 'red-two', 'D')
+        D.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(D.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # 5
+        E = self.fake_gerrit.addFakeChange('org/project1', 'gold-one', 'E')
+        E.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(E.addApproval('Approved', 1))
+        self.waitUntilSettled()
+        # 6
+        F = self.fake_gerrit.addFakeChange('org/project2', 'gold-two', 'F')
+        F.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(F.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        gate_manager = tenant.layout.pipeline_managers['gate']
+        self.assertEqual(4, len(gate_manager.state.queues))
+        self.assertEqual(1, len(gate_manager.state.queues[0].queue))
+        self.assertEqual(1, len(gate_manager.state.queues[1].queue))
+        self.assertEqual(2, len(gate_manager.state.queues[2].queue))
+        self.assertEqual(2, len(gate_manager.state.queues[3].queue))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='test-job', result='SUCCESS', changes='1,1'),
+            dict(name='test-job', result='SUCCESS', changes='2,1'),
+            dict(name='test-job', result='SUCCESS', changes='3,1'),
+            dict(name='test-job', result='SUCCESS', changes='3,1 4,1'),
+            dict(name='test-job', result='SUCCESS', changes='5,1'),
+            dict(name='test-job', result='SUCCESS', changes='5,1 6,1'),
+        ], ordered=False)
+
+    @simple_layout('layouts/branch-assigned-single.yaml')
+    def test_branch_assigned_queues_single(self):
+        # Test projects with a single branch and no valid branch
+        # assignment (only the config project assigns the project to
+        # the queue, and its branch is ignored).
+        self.executor_server.hold_jobs_in_build = True
+
+        # 1
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # 2
+        B = self.fake_gerrit.addFakeChange('org/project2', 'master', 'B')
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
+        gate_manager = tenant.layout.pipeline_managers['gate']
+        self.assertEqual(1, len(gate_manager.state.queues))
+        self.assertEqual(2, len(gate_manager.state.queues[0].queue))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='test-job', result='SUCCESS', changes='1,1'),
+            dict(name='test-job', result='SUCCESS', changes='1,1 2,1'),
+        ], ordered=False)
+
+    @simple_layout('layouts/branch-assigned.yaml')
+    def test_branch_assigned_queues_sos(self):
+        self.executor_server.hold_jobs_in_build = True
+        self.create_branch('org/project1', 'red-one')
+        self.create_branch('org/project1', 'gold-one')
+        self.create_branch('org/project2', 'red-two')
+        self.create_branch('org/project2', 'gold-two')
+
+        # 1
+        A = self.fake_gerrit.addFakeChange('org/project1', 'master', 'A')
+        A.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(A.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # 2
+        B = self.fake_gerrit.addFakeChange('org/project2', 'master', 'B')
+        B.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(B.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        # 3
+        C = self.fake_gerrit.addFakeChange('org/project1', 'red-one', 'C')
+        C.addApproval('Code-Review', 2)
+        self.fake_gerrit.addEvent(C.addApproval('Approved', 1))
+        self.waitUntilSettled()
+
+        sched1 = self.scheds.first
+        sched2 = self.createScheduler()
+        sched2.start()
+
+        # Pause scheduler 1
+        with sched1.sched.run_handler_lock:
+            # 4
+            D = self.fake_gerrit.addFakeChange('org/project2', 'red-two', 'D')
+            D.addApproval('Code-Review', 2)
+            self.fake_gerrit.addEvent(D.addApproval('Approved', 1))
+            self.waitUntilSettled(matcher=[sched2])
+
+            # 5
+            E = self.fake_gerrit.addFakeChange('org/project1', 'gold-one', 'E')
+            E.addApproval('Code-Review', 2)
+            self.fake_gerrit.addEvent(E.addApproval('Approved', 1))
+            self.waitUntilSettled(matcher=[sched2])
+            # 6
+            F = self.fake_gerrit.addFakeChange('org/project2', 'gold-two', 'F')
+            F.addApproval('Code-Review', 2)
+            self.fake_gerrit.addEvent(F.addApproval('Approved', 1))
+            self.waitUntilSettled(matcher=[sched2])
+
+            tenant = sched2.sched.abide.tenants.get('tenant-one')
+            gate_manager = tenant.layout.pipeline_managers['gate']
+            self.assertEqual(4, len(gate_manager.state.queues))
+            self.assertEqual(1, len(gate_manager.state.queues[0].queue))
+            self.assertEqual(1, len(gate_manager.state.queues[1].queue))
+            self.assertEqual(2, len(gate_manager.state.queues[2].queue))
+            self.assertEqual(2, len(gate_manager.state.queues[3].queue))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        self.assertHistory([
+            dict(name='test-job', result='SUCCESS', changes='1,1'),
+            dict(name='test-job', result='SUCCESS', changes='2,1'),
+            dict(name='test-job', result='SUCCESS', changes='3,1'),
+            dict(name='test-job', result='SUCCESS', changes='3,1 4,1'),
+            dict(name='test-job', result='SUCCESS', changes='5,1'),
+            dict(name='test-job', result='SUCCESS', changes='5,1 6,1'),
         ], ordered=False)

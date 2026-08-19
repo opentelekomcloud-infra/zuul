@@ -46,7 +46,9 @@ class GitlabSource(BaseSource):
         """Determine if change is merge."""
         if not change.number:
             return True
-        return change.is_merged
+        if change.is_merged:
+            return change.merge_commit_sha or True
+        return False
 
     def canMerge(self, change, allow_needs, event=None, allow_refresh=False):
         """Determine if change can merge."""

@@ -42,6 +42,8 @@ from zuul.lib.varnames import check_varnames
 from zuul.zk.semaphore import SemaphoreHandler
 from zuul.exceptions import (
     AlgorithmNotSupportedException,
+    AuthZRuleNotFoundError,
+    AuthZRoleNotFoundError,
     CleanupRunDeprecation,
     DuplicateGroupError,
     DuplicateNodeError,
@@ -391,6 +393,7 @@ class ImageParser(object):
         vs.Required('name'): str,
         vs.Required('type'): vs.Any('zuul', 'cloud'),
         'description': str,
+        'retain-count': vs.All(int, vs.Range(min=1)),
     }
     schema = vs.Schema(image)
 
@@ -442,6 +445,7 @@ class LabelParser(object):
         'max-ready-age': int,
         'max-age': int,
         'min-retention-time': int,
+        'max-nodes': int,
     }
     schema = vs.Schema(label)
 
@@ -455,6 +459,7 @@ class LabelParser(object):
         label = model.Label(conf['name'], conf['image'], conf['flavor'],
                             conf.get('description'), conf.get('min-ready'),
                             conf.get('max-ready-age'), conf.get('max-age'),
+                            conf.get('max-nodes'),
                             conf.get('min-retention-time'))
         label.source_context = conf.get('_source_context')
         label.start_mark = conf.get('_start_mark')
@@ -704,6 +709,16 @@ class JobParser(object):
                    'override-branch': str,
                    'override-checkout': str}
 
+    include_project_name = {'type': 'name', 'name': str}
+    include_project_change = {'type': 'change'}
+    include_project_item = {'type': 'item'}
+    job_include_project = vs.Any(
+        str,
+        include_project_name,
+        include_project_change,
+        include_project_item,
+    )
+
     job_dependency = {vs.Required('name'): str,
                       'soft': bool}
 
@@ -788,6 +803,8 @@ class JobParser(object):
                       'roles': to_list(role),
                       'required-projects': override_list(
                           vs.Any(job_project, str)),
+                      'include-projects': override_list(job_include_project),
+                      'exclude-projects': override_list(job_include_project),
                       'vars': override_value(ansible_vars_dict),
                       'extra-vars': override_value(ansible_vars_dict),
                       'host-vars': override_value({str: ansible_vars_dict}),
@@ -807,7 +824,7 @@ class JobParser(object):
                       'deduplicate': vs.Any(bool, 'auto'),
                       'failure-output': override_list(str),
                       'image-build-name': str,
-                      'type': vs.Any('regular', 'initializer'),
+                      'type': vs.Any('regular', 'initializer', 'reporter'),
                       'attribute-control': {
                           vs.Any(
                               'requires',
@@ -816,6 +833,8 @@ class JobParser(object):
                               'files',
                               'irrelevant-files',
                               'required-projects',
+                              'include-projects',
+                              'exclude-projects',
                               'vars',
                               'extra-vars',
                               'host-vars',
@@ -873,6 +892,8 @@ class JobParser(object):
         'ansible-split-streams': 'ansible_split_streams',
         'ansible-version': 'ansible_version',
         'required-projects': 'required_projects',
+        'include-projects': 'include_projects',
+        'exclude-projects': 'exclude_projects',
         'vars': 'variables',
         'extra-vars': 'extra_variables',
         'host-vars': 'host_variables',
@@ -1079,6 +1100,31 @@ class JobParser(object):
                     new_projects[project_name] = job_project
 
                 job.required_projects = new_projects
+
+        for attr in ('include', 'exclude'):
+            if f'{attr}-projects' in conf:
+                with self.pcontext.confAttr(
+                        conf, f'{attr}-projects') as conf_projects:
+                    if isinstance(conf_projects, yaml.OverrideValue):
+                        job.override_control[f'{attr}_projects'] =\
+                            conf_projects.override
+                        conf_projects = conf_projects.value
+                    if conf_projects is None:
+                        new_projects = None
+                    else:
+                        new_projects = set()
+                        for conf_project in as_list(conf_projects):
+                            if isinstance(conf_project, str):
+                                conf_project = {
+                                    'type': 'name',
+                                    'name': conf_project,
+                                }
+                            conf_project = (
+                                conf_project['type'],
+                                conf_project.get('name'),
+                            )
+                            new_projects.add(conf_project)
+                    setattr(job, f'{attr}_projects', new_projects)
 
         if 'dependencies' in conf:
             with self.pcontext.confAttr(conf, 'dependencies') as conf_deps:
@@ -1394,10 +1440,9 @@ class ProjectParser(object):
 
         project_config.name = project_name
 
-        if not project_name.startswith('^'):
-            # Explicitly override this to False since we're reusing the
-            # project-template loading method which sets it True.
-            project_config.is_template = False
+        # Explicitly override this to False since we're reusing the
+        # project-template loading method which sets it True.
+        project_config.is_template = False
 
         branches = None
         if 'branches' in conf:
@@ -1681,9 +1726,11 @@ class QueueParser:
 
     def getSchema(self):
         queue = {vs.Required('name'): str,
-                 'per-branch': bool,
+                 vs.Exclusive('per-branch', 'type'): bool,
                  'allow-circular-dependencies': bool,
                  'dependencies-by-topic': bool,
+                 vs.Exclusive('type', 'type'): vs.Any(
+                     'all-branches', 'per-branch', 'branch-assigned'),
                  '_source_context': model.SourceContext,
                  '_start_mark': model.ZuulMark,
                  }
@@ -1691,11 +1738,16 @@ class QueueParser:
 
     def fromYaml(self, conf):
         self.schema(conf)
+        # Default or explicit value
+        qtype = conf.get('type', 'all-branches')
+        # If per-branch was specified, then type wasn't
+        if conf.get('per-branch'):
+            qtype = 'per-branch'
         queue = model.Queue(
             conf['name'],
-            conf.get('per-branch', False),
             conf.get('allow-circular-dependencies', False),
             conf.get('dependencies-by-topic', False),
+            qtype,
         )
         if (queue.dependencies_by_topic and not
             queue.allow_circular_dependencies):
@@ -1738,6 +1790,101 @@ class AuthorizationRuleParser(object):
         return a
 
 
+class AuthorizationRoleParser(object):
+    read = {
+        'read': bool
+    }
+    promote = {
+        'promote': bool
+    }
+    set_tenant_state = {
+        'set-tenant-state': bool
+    }
+    build_image = {
+        'build-image': bool
+    }
+    upload_image = {
+        'upload-image': bool
+    }
+    delete_image_build_artifact = {
+        'delete-image-build-artifact': bool
+    }
+    delete_image_upload = {
+        'delete-image-upload': bool
+    }
+    validate_image_uload = {
+        'validate-image-upload': bool
+    }
+    modify_node = {
+        'modify-node': bool
+    }
+    modify_nodeset_request = {
+        'modify-nodeset-request': bool
+    }
+    autohold = {
+        'autohold': bool
+    }
+    # This construction comes from:
+    # https://github.com/alecthomas/voluptuous/issues/126#issuecomment-134322625
+    dequeue = {
+        'dequeue':
+            vs.Any(bool, {
+                'conditions': vs.All(
+                    # Validate conditions keys
+                    vs.Schema({vs.Required(vs.Any('project', 'ref')): object}),
+                    # Validate conditions data
+                    vs.Schema({
+                        vs.Optional('project'): str,
+                        vs.Optional('ref'): str
+                    })
+                )
+            })
+    }
+    enqueue = {
+        'enqueue':
+            vs.Any(bool, {
+                'conditions': vs.All(
+                    # Validate conditions keys
+                    vs.Schema({vs.Required(vs.Any('project', 'ref')): object}),
+                    # Validate conditions data
+                    vs.Schema({
+                        vs.Optional('project'): str,
+                        vs.Optional('ref'): str
+                    })
+                )
+            })
+    }
+
+    def __init__(self):
+        self.log = logging.getLogger("zuul.AuthorizationRoleParser")
+        self.schema = self.getSchema()
+
+    def getSchema(self):
+        permissions = {}
+        permissions.update(self.read)
+        permissions.update(self.promote)
+        permissions.update(self.set_tenant_state)
+        permissions.update(self.build_image)
+        permissions.update(self.upload_image)
+        permissions.update(self.delete_image_build_artifact)
+        permissions.update(self.delete_image_upload)
+        permissions.update(self.modify_node)
+        permissions.update(self.modify_nodeset_request)
+        permissions.update(self.autohold)
+        permissions.update(self.dequeue)
+        permissions.update(self.enqueue)
+        authRole = {
+            vs.Required('name'): vs.All(str, vs.NotIn(('read', 'admin'))),
+            vs.Required('permissions'): permissions,
+        }
+        return vs.Schema(authRole)
+
+    def fromYaml(self, conf):
+        self.schema(conf)
+        a = model.AuthZConfigRole(conf)
+        return a
+
+
 class GlobalSemaphoreParser(object):
     def __init__(self):
         self.log = logging.getLogger("zuul.GlobalSemaphoreParser")
@@ -1762,17 +1909,37 @@ class ApiRootParser(object):
         self.log = logging.getLogger("zuul.ApiRootParser")
         self.schema = self.getSchema()
 
+    def validateRoleMappings(self, abide, role_mappings):
+        # This is not implemented as a validator because it requires
+        # the abide.
+        for authz_rule in role_mappings.keys():
+            if authz_rule not in abide.authz_rules:
+                raise AuthZRuleNotFoundError(authz_rule)
+        for authz_roles in role_mappings.values():
+            for authz_role in authz_roles:
+                if authz_role not in abide.authz_roles:
+                    raise AuthZRoleNotFoundError(authz_role)
+
     def getSchema(self):
         api_root = {
             'authentication-realm': str,
             'access-rules': to_list(str),
+            'anonymous-read-access': bool,
+            'role-mappings': {str: to_list(str)},
         }
         return vs.Schema(api_root)
 
-    def fromYaml(self, conf):
+    def fromYaml(self, abide, conf):
         self.schema(conf)
         api_root = model.ApiRoot(conf.get('authentication-realm'))
         api_root.access_rules = conf.get('access-rules', [])
+        api_root.anonymous_read_access = conf.get(
+            'anonymous-read-access', True)
+        api_root.role_mappings = {}
+        if conf.get('role-mappings') is not None:
+            for key, val in conf['role-mappings'].items():
+                api_root.role_mappings[key] = as_list(val)
+            self.validateRoleMappings(abide, api_root.role_mappings)
         return api_root
 
 
@@ -1885,6 +2052,7 @@ class TenantParser(object):
 
     inner_untrusted_project_dict = inner_config_project_dict.copy()
     inner_untrusted_project_dict['configure-projects'] = to_list(str)
+    inner_untrusted_project_dict['allow-reporter-jobs'] = bool
     untrusted_project_dict = {str: inner_untrusted_project_dict}
 
     config_project = vs.Any(str, config_project_dict)
@@ -1922,6 +2090,24 @@ class TenantParser(object):
     def validateTenantSource(self, value, path=[]):
         self.tenant_source(value)
 
+    def validateGlobalSemaphores(self, abide, global_semaphores):
+        # This is not implemented as a validator because it requires
+        # the abide.
+        for semaphore_name in global_semaphores:
+            if semaphore_name not in abide.semaphores:
+                raise GlobalSemaphoreNotFoundError(semaphore_name)
+
+    def validateRoleMappings(self, abide, role_mappings):
+        # This is not implemented as a validator because it requires
+        # the abide.
+        for authz_rule in role_mappings.keys():
+            if authz_rule not in abide.authz_rules:
+                raise AuthZRuleNotFoundError(authz_rule)
+        for authz_roles in role_mappings.values():
+            for authz_role in authz_roles:
+                if authz_role not in abide.authz_roles:
+                    raise AuthZRoleNotFoundError(authz_role)
+
     def getSchema(self):
         tenant = {vs.Required('name'): str,
                   'max-changes-per-pipeline': int,
@@ -1942,6 +2128,8 @@ class TenantParser(object):
                   'default-ansible-version': vs.Any(str, float, int),
                   'access-rules': to_list(str),
                   'admin-rules': to_list(str),
+                  'anonymous-read-access': bool,
+                  'role-mappings': {str: to_list(str)},
                   'semaphores': to_list(str),
                   'authentication-realm': str,
                   # TODO: Ignored, allowed for backwards compat, remove for v5.
@@ -1991,13 +2179,17 @@ class TenantParser(object):
             tenant.admin_rules = as_list(conf['admin-rules'])
         if conf.get('access-rules') is not None:
             tenant.access_rules = as_list(conf['access-rules'])
+        tenant.anonymous_read_access = conf.get('anonymous-read-access', True)
+        tenant.role_mappings = {}
+        if conf.get('role-mappings') is not None:
+            for key, val in conf['role-mappings'].items():
+                tenant.role_mappings[key] = as_list(val)
+            self.validateRoleMappings(abide, tenant.role_mappings)
         if conf.get('authentication-realm') is not None:
             tenant.default_auth_realm = conf['authentication-realm']
         if conf.get('semaphores') is not None:
             tenant.global_semaphores = set(as_list(conf['semaphores']))
-            for semaphore_name in tenant.global_semaphores:
-                if semaphore_name not in abide.semaphores:
-                    raise GlobalSemaphoreNotFoundError(semaphore_name)
+            self.validateGlobalSemaphores(abide, tenant.global_semaphores)
         tenant.web_root = conf.get('web-root', self.globals.web_root)
         if tenant.web_root and not tenant.web_root.endswith('/'):
             tenant.web_root += '/'
@@ -2150,6 +2342,7 @@ class TenantParser(object):
             project_load_branch = None
             project_implied_branch_matchers = None
             project_configure_projects = None
+            project_allow_reporter_jobs = None
         else:
             project_name = list(conf.keys())[0]
             project = source.getProject(project_name)
@@ -2217,6 +2410,8 @@ class TenantParser(object):
                     project_configure_projects.append(rp)
             else:
                 project_configure_projects = None
+            project_allow_reporter_jobs = conf[project_name].get(
+                'allow-reporter-jobs', None)
 
         tenant_project_config = model.TenantProjectConfig(project)
         tenant_project_config.load_classes = frozenset(project_include)
@@ -2236,6 +2431,8 @@ class TenantParser(object):
             project_implied_branch_matchers
         tenant_project_config.configure_projects = \
             project_configure_projects
+        tenant_project_config.allow_reporter_jobs = \
+            project_allow_reporter_jobs
         return tenant_project_config
 
     def _getProjects(self, source, conf, current_include):
@@ -2284,6 +2481,7 @@ class TenantParser(object):
                 tpcs = self._getProjects(source, conf_repo, default_include)
                 for tpc in tpcs:
                     tpc.trusted = True
+                    tpc.allow_reporter_jobs = True
                     futures.append(executor.submit(
                         self._loadProjectKeys, source_name, tpc.project))
                     config_projects.append(tpc)
@@ -3143,6 +3341,7 @@ class ConfigLoader(object):
             connections, zk_client, scheduler, merger, keystorage,
             zuul_globals, statsd, unparsed_config_cache)
         self.authz_rule_parser = AuthorizationRuleParser()
+        self.authz_role_parser = AuthorizationRoleParser()
         self.global_semaphore_parser = GlobalSemaphoreParser()
         self.api_root_parser = ApiRootParser()
 
@@ -3200,6 +3399,14 @@ class ConfigLoader(object):
         for conf_authz_rule in unparsed_abide.authz_rules:
             authz_rule = self.authz_rule_parser.fromYaml(conf_authz_rule)
             abide.authz_rules[authz_rule.name] = authz_rule
+        abide.authz_roles.clear()
+        for conf_authz_role in unparsed_abide.authz_roles:
+            authz_role = self.authz_role_parser.fromYaml(conf_authz_role)
+            abide.authz_roles[authz_role.name] = authz_role
+        admin_role = model.AuthZAdminRole()
+        abide.authz_roles['admin'] = admin_role
+        read_role = model.AuthZReadRole()
+        abide.authz_roles['read'] = read_role
 
     def loadSemaphores(self, abide, unparsed_abide):
         abide.semaphores.clear()
@@ -3213,7 +3420,7 @@ class ConfigLoader(object):
             api_root_conf = unparsed_abide.api_roots[0]
         else:
             api_root_conf = {}
-        abide.api_root = self.api_root_parser.fromYaml(api_root_conf)
+        abide.api_root = self.api_root_parser.fromYaml(abide, api_root_conf)
 
         if tenants:
             tenants_to_load = {t: unparsed_abide.tenants[t] for t in tenants

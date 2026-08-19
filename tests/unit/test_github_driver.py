@@ -381,6 +381,21 @@ class TestGithubDriver(ZuulTestCase):
         self.assertEqual(2, len(self.history))
         self.assertEqual(['other label'], C.labels)
 
+    @simple_layout('layouts/labeling-permission-github.yaml', driver='github')
+    def test_labels_permission(self):
+        A = self.fake_github.openFakePullRequest('org/project', 'master', 'A')
+        self.fake_github.emitEvent(A.addLabel('test'))
+        self.waitUntilSettled()
+        self.assertEqual(0, len(self.history))
+
+        A.removeLabel('test')
+        A.admins.append('ghuser')
+        self.fake_github.emitEvent(A.addLabel('test'))
+        self.waitUntilSettled()
+        self.assertEqual(1, len(self.history))
+        self.assertEqual('project-labels', self.history[0].name)
+        self.assertEqual(['tests passed'], A.labels)
+
     @simple_layout('layouts/reviews-github.yaml', driver='github')
     def test_reviews(self):
         A = self.fake_github.openFakePullRequest('org/project', 'master', 'A')
@@ -422,6 +437,34 @@ class TestGithubDriver(ZuulTestCase):
         self.assertHistory([])
 
         thread.resolved = True
+        self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='project-test1', result='SUCCESS'),
+            dict(name='project-test2', result='SUCCESS'),
+        ], ordered=False)
+
+    @simple_layout('layouts/gate-github.yaml', driver='github')
+    def test_signed_commits(self):
+        project = self.fake_github.getProject('org/project')
+        github = self.fake_github.getGithubClient(project.name)
+        repo = github.repo_from_project('org/project')
+        repo._set_branch_protection('master',
+                                    require_commit_signatures=True,
+                                    protected=True)
+
+        A = self.fake_github.openFakePullRequest('org/project', 'master', 'A')
+        self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # Make sure we don't execute any jobs when commits are not
+        # correctly signed as required by the branch protection rule.
+        self.assertHistory([])
+
+        # "sign" all PR commits
+        for commit in A.commits:
+            commit.signature = "SIGNED"
+
         self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
         self.waitUntilSettled()
         self.assertHistory([

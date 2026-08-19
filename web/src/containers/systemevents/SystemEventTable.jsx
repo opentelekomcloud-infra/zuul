@@ -14,6 +14,7 @@
 // under the License.
 
 import React from 'react'
+import { useSelector } from 'react-redux'
 import PropTypes from 'prop-types'
 import {
   EmptyState,
@@ -32,7 +33,9 @@ import {
   TableHeader,
   TableBody,
   TableVariant,
+  nowrap,
 } from '@patternfly/react-table'
+import moment_tz from 'moment-timezone'
 
 import { IconProperty } from '../../MiscComponents'
 
@@ -40,11 +43,13 @@ function SystemEventTable({
   events,
   fetching,
 }) {
+  const timezone = useSelector((state) => state.timezone)
 
   const columns = [
     {
       title: <IconProperty icon={<OutlinedCalendarAltIcon />} value="Time" />,
       dataLabel: 'Time',
+      cellTransforms: [nowrap],
     },
     {
       title: <IconProperty icon={<FlagIcon />} value="Description" />,
@@ -57,7 +62,10 @@ function SystemEventTable({
       id: rows.length,
       cells: [
         {
-          title: event.event_time,
+          title: moment_tz
+            .utc(event.event_time)
+            .tz(timezone)
+            .format('YYYY-MM-DD HH:mm:ss')
         },
         {
           title: event.description,
@@ -72,7 +80,7 @@ function SystemEventTable({
         heightAuto: true,
         cells: [
           {
-            props: { colSpan: 8 },
+            props: { colSpan: 2 },
             title: (
               <center>
                 <Spinner size="xl" />

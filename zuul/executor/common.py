@@ -27,6 +27,13 @@ def make_src_dir(canonical_hostname, name, scheme):
                             scheme))
 
 
+def make_change(item, change):
+    ret = change.toDict()
+    if sha := item.merged_change_shas.get(change.cache_key):
+        ret['merge_commit_id'] = sha
+    return ret
+
+
 def construct_build_params(uuid, connections, job, item, pipeline,
                            dependent_changes=[], merger_items=[],
                            redact_secrets_and_keys=True):
@@ -57,8 +64,8 @@ def construct_build_params(uuid, connections, job, item, pipeline,
         build=uuid,
         buildset=item.current_build_set.uuid,
         ref=change.ref,
-        buildset_refs=[c.toDict() for c in item.changes],
-        build_refs=[c.toDict() for c in item.changes
+        buildset_refs=[make_change(item, c) for c in item.changes],
+        build_refs=[make_change(item, c) for c in item.changes
                     if c.cache_key in job.all_refs],
         pipeline=pipeline.name,
         post_review=pipeline.post_review,
@@ -82,11 +89,21 @@ def construct_build_params(uuid, connections, job, item, pipeline,
             job.workspace_scheme)
     # Fixup the src_dir for the refs based on this job
     for r in zuul_params['buildset_refs']:
+        r['project']['src_dir'] = make_src_dir(
+            r['project']['canonical_hostname'],
+            r['project']['name'],
+            job.workspace_scheme)
+        # TODO: backwards compat, remove after zuul 14
         r['src_dir'] = make_src_dir(
             r['project']['canonical_hostname'],
             r['project']['name'],
             job.workspace_scheme)
     for r in zuul_params['build_refs']:
+        r['project']['src_dir'] = make_src_dir(
+            r['project']['canonical_hostname'],
+            r['project']['name'],
+            job.workspace_scheme)
+        # TODO: backwards compat, remove after zuul 14
         r['src_dir'] = make_src_dir(
             r['project']['canonical_hostname'],
             r['project']['name'],
@@ -166,27 +183,44 @@ def construct_build_params(uuid, connections, job, item, pipeline,
             projects.add(project)
             required_projects.add(project)
 
-    if job.include_vars:
+    exec_projects = set()
+    if dependent_changes:
         for iv in job.include_vars:
-            source = connections.getSource(iv['connection'])
-            project = source.getProject(iv['project'])
-            if project not in projects:
-                params['projects'].append(make_project_dict(project))
-                projects.add(project)
+            trusted, project = item.manager.tenant.getProject(iv['project'])
+            if project and not trusted:
+                exec_projects.add(project)
+        for pb in job.all_playbooks:
+            trusted, project = item.manager.tenant.getProject(pb['project'])
+            # We ignore roles here as roles from untrusted projects
+            # will not be considered for trusted playbooks anyways.
+            if project is None or trusted:
+                continue
+            exec_projects.add(project)
+            for role in pb['roles']:
+                trusted, project = item.manager.tenant.getProject(
+                    role['project'])
+                if project and not trusted:
+                    exec_projects.add(project)
 
-    for change in dependent_changes:
+    for dep_change in dependent_changes:
         try:
             (_, project) = item.manager.tenant.getProject(
-                change['project']['canonical_name'])
+                dep_change['project']['canonical_name'])
             if not project:
                 raise KeyError()
         except Exception:
             # We have to find the project this way because it may not
             # be registered in the tenant (ie, a foreign project).
             source = connections.getSourceByCanonicalHostname(
-                change['project']['canonical_hostname'])
-            project = source.getProject(change['project']['name'])
+                dep_change['project']['canonical_hostname'])
+            project = source.getProject(dep_change['project']['name'])
 
+        # When the project is required for job execution and
+        # there is a change we need to consider, we must prepare
+        # the project regardless.
+        if not (job.includesProject(project, change, item)
+                or project in exec_projects):
+            continue
         if project not in projects:
             params['projects'].append(make_project_dict(project))
             projects.add(project)

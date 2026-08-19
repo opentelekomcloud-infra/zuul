@@ -541,7 +541,9 @@ class GerritEventProcessor:
             self.log.warning("Skipping event due to %s", e)
         except Exception:
             self.log.exception("Skipping event due to:")
-        return self.events, self.connection_event
+        event_type = self.connection_event["payload"].get('type')
+        return (self.events, self.connection_event, self.zuul_event_id,
+                event_type)
 
     def _handleEvent(self, connection_event):
         timestamp = connection_event["timestamp"]
@@ -1238,22 +1240,21 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                            (change,))
             return False
 
-        if self._waitForRefSha(change.project, ref, change._ref_sha):
+        if sha := self._waitForRefSha(change.project, ref, change._ref_sha):
             self.log.debug("Change %s is in the git repo" %
                            (change))
-            return True
+            return sha
         self.log.debug("Change %s did not appear in the git repo" %
                        (change))
         return False
 
-    def _waitForRefSha(self, project: Project,
-                       ref: str, old_sha: str='') -> bool:
+    def _waitForRefSha(self, project, ref, old_sha=''):
         # Wait for the ref to show up in the repo
         start = time.time()
         while time.time() - start < self.is_merged_replication_timeout:
             sha = self.getRefSha(project, ref)
             if old_sha != sha:
-                return True
+                return sha
             time.sleep(self.replication_retry_interval)
         return False
 
@@ -1544,7 +1545,7 @@ class GerritConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                 if labels:
                     data['labels'] = labels
                 if file_comments:
-                    if self.version >= (2, 15, 0):
+                    if (2, 15, 0) <= self.version < (3, 13, 0):
                         file_comments = copy.deepcopy(file_comments)
                         url = item.formatItemUrl()
                         for comments in itertools.chain(

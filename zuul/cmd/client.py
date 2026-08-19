@@ -35,6 +35,7 @@ import urllib.parse
 import zuul.cmd
 from zuul.lib.config import get_default
 from zuul.model import (
+    Abide,
     ImageBuildArtifact,
     ImageUpload,
     Pipeline,
@@ -1000,6 +1001,7 @@ class Client(zuul.cmd.ZuulApp):
     def validate(self):
         from zuul import scheduler
         from zuul import configloader
+        from zuul.configloader import as_list
         self.configure_connections(sources=True, triggers=True, reporters=True)
 
         class SchedulerConfig(scheduler.Scheduler):
@@ -1016,10 +1018,19 @@ class Client(zuul.cmd.ZuulApp):
             self.connections, None, None, zuul_globals, None)
         tenant_config, script = sched._checkTenantSourceConf(self.config)
         try:
+            abide = Abide()
             unparsed_abide = loader.readConfig(
                 tenant_config, from_script=script)
+            loader.loadAuthzRules(abide, unparsed_abide)
+            loader.loadSemaphores(abide, unparsed_abide)
+            # Do not load TPCs since that requires ZK
             for conf_tenant in unparsed_abide.tenants.values():
                 loader.tenant_parser.getSchema()(conf_tenant)
+                global_semaphores = set(as_list(conf_tenant.get(
+                    'semaphores', [])))
+                loader.tenant_parser.validateGlobalSemaphores(
+                    abide, global_semaphores)
+
             print("Tenants config validated with success")
             err_code = 0
         except Exception as e:

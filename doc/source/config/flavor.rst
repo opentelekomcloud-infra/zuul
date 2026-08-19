@@ -1,17 +1,15 @@
-:orphan:
-
 .. _flavor:
 
 Flavor
 ======
 
 A flavor is used by :ref:`provider` objects to configure the
-characteristics of worker nodes related to the hardware (virtualized
+characteristics of :ref:`build_nodes` related to the hardware (virtualized
 or not) that they run on.  Clouds variously call this concept
 `flavors`, `instance types`, `sizes`, etc.  Generally they embody
 characteristics as machine architecture, RAM, storage, CPU, and
 others.  By abstracting the concept in Zuul, users can express an
-intention to run a job on a worker with certain characteristics, and
+intention to run a job on a node with certain characteristics, and
 differing flavor configurations in different providers can be used to
 select the appropriate system from the cloud.
 
@@ -25,7 +23,7 @@ and may be applied to it.  See the driver-specific provider options
 for details.
 
 For example, a user might decide to use a very small VM size for
-launching worker nodes.  They would then define a flavor object:
+launching build nodes.  They would then define a flavor object:
 
 .. code-block:: yaml
 

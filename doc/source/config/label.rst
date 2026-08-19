@@ -1,21 +1,19 @@
-:orphan:
-
 .. _label:
 
 Label
 =====
 
 A label is used by :ref:`provider` objects to configure the
-operational characteristics of worker nodes.  Unlike :ref:`flavor` or
-:ref:`image` objects, a label does not correspond to any existing
-concept in a cloud.  Instead, a label incorporates the settings
-controlled by images and flavors by reference, and adds some other
-operational settings to complete the information needed to launch a
-worker node.
+operational characteristics of :ref:`build_nodes`.  Unlike
+:ref:`flavor` or :ref:`image` objects, a label does not correspond to
+any existing concept in a cloud.  Instead, a label incorporates the
+settings controlled by images and flavors by reference, and adds some
+other operational settings to complete the information needed to
+launch a node.
 
-Jobs request worker nodes by using labels, and labels, along with the
-images and flavors they reference, are used by providers to determine
-what nodes to provide.
+Jobs request nodes by using labels, and labels, along with the images
+and flavors they reference, are used by providers to determine what
+nodes to provide.
 
 Every label has a reference to a single flavor and a single image.
 That reference is by name, which means that a given label always
@@ -34,8 +32,8 @@ available when the label is attached to a :ref:`section` or
 details.
 
 For example, a user might decide to use a small vm running the latest
-version of Debian for launching worker nodes.  They would then define
-a label object that references pre-existing image and flavor objects:
+version of Debian for launching nodes.  They would then define a label
+object that references pre-existing image and flavor objects:
 
 .. code-block:: yaml
 
@@ -88,6 +86,19 @@ The attributes available to top-level label objects are:
       available for use.  Ready nodes older than this time will be
       deleted.
 
+   .. attr:: max-nodes
+      :type: int
+
+      The maximum number of nodes for this label that should be
+      created in any tenant.
+
+      If a provider appears in more than one tenant, then any
+      unallocated `ready` nodes are visible in all the tenants that
+      use that provider, and therefore, count toward the label maximum
+      in all of those tenants.  Once one of those nodes is assigned to
+      a request in a tenant, it only counts toward the total in that
+      one tenant.
+
    .. attr:: max-ready-age
       :type: int
       :default: 0
@@ -96,7 +107,7 @@ The attributes available to top-level label objects are:
 
    .. attr:: min-ready
       :type: int
-      :required:
+      :default: 0
 
       Minimum number of instances that should be in a ready
       state. Zuul always creates more nodes as necessary in response

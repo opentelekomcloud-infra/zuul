@@ -1,5 +1,3 @@
-:orphan:
-
 :title: AWS Driver
 
 .. _aws:
@@ -7,7 +5,7 @@
 AWS
 ===
 
-Zuul can use AWS as a source for test nodes.
+Zuul can use AWS as a source for build nodes.
 
 If using the AWS driver to upload images, see `VM Import/Export
 service role`_ for information on configuring the required permissions
@@ -54,6 +52,18 @@ The supported options in ``zuul.conf`` connections are:
    .. attr:: profile
 
       The AWS profile.
+
+   .. attr:: role_arn
+
+      When using a federated web identity token, this specifies the
+      AWS IAM role that should be assumed.  If this is specified, then
+      :attr:`<aws connection>.web_identity_token_file` should be
+      provided, and the access key settings should be omitted.
+
+   .. attr:: web_identity_token_file
+
+      The path to a file containing a federated web identity token.
+      Generally created by a cloud or Kubernetes environment.
 
    .. attr:: rate
       :default: 2

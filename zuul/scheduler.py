@@ -878,7 +878,26 @@ class Scheduler(threading.Thread):
             # blobs used since this point
             start_ltime = self.zk_client.getCurrentLtime()
             # lock and refresh the pipeline
-            for tenant in self.abide.tenants.values():
+            for tenant_name in self.unparsed_abide.tenants:
+                tenant = self.abide.tenants.get(tenant_name)
+                if not tenant:
+                    self.log.info("Skipping blob store cleanup due to "
+                                  "unconfigured tenant: %s",
+                                  tenant_name)
+                    return
+                start_wait = time.time()
+                while not self.isTenantLayoutUpToDate(tenant.name):
+                    # If we don't have an up-to-date config from all
+                    # the tenants, it may be dangerous to clean the
+                    # blob store.  Wait a reasonable amount of time
+                    # for each tenant to update in the unlikely event
+                    # any given tenant is not up to date.
+                    time.sleep(10)
+                    if (time.time() - start_wait) > 300:
+                        self.log.info("Skipping blob store cleanup due to "
+                                      "out of date tenant config: %s",
+                                      tenant.name)
+                        return
                 for manager in tenant.layout.pipeline_managers.values():
                     with (pipeline_lock(
                             self.zk_client, tenant.name,
@@ -1429,6 +1448,8 @@ class Scheduler(threading.Thread):
                            tenant_name)
             self.layout_update_event.set()
             return False
+        if not self.abide.hasTPCRegistry(tenant_name):
+            return False
         return True
 
     def _checkTenantSourceConf(self, config):
@@ -1655,6 +1676,9 @@ class Scheduler(threading.Thread):
         # the events provides a minimum ltime.
         branch_cache_min_ltimes = defaultdict(lambda: -1)
         for connection_name, ltime in event.branch_cache_ltimes.items():
+            if ltime is None:
+                log.warning("Got invalid ltime for for %s", connection_name)
+                continue
             branch_cache_min_ltimes[connection_name] = ltime
 
         loader = configloader.ConfigLoader(
@@ -2998,13 +3022,20 @@ class Scheduler(threading.Thread):
         if not build:
             return
 
-        args = {}
-        if 'url' in event.data:
-            args['url'] = event.data['url']
-        if 'pre_fail' in event.data:
-            args['pre_fail'] = event.data['pre_fail']
-        build.updateAttributes(manager.current_context,
-                               **args)
+        with build.activeContext(manager.current_context):
+            if 'url' in event.data:
+                build.url = event.data['url']
+            if 'pre_fail' in event.data:
+                build.pre_fail = event.data['pre_fail']
+            if (snapshot := event.data.get('snapshot')) is not None:
+                build.addEvent(
+                    BuildEvent(
+                        event_time=snapshot['time'],
+                        event_type=snapshot['event']))
+                if snapshot['event'] == BuildEvent.TYPE_SNAPSHOT_STARTED:
+                    build.snapshotting = True
+                if snapshot['event'] == BuildEvent.TYPE_SNAPSHOT_COMPLETED:
+                    build.snapshotting = False
 
     def _doBuildPausedEvent(self, event, manager):
         build = self._getBuildFromPipeline(event, manager)
@@ -3400,7 +3431,7 @@ class Scheduler(threading.Thread):
                                     # This image is needed, add this endpoint
                                     endpoint = provider.getEndpoint()
                                     key = (endpoint.canonical_name,
-                                           image.config_hash)
+                                           image.zuul_config_hash)
                                     uploads[key].append(
                                         provider.canonical_name)
                     for (endpoint_name, config_hash), providers in \
@@ -3430,7 +3461,7 @@ class Scheduler(threading.Thread):
                     with iba.activeContext(ctx):
                         iba.state = iba.State.READY
 
-    def validateImageUpload(self, image_upload_uuid):
+    def validateImageUpload(self, image_upload_uuid, build, validated):
         upload = ImageUpload()
         upload._set(uuid=image_upload_uuid)
         with self.createZKContext(None, self.log) as outer_ctx:
@@ -3439,8 +3470,9 @@ class Scheduler(threading.Thread):
                     upload.refresh(ctx)
                     upload.updateAttributes(
                         ctx,
-                        validated=True,
+                        validated=validated,
                         timestamp=time.time(),
+                        build_uuid=build.uuid,
                     )
 
     def createZKContext(self, lock, log):

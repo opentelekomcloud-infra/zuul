@@ -386,7 +386,8 @@ class GithubEventProcessor(object):
             duration = round(time.monotonic() - start, 3)
             self.log.debug("Finished event processing (duration: %s seconds)",
                            duration)
-        return self.events, self.connection_event
+        return (self.events, self.connection_event, self.zuul_event_id,
+                self.event_type)
 
     def _process_event(self):
         if self.connector._stopped:
@@ -456,6 +457,10 @@ class GithubEventProcessor(object):
                     self.log.debug("Refreshed change %s,%s",
                                    event.change_number, event.patch_number)
 
+                if self.connection.query_actor_permission:
+                    if account := getattr(event, 'account', None):
+                        event.permission = self.connection.getRepoPermission(
+                            project.name, account)
                 # If this event references a branch and we're excluding
                 # unprotected branches, we might need to check whether the
                 # branch is now protected.
@@ -1280,6 +1285,27 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
 
         self.graphql_client = GraphQLClient(
             '%s/graphql' % self._github_client_manager.api_base_url)
+        self.watched_event_filters_by_tenant = {}
+        self.watched_event_filters_lock = threading.Lock()
+        self.query_actor_permission = False
+
+    def setWatchedEventFilters(self, tenant_name, filters):
+        # TODO: This does not remove filters when tenants are deleted
+        self.log.debug("Setting watched event filters for %s to %s",
+                       tenant_name, filters)
+        with self.watched_event_filters_lock:
+            self.watched_event_filters_by_tenant[tenant_name] = filters
+            query_actor_permission = False
+            # Check filters across all tenants
+            for tenant_filters in \
+                self.watched_event_filters_by_tenant.values():
+                for event_filter in tenant_filters:
+                    if event_filter.permission:
+                        query_actor_permission = True
+                        break
+                if query_actor_permission:
+                    break
+            self.query_actor_permission = query_actor_permission
 
     def toDict(self):
         d = super().toDict()
@@ -1595,6 +1621,8 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         # after a successful merge.
         if not change.is_merged:
             change.is_merged = change.pr.get('merged')
+        if change.is_merged:
+            change.merge_commit_sha = change.pr.get('merge_commit_sha')
 
         change.reviews = self.getPullReviews(
             pr_obj, change.project, change.number, event)
@@ -1657,6 +1685,8 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         change.review_decision = canmerge_data['reviewDecision']
         change.unresolved_conversations = canmerge_data.get(
             'unresolvedConversations', False)
+        change.unsigned_commits = canmerge_data.get(
+            'unsignedCommits', False)
         change.required_contexts = set(
             canmerge_data['requiredStatusCheckContexts']
         )
@@ -2000,6 +2030,12 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
                       change)
             return FalseWithReason('unresolved conversations')
 
+        if change.unsigned_commits:
+            log.debug('Change %s can not merge because '
+                      'it has unsigned commits',
+                      change)
+            return FalseWithReason('unsigned commits')
+
         return True
 
     def isMerged(self, change, event):
@@ -2218,6 +2254,8 @@ class GithubConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         if not result:
             raise MergeFailure('Pull request was not merged')
         log.debug("Merged PR %s#%s", project, pr_number)
+        # This is the new merge_commit_sha
+        return data["sha"]
 
     def _getCommit(self, repository, sha, retries=5):
         try:

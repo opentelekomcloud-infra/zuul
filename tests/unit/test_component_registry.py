@@ -64,6 +64,7 @@ class TestComponentRegistry(ZuulTestCase):
     @okay_tracebacks('_start',
                      '_playbackWorker')
     def test_executor_component(self):
+        self.waitUntilSettled()
         self.assertComponentState("executor", BaseComponent.RUNNING)
 
         self.executor_server.pause()
@@ -88,6 +89,7 @@ class TestComponentRegistry(ZuulTestCase):
 
     def test_merger_component(self):
         self._startMerger()
+        self.waitUntilSettled()
         self.assertComponentState("merger", BaseComponent.RUNNING)
 
         self.merge_server.pause()
@@ -109,6 +111,7 @@ class TestComponentRegistry(ZuulTestCase):
             raise
 
     def test_fingergw_component(self):
+        self.waitUntilSettled()
         config = configparser.ConfigParser()
         config.read_dict(self.config)
         config.read_dict({
@@ -142,7 +145,9 @@ class TestComponentRegistry(ZuulTestCase):
             )
         )
 
+        self.waitUntilSettled()
         self.assertComponentState("web", BaseComponent.RUNNING)
 
     def test_launcher_component(self):
+        self.waitUntilSettled()
         self.assertComponentState("launcher", BaseComponent.RUNNING)

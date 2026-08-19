@@ -51,7 +51,9 @@ class GithubSource(BaseSource):
             return True
         # We don't need to perform another query because the API call
         # to perform the merge will ensure this is updated.
-        return change.is_merged
+        if change.is_merged:
+            return change.merge_commit_sha or True
+        return False
 
     def canMerge(self, change, allow_needs, event=None, allow_refresh=False):
         """Determine if change can merge."""

@@ -408,11 +408,17 @@ the following options.
       match a ``unlabeled`` action when a label with name ``do not
       test`` is removed from the pull request.
 
+   .. attr:: permission
+
+      If present, the account that performed the action must have this
+      permission (or permissions) to match.  The available
+      values are ``read``, ``write``, and ``admin``.
+
    .. attr:: state
 
       This is only used for ``pull_request_review`` events.  It
       accepts a list of strings each of which is matched to the review
-      state, which can be one of ``approved``, ``comment``,
+      state, which can be one of ``approved``, ``commented``,
       ``changes_requested``, ``dismissed``, or ``pending``.
 
    .. attr:: status

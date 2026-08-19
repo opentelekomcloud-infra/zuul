@@ -21,6 +21,7 @@ from zuul.model import (
     NodesetInfo,
     NodesetRequest,
     ProviderNode,
+    SnapshotStatus,
     STATE_HOLD,
     STATE_IN_USE,
     STATE_READY,
@@ -197,11 +198,13 @@ class LauncherClient:
                         log.exception("Error unlocking node %s", provider_node)
 
     def snapshotNodeset(self, nodeset, node_ids, zuul_event_id=None):
+        # This method yields informational entries that can be added
+        # to user-visible logging.
         log = get_annotated_logger(self.log, zuul_event_id)
         log.debug("Snapshotting nodes %s in nodeset %s", node_ids, nodeset)
 
         wait_event = threading.Event()
-        wait_snapshots = []
+        wait_snapshots = set()
 
         def node_watcher(self, data, zstat, event=None):
             wait_event.set()
@@ -221,26 +224,44 @@ class LauncherClient:
                         ExistingDataWatch(self.zk_client.client,
                                           provider_node.snapshot.getPath(),
                                           node_watcher)
-                        wait_snapshots.append(provider_node.snapshot)
-                        log.debug("Set %s to snapshot", provider_node)
+                        wait_snapshots.add(provider_node.snapshot)
+                        msg = f"Started snapshot on {provider_node}"
+                        log.debug(msg)
+                        yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
                 except Exception:
-                    log.exception("Unable to snapshot node %s", provider_node)
+                    msg = f"Unable to snapshot node {provider_node}"
+                    log.exception(msg)
+                    yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
 
         if not wait_snapshots:
-            log.debug("Nothing to snapshot in nodeset %s", nodeset)
+            msg = f"Nothing to snapshot in nodeset {nodeset}"
+            log.debug(msg)
+            yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
             return
         done = False
         log.debug("Waiting for snapshots in nodeset %s", nodeset)
+        msg = "Waiting for snapshots"
+        yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
+        yield SnapshotStatus(SnapshotStatus.Type.STARTED)
         while not done:
             wait_event.wait()
             wait_event.clear()
             done = True
             with self.createZKContext(provider_node._lock, log) as ctx:
-                for snapshot in wait_snapshots:
+                for snapshot in list(wait_snapshots):
                     snapshot.refresh(ctx)
                     if not snapshot.complete:
                         done = False
+                    else:
+                        wait_snapshots.remove(snapshot)
+                        msg = (f"Completed snapshot on {snapshot.node}, "
+                               f"external id {snapshot.external_id}")
+                        log.debug(msg)
+                        yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
         log.debug("Finished snapshots in nodeset %s", nodeset)
+        yield SnapshotStatus(SnapshotStatus.Type.MESSAGE, msg)
+        yield SnapshotStatus(SnapshotStatus.Type.COMPLETED)
+        return
 
     def addResources(self, target, source):
         for key, value in source.items():
@@ -330,8 +351,11 @@ class LauncherClient:
 
         failure = False
         for node_id in node_group['nodes']:
-            provider_node = self.getProviderNode(node_id)
-            if not provider_node:
+            try:
+                provider_node = self.getProviderNode(node_id)
+            except NoNodeError:
+                self.log.warning("Unable to find held provider node %s",
+                                 node_id)
                 continue
             if provider_node.state == provider_node.State.USED:
                 continue
@@ -373,3 +397,20 @@ class LauncherClient:
             )
         # Use default states
         return dict()
+
+    def setNextNodeState(self, node, next_state, cache=None):
+        if cache:
+            getNode = cache.getItem
+        else:
+            getNode = self.getProviderNode
+
+        if node.subnodes:
+            nodes = [getNode(n) for n in node.subnodes]
+        else:
+            nodes = [node]
+
+        with self.createZKContext(None, self.log) as ctx:
+            for n in nodes:
+                n.setNextState(ctx, next_state)
+
+        return nodes

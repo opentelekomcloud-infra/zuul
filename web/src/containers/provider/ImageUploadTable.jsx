@@ -31,10 +31,17 @@ import {
   TableBody,
   TableVariant,
 } from '@patternfly/react-table'
+import { Link } from 'react-router-dom'
 import { fetchImages } from '../../actions/images'
 import { fetchProviders } from '../../actions/providers'
 import { addNotification, addApiError } from '../../actions/notifications'
-import { deleteImageUpload, validateImageUpload } from '../../api'
+import {
+  deleteImageUpload,
+  retryImageUpload,
+  validateImageUpload,
+} from '../../api'
+import { isAuthorized } from '../../Misc'
+import moment_tz from 'moment-timezone'
 
 const STATE_STYLES = {
   ready: {
@@ -55,9 +62,11 @@ function ImageUploadTable(props) {
   const { build, uploads, fetching } = props
   const [showDeleteUploadModal, setShowDeleteUploadModal] = useState(false)
   const [showValidateUploadModal, setShowValidateUploadModal] = useState(false)
+  const [showRetryUploadModal, setShowRetryUploadModal] = useState(false)
   const [pendingActionRow, setPendingActionRow] = useState(null)
   const tenant = useSelector((state) => state.tenant)
   const user = useSelector((state) => state.user)
+  const timezone = useSelector((state) => state.timezone)
   const dispatch = useDispatch()
 
   const columns = [
@@ -92,22 +101,34 @@ function ImageUploadTable(props) {
   ]
 
   function createImageUploadRow(upload) {
+    // Only link to the build if it is in this tenant
+    const validatedState = upload.validated ? 'validated' : 'unvalidated'
+    const validatedText = (build.build_tenant && upload.build_uuid)?
+          <Link to={`${tenant.linkPrefix}/build/${upload.build_uuid}`}>
+            {validatedState}
+          </Link>
+          :
+          validatedState
     const state_style = STATE_STYLES[upload.state] || {}
     return {
       _uuid: upload.uuid,
+      _state: upload.state,
       canModify: build.build_tenant,
       cells: [
         {
           title: upload.uuid
         },
         {
-          title: upload.validated ? 'validated' : 'unvalidated'
+          title: validatedText
         },
         {
           title: <span style={state_style}>{upload.state}</span>
         },
         {
-          title: upload.state_time
+          title: moment_tz
+            .utc(build.state_time)
+            .tz(timezone)
+            .format('YYYY-MM-DD HH:mm:ss')
         },
         {
           title: upload.lock_holder
@@ -142,27 +163,38 @@ function ImageUploadTable(props) {
   }
 
   const actionResolver = (rowData) => {
-    if (rowData.canModify &&
-        user.isAdmin &&
-        user.scope.indexOf(tenant.name) !== -1) {
-      return [
-        {
+    const actions = []
+    if (rowData.canModify) {
+      if (isAuthorized(user, 'delete-image-upload')) {
+        actions.push({
           title: 'Delete upload',
           onClick: () => {
             setPendingActionRow(rowData)
             setShowDeleteUploadModal(true)
           }
-        },
-        {
+        })
+      }
+      if (isAuthorized(user, 'validate-image-upload')) {
+        actions.push({
           title: 'Validate upload',
           onClick: () => {
             setPendingActionRow(rowData)
             setShowValidateUploadModal(true)
           }
-        },
-      ]
+        })
+      }
+      if (isAuthorized(user, 'upload-image') &&
+          rowData._state === 'failed') {
+        actions.push({
+          title: 'Retry upload',
+          onClick: () => {
+            setPendingActionRow(rowData)
+            setShowRetryUploadModal(true)
+          }
+        })
+      }
     }
-    return []
+    return actions
   }
 
   function renderDeleteUploadModal() {
@@ -251,6 +283,49 @@ function ImageUploadTable(props) {
     )
   }
 
+  function renderRetryUploadModal() {
+    const title = 'Retry image upload'
+    return (
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={showRetryUploadModal}
+        title={title}
+        onClose={() => { setShowRetryUploadModal(false) }}
+        actions={[
+          <Button key="confirm" variant="primary"
+                  onClick={() => {
+                    setShowRetryUploadModal(false)
+                    retryImageUpload(tenant.apiPrefix,
+                                     pendingActionRow._uuid
+                                    ).then(() => {
+                      dispatch(addNotification(
+                        {
+                          text: 'Upload pending.',
+                          type: 'success',
+                          status: '',
+                          url: '',
+                        }))
+                      dispatch(fetchProviders(tenant))
+                      dispatch(fetchImages(tenant))
+                    })
+                      .catch(error => {
+                        dispatch(addApiError(error))
+                      })
+                  }}>
+            Confirm
+          </Button>,
+          <Button key="cancel" variant="link"
+                  onClick={() => {setShowRetryUploadModal(false) }}>
+            Cancel
+          </Button>,
+        ]}>
+        <p>
+          Please confirm that you want to validate this image upload.
+        </p>
+      </Modal>
+    )
+  }
+
   const haveUploads = uploads && uploads.length > 0
 
   let rows = []
@@ -291,6 +366,7 @@ function ImageUploadTable(props) {
       )}
       {renderDeleteUploadModal()}
       {renderValidateUploadModal()}
+      {renderRetryUploadModal()}
     </>
   )
 }

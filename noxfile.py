@@ -68,6 +68,11 @@ def cover(session):
 @nox.session(python='3')
 def docs(session):
     set_standard_env_vars(session)
+    # Setuptools 82.0.0 removed pkg_resources entirely. sphinxcontrib-openapi
+    # depends on pkg_resources and docs builds fail without this pin. We can
+    # remove the setuptools pin once sphinxcontrib-openapi drops the use of
+    # pkg_resources.
+    session.install('setuptools<82.0.0')
     session.install('-r', 'doc/requirements.txt',
                     '-r', 'test-requirements.txt')
     session.install('-e', '.')

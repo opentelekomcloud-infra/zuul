@@ -123,12 +123,8 @@ class AutoholdPage extends React.Component {
     )
 
     const node_expiration = (autohold.node_expiration === 0) ? 'Indefinitely' : moment.duration(autohold.node_expiration, 'seconds').humanize()
-    console.log(autohold.expired)
     const elapsed = autohold.expired ? (Date.now() / 1000 - autohold.expired) : false
-    console.log(elapsed)
     const timeToDeletion = autohold.node_expiration + EXPIRED_HOLD_REQUEST_TTL - elapsed
-    console.log(timeToDeletion)
-
 
     let deletionInfo, deletionInfoMsg
     if (autohold.node_expiration !== 0 && elapsed) {

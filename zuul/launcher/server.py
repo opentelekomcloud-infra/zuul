@@ -1,5 +1,5 @@
 # Copyright 2024 BMW Group
-# Copyright 2024-2025 Acme Gating, LLC
+# Copyright 2024-2026 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -1299,7 +1299,6 @@ class Launcher:
                     raise
             if updated:
                 self.checkOldImages()
-                self.checkMissingImages()
                 self.checkMissingUploads()
         if self.image_updated_event.is_set():
             self.checkOldImages()
@@ -1428,8 +1427,8 @@ class Launcher:
                 # Double check if it's still available
                 if (node.request_id or
                     node.state not in node.ASSIGNABLE_STATES):
-                    request_unassigned_nodes.getNode(node)
-                    unassigned_nodes.getNode(node)
+                    request_unassigned_nodes.removeNode(node)
+                    unassigned_nodes.removeNode(node)
                     continue
                 nearest_lock = (
                     lock_node and node._lock or request._lock
@@ -1451,7 +1450,7 @@ class Launcher:
                 return node
             except Exception:
                 log.exception(
-                    "Faild to assign unassigned node %s", node)
+                    "Failed to assign unassigned node %s", node)
                 continue
             finally:
                 if lock_node:
@@ -1485,7 +1484,7 @@ class Launcher:
                     if not bool(request.provider_node_data):
                         try:
                             has_quota = self.doesProviderHaveQuotaForLabel(
-                                provider, label, messages)
+                                request.tenant_name, provider, label, messages)
                         except Exception:
                             self.log.exception(
                                 "Error checking quota for label %s "
@@ -1604,7 +1603,8 @@ class Launcher:
                 # larger than the capacity.
                 try:
                     if not self.doesProviderHaveQuotaForLabel(
-                            provider, label, messages, include_usage=False):
+                            request.tenant_name, provider, label, messages,
+                            include_usage=False):
                         continue
                 except Exception:
                     self.log.exception(
@@ -1964,6 +1964,21 @@ class Launcher:
                     self.api.requests_cache.waitForSync()
                     request = self.api.getNodesetRequest(node.request_id)
 
+        # TODO: use these below
+        # missing_request = node.request_id and not request
+        # no_request = not node.request_id
+        active_request = node.request_id and request
+
+        # A user has requested to move the node to a new state
+        if node.next_state and not active_request:
+            state = node.next_state
+            log.debug("Marking node %s as %s", node, state)
+            with self.createZKContext(node._lock, self.log) as ctx:
+                with node.activeContext(ctx):
+                    node.setState(state)
+                node.unassign(ctx)
+                node.clearNextState(ctx)
+
         # Mark outdated nodes w/o a request for cleanup when ...
         if not request and (
                 # ... it expired
@@ -1987,8 +2002,7 @@ class Launcher:
                 node.unassign(ctx)
 
         # Recycle a node if the label allows reuse
-        elif (node.request_id and not request
-                and node.state == node.State.USED):
+        elif node.state == node.State.USED:
             if provider := self._getProviderForNode(node):
                 if label := provider.labels.get(node.label):
                     if self._canReuseNode(provider, node, label):
@@ -2031,7 +2045,10 @@ class Launcher:
                     log.exception("Error in node cleanup")
                     self.wake_event.set()
 
-        if node.state == model.ProviderNode.State.READY:
+        if node.state in (
+                model.ProviderNode.State.READY,
+                model.ProviderNode.State.HOLD,
+        ):
             with self.createZKContext(None, self.log) as ctx:
                 node.releaseLock(ctx)
 
@@ -2061,13 +2078,20 @@ class Launcher:
         if node.state in node.LAUNCHER_STATES:
             return True
 
+        request = self.api.getNodesetRequest(node.request_id)
+        active_request = node.request_id and request
+
+        if node.next_state and not active_request:
+            # An unlocked node that should be moved to a new state
+            return True
+
         if node.state == node.State.HOLD:
             if node.hasHoldExpired():
                 return True
             return False
 
         if node.request_id:
-            request_exists = bool(self.api.getNodesetRequest(node.request_id))
+            request_exists = bool(request)
             return not request_exists
         elif node.hasExpired():
             return True
@@ -2257,6 +2281,7 @@ class Launcher:
                     if main_node and main_node.state == main_node.State.FAILED:
                         raise Exception("Main node is failed")
                     done = self._checkNodescanRequest(node, log)
+                    state = node.State.READY
                 except Exception:
                     state = node.State.FAILED
                     log.exception("Marking node %s as %s", node, state)
@@ -2274,7 +2299,6 @@ class Launcher:
                     self.wake_event.set()
                     return
 
-                state = node.State.READY
                 log.debug("Marking node %s as %s for reuse",
                           node, state)
                 node.unassign(ctx)
@@ -2828,17 +2852,6 @@ class Launcher:
                 self.local_layout_state.pop(tenant_name, None)
         return updated
 
-    def addImageBuildEvent(self, tenant_name, project_canonical_name,
-                           branch, image_names):
-        project_hostname, project_name = \
-            project_canonical_name.split('/', 1)
-        driver = self.connections.drivers['zuul']
-        event = driver.getImageBuildEvent(
-            list(image_names), project_hostname, project_name, branch)
-        self.log.info("Submitting image build event for %s %s",
-                      tenant_name, image_names)
-        self.trigger_events[tenant_name].put(event.trigger_name, event)
-
     def addImageValidateEvent(self, image_upload):
         iba = self.image_build_registry.getItem(image_upload.artifact_uuid)
         project_hostname, project_name = \
@@ -2886,22 +2899,6 @@ class Launcher:
             if done:
                 return
             time.sleep(1)
-
-    def checkMissingImages(self):
-        self.log.debug("Checking for missing images")
-        self._waitForStableImageRegistry()
-        for tenant_name, providers in self.tenant_providers.items():
-            images_by_project_branch = {}
-            for provider in providers:
-                for image in provider.images.values():
-                    if image.type == 'zuul':
-                        self.checkMissingImage(tenant_name, image,
-                                               images_by_project_branch)
-            for ((project_canonical_name, branch), image_names) in \
-                images_by_project_branch.items():
-                self.addImageBuildEvent(tenant_name, project_canonical_name,
-                                        branch, image_names)
-        self.log.debug("Done checking for missing images")
 
     def checkMissingImage(self, tenant_name, image, images_by_project_branch):
         # If there is already a successful build for
@@ -3009,12 +3006,12 @@ class Launcher:
                 upload.validated and
                 upload.external_id)
         ]
-        # Keep the 2 most recent validated uploads (uploads are
+        # Keep the most recent validated uploads (uploads are
         # already sorted by timestamp)
-        newest_valid_uploads = valid_uploads[-2:]
+        newest_valid_uploads = valid_uploads[-image.retain_count:]
         keep_uploads.update(set(newest_valid_uploads))
-        # And also keep any uploads (regardless of validation) newer
-        # than that (since they may have validation jobs running).
+        # And also keep uploads (regardless of validation) newer than
+        # that (since they may have validation jobs running).
         if newest_valid_uploads:
             oldest_good_timestamp = newest_valid_uploads[0].timestamp
         else:
@@ -3024,6 +3021,10 @@ class Launcher:
             if (upload.isPermittedForProvider(image, provider) and
                 upload.timestamp > oldest_good_timestamp)
         ]
+        # But only keep the same number of unvalidated uploads as
+        # validated ones, so that if a validation job is continuously
+        # failing, we don't store unlimited images.
+        new_uploads = new_uploads[-image.retain_count:]
         keep_uploads.update(set(new_uploads))
 
     def checkMissingUploads(self):
@@ -3133,9 +3134,11 @@ class Launcher:
         else:
             valid_uploads = [
                 upload for upload in uploads
-                if (upload.isPermittedForProvider(image, provider) and
+                if (upload.state == upload.State.READY and
                     upload.validated and
-                    upload.external_id)
+                    upload.external_id and
+                    upload.isPermittedForProvider(image, provider))
+
             ]
         if not valid_uploads:
             raise Exception("No image found")
@@ -3239,8 +3242,31 @@ class Launcher:
             pct = round(pct, 1)
         return pct
 
-    def doesProviderHaveQuotaForLabel(self, provider, label, messages,
-                                      include_usage=True):
+    def doesTenantHaveQuotaForLabel(self, tenant_name, label, messages):
+        # This is a simplified quota calculation because we are only
+        # concerned with instances(nodes).  The node cache keeps track
+        # of node usage by either tenant (if the node is assigned to a
+        # request) or provider if it's unassigned.  The method we call
+        # returns the sum of the nodes for all the providers we pass
+        # in as well as the tenant.  Together, that constitutes the
+        # "usage" of these nodes for this tenant.  This includes
+        # requested nodes, since the only time this is called is in
+        # the context of getting current usage (not in the context of
+        # determining general cloud capacity).
+        if label.max_nodes is None:
+            return True
+        providers = self.tenant_providers[tenant_name]
+        node_limit = label.max_nodes
+        node_usage = self.api.nodes_cache.getNodeCount(
+            tenant_name, providers, label)
+        messages.append(f"Label {label} node usage: {node_usage} "
+                        f"limit: {node_limit}")
+        if node_usage < node_limit:
+            return True
+        return False
+
+    def doesProviderHaveQuotaForLabel(self, tenant_name, provider, label,
+                                      messages, include_usage=True):
         if include_usage:
             # When include_usage is True, we include requested nodes here
             # because this is called to decide whether to add a new request
@@ -3268,6 +3294,12 @@ class Launcher:
         total.subtract(label_quota)
         messages.append(
             f"Label {label} required quota: {label_quota}")
+
+        if include_usage:
+            if not self.doesTenantHaveQuotaForLabel(
+                    tenant_name, label, messages):
+                return False
+
         return total.nonNegative()
 
     def doesProviderHaveQuotaForNode(self, provider, node, messages):
@@ -3354,7 +3386,7 @@ class Launcher:
                     f'zuul.provider.{safe_pname}.limit.{safe_res}',
                     value)
             usage = self.api.nodes_cache.getQuota(provider).getResources()
-            for res, value in usage.items():
+            for res, value in list(usage.items()):
                 safe_res = _normalize_statsd_name(res)
                 self.statsd.gauge(
                     f'zuul.provider.{safe_pname}.usage.{safe_res}',
@@ -3395,8 +3427,10 @@ class Launcher:
         for image_cname, uploads in uploads_by_image.items():
             upload_states_by_endpoint = collections.defaultdict(
                 collections.Counter)
-            upload_states_by_endpoint[upload.endpoint_name].update(
-                u.state for u in uploads)
+
+            for upload in uploads:
+                upload_states_by_endpoint[upload.endpoint_name][
+                    upload.state] += 1
 
             for endpoint_name, state_counter in (
                     upload_states_by_endpoint.items()):

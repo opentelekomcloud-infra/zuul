@@ -33,19 +33,16 @@ ws4py
 routes
 jsonpath-rw
 urllib3!=1.25.4,!=1.25.5  # https://github.com/urllib3/urllib3/pull/1684
-cheroot<11.0.0 # https://github.com/cherrypy/cheroot/issues/769
+cheroot
 elasticsearch<8.0.0
 PyMySQL
 psycopg2-binary
 opentelemetry-sdk>=1.25.0
-# TODO: remove grpcio pinning below; 1.71.0rc2 is messing with pip installing opentelemetry-exporter-otlp-proto-grpc
-grpcio==1.69.0
 opentelemetry-exporter-otlp-proto-grpc>=1.25.0
 opentelemetry-exporter-otlp-proto-http>=1.25.0
-# TODO: remove version pin; 2.8.1 cannot build wheel in opendev
-confluent-kafka<2.8.1
-# TODO: pinned due to https://github.com/googleapis/python-api-core/issues/848
-google-api-core<2.28.0
+mmh3
+confluent-kafka
+google-api-core
 google-cloud-pubsub
 # For openstack driver
 openstacksdk>=0.103.0,!=2.0.0
@@ -53,11 +50,4 @@ rackspaceauth
 # For openshift driver
 openshift
 # For AWS driver
-boto3>=1.20.0
-# For gcloud driver
-google-api-python-client
-# For ibmvpc driver
-ibm-vpc
-ibm-platform-services
-ibm-cos-sdk>=2.11.0
-mmh3
+boto3>=1.42.48

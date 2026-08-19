@@ -215,7 +215,7 @@ export default function LogFile({
                       </td>
                       <td>
                         <span
-                          className={`log-message zuul-log-sev-${
+                          className={`zuul-log-message zuul-log-sev-${
                             line.severity || 0
                           }`}
                         >

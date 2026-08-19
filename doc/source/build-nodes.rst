@@ -1,28 +1,26 @@
-:orphan:
+:title: Build Nodes
 
-:title: Test Workers
+.. _build_nodes:
 
-.. _workers:
-
-Test Workers
-============
+Build Nodes
+===========
 
 .. note:: Zuul previously used a companion program, Nodepool, to
-          manage test workers.  Nodepool is deprecated and its usage
+          manage build nodes.  Nodepool is deprecated and its usage
           should be replaced by the system described here.
 
-Zuul manages test resources (such as virtual machines from a cloud,
-Kubernetes pods, or static hosts), also known as `nodes`, using the
-same configuration system used for jobs and pipelines.  Because Zuul
-is interacting with remote systems and causing real resource usage
-(which may come at a cost), there are some differences, but most of
-the configuration is contained in git repositories and control of this
-configuration can be retained by the administrators of a Zuul system
-or delegated to its users.
+Zuul manages resources for builds (such as virtual machines from a
+cloud, Kubernetes pods, or static hosts), known as `build nodes` or
+simply `nodes`, using the same configuration system used for jobs and
+pipelines.  Because Zuul is interacting with remote systems and
+causing real resource usage (which may come at a cost), there are some
+differences, but most of the configuration is contained in git
+repositories and control of this configuration can be retained by the
+administrators of a Zuul system or delegated to its users.
 
 Zuul has a dedicated component, the `zuul-launcher` which manages the
-lifecycle of test worker nodes.  Additionally, it can manage the
-building of custom virtual machine images that are used for them.
+lifecycle of build nodes.  Additionally, it can manage the building of
+custom virtual machine images that are used for them.
 
 There are a number of Zuul configuration objects that are related to
 node and image management:
@@ -35,13 +33,12 @@ node and image management:
 
 The :ref:`provider` object is the main configuration object related
 node and image management.  It may represent a Kubernetes cluster, or
-a region of a cloud, or a collection of static test nodes, any of
-which are made available to a tenant.  If you use more than one cloud,
-or region of a cloud, you will have at least one provider for each
-cloud or region.  If you have tenants which should share a cloud
-region, then you may put that provider in both tenants.  If they
-should not share cloud resources, then you may create a unique
-provider in each tenant.
+a region of a cloud, or a collection of static nodes, any of which are
+made available to a tenant.  If you use more than one cloud, or region
+of a cloud, you will have at least one provider for each cloud or
+region.  If you have tenants which should share a cloud region, then
+you may put that provider in both tenants.  If they should not share
+cloud resources, then you may create a unique provider in each tenant.
 
 The :ref:`section` object is a flexible system of configuration
 related to providers to facilitate all of these different options.  A
@@ -165,14 +162,14 @@ missing image is:
           - event: image-build
 
 To tell Zuul a job is an image build job, use the
-:attr:`job.image-name` attribute to indicate to Zuul that job is used
-to build an image with that name.  The name must match a :ref:`image`
-object, and the job must be defined in the same repository as the
-image object.  The job is responsible for building the image and
-uploading it to an object storage system.  It must return information
-about where the image is stored using :ref:`return_values`.  Here is
-an example `zuul_return` stanza showing the expected information for a
-qcow2 image:
+:attr:`job.image-build-name` attribute to indicate to Zuul that job is
+used to build an image with that name.  The name must match a
+:ref:`image` object, and the job must be defined in the same
+repository as the image object.  The job is responsible for building
+the image and uploading it to an object storage system.  It must
+return information about where the image is stored using
+:ref:`return_values`.  Here is an example `zuul_return` stanza showing
+the expected information for a qcow2 image:
 
 .. code-block:: yaml
 

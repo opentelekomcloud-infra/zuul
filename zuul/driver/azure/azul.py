@@ -117,15 +117,15 @@ class AzureCRUD:
             endpoint = ''
         else:
             endpoint = '/' + endpoint
-        url = (self.base_subscription_url + self.base_url + endpoint
-               + '?api-version={apiVersion}')
+        url = (self.base_subscription_url + self.base_url + endpoint)
         args = self.args.copy()
         args.update(kw)
         return url.format(**args)
 
     def url(self, endpoint=None, **kw):
         path = self.id(endpoint, **kw)
-        return 'https://management.azure.com' + path
+        query = path + '?api-version={apiVersion}'.format(**self.args)
+        return 'https://management.azure.com' + query
 
     def id_url(self, url, **kw):
         base_url = 'https://management.azure.com'

@@ -244,6 +244,39 @@ Here is an example of two job definitions:
          were declared with a dependency on this job using
          :attr:`job.dependencies`.
 
+      .. value:: reporter
+
+         An reporter job is run after all other jobs in the buildset
+         have completed, and after all pipeline reporters have
+         reported.  It only runs if the buildset is successful and no
+         errors were encountered by the pipeline reporters.  Because
+         of this, its results may not be used to influence the result
+         of a buildset, or whether a change is merged.  In the case of
+         a change that is merged (for example, in a :term:`gate`
+         pipeline), the reporter job runs after the merge is complete.
+
+         If a reporter job runs after a change is merged, the job
+         variable :var:`zuul.buildset_refs.merge_commit_id` is
+         available with information about the merged commit id.
+
+         A reporter job may be used to synchronously update external
+         references to git repositories that are gated by Zuul.
+
+         While a reporter job is running, no action is taken for other
+         items in the pipeline's shared queue.  It is recommended that
+         reporter jobs run only on the executor and complete quickly
+         in order to minimize delays.
+
+         If a reporter job fails, any changes in the pipeline behind
+         it will be reset and their jobs restarted with the current
+         state of all relevant repositories.
+
+         Normally, reporter jobs may only be attached to a
+         project-pipeline within a config-project.  To allow an
+         untrusted project to add its own reporter jobs, see the
+         :attr:`tenant.untrusted-projects.<project>.allow-reporter-jobs`
+         tenant configuration option.
+
    .. attr:: attribute-control
 
       Individual attributes may be set to final so that any attempt to
@@ -270,6 +303,8 @@ Here is an example of two job definitions:
         * files
         * irrelevant-files
         * required-projects
+        * include-projects
+        * exclude-projects
         * vars
         * extra-vars
         * host-vars
@@ -952,6 +987,108 @@ Here is an example of two job definitions:
          when collecting any jobs to run which are defined in this
          project.
 
+   .. attr:: include-projects
+      :default: null
+
+      A list of projects that should be included when preparing the
+      workspace for this job.  Any projects that are required for
+      playbooks, roles, include-vars, or required-projects will be
+      present and prepared regardless.  This may only be used to
+      filter projects that would otherwise already be present in the
+      workspace for other reasons.  That includes projects for changes
+      related to any items ahead in the queue, dependencies of those
+      changes, and also the changes under test for the current queue
+      item, and any required projects for the job.
+
+      Note that `include-projects` alone is not sufficient to cause a
+      project to be prepared in the workspace.  It must be selected
+      due to one of the preceding reasons.  See
+      :attr:`job.required-projects` to force a project to appear in
+      the workspace.
+
+      This feature may be useful for jobs which are known to interact
+      with a known set of repositories (or even no repositories).
+      Such jobs may be able to run faster if only the necessary
+      projects are prepared in the workspace.
+
+      The default value of ``null`` indicates no filtering is to be
+      performed.
+
+      Supports override control.  The default is ``!inherit``: values
+      are merged without duplication.
+
+      The items in the list may either be a string, in which case they
+      are interpreted as the name of a project, or a dictionary with
+      the following form:
+
+      .. attr:: type
+
+         The type of entry.  May be one of the following values:
+
+         .. attr:: name
+
+            The entry is the name of a project (equivalent to a bare
+            string).  If this entry is supplied, the ``name`` key in the
+            dictionary must also be present.
+
+         .. attr:: change
+
+            The entry matches the project of the current change under test.
+
+         .. attr:: item
+
+            The entry matches any project in the current queue item.
+
+      .. attr:: name
+
+         Only used with the ``name`` type, this string is the name of
+         the project to match.
+
+   .. attr:: exclude-projects
+      :default: null
+
+      A list of projects that should be excluded when preparing the
+      workspace for this job.
+
+      See :attr:`job.include-projects` for a general description of
+      the feature.
+
+      This filter is applied after :attr:`job.include-projects`, so it
+      may further refine a list of projects.
+
+      The default value of ``null`` indicates no filtering is to be
+      performed.
+
+      Supports override control.  The default is ``!inherit``: values
+      are merged without duplication.
+
+      The items in the list may either be a string, in which case they
+      are interpreted as the name of a project, or a dictionary with
+      the following form:
+
+      .. attr:: type
+
+         The type of entry.  May be one of the following values:
+
+         .. attr:: name
+
+            The entry is the name of a project (equivalent to a bare
+            string).  If this entry is supplied, the ``name`` key in the
+            dictionary must also be present.
+
+         .. attr:: change
+
+            The entry matches the project of the current change under test.
+
+         .. attr:: item
+
+            The entry matches any project in the current queue item.
+
+      .. attr:: name
+
+         Only used with the ``name`` type, this string is the name of
+         the project to match.
+
    .. attr:: vars
 
       A dictionary of variables to supply to Ansible.
@@ -1402,9 +1539,10 @@ Here is an example of two job definitions:
       Whether to perform a full checkout of projects in the workspace.
 
       This only applies to the workspace on the executor.  Most Zuul
-      jobs copy repositories to remote worker nodes and independently
-      checkout the appropriate refs.  Changing this setting should
-      typically not affect the contents on remote nodes.
+      jobs copy repositories to remote :ref:`build_nodes` and
+      independently checkout the appropriate refs.  Changing this
+      setting should typically not affect the contents on remote
+      nodes.
 
       Setting this option may be useful to save time or space when
       preparing large repositories which are not expected to be used
@@ -1477,7 +1615,7 @@ Here is an example of two job definitions:
          This scheme will produce unique workspace paths for every repository
          and won't cause collisions.
 
-   .. attr:: image-name
+   .. attr:: image-build-name
       :type: str
 
       If this is an image build job (see :ref:`image-creation`), set

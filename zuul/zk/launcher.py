@@ -24,11 +24,12 @@ from zuul.model import (
     NodesetRequest,
     ProviderNode,
     ProviderNodeAssignment,
+    ProviderNodeLifecycle,
     ProviderNodeSnapshot,
     QuotaInformation,
 )
 from zuul.zk.cache import ZuulTreeCache
-from zuul.zk.zkobject import ZKContext
+from zuul.zk.zkobject import ZKContext, ExpandableZKObject
 
 
 def _dictToBytes(data):
@@ -51,6 +52,9 @@ class LockableZKObjectCache(ZuulTreeCache):
         self.items_path = items_path
         self.locks_path = locks_path
         self.zkobject_class = zkobject_class
+        self._object_shards = {}
+        self.expandable_zkobject = issubclass(self.zkobject_class,
+                                              ExpandableZKObject)
         super().__init__(zk_client, root)
 
     def _parsePath(self, path):
@@ -67,22 +71,34 @@ class LockableZKObjectCache(ZuulTreeCache):
     def parsePath(self, path):
         key = None
         fetch = False
+        if self.expandable_zkobject:
+            shard_index = 0
+        else:
+            shard_index = None
         parts = self._parsePath(path)
         if parts is None:
-            return (key, fetch)
+            return (key, fetch, shard_index)
         if len(parts) < 2:
-            return (key, fetch)
+            return (key, fetch, shard_index)
 
-        object_type, item_uuid, *_ = parts
+        object_type, item_uuid, *rest = parts
         if object_type == self.items_path:
-            key = (item_uuid,)
             fetch = True
+            if not rest:
+                key = (item_uuid,)
+            elif self.expandable_zkobject and len(rest) == 1:
+                if len(rest[0]) == 10:
+                    try:
+                        shard_index = int(rest[0])
+                        key = (item_uuid,)
+                    except ValueError:
+                        pass
         elif object_type == self.locks_path:
             key = None
             if len(parts) == 3:
                 fetch = True
 
-        return (key, fetch)
+        return (key, fetch, shard_index)
 
     def preCacheHook(self, event, exists, data=None, stat=None):
         parts = self._parsePath(event.path)
@@ -135,6 +151,24 @@ class LockableZKObjectCache(ZuulTreeCache):
         if self.updated_event:
             self.updated_event()
 
+    def manageShard(self, key, data, shard_index):
+        if shard_index is None:
+            return data
+        # If this is the first shard, empty the list (in case we were
+        # interrupted previously.
+        if shard_index == 0:
+            metadata, data = self.zkobject_class.getZKObjectMetadata(data)
+            self._object_shards[key] = [
+                None for x in range(metadata.max_shard + 1)
+            ]
+        self._object_shards[key][shard_index] = data
+        if all(x is not None for x in self._object_shards[key]):
+            # We have all the shards
+            data = b''.join(self._object_shards[key])
+            del self._object_shards[key]
+            return data
+        return None
+
     def objectFromRaw(self, key, data, zstat):
         return self.zkobject_class._fromRaw(
             self._zk_context, data, zstat, None)
@@ -145,6 +179,11 @@ class LockableZKObjectCache(ZuulTreeCache):
     def getItem(self, item_id):
         self.ensureReady()
         return self._cached_objects.get((item_id,))
+
+    def setItem(self, item_id, item):
+        # Insert the item in the cache if it does not exist already.
+        self.ensureReady()
+        return self._cached_objects.setdefault((item_id,), item)
 
     def getItems(self):
         # get a copy of the values view to avoid runtime errors in the event
@@ -181,10 +220,15 @@ class RequestCache(LockableZKObjectCache):
         elif data is not None:
             request._revision._updateFromRaw(
                 self._zk_context, data, stat, None)
-            return self.STOP_OBJECT_UPDATE
 
 
 class NodeCache(LockableZKObjectCache):
+    class NodeCountRecord:
+        def __init__(self):
+            self.tenant = None
+            self.provider = None
+            self.label = None
+
     def __init__(self, *args, **kw):
         # The states we're interested in
         self._quota_states_used = ProviderNode.ALLOCATED_STATES
@@ -199,6 +243,19 @@ class NodeCache(LockableZKObjectCache):
             lambda: QuotaInformation())
         self._provider_quota_requested = collections.defaultdict(
             lambda: QuotaInformation())
+
+        # The following dicts account for nodes that are allocated to
+        # tenants, or unallocated nodes attached to providers.  A
+        # given node should be accounted for in exactly one of these
+        # dicts: the tenant dict if it's assigned to a request, or the
+        # provider dict if not.
+        # (provider, label) -> number of nodes
+        self._provider_label_nodes_used = collections.defaultdict(
+            lambda: 0)
+        # (tenant, label) -> number of nodes
+        self._tenant_label_nodes_used = collections.defaultdict(
+            lambda: 0)
+        self._label_count_cache = {}
         super().__init__(*args, **kw)
 
     def _handleQuota(self, quota_states, quota_cache, provider_cache,
@@ -225,6 +282,49 @@ class NodeCache(LockableZKObjectCache):
             else:
                 quota_cache[key] = new_quota
 
+    def _handleLabelCount(self, key, obj):
+        # key -> [tenant, provider]
+        quota_states = self._quota_states_requested
+        tenant = None
+        provider = None
+        label = None
+        if obj and obj.state in quota_states and key in self._cached_objects:
+            tenant = obj.tenant_name
+            if tenant is None:
+                # A node counts toward a tenant or provider, not both
+                provider = obj.provider
+            label = obj.label
+
+        # Have we previously counted this object?
+        record = self._label_count_cache.get(key)
+        if record is None:
+            record = self.NodeCountRecord()
+
+        if record.tenant is not None and tenant is None:
+            # We should decrement the tenant counter
+            self._tenant_label_nodes_used[
+                (record.tenant, record.label)] -= 1
+        if record.tenant is None and tenant is not None:
+            # We should increment the tenant counter
+            self._tenant_label_nodes_used[
+                (tenant, label)] += 1
+        if record.provider is not None and provider is None:
+            # We should decrement the provider counter
+            self._provider_label_nodes_used[
+                (record.provider, record.label)] -= 1
+        if record.provider is None and provider is not None:
+            # We should increment the provider counter
+            self._provider_label_nodes_used[
+                (provider, label)] += 1
+
+        if label:
+            record.tenant = tenant
+            record.provider = provider
+            record.label = label
+            self._label_count_cache[key] = record
+        else:
+            self._label_count_cache.pop(key, None)
+
     def preCacheHook(self, event, exists, data=None, stat=None):
         parts = self._parsePath(event.path)
         if parts is None:
@@ -235,24 +335,41 @@ class NodeCache(LockableZKObjectCache):
         # (<self.items_path>, <uuid>, snapshot,)
         # (<self.items_path>, <uuid>, snapshot-lock,)
         # (<self.items_path>, <uuid>, assignment,)
+        # (<self.items_path>, <uuid>, lifecycle,)
         if len(parts) >= 3:
             # Ignore anything related to snapshots
             if (parts[0] == ProviderNode.NODES_PATH and
                 parts[2] in (ProviderNodeSnapshot.SNAPSHOT_PATH,
                              ProviderNodeSnapshot.SNAPSHOT_LOCK_PATH)):
-                return self.STOP_OBJECT_UPDATE
+                return
             if (parts[0] == ProviderNode.NODES_PATH and
                 parts[2] == ProviderNodeAssignment.ASSIGNMENT_PATH):
                 key = (parts[1],)
                 node = self._cached_objects.get(key)
                 if not node:
+                    self._handleLabelCount(key, node)
                     return
                 if exists:
                     node.assignment._updateFromRaw(
                         self._zk_context, data, stat, None)
                 else:
                     node.assignment._clear()
-                return self.STOP_OBJECT_UPDATE
+                self._handleLabelCount(key, node)
+                return
+            if (parts[0] == ProviderNode.NODES_PATH and
+                parts[2] == ProviderNodeLifecycle.LIFECYCLE_PATH):
+                key = (parts[1],)
+                node = self._cached_objects.get(key)
+                if not node:
+                    return
+                if exists:
+                    node.lifecycle._updateFromRaw(
+                        self._zk_context, data, stat, None)
+                else:
+                    node.lifecycle._clear()
+                if self.updated_event:
+                    self.updated_event()
+                return
         return super().preCacheHook(event, exists, data, stat)
 
     def postCacheHook(self, event, data, stat, key, obj):
@@ -266,6 +383,7 @@ class NodeCache(LockableZKObjectCache):
             self._cached_quota_requested,
             self._provider_quota_requested,
             event, data, stat, key, obj)
+        self._handleLabelCount(key, obj)
         super().postCacheHook(event, data, stat, key, obj)
 
     def getQuota(self, provider, include_requested=False):
@@ -273,6 +391,14 @@ class NodeCache(LockableZKObjectCache):
             return self._provider_quota_requested[provider.canonical_name]
         else:
             return self._provider_quota_used[provider.canonical_name]
+
+    def getNodeCount(self, tenant_name, providers, label):
+        count = 0
+        count += self._tenant_label_nodes_used[(tenant_name, label.name)]
+        for provider in providers:
+            count += self._provider_label_nodes_used[
+                (provider.canonical_name, label.name)]
+        return count
 
 
 class LauncherApi:

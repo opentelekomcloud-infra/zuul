@@ -1,5 +1,5 @@
 # Copyright (c) 2017 Red Hat
-# Copyright 2021-2025 Acme Gating, LLC
+# Copyright 2021-2026 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -82,6 +82,7 @@ from zuul.zk.event_queues import (
     PipelineTriggerEventQueue,
     TENANT_EVENT_STATE,
 )
+from zuul.zk.exceptions import LockException
 from zuul.zk.executor import ExecutorApi
 from zuul.zk.image_registry import (
     ImageBuildRegistry,
@@ -211,6 +212,7 @@ class BuildConverter:
     # A class to encapsulate the conversion of database Build objects to
     # API output.
     def toDict(build, buildset=None, skip_refs=False):
+        execute_time = _datetimeToString(build.execute_time)
         start_time = _datetimeToString(build.start_time)
         end_time = _datetimeToString(build.end_time)
         if build.start_time and build.end_time:
@@ -225,6 +227,7 @@ class BuildConverter:
             'job_name': build.job_name,
             'result': build.result,
             'held': build.held,
+            'execute_time': execute_time,
             'start_time': start_time,
             'end_time': end_time,
             'duration': duration,
@@ -278,6 +281,7 @@ class BuildConverter:
             'job_name': str,
             'result': str,
             'held': str,
+            'execute_time': str,
             'start_time': str,
             'end_time': str,
             'duration': str,
@@ -475,6 +479,7 @@ class ImageUploadConverter:
             'external_id': upload.external_id,
             'timestamp': timestamp,
             'validated': upload.validated,
+            'build_uuid': upload.build_uuid,
             'state': upload.state,
             'state_time': state_time,
             'is_locked': upload.is_locked,
@@ -492,6 +497,7 @@ class ImageUploadConverter:
             'external_id': str,
             'timestamp': str,
             'validated': str,
+            'build_uuid': str,
             'state': str,
             'state_time': str,
             'is_locked': bool,
@@ -647,6 +653,7 @@ class ProviderNodeConverter:
             'external_id': None,
             'state': node.state,
             'state_time': state_time,
+            'next_state': node.next_state,
             'comment': getattr(node, 'comment', None),
             'max_ready_age': node.max_ready_age,
             'max_age': node.max_age,
@@ -682,6 +689,7 @@ class ProviderNodeConverter:
             'external_id': str,
             'state': str,
             'state_time': str,
+            'next_state': str,
             'comment': str,
             'max_ready_age': int,
             'max_age': int,
@@ -907,9 +915,10 @@ def openapi_response(
 
 
 class AuthInfo:
-    def __init__(self, uid, admin):
+    def __init__(self, uid, admin, claims):
         self.uid = uid
         self.admin = admin
+        self.claims = claims
 
 
 class AuthContext:
@@ -923,24 +932,35 @@ class AuthContext:
         this resource
     :param bool require_auth: Whether authenticated access is required for
         this resource
+    :param str permission: Which role permissions is required to access
+        this resource
     """
 
-    def __init__(self, tenant=None, require_admin=None, require_auth=None):
+    def __init__(self, tenant=None, require_admin=None, require_auth=None,
+                 permission=None):
         request = cherrypy.serving.request
         zuulweb = request.app.root.zuulweb
         if require_admin:
             require_auth = True
 
         if tenant:
-            if not require_auth and tenant.access_rules:
+            if not require_auth and not tenant.anonymous_read_access:
+                # This tenant requires auth for read-only access
+                require_auth = True
+            elif not require_auth and tenant.access_rules:
                 # This tenant requires auth for read-only access
                 require_auth = True
         else:
-            if not require_auth and zuulweb.abide.api_root.access_rules:
+            anon_read_access = zuulweb.abide.api_root.anonymous_read_access
+            if not require_auth and not anon_read_access:
+                # The API root requires auth for read-only access
+                require_auth = True
+            elif not require_auth and zuulweb.abide.api_root.access_rules:
                 # The API root requires auth for read-only access
                 require_auth = True
         self.require_admin = require_admin
         self.require_auth = require_auth
+        self.permission = permission
         self.headers = request.headers
         self.tenant = tenant
         self.zuulweb = zuulweb
@@ -971,12 +991,14 @@ class AuthContext:
                 raise
             return None
 
-        access, admin = self.zuulweb.api._isAuthorized(self.tenant, claims)
+        access, admin = self.zuulweb.api._isAuthorized(self.tenant,
+                                                       claims,
+                                                       self.permission)
         if ((self.require_auth and not access) or
             (self.require_admin and not admin)):
             raise APIError(403)
 
-        return AuthInfo(claims['__zuul_uid_claim'], admin)
+        return AuthInfo(claims['__zuul_uid_claim'], admin, claims)
 
     def _getTokenFromHeader(self):
         """Make sure protected endpoints have a Authorization header with the
@@ -1044,10 +1066,10 @@ def check_tenant_auth(**kw):
     request.params['auth'] = auth_context.validate()
 
 
-cherrypy.tools.check_root_auth = cherrypy.Tool('on_start_resource',
+cherrypy.tools.check_root_auth = cherrypy.Tool('before_handler',
                                                check_root_auth,
                                                priority=90)
-cherrypy.tools.check_tenant_auth = cherrypy.Tool('on_start_resource',
+cherrypy.tools.check_tenant_auth = cherrypy.Tool('before_handler',
                                                  check_tenant_auth,
                                                  priority=90)
 
@@ -1326,7 +1348,7 @@ class ZuulWebOIDC(object):
 
         return {
             "issuer": web_root,
-            "jwks_uri": f"{web_root}/oidc/.well-known/jwks",
+            "jwks_uri": f"{web_root}/oidc/jwks",
             "claims_supported": [
                 "aud", "iat", "iss", "name", "sub", "custom"
             ],
@@ -1381,6 +1403,15 @@ class ZuulWebOIDC(object):
 
 
 class ZuulWebAPI(object):
+    _rbac_param_map = {
+        "tenant_name": "tenant",
+        "project_name": "project",
+        "branch_name": "branch",
+        "job_name": "job",
+        "pipeline_name": "pipeline",
+        "image_name": "image",
+    }
+
     def __init__(self, zuulweb):
         self.zuulweb = zuulweb
         self.zk_client = zuulweb.zk_client
@@ -1402,11 +1433,24 @@ class ZuulWebAPI(object):
     def log(self):
         return get_request_logger()
 
+    def _get_mapped_rbac_params(self):
+        params = {}
+        if hasattr(cherrypy.request, 'json'):
+            params = cherrypy.request.json.copy()
+        params.update(cherrypy.request.params)
+        for p, v in self._rbac_param_map.items():
+            # Replace internal API names with human friendly names when
+            # checking rbac permissions
+            if p in params:
+                params[v] = params[p]
+                del params[p]
+        return params
+
     @cherrypy.expose
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST', ])
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True, permission='dequeue')
     def dequeue(self, tenant_name, tenant, auth, project_name):
         if cherrypy.request.method != 'POST':
             raise cherrypy.HTTPError(405)
@@ -1441,8 +1485,9 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST', ])
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True, permission='enqueue')
     def enqueue(self, tenant_name, tenant, auth, project_name):
+        body = cherrypy.request.json
         if cherrypy.request.method != 'POST':
             raise cherrypy.HTTPError(405)
         self.log.info(f'User {auth.uid} requesting enqueue on '
@@ -1450,7 +1495,6 @@ class ZuulWebAPI(object):
 
         project = self._getProjectOrRaise(tenant, project_name)
 
-        body = cherrypy.request.json
         if 'pipeline' not in body:
             raise cherrypy.HTTPError(400, 'Invalid request body')
 
@@ -1497,7 +1541,7 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST', ])
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True, permission='promote')
     def promote(self, tenant_name, tenant, auth):
         if cherrypy.request.method != 'POST':
             raise cherrypy.HTTPError(405)
@@ -1527,7 +1571,8 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST', ])
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True,
+                                      permission='set-tenant-state')
     def state_post(self, tenant_name, tenant, auth):
         body = cherrypy.request.json
         current_state = self.zuulweb.event_watcher.tenant_state[tenant.name]
@@ -1578,7 +1623,8 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     # Options handled by _get method
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True,
+                                      permission='autohold')
     def autohold_project_post(self, tenant_name, tenant, auth, project_name):
         project = self._getProjectOrRaise(tenant, project_name)
         self.log.info(f'User {auth.uid} requesting autohold on '
@@ -1700,13 +1746,16 @@ class ZuulWebAPI(object):
     @cherrypy.expose
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     # Options handled by get method
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True,
+                                      permission='autohold')
     def autohold_delete(self, tenant_name, tenant, auth, request_id):
         request = self._getAutoholdRequest(tenant_name, request_id)
         self.log.info(f'User {auth.uid} requesting autohold-delete on '
                       f'{request.tenant}/{request.project}')
 
         # User is authorized, so remove the autohold request
+        # TODO Currently autohold deletions are not scoped to project, ref,
+        # etc. They probably should be with an RBAC system?
         self.log.debug("Removing autohold %s", request)
         try:
             self.zk_nodepool.deleteHoldRequest(request, self.zuulweb.launcher)
@@ -1798,7 +1847,10 @@ class ZuulWebAPI(object):
         root_realm = self.zuulweb.abide.api_root.default_auth_realm
         if root_realm:
             auth_info['default_realm'] = root_realm
-        read_protected = bool(self.zuulweb.abide.api_root.access_rules)
+        read_protected = (
+            (not self.zuulweb.abide.api_root.anonymous_read_access) or
+            bool(self.zuulweb.abide.api_root.access_rules)
+        )
         auth_info['read_protected'] = read_protected
         auth_info['auth_log_file_requests'] =\
             self.zuulweb.auth_log_file_requests
@@ -1820,7 +1872,10 @@ class ZuulWebAPI(object):
             # TODO: should we return 404 if tenant not found?
             if tenant.default_auth_realm is not None:
                 auth_info['default_realm'] = tenant.default_auth_realm
-            read_protected = bool(tenant.access_rules)
+            read_protected = (
+                (not tenant.anonymous_read_access) or
+                bool(tenant.access_rules)
+            )
             auth_info['read_protected'] = read_protected
             # TODO: remove this after NIZ transition is complete
             auth_info['niz'] = bool(self.zuulweb.tenant_providers[tenant_name])
@@ -1840,16 +1895,23 @@ class ZuulWebAPI(object):
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return ret
 
-    def _isAuthorized(self, tenant, claims):
+    def _isAuthorized(self, tenant, claims, permission):
+        abide = self.zuulweb.abide
         # First, check for zuul.admin override
         if tenant:
             tenant_name = tenant.name
             admin_rules = tenant.admin_rules
+            # These are the old simple access rules
             access_rules = tenant.access_rules
+            # These are the modern rbac role based role mappings
+            role_mappings = tenant.role_mappings
+            anonymous_read_access = tenant.anonymous_read_access
         else:
             tenant_name = '*'
             admin_rules = []
-            access_rules = self.zuulweb.abide.api_root.access_rules
+            access_rules = abide.api_root.access_rules
+            role_mappings = abide.api_root.role_mappings
+            anonymous_read_access = abide.api_root.anonymous_read_access
         override = claims.get('zuul', {}).get('admin', [])
         if (override == '*' or
             (isinstance(override, list) and tenant_name in override)):
@@ -1858,67 +1920,185 @@ class ZuulWebAPI(object):
         if not tenant:
             tenant_name = '<root>'
 
-        if access_rules:
-            access = False
-        else:
+        # Determine basic read access
+        access = False
+        if not access_rules and not role_mappings and anonymous_read_access:
             access = True
-        for rule_name in access_rules:
-            rule = self.zuulweb.abide.authz_rules.get(rule_name)
-            if not rule:
-                self.log.error('Undefined rule "%s"', rule_name)
-                continue
-            self.log.debug('Applying access rule "%s" from '
-                           'tenant "%s" to claims %s',
-                           rule_name, tenant_name, json.dumps(claims))
-            authorized = rule(claims, tenant)
-            if authorized:
-                if '__zuul_uid_claim' in claims:
-                    uid = claims['__zuul_uid_claim']
-                else:
-                    uid = json.dumps(claims)
-                self.log.info('%s authorized access on '
-                              'tenant "%s" by rule "%s"',
-                              uid, tenant_name, rule_name)
-                access = True
-                break
+        elif role_mappings and anonymous_read_access:
+            access = True
+        if role_mappings:
+            admin = False
+            if access and permission is None:
+                # Only requesting read access; we can short circuit
+                return (access, admin)
 
-        admin = False
-        for rule_name in admin_rules:
-            rule = self.zuulweb.abide.authz_rules.get(rule_name)
-            if not rule:
-                self.log.error('Undefined rule "%s"', rule_name)
-                continue
-            self.log.debug('Applying admin rule "%s" from '
-                           'tenant "%s" to claims %s',
-                           rule_name, tenant_name, json.dumps(claims))
-            authorized = rule(claims, tenant)
-            if authorized:
-                if '__zuul_uid_claim' in claims:
-                    uid = claims['__zuul_uid_claim']
-                else:
-                    uid = json.dumps(claims)
-                self.log.info('%s authorized admin on '
-                              'tenant "%s" by rule "%s"',
-                              uid, tenant_name, rule_name)
-                access = admin = True
-                break
+            check_params = self._get_mapped_rbac_params()
+
+            # With RBAC controls 'access' indicates RO access and 'admin'
+            # indicates RW access to the specified permission. If the old
+            # system below is removed we can rename things for clarity.
+            for rule_name, roles in role_mappings.items():
+                rule = abide.authz_rules.get(rule_name)
+                if not rule:
+                    self.log.error('Undefined rule "%s"', rule_name)
+                    continue
+                self.log.debug('Applying access rule "%s" from '
+                               'tenant "%s" to claims %s',
+                               rule_name, tenant_name, json.dumps(claims))
+                matched = rule(claims, tenant)
+                if matched:
+                    # We have matched the user claim to an authz rule. Check
+                    # if any assigned roles have sufficient permissions.
+                    for role_name in roles:
+                        role = abide.authz_roles.get(role_name)
+                        authorized = role(permission, check_params)
+                        if authorized:
+                            if '__zuul_uid_claim' in claims:
+                                uid = claims['__zuul_uid_claim']
+                            else:
+                                uid = json.dumps(claims)
+                            access = access or True
+                            # It is important that we only set the admin value
+                            # if we set access to True due to defaults in the
+                            # Role classes. We check the isAuthorized return
+                            # values with an OR against access and then admin
+                            # which means if we set admin to True when access
+                            # is False we will have problems.
+                            admin = admin or role.admin
+                            if (permission is None and access) or admin:
+                                # If we only need read only access and we have
+                                # that or we have RW access to the request we
+                                # are done.
+                                self.log.info('%s authorized access on '
+                                              'tenant "%s" by rule "%s '
+                                              'and role %s"',
+                                              uid, tenant_name,
+                                              rule_name, role_name)
+                                break
+        else:
+            # Backward compatible behavior handling. Once role_mappings are
+            # defined they are the only rules that matter.
+            for rule_name in access_rules:
+                rule = abide.authz_rules.get(rule_name)
+                if not rule:
+                    self.log.error('Undefined rule "%s"', rule_name)
+                    continue
+                self.log.debug('Applying access rule "%s" from '
+                               'tenant "%s" to claims %s',
+                               rule_name, tenant_name, json.dumps(claims))
+                authorized = rule(claims, tenant)
+                if authorized:
+                    if '__zuul_uid_claim' in claims:
+                        uid = claims['__zuul_uid_claim']
+                    else:
+                        uid = json.dumps(claims)
+                    self.log.info('%s authorized access on '
+                                  'tenant "%s" by rule "%s"',
+                                  uid, tenant_name, rule_name)
+                    access = True
+                    break
+
+            admin = False
+            for rule_name in admin_rules:
+                rule = abide.authz_rules.get(rule_name)
+                if not rule:
+                    self.log.error('Undefined rule "%s"', rule_name)
+                    continue
+                self.log.debug('Applying admin rule "%s" from '
+                               'tenant "%s" to claims %s',
+                               rule_name, tenant_name, json.dumps(claims))
+                authorized = rule(claims, tenant)
+                if authorized:
+                    if '__zuul_uid_claim' in claims:
+                        uid = claims['__zuul_uid_claim']
+                    else:
+                        uid = json.dumps(claims)
+                    self.log.info('%s authorized admin on '
+                                  'tenant "%s" by rule "%s"',
+                                  uid, tenant_name, rule_name)
+                    access = admin = True
+                    break
         return (access, admin)
+
+    def _findAuthorizations(self, tenant, auth):
+        # This method is a bit redundant with isAuthorized but
+        # instead of strictly checking whether a specific action is authorized
+        # we just want to find the list of potentially authorized actions
+        # and return them here.
+        if not auth:
+            # We need to be authenticated to provide the list of authorizations
+            raise APIError(403)
+
+        abide = self.zuulweb.abide
+        # First, check for zuul.admin override
+        if tenant:
+            tenant_name = tenant.name
+            role_mappings = tenant.role_mappings
+            anonymous_read_access = tenant.anonymous_read_access
+        else:
+            tenant_name = '*'
+            role_mappings = abide.api_root.role_mappings
+            anonymous_read_access = abide.api_root.anonymous_read_access
+        scope = tenant_name
+        override = auth.claims.get('zuul', {}).get('admin', [])
+        permissions = {}
+        if anonymous_read_access:
+            permissions['read'] = True
+        # This should only be set to true if not using the new rbac system
+        # Any admin level perms in the rbac setup will be configured via an
+        # explicit role.
+        if auth.admin:
+            permissions['admin'] = True
+        # TODO: remove zuul.admin value once everything is only
+        # checking permissions.
+        if override == '*':
+            return {'zuul': {'admin': auth.admin,
+                             'permissions': permissions,
+                             'scope': [scope]}, }
+        elif isinstance(override, list) and tenant_name in override:
+            return {'zuul': {'admin': auth.admin,
+                             'permissions': permissions,
+                             'scope': [scope, ]}, }
+
+        # Modern RBAC based authorizations
+        if role_mappings:
+            if not tenant:
+                scope = '<root>'
+            ret = {'zuul': {'permissions': permissions,
+                            'scope': [scope, ]}}
+            for rule_name, roles in role_mappings.items():
+                rule = abide.authz_rules.get(rule_name)
+                if not rule:
+                    self.log.error('Undefined rule "%s"', rule_name)
+                    continue
+                matched = rule(auth.claims, tenant)
+                if matched:
+                    for role_name in roles:
+                        role = abide.authz_roles.get(role_name)
+                        for perm in role.permissions.keys():
+                            if perm:
+                                permissions[perm] = True
+            return ret
+        # Backward compatibility for the old authorization rule based
+        # auth system
+        else:
+            return {'zuul': {'admin': auth.admin,
+                             'permissions': permissions,
+                             'scope': [scope, ]}, }
 
     @cherrypy.expose
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_root_auth(require_auth=True)
     def root_authorizations(self, auth):
-        return {'zuul': {'admin': auth.admin,
-                         'scope': ['*']}, }
+        return self._findAuthorizations(None, auth)
 
     @cherrypy.expose
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options()
     @cherrypy.tools.check_tenant_auth(require_auth=True)
     def tenant_authorizations(self, tenant_name, tenant, auth):
-        return {'zuul': {'admin': auth.admin,
-                         'scope': [tenant_name, ]}, }
+        return self._findAuthorizations(tenant, auth)
 
     @cherrypy.expose
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
@@ -2400,7 +2580,8 @@ class ZuulWebAPI(object):
     @cherrypy.expose
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST'])
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True,
+                                      permission='build-image')
     def image_build(self, tenant_name, tenant, auth, image_name):
         providers = self.zuulweb.tenant_providers.get(tenant.name)
         if not providers:
@@ -2428,10 +2609,12 @@ class ZuulWebAPI(object):
     @cherrypy.expose
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['DELETE'])
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True,
+                                      permission='delete-image-build-artifact')
     def image_build_artifact_delete(self, tenant_name, tenant, auth,
                                     artifact_id):
         iba = self.zuulweb.image_build_registry.getItem(artifact_id)
+        iur = self.zuulweb.image_upload_registry
 
         if not iba or tenant.name != iba.build_tenant_name:
             raise cherrypy.HTTPError(
@@ -2447,12 +2630,23 @@ class ZuulWebAPI(object):
             with iba.locked(ctx, blocking=False):
                 with iba.activeContext(ctx):
                     iba.state = model.STATE_DELETING
+
+            for upload in iur.getUploadsForImage(iba.canonical_name):
+                # This is best effort to change all the uploads
+                try:
+                    with upload.locked(ctx, blocking=False):
+                        with upload.activeContext(ctx):
+                            upload.state = model.STATE_DELETING
+                except LockException:
+                    self.log.info("Unable to lock %s for deletion", upload)
+
         cherrypy.response.status = 204
 
     @cherrypy.expose
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['DELETE'])
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True,
+                                      permission='delete-image-upload')
     def image_upload_delete(self, tenant_name, tenant, auth, upload_id):
         upload = self.zuulweb.image_upload_registry.getItem(upload_id)
         if upload:
@@ -2479,7 +2673,8 @@ class ZuulWebAPI(object):
     @cherrypy.expose
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['POST'])
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True,
+                                      permission='validate-image-upload')
     def image_upload_validate(self, tenant_name, tenant, auth, upload_id):
         upload = self.zuulweb.image_upload_registry.getItem(upload_id)
         if upload:
@@ -2503,6 +2698,43 @@ class ZuulWebAPI(object):
             upload.uuid)
         self.zuulweb.trigger_events[tenant_name].put(
             event.trigger_name, event)
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
+    @cherrypy.tools.handle_options(allowed_methods=['POST'])
+    @cherrypy.tools.check_tenant_auth(require_admin=True,
+                                      permission='upload-image')
+    def image_upload_upload(self, tenant_name, tenant, auth, upload_id):
+        upload = self.zuulweb.image_upload_registry.getItem(upload_id)
+        if upload:
+            iba = self.zuulweb.image_build_registry.getItem(
+                upload.artifact_uuid)
+        else:
+            iba = None
+
+        if not iba or tenant.name != iba.build_tenant_name:
+            raise cherrypy.HTTPError(
+                404, "Image upload not found in tenant")
+
+        with self.zuulweb.createZKContext(None, self.log) as ctx:
+            # We just let the LockException propagate up if we can't lock
+            # it.
+            with upload.locked(ctx, blocking=False):
+                upload.refresh(ctx)
+                if upload.state != upload.State.FAILED:
+                    self.log.info(
+                        'User %s denied image re-upload on %s',
+                        auth.uid, upload)
+                    raise cherrypy.HTTPError(400, 'Invalid upload state')
+                self.log.info(
+                    'User %s requesting image re-upload on %s',
+                    auth.uid, upload)
+                with upload.activeContext(ctx):
+                    new_upload = upload.copy(ctx, attempt=0)
+                    self.log.debug("Replacing upload %s with %s",
+                                   upload, new_upload)
+                    self.log.debug("Marking upload %s deleting", upload)
+                    upload.state = upload.State.DELETING
 
     @cherrypy.expose
     @cherrypy.tools.save_params()
@@ -2579,25 +2811,46 @@ class ZuulWebAPI(object):
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['PUT', ])
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True,
+                                      permission='modify-node')
     def nodes_put(self, tenant_name, tenant, auth, node_id):
         node = self.zuulweb.nodes_cache.getItem(node_id)
-        if not node or node.tenant_name != tenant.name:
+
+        if not node:
+            raise cherrypy.HTTPError(404, "Node not found")
+
+        if node.tenant_name is None:
+            # In this case, we need to see if the node is attached to
+            # one of the tenant providers
+            providers = self.zuulweb.tenant_providers.get(tenant.name)
+            provider_cnames = [p.canonical_name for p in providers]
+            if node.provider not in provider_cnames:
+                raise cherrypy.HTTPError(404, "Node not found")
+        elif node.tenant_name != tenant.name:
             raise cherrypy.HTTPError(404, "Node not found")
 
         body = cherrypy.request.json
         state = body.get('state')
-        if state not in {node.State.HOLD, node.State.USED}:
+        if state not in {
+                node.State.HOLD,
+                node.State.USED,
+                node.State.OUTDATED,
+        }:
             raise cherrypy.HTTPError(400, 'Invalid request body')
 
-        # We just let the LockException propagate up if we can't lock
-        # it.
-        with self.zuulweb.createZKContext(None, self.log) as ctx:
-            with node.locked(ctx, blocking=False):
-                self.log.info(f'User {auth.uid} setting node '
-                              f'{node_id} to {state}')
-                with node.activeContext(ctx):
-                    node.setState(state)
+        # Make a request to the launcher to change the node state at
+        # its earliest convenience.  No locking is necessary.
+        self.log.info('User %s setting node %s to %s',
+                      auth.uid, node_id, state)
+        nodes = self.zuulweb.launcher.setNextNodeState(
+            node, state,
+            cache=self.zuulweb.nodes_cache)
+
+        # If this is a slot host, the actual nodes changed will be
+        # returned.
+        for n in nodes:
+            self.log.info('User %s set node %s to %s',
+                          auth.uid, n.uuid, state)
         cherrypy.response.status = 201
 
     @cherrypy.expose
@@ -2619,7 +2872,8 @@ class ZuulWebAPI(object):
     @cherrypy.tools.save_params()
     @cherrypy.tools.json_out(content_type='application/json; charset=utf-8')
     @cherrypy.tools.handle_options(allowed_methods=['DELETE', ])
-    @cherrypy.tools.check_tenant_auth(require_admin=True)
+    @cherrypy.tools.check_tenant_auth(require_admin=True,
+                                      permission='modify-nodeset-request')
     def nodeset_requests_delete(self, tenant_name, tenant, auth, request_id):
         request = self.zuulweb.requests_cache.getItem(request_id)
         if not request or request.tenant_name != tenant.name:
@@ -3384,6 +3638,12 @@ class ZuulWeb(object):
                           controller=api,
                           conditions=dict(method=['POST', 'OPTIONS']),
                           action='image_upload_validate')
+        route_map.connect('api',
+                          '/api/tenant/{tenant_name}/'
+                          'image-upload/{upload_id}/upload',
+                          controller=api,
+                          conditions=dict(method=['POST', 'OPTIONS']),
+                          action='image_upload_upload')
         route_map.connect('api', '/api/tenant/{tenant_name}/labels',
                           controller=api, action='labels')
         route_map.connect('api', '/api/tenant/{tenant_name}/nodes',
@@ -3435,19 +3695,28 @@ class ZuulWeb(object):
                           controller=api, action='tenant_status')
         route_map.connect('api', '/api/tenant/{tenant_name}/system-events',
                           controller=api, action='system_events')
-        # whitelabel webroot access
-        route_map.connect('oidc', '/{tenant_name}/.well-known/jwks',
-                          controller=oidc, action='tenant_jwks')
-        route_map.connect(
-            'oidc', '/{tenant_name}/.well-known/openid-configuration',
-            controller=oidc, action='tenant_openid_configuration')
         # global webroot access
-        route_map.connect('oidc', '/.well-known/jwks',
+        route_map.connect('oidc', '/oidc/jwks',
                           controller=oidc, action='global_jwks')
         route_map.connect(
             'oidc', '/.well-known/openid-configuration',
             controller=oidc, action='global_openid_configuration')
-
+        # whitelabel webroot access
+        route_map.connect('oidc', '/oidc/tenant/{tenant_name}/jwks',
+                          controller=oidc, action='tenant_jwks')
+        route_map.connect(
+            'oidc',
+            '/oidc/tenant/{tenant_name}/.well-known/openid-configuration',
+            controller=oidc, action='tenant_openid_configuration')
+        # Backwards compat, remove after zuul 15
+        route_map.connect('oidc', '/oidc/.well-known/jwks',
+                          controller=oidc, action='global_jwks')
+        route_map.connect('oidc', '/.well-known/jwks',
+                          controller=oidc, action='global_jwks')
+        route_map.connect('oidc', '/oidc/{tenant_name}/jwks',
+                          controller=oidc, action='tenant_jwks')
+        route_map.connect('oidc', '/oidc/{tenant_name}/.well-known/jwks',
+                          controller=oidc, action='tenant_jwks')
         return route_map
 
     def __init__(self,
@@ -3625,9 +3894,6 @@ class ZuulWeb(object):
 
         api_app = cherrypy.tree.mount(api, '/', config=conf)
         api_app.log = ZuulCherrypyLogManager(appid=api_app.log.appid)
-
-        oidc_app = cherrypy.tree.mount(oidc, '/oidc', config=conf)
-        oidc_app.log = ZuulCherrypyLogManager(appid=oidc_app.log.appid)
 
     @property
     def port(self):

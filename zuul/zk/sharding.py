@@ -15,17 +15,56 @@
 
 import io
 from contextlib import suppress
+import math
 import time
 import zlib
 
 from zuul.zk.components import COMPONENT_REGISTRY
 
-from kazoo.exceptions import NoNodeError
+from kazoo.exceptions import NoNodeError, NodeExistsError
 
 # The default size limit for a node in Zookeeper is ~1MiB. However, as this
 # also includes the size of the key we can not use all of it for data.
 # Because of that we will leave ~47 KiB for the key.
 NODE_BYTE_SIZE_LIMIT = 1000000
+
+
+class ObjectMetadata:
+    def __init__(self):
+        # Not all classes support these
+        self.class_id = None
+        self.compress = None
+        self.max_shard = None
+
+    def loadHeader(self, data):
+        parts = data.split(b'\x00', 3)
+        class_id = parts[0]
+        if len(class_id):
+            self.class_id = class_id.decode('utf8')
+        else:
+            self.class_id = None
+        self.compress = bool(parts[1])
+        self.max_shard = int(parts[2])
+        return parts[3]
+
+    def addHeader(self, data):
+        if self.class_id:
+            class_id = self.class_id.encode('utf8')
+        else:
+            class_id = b''
+        return b'\x00'.join([
+            class_id,
+            b'%c' % (int(self.compress),),
+            b'%i' % (int(self.max_shard),),
+            data,
+        ])
+
+    @classmethod
+    def fromRaw(cls, data):
+        # Return a new instance from the header, and also the
+        # remaining data.
+        md = cls()
+        return md, md.loadHeader(data)
 
 
 class RawZKIO(io.RawIOBase):
@@ -186,6 +225,104 @@ class RawShardIO(RawZKIO):
         if self.zstat is None:
             self.zstat = self.client.exists(self.path)
         return read_len
+
+
+class RawExpandableIO(RawZKIO):
+    def __init__(self, *args, metadata=None, **kw):
+        super().__init__(*args, **kw)
+        if metadata is None:
+            metadata = ObjectMetadata()
+        self.metadata = metadata
+        # Currently compression is handled in ZKObject, so all data we
+        # get are compressed, so we'll always set the compression bit
+        # in the header; in the future we may use that bit and only
+        # conditionally compress.
+        self.metadata.compress = True
+        # The highest shard index number.  Default to 0 if the caller
+        # doesn't know.  Will be updated on read.
+        if self.metadata.max_shard is None:
+            self.metadata.max_shard = 0
+
+    def truncate(self, size=None):
+        # We don't really need to truncate since as soon as we write,
+        # we'll write a header with our max shards.
+        pass
+
+    def _shardPath(self, index):
+        if index == 0:
+            return self.path
+        return f"{self.path}/{index:010}"
+
+    def readall(self):
+        read_buffer = io.BytesIO()
+
+        path = self._shardPath(0)
+        data, self.zstat = self._getData(path)
+        data = self.metadata.loadHeader(data)
+        read_buffer.write(data)
+
+        for i in range(1, self.metadata.max_shard + 1):
+            path = self._shardPath(i)
+            data = self._getData(path)[0]
+            read_buffer.write(data)
+
+        return read_buffer.getvalue()
+
+    def write(self, data):
+        md = self.metadata
+        # If the user told us how many shards we used to have, keep
+        # that since we might delete them later.
+        old_max_shard = md.max_shard
+
+        byte_count = len(data)
+        shard_count = byte_count = math.ceil(
+            byte_count / NODE_BYTE_SIZE_LIMIT)
+
+        md.max_shard = shard_count - 1
+
+        start = time.perf_counter()
+        # Special handling for first shard (we let the exceptions
+        # propagate):
+        index = 0
+        path = self._shardPath(index)
+        shard = data[0:NODE_BYTE_SIZE_LIMIT]
+        shard = md.addHeader(shard)
+        if self.create:
+            _, self.zstat = self.client.create(
+                path, shard, makepath=self.makepath, include_data=True)
+        else:
+            self.zstat = self.client.set(path, shard,
+                                         version=self.version)
+        self.znodes_written += 1
+
+        # Subsequent shards (we handle existing shards transparently):
+        for index in range(1, md.max_shard + 1):
+            path = self._shardPath(index)
+            start = NODE_BYTE_SIZE_LIMIT * index
+            end = start + NODE_BYTE_SIZE_LIMIT
+            shard = data[start:end]
+            try:
+                if index <= old_max_shard:
+                    # We expect an existing shard
+                    self.client.set(path, shard)
+                else:
+                    # We expect to create one
+                    self.client.create(path, shard)
+            except NoNodeError:
+                self.client.create(path, shard)
+            except NodeExistsError:
+                self.client.set(path, shard)
+
+        # If we shrank, delete remaining shards to reduce ZK data
+        # usage
+
+        for index in range(md.max_shard + 1, old_max_shard + 1):
+            with suppress(NoNodeError):
+                self.client.delete(self._shardPath(index))
+
+        self.cumulative_write_time += time.perf_counter() - start
+        self.bytes_written += byte_count
+        return byte_count
 
 
 class BufferedZKWriter(io.BufferedWriter):

@@ -532,6 +532,8 @@ class PipelineManager(metaclass=ABCMeta):
             for item in queue.queue:
                 if not item.live:
                     continue
+                if item.reporter_jobs_state:
+                    continue
                 self._removeAbandonedChangeExamineItem(
                     change, item, changes_removed)
             # Abbreviated version of dependency check; we're not going
@@ -543,6 +545,8 @@ class PipelineManager(metaclass=ABCMeta):
                 continue
             for item in queue.queue:
                 if not item.live:
+                    continue
+                if item.reporter_jobs_state:
                     continue
                 self._removeAbandonedChangeDependentsExamineItem(
                     log, item, changes_removed)
@@ -1869,11 +1873,21 @@ class PipelineManager(metaclass=ABCMeta):
         return True
 
     def _processOneItem(self, item, nnfi):
+        # Return: changed, bypass, nnfi
         log = item.annotateLogger(self.log)
         changed = False
+        bypass = False
         ready = False
         dequeued = False
         failing_reasons = []  # Reasons this item is failing
+
+        if item.reporter_jobs_state:
+            bypass = self.executeReporterJobs(item)
+            if bypass:
+                return (changed, bypass, nnfi)
+            self.dequeueItem(item)
+            changed = True
+            return (changed, bypass, nnfi)
 
         item_ahead = item.item_ahead
         if item_ahead and (not item_ahead.live):
@@ -1887,7 +1901,8 @@ class PipelineManager(metaclass=ABCMeta):
                                     item.event, quiet=True)
         except exceptions.DependencyLimitExceededError:
             self.removeItem(item)
-            return True, nnfi
+            changed = True
+            return (changed, bypass, nnfi)
 
         # Verify that the cycle dependency graph is correct
         cycle = self.cycleForChange(
@@ -1907,7 +1922,8 @@ class PipelineManager(metaclass=ABCMeta):
             self.removeItem(item)
             if item.live:
                 self.reEnqueueChanges(item, item.changes)
-            return (True, nnfi)
+            changed = True
+            return (changed, bypass, nnfi)
 
         abort, needs_changes = self.getMissingNeededChanges(
             item.changes, change_queue, item.event,
@@ -1933,7 +1949,8 @@ class PipelineManager(metaclass=ABCMeta):
                 except exceptions.MergeFailure:
                     pass
             self.dequeueItem(item)
-            return (True, nnfi)
+            changed = True
+            return (changed, bypass, nnfi)
 
         actionable = change_queue.isActionable(item)
         item.updateAttributes(self.current_context, active=actionable)
@@ -2012,7 +2029,8 @@ class PipelineManager(metaclass=ABCMeta):
                              (item_behind, item))
                     self.cancelJobs(item_behind)
                 self.dequeueItem(item)
-                return (True, nnfi)
+                changed = True
+                return (changed, bypass, nnfi)
 
         if can_report:
             succeeded = item.didAllJobsSucceed()
@@ -2029,6 +2047,10 @@ class PipelineManager(metaclass=ABCMeta):
                 # failure for a successful cycle.
                 if is_cycle and succeeded:
                     self.sendReport(self.pipeline.failure_actions, item)
+            if succeeded and not failing_reasons:
+                bypass = self.executeReporterJobs(item, start=True)
+                if bypass:
+                    return (changed, bypass, nnfi)
             self.dequeueItem(item)
             changed = dequeued = True
         elif not failing_reasons and item.live:
@@ -2050,7 +2072,33 @@ class PipelineManager(metaclass=ABCMeta):
                     self._reviseNodeRequest(request_id, item, job)
                 else:
                     self._reviseNodesetRequest(request_id, item, job)
-        return (changed, nnfi)
+        return (changed, bypass, nnfi)
+
+    def executeReporterJobs(self, item, start=False):
+        # Return bypass signal
+        log = get_annotated_logger(self.log, item.event)
+        if start:
+            if not item.getReporterJobs():
+                return False
+            log.info("Starting reporter jobs for %s", item)
+            item.updateAttributes(self.current_context,
+                                  reporter_jobs_state=item.State.PENDING)
+        self.provisionNodes(item)
+        self.executeJobs(item)
+        if item.areAllReporterJobsComplete():
+            if not item.didAllReporterJobsSucceed():
+                log.info("Reporter jobs failed for %s, "
+                         "overriding buildset result", item)
+                item.setReportedResult('FAILURE')
+                for item_behind in item.items_behind:
+                    log.info("Resetting builds for %s because reporter jobs "
+                             "for the item ahead, %s, failed",
+                             item_behind, item)
+                    self.cancelJobs(item_behind)
+            else:
+                log.info("Reporter jobs succeeded for %s", item)
+            return False
+        return True
 
     def _reviseNodeRequest(self, request_id, item, job):
         node_request = self.sched.nodepool.zk_nodepool.getNodeRequest(
@@ -2086,14 +2134,21 @@ class PipelineManager(metaclass=ABCMeta):
         change_keys = set()
         for queue in self.state.queues[:]:
             queue_changed = False
+            # queue_bypass means bypass further queue processing as
+            # the current item is running reporter jobs and no other
+            # actions are taken during that process.
+            queue_bypass = False
             nnfi = None  # Nearest non-failing item
             for item in queue.queue[:]:
                 self.sched.abortIfPendingReconfig(tenant_lock)
-                item_changed, nnfi = self._processOneItem(
-                    item, nnfi)
-                if item_changed:
-                    queue_changed = True
-                self.reportStats(item)
+                if not queue_bypass:
+                    item_changed, queue_bypass, nnfi = self._processOneItem(
+                        item, nnfi)
+                    if item_changed:
+                        queue_changed = True
+                    self.reportStats(item)
+                # Even if we're bypassing the queue, we still need to
+                # keep the change keys up to date
                 for change in item.changes:
                     change_keys.add(change.cache_stat.key)
             if queue_changed:
@@ -2413,11 +2468,19 @@ class PipelineManager(metaclass=ABCMeta):
         if self.changes_merge:
             merged = item.reported
             if merged:
+                merged_change_shas = {}
                 for change in item.changes:
                     source = change.project.source
-                    merged = source.isMerged(change, change.branch)
-                    if not merged:
+                    merged_sha = source.isMerged(change, change.branch)
+                    if not merged_sha:
+                        merged = False
                         break
+                    if isinstance(merged_sha, str):
+                        merged_change_shas[change.cache_key] = merged_sha
+                if merged:
+                    item.updateAttributes(
+                        self.current_context,
+                        merged_change_shas=merged_change_shas)
             if action:
                 if action == 'success' and not merged:
                     log.debug("Overriding result for %s to merge failure",
@@ -2602,7 +2665,10 @@ class PipelineManager(metaclass=ABCMeta):
                 # Handle per-branch queues
                 layout = self.tenant.layout
                 queue_config = layout.queues.get(item.queue.name)
-                per_branch = queue_config and queue_config.per_branch
+                per_branch = (
+                    queue_config and
+                    queue_config.type == queue_config.Type.PER_BRANCH
+                )
                 if per_branch and item.queue.project_branches:
                     # Get the first project-branch of this queue,
                     # which is a tuple of project, branch, and get

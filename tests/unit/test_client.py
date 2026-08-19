@@ -86,7 +86,7 @@ class TestTenantValidationClient(BaseClientTestCase):
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
              '-c', os.path.join(self.test_root, 'tenant_ok.conf'),
              'tenant-conf-check'], stdout=subprocess.PIPE)
-        p.communicate()
+        out, _ = p.communicate()
         self.assertEqual(p.returncode, 0, 'The command must exit 0')
 
         self.config.set(
@@ -102,6 +102,21 @@ class TestTenantValidationClient(BaseClientTestCase):
         self.assertEqual(p.returncode, 1, "The command must exit 1")
         self.assertIn(
             b"expected a dictionary for dictionary", out,
+            "Expected error message not found")
+
+        self.config.set(
+            'scheduler', 'tenant_config',
+            os.path.join(FIXTURE_DIR, 'config/tenant-parser/semaphore.yaml'))
+        with open(os.path.join(self.test_root, 'tenant_sem.conf'), 'w') as f:
+            self.config.write(f)
+        p = subprocess.Popen(
+            [os.path.join(sys.prefix, 'bin/zuul-admin'),
+             '-c', os.path.join(self.test_root, 'tenant_sem.conf'),
+             'tenant-conf-check'], stdout=subprocess.PIPE)
+        out, _ = p.communicate()
+        self.assertEqual(p.returncode, 1, "The command must exit 1")
+        self.assertIn(
+            b"global semaphore", out,
             "Expected error message not found")
 
 
@@ -873,6 +888,12 @@ class TestImageOperations(LauncherBaseTestCase):
                 return_value="test_external_id")
     def test_image_export_import(self, mock_image_upload_run):
         # Test a round trip export/import of images
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),

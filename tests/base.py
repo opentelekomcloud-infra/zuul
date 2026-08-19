@@ -15,7 +15,7 @@
 # under the License.
 
 import configparser
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 from configparser import ConfigParser
 from contextlib import contextmanager
 import errno
@@ -2083,6 +2083,7 @@ class BaseTestCase(testtools.TestCase):
         log_defaults_from_env = os.environ.get(
             'OS_LOG_DEFAULTS',
             'git.cmd=INFO,'
+            'git.util=INFO,'
             'kazoo.client=WARNING,kazoo.recipe=WARNING,'
             'botocore=WARNING'
         )
@@ -2797,8 +2798,6 @@ class ZuulTestCase(BaseTestCase):
                             self.copyDirToRepo(
                                 project,
                                 os.path.join(git_path, reponame))
-        # Make test_root persist after ansible run for .flag test
-        config.set('executor', 'trusted_rw_paths', self.test_root)
         for section, section_dict in self.test_config.zuul_config.items():
             for k, v in section_dict.items():
                 config.set(section, k, v)
@@ -2842,6 +2841,8 @@ class ZuulTestCase(BaseTestCase):
                 if name.startswith('^'):
                     continue
                 if name == 'org/common-config':
+                    continue
+                if name in untrusted_projects:
                     continue
                 if self.test_config.enable_nodepool:
                     untrusted_projects.append({
@@ -2970,6 +2971,18 @@ class ZuulTestCase(BaseTestCase):
                 files[relative_filepath] = content
         self.addCommitToRepo(project, 'add content from fixture',
                              files, branch='master', tag='init')
+
+    def addImageBuildEvent(self, tenant_name, project_canonical_name,
+                           branch, image_names):
+        project_hostname, project_name = \
+            project_canonical_name.split('/', 1)
+        driver = self.launcher.connections.drivers['zuul']
+        event = driver.getImageBuildEvent(
+            list(image_names), project_hostname, project_name, branch)
+        self.log.info("Submitting image build event for %s %s",
+                      tenant_name, image_names)
+        self.launcher.trigger_events[tenant_name].put(
+            event.trigger_name, event)
 
     def assertNodepoolState(self):
         # Make sure that there are no pending requests
@@ -3322,6 +3335,14 @@ class ZuulTestCase(BaseTestCase):
                 artifacts = [a for a in artifacts if a.format == format]
             if len(artifacts) == count:
                 return artifacts
+
+    def waitForUploads(self, image_name, **states):
+        for _ in iterate_timeout(60, "upload to complete"):
+            uploads = self.launcher.image_upload_registry.getUploadsForImage(
+                image_name)
+            uploads_by_state = Counter(u.state for u in uploads)
+            if uploads_by_state == states:
+                return
 
     def __haveAllBuildsReported(self):
         # The build requests will be deleted from ZooKeeper once the
@@ -4106,6 +4127,13 @@ class ZuulTestCase(BaseTestCase):
                 request.refresh(ctx)
                 if request.state == model.NodesetRequest.State.FULFILLED:
                     return
+
+    def waitForLauncherLayoutSync(self, tenant='tenant-one'):
+        for _ in iterate_timeout(
+                30, "scheduler and launcher to have the same layout"):
+            if (self.scheds.first.sched.local_layout_state.get(tenant) ==
+                self.launcher.local_layout_state.get(tenant)):
+                break
 
     def requestNodes(self, labels, tenant="tenant-one", pipeline="check",
                      provider=None, timeout=10):
