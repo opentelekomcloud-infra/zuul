@@ -1279,7 +1279,7 @@ class GiteaEventConnector(threading.Thread):
         # change-key always reflects the real PR head.
         if event.project_name and event.change_number is not None:
             try:
-                pr_api = self.getPullRequest(
+                pr_api = self.connection.getPullRequest(
                     event.project_name, event.change_number)
                 api_sha = (pr_api or {}).get('head', {}).get('sha')
                 if api_sha and api_sha != event.patchset:
