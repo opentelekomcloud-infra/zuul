@@ -31,7 +31,25 @@ FROM artifactory.devops.telekom.de/dhi.io/node:22-debian13-dev AS node-base
 # FROM golang:1.22-bookworm AS go-base
 FROM artifactory.devops.telekom.de/dhi.io/golang:1.26-debian13-dev AS go-base
 
-FROM quay.io/opendevorg/python-builder:3.11-bookworm AS builder-base
+# Helper stage: extract build scripts from python-builder (public quay image)
+FROM quay.io/opendevorg/python-builder:3.11-bookworm AS python-builder-tools
+
+FROM artifactory.devops.telekom.de/dhi.io/python:3.11-debian12-dev AS builder-base
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies for the assemble script
+# which is needed by _setup_hook.py (subprocess.call(['which', 'yarn']))
+# gzip is needed by tar xvfz to extract the openshift client
+RUN pip install --no-cache-dir bindep build wheel && \
+    apt-get update && \
+    apt-get install -y git which gzip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy build scripts from python-builder image
+COPY --from=python-builder-tools /usr/local/bin/assemble /usr/local/bin/assemble
+COPY --from=python-builder-tools /usr/local/bin/get-extras-packages /usr/local/bin/get-extras-packages
+COPY --from=python-builder-tools /output/install-from-bindep /output/install-from-bindep
 
 FROM node-base AS js-builder
 
@@ -109,7 +127,11 @@ CMD ["/usr/local/bin/zuul"]
 
 FROM zuul AS zuul-executor
 ENV DEBIAN_FRONTEND=noninteractive
-COPY --from=builder /usr/local/lib/zuul/ /usr/local/lib/zuul
+# In the hardened python image, python is installed in /opt/python (a
+# symlink to /opt/python-3.11.16) and zuul-manage-ansible creates its
+# ansible venvs at $sys.exec_prefix/lib/zuul — copy them to the matching
+# runtime location.
+COPY --from=builder /opt/python/lib/zuul/ /opt/python/lib/zuul
 COPY --from=builder /tmp/openshift-install/oc /usr/local/bin/oc
 COPY --from=go-builder /go/src/github.com/containers/skopeo/bin/skopeo /usr/local/bin/skopeo
 COPY --from=go-builder /go/src/github.com/containers/skopeo/default-policy.json /etc/containers/policy.json
