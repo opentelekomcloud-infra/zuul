@@ -1,42 +1,32 @@
 # Dockerfile for Zuul Web with Gitea driver
-FROM swr.eu-de.otc.t-systems.com/t-cloud-public/hardened-zuul-web:14.2.0
+FROM swr.eu-de.otc.t-systems.com/t-cloud-public/hardened-zuul-web:14.2.0-v6
 
 USER root
 
-# Fix security vulnerabilities by upgrading packages
-RUN pip3 install --upgrade --no-cache-dir \
-    'pip>=25.3' \
-    'setuptools>=78.1.1' \
-    'wheel>=0.46.2' \
-    'urllib3>=2.6.3' \
-    'pyasn1>=0.6.2' \
-    'protobuf>=6.0.0'
-
 # Copy Gitea driver source files
-COPY zuul/driver/gitea/ /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/
-COPY zuul/lib/connections.py /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py
-COPY zuul/configloader.py /usr/local/lib/python3.11/site-packages/zuul/configloader.py
+COPY zuul/driver/gitea/ /usr/lib/python3.13/site-packages/zuul/driver/gitea/
+COPY zuul/lib/connections.py /usr/lib/python3.13/site-packages/zuul/lib/connections.py
+COPY zuul/configloader.py /usr/lib/python3.13/site-packages/zuul/configloader.py
 
 # Copy GitHub driver fix (merge-mode fallback for missing API fields)
-COPY zuul/driver/github/githubconnection.py /usr/local/lib/python3.11/site-packages/zuul/driver/github/githubconnection.py
+COPY zuul/driver/github/githubconnection.py /usr/lib/python3.13/site-packages/zuul/driver/github/githubconnection.py
 
 # Ensure the zuul user/group exists (hardened base images do not create it)
 RUN groupadd -g 10001 zuul 2>/dev/null || true && \
     useradd -u 10001 -g zuul -m -d /var/lib/zuul -c "Zuul Daemon" zuul 2>/dev/null || true && \
-# Hardened base installs zuul binaries under /opt/python/bin but CMD expects /usr/local/bin
     mkdir -p /usr/local/bin && \
-    ln -sf /opt/python/bin/zuul /usr/local/bin/zuul && \
-    ln -sf /opt/python/bin/zuul-web /usr/local/bin/zuul-web
+    ln -sf /usr/bin/zuul /usr/local/bin/zuul && \
+    ln -sf /usr/bin/zuul-web /usr/local/bin/zuul-web
 
 # Ensure proper permissions
-RUN chown -R zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/ && \
-    chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py && \
-    chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/configloader.py && \
-    chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/driver/github/githubconnection.py && \
-    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/*.py && \
-    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py && \
-    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/configloader.py && \
-    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/driver/github/githubconnection.py
+RUN chown -R zuul:zuul /usr/lib/python3.13/site-packages/zuul/driver/gitea/ && \
+    chown zuul:zuul /usr/lib/python3.13/site-packages/zuul/lib/connections.py && \
+    chown zuul:zuul /usr/lib/python3.13/site-packages/zuul/configloader.py && \
+    chown zuul:zuul /usr/lib/python3.13/site-packages/zuul/driver/github/githubconnection.py && \
+    chmod 644 /usr/lib/python3.13/site-packages/zuul/driver/gitea/*.py && \
+    chmod 644 /usr/lib/python3.13/site-packages/zuul/lib/connections.py && \
+    chmod 644 /usr/lib/python3.13/site-packages/zuul/configloader.py && \
+    chmod 644 /usr/lib/python3.13/site-packages/zuul/driver/github/githubconnection.py
 
 USER zuul
 
