@@ -22,6 +22,7 @@ These tests can be run with: python -m pytest tests/unit/test_gitea_standalone.p
 
 import hmac
 import hashlib
+import logging
 import unittest
 import sys
 import os
@@ -30,8 +31,10 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from zuul.driver.gitea.giteaconnection import (
-    _sign_request, _verify_signature, GiteaShaCache, EventTuple
+    _sign_request, _verify_signature, GiteaShaCache, EventTuple,
+    GiteaConnection
 )
+from zuul.exceptions import MergeFailure
 
 
 class TestSignRequest(unittest.TestCase):
@@ -511,6 +514,48 @@ class TestEventTuple(unittest.TestCase):
 
         with self.assertRaises(AttributeError):
             event.timestamp = 999.0
+
+
+class _StubConnection:
+    """Minimal stand-in exposing only what mergePull touches."""
+
+    def __init__(self, result):
+        self._result = result
+        self.log = logging.getLogger('test.gitea.mergePull')
+        self.calls = []
+
+    def _makeRequest(self, method, path, **kwargs):
+        self.calls.append((method, path))
+        return self._result
+
+
+class TestMergePull(unittest.TestCase):
+    """Tests for GiteaConnection.mergePull result handling"""
+
+    def _merge(self, result):
+        conn = _StubConnection(result)
+        GiteaConnection.mergePull(conn, 'docs/example', 42)
+        return conn
+
+    def test_empty_response_is_success(self):
+        """Gitea answers 200 with an empty body on a successful merge.
+
+        _makeRequest turns that into None, which must not be reported as a
+        MergeFailure.
+        """
+        conn = self._merge(None)
+        self.assertEqual(
+            conn.calls,
+            [('POST', '/repos/docs/example/pulls/42/merge')])
+
+    def test_merged_true_is_success(self):
+        self._merge({'merged': True})
+
+    def test_error_payload_raises_merge_failure(self):
+        conn = _StubConnection({'message': 'branch is protected'})
+        with self.assertRaises(MergeFailure) as ctx:
+            GiteaConnection.mergePull(conn, 'docs/example', 42)
+        self.assertIn('branch is protected', str(ctx.exception))
 
 
 if __name__ == '__main__':

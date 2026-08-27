@@ -728,13 +728,16 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
                 f'/repos/{project_name}/pulls/{pr_number}/merge',
                 json=data)
 
-            if result and result.get('merged'):
+            # Gitea answers a successful merge with 200 and an empty body,
+            # which _makeRequest returns as None. Anything non-2xx would have
+            # raised before reaching here.
+            if result is None or result.get('merged'):
                 self.log.info("Successfully merged PR %s#%s with method %s",
                             project_name, pr_number, method)
                 return
 
             # If we got here, merge didn't succeed
-            error_msg = result.get('message', 'Unknown error') if result else 'No response from API'
+            error_msg = result.get('message', 'Unknown error')
             raise MergeFailure(f"Failed to merge PR {project_name}#{pr_number}: {error_msg}")
 
         except MergeFailure:
