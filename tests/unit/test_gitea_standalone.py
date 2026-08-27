@@ -22,6 +22,7 @@ These tests can be run with: python -m pytest tests/unit/test_gitea_standalone.p
 
 import hmac
 import hashlib
+import inspect
 import logging
 import unittest
 import sys
@@ -34,6 +35,8 @@ from zuul.driver.gitea.giteaconnection import (
     _sign_request, _verify_signature, GiteaShaCache, EventTuple,
     GiteaConnection
 )
+from zuul.driver.gitea.giteasource import GiteaSource
+from zuul.source import BaseSource
 from zuul.exceptions import MergeFailure
 
 
@@ -556,6 +559,56 @@ class TestMergePull(unittest.TestCase):
         with self.assertRaises(MergeFailure) as ctx:
             GiteaConnection.mergePull(conn, 'docs/example', 42)
         self.assertIn('branch is protected', str(ctx.exception))
+
+
+class _StubChange:
+    def __init__(self, number=42, is_merged=False):
+        self.number = number
+        self.is_merged = is_merged
+        self.branch = 'main'
+
+
+class TestIsMerged(unittest.TestCase):
+    """Tests for the isMerged signature and result handling.
+
+    Pipeline.reportItem calls source.isMerged(change, change.branch) with two
+    positional arguments. An override that only accepts one raises TypeError
+    inside pipeline processing, which aborts the whole pipeline and leaves
+    every gate item enqueued forever.
+    """
+
+    def _source(self):
+        class _Conn:
+            def isMerged(conn_self, change, head=None):
+                return GiteaConnection.isMerged(conn_self, change, head)
+
+        class _Src:
+            connection = _Conn()
+        return _Src()
+
+    def test_accepts_head_argument(self):
+        change = _StubChange(is_merged=True)
+        self.assertTrue(
+            GiteaSource.isMerged(self._source(), change, change.branch))
+
+    def test_accepts_single_argument(self):
+        change = _StubChange(is_merged=True)
+        self.assertTrue(GiteaSource.isMerged(self._source(), change))
+
+    def test_unmerged_change_is_false(self):
+        change = _StubChange(is_merged=False)
+        self.assertFalse(
+            GiteaSource.isMerged(self._source(), change, change.branch))
+
+    def test_non_pull_request_is_merged(self):
+        change = _StubChange(number=None)
+        self.assertTrue(
+            GiteaSource.isMerged(self._source(), change, change.branch))
+
+    def test_signature_matches_base_source(self):
+        base = inspect.signature(BaseSource.isMerged).parameters
+        ours = inspect.signature(GiteaSource.isMerged).parameters
+        self.assertEqual(list(base), list(ours))
 
 
 if __name__ == '__main__':

@@ -1156,9 +1156,11 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         """Get SHA for a project branch"""
         return self.getRefSha(project_name, f'refs/heads/{branch_name}')
 
-    def isMerged(self, change):
+    def isMerged(self, change, head=None):
         """Check if a change is merged"""
-        return change.is_merged if hasattr(change, 'is_merged') else False
+        # head is unused: the merge API call updates is_merged directly, so no
+        # extra query is needed (matches the GitHub driver).
+        return getattr(change, 'is_merged', False)
 
     def _start_event_connector(self):
         """Start the event connector thread"""

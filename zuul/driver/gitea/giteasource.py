@@ -366,6 +366,9 @@ class GiteaSource(BaseSource):
                            project.name, e)
         return changes
 
-    def isMerged(self, change):
+    def isMerged(self, change, head=None):
         """Check if a change is merged"""
-        return self.connection.isMerged(change)
+        if not change.number:
+            # Not a pull request, considering merged.
+            return True
+        return self.connection.isMerged(change, head)
