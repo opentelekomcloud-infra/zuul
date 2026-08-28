@@ -1,11 +1,9 @@
-:orphan:
-
 :title: OpenStack Driver
 
 OpenStack
 =========
 
-Zuul can use OpenStack clouds as a source for test nodes.
+Zuul can use OpenStack clouds as a source for build nodes.
 
 Information about OpenStack clouds, including authentication
 information, may be provided via a configuration file (e.g.,

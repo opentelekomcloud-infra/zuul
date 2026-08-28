@@ -1,6 +1,6 @@
 # Copyright 2014 Hewlett-Packard Development Company, L.P.
 # Copyright 2014 Rackspace Australia
-# Copyright 2021-2022 Acme Gating, LLC
+# Copyright 2021-2026 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -20,6 +20,7 @@ import urllib.parse
 import socket
 import textwrap
 import time
+import json
 import jwt
 import sys
 import subprocess
@@ -28,8 +29,11 @@ from unittest import skip, mock
 
 from kazoo.exceptions import NoNodeError
 import requests
+import testtools
 
 from zuul.lib.statsd import normalize_statsd_name
+import zuul.model
+from zuul.zk.event_queues import TENANT_EVENT_STATE
 from zuul.zk.locks import tenant_write_lock
 import zuul.web
 
@@ -122,7 +126,7 @@ class WebMixin:
                  'exp': int(time.time()) + 3600}
         if groups:
             authz['groups'] = groups
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         return token
 
@@ -357,6 +361,7 @@ class TestWeb(BaseTestWeb):
              'deduplicate': 'auto',
              'dependencies': [],
              'description': None,
+             'exclude_projects': None,
              'extra_variables': {},
              'files': [],
              'final': False,
@@ -364,6 +369,7 @@ class TestWeb(BaseTestWeb):
              'group_variables': {},
              'host_variables': {},
              'image_build_name': None,
+             'include_projects': None,
              'include_vars': [],
              'intermediate': False,
              'irrelevant_files': [],
@@ -508,9 +514,11 @@ class TestWeb(BaseTestWeb):
                 'timeout': None,
                 'post_timeout': None,
                 'variables': {},
+                'exclude_projects': None,
                 'extra_variables': {},
                 'group_variables': {},
                 'host_variables': {},
+                'include_projects': None,
                 'include_vars': [],
                 'variant_description': '',
                 'voting': True,
@@ -568,9 +576,11 @@ class TestWeb(BaseTestWeb):
                 'timeout': None,
                 'post_timeout': None,
                 'variables': {},
+                'exclude_projects': None,
                 'extra_variables': {},
                 'group_variables': {},
                 'host_variables': {},
+                'include_projects': None,
                 'include_vars': [],
                 'variant_description': 'stable',
                 'voting': True,
@@ -621,9 +631,11 @@ class TestWeb(BaseTestWeb):
                 'timeout': None,
                 'post_timeout': None,
                 'variables': {},
+                'exclude_projects': None,
                 'extra_variables': {},
                 'group_variables': {},
                 'host_variables': {},
+                'include_projects': None,
                 'include_vars': [],
                 'variant_description': '',
                 'voting': True,
@@ -724,6 +736,7 @@ class TestWeb(BaseTestWeb):
                   'deduplicate': 'auto',
                   'dependencies': [],
                   'description': None,
+                  'exclude_projects': None,
                   'files': [],
                   'final': False,
                   'failure_output': [],
@@ -759,6 +772,7 @@ class TestWeb(BaseTestWeb):
                   'group_variables': {},
                   'host_variables': {},
                   'include_vars': [],
+                  'include_projects': None,
                   'variant_description': '',
                   'voting': True,
                   'workspace_scheme': 'golang',
@@ -773,6 +787,7 @@ class TestWeb(BaseTestWeb):
                   'dependencies': [{'name': 'project-merge',
                                     'soft': False}],
                   'description': None,
+                  'exclude_projects': None,
                   'files': [],
                   'final': False,
                   'failure_output': [],
@@ -808,6 +823,7 @@ class TestWeb(BaseTestWeb):
                   'group_variables': {},
                   'host_variables': {},
                   'include_vars': [],
+                  'include_projects': None,
                   'variant_description': '',
                   'voting': True,
                   'workspace_scheme': 'golang',
@@ -822,6 +838,7 @@ class TestWeb(BaseTestWeb):
                   'dependencies': [{'name': 'project-merge',
                                     'soft': False}],
                   'description': None,
+                  'exclude_projects': None,
                   'files': [],
                   'final': False,
                   'failure_output': [],
@@ -857,6 +874,7 @@ class TestWeb(BaseTestWeb):
                   'group_variables': {},
                   'host_variables': {},
                   'include_vars': [],
+                  'include_projects': None,
                   'variant_description': '',
                   'voting': True,
                   'workspace_scheme': 'golang',
@@ -871,6 +889,7 @@ class TestWeb(BaseTestWeb):
                   'dependencies': [{'name': 'project-merge',
                                     'soft': False}],
                   'description': None,
+                  'exclude_projects': None,
                   'files': [],
                   'final': False,
                   'failure_output': [],
@@ -906,6 +925,7 @@ class TestWeb(BaseTestWeb):
                   'group_variables': {},
                   'host_variables': {},
                   'include_vars': [],
+                  'include_projects': None,
                   'variant_description': '',
                   'voting': True,
                   'workspace_scheme': 'golang',
@@ -948,6 +968,7 @@ class TestWeb(BaseTestWeb):
                              'deduplicate': 'auto',
                              'dependencies': [],
                              'description': None,
+                             'exclude_projects': None,
                              'files': [],
                              'final': False,
                              'failure_output': [],
@@ -982,6 +1003,7 @@ class TestWeb(BaseTestWeb):
                              'group_variables': {},
                              'host_variables': {},
                              'include_vars': [],
+                             'include_projects': None,
                              'variant_description': '',
                              'voting': True,
                              'workspace_scheme': 'golang',
@@ -1348,7 +1370,9 @@ class TestWeb(BaseTestWeb):
                          'canonical_name':
                          'review.example.com/org/project1',
                          'name': 'org/project1',
-                         'short_name': 'project1'},
+                         'short_name': 'project1',
+                         'src_dir': 'src/review.example.com/org/project1',
+                     },
                      'src_dir': 'src/review.example.com/org/project1'}],
                 'buildset_refs': [
                     {'branch': 'master',
@@ -1358,7 +1382,9 @@ class TestWeb(BaseTestWeb):
                          'canonical_name':
                          'review.example.com/org/project1',
                          'name': 'org/project1',
-                         'short_name': 'project1'},
+                         'short_name': 'project1',
+                         'src_dir': 'src/review.example.com/org/project1',
+                     },
                      'src_dir': 'src/review.example.com/org/project1'}],
                 'pipeline': 'check',
                 'post_review': False,
@@ -1457,7 +1483,10 @@ class TestWeb(BaseTestWeb):
                          'canonical_name':
                          'review.example.com/org/noop-project',
                          'name': 'org/noop-project',
-                         'short_name': 'noop-project'},
+                         'short_name': 'noop-project',
+                         'src_dir':
+                         'src/review.example.com/org/noop-project',
+                     },
                      'src_dir':
                      'src/review.example.com/org/noop-project'}],
                 'buildset_refs': [
@@ -1468,7 +1497,10 @@ class TestWeb(BaseTestWeb):
                          'canonical_name':
                          'review.example.com/org/noop-project',
                          'name': 'org/noop-project',
-                         'short_name': 'noop-project'},
+                         'short_name': 'noop-project',
+                         'src_dir':
+                         'src/review.example.com/org/noop-project',
+                     },
                      'src_dir':
                      'src/review.example.com/org/noop-project'}],
                 'tenant': 'tenant-one',
@@ -1560,6 +1592,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_web_images(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.startWebServer()
         self.assertHistory([
@@ -1625,6 +1663,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_web_image_delete(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.startWebServer()
         self.assertHistory([
@@ -1677,6 +1721,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_web_upload_delete(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.startWebServer()
         self.assertHistory([
@@ -1726,6 +1776,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="ami-785db401")
     def test_web_upload_validate(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.executor_server.hold_jobs_in_build = True
         self.startWebServer()
         self.waitUntilSettled()
@@ -1763,6 +1819,7 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         self.assertEqual(2, len(data[0]['build_artifacts'][0]['uploads']))
         upload = data[0]['build_artifacts'][0]['uploads'][0]
         self.assertFalse(upload['validated'])
+        self.assertIsNotNone(upload['build_uuid'])
 
         # Now retrigger validation
         url = f"api/tenant/tenant-one/image-upload/{upload['uuid']}/validate"
@@ -1794,6 +1851,107 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         else:
             raise Exception("Upload not found")
         self.assertTrue(new_upload['validated'])
+        self.assertIsNotNone(new_upload['build_uuid'])
+
+    @simple_layout('layouts/nodepool-image.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-ubuntu-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.ubuntu_return_data,
+    )
+    @okay_tracebacks('Upload test failure')
+    def test_web_upload_retry(self):
+        self.startWebServer()
+        self.executor_server.hold_jobs_in_build = False
+        self._ubuntu_images = []
+
+        def _upload_run(this, *args, **kw):
+            # Fail on first upload of this image
+            if 'ubuntu-local' in this.image_name:
+                upload_id = this.metadata['zuul_upload_uuid']
+                upload = self.launcher.image_upload_registry.getItem(upload_id)
+                artifact_id = upload.artifact_uuid
+                if artifact_id not in self._ubuntu_images:
+                    self._ubuntu_images.append(artifact_id)
+                if self._ubuntu_images[0] == artifact_id:
+                    self._addFinishedUpload(upload_id)
+                    raise Exception("Upload test failure")
+            return "test_external_id"
+
+        with mock.patch.object(
+                zuul.driver.aws.awsendpoint.AwsImageUploadJob,
+                'run',
+                _upload_run):
+            self.addImageBuildEvent(
+                'tenant-one',
+                'review.example.com/org/common-config',
+                'master',
+                ['ubuntu-local'],
+            )
+            self.waitUntilSettled()
+
+            self.assertHistory([
+                dict(name='build-ubuntu-local-image', result='SUCCESS'),
+            ])
+            cname = 'review.example.com%2Forg%2Fcommon-config/ubuntu-local'
+            self.waitForUploads(cname, failed=1)
+            # The web cache can be slightly out of sync with the
+            # launcher, so wait for it to catch up.
+            for _ in iterate_timeout(10, "failed upload"):
+                resp = self.get_url('api/tenant/tenant-one/images')
+                data = resp.json()
+                images = [i for i in data if i['canonical_name'] == cname]
+                if not images:
+                    continue
+                artifacts = images[0]['build_artifacts']
+                if not len(artifacts) == 1:
+                    continue
+                uploads = artifacts[0]['uploads']
+                if not len(uploads) == 1:
+                    continue
+                if uploads[0]['state'] != 'failed':
+                    continue
+                upload = uploads[0]
+                break
+
+        def _upload_run(this, *args, **kw):
+            # Fail on first upload of this image
+            return "test_external_id"
+
+        with mock.patch.object(
+                zuul.driver.aws.awsendpoint.AwsImageUploadJob,
+                'run',
+                _upload_run):
+            # Now retrigger upload
+            url = f"api/tenant/tenant-one/image-upload/{upload['uuid']}/upload"
+            # Test that unauthenticated access fails
+            resp = self.post_url(url)
+            self.assertEqual(401, resp.status_code, resp.text)
+            # Do it again with auth
+            token = self._getToken(['tenant-one'])
+            resp = self.post_url(
+                url,
+                headers={'Authorization': 'Bearer %s' % token})
+            self.assertEqual(200, resp.status_code, resp.text)
+            self.waitUntilSettled("image retry")
+
+            self.waitForUploads(cname, ready=1)
+            for _ in iterate_timeout(10, "ready upload"):
+                resp = self.get_url('api/tenant/tenant-one/images')
+                data = resp.json()
+                images = [i for i in data if i['canonical_name'] == cname]
+                if not images:
+                    continue
+                artifacts = images[0]['build_artifacts']
+                if not len(artifacts) == 1:
+                    continue
+                uploads = artifacts[0]['uploads']
+                if not len(uploads) == 1:
+                    continue
+                if uploads[0]['state'] != 'ready':
+                    continue
+                break
 
     @return_data(
         'build-debian-local-image',
@@ -1808,6 +1966,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_web_image_post(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.startWebServer()
         self.executor_server.hold_jobs_in_build = False
@@ -1869,6 +2033,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
     def test_web_image_post_duplicate(self, mock_image_upload_run):
         # Test that we can enqueue multiple items for the same project
         # if they are different image builds.
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.startWebServer()
         self.executor_server.hold_jobs_in_build = False
@@ -1981,6 +2151,7 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         # * Deleting the request
         self.waitUntilSettled()
         self.startWebServer()
+        ctx = self.createZKContext(None)
 
         request = self.requestNodes(['debian-normal'])
         self.assertEqual(request.state,
@@ -2006,22 +2177,12 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         self.assertEqual(201, resp.status_code)
         self.waitUntilSettled()
 
-        node = self.launcher.api.nodes_cache.getItem(nodes[0]['uuid'])
-        self.assertEqual(node.State.HOLD, node.state)
-
-        resp = self.put_url(
-            f"api/tenant/tenant-one/nodes/{nodes[0]['uuid']}",
-            headers={'Authorization': 'Bearer %s' % token},
-            json={'state': 'used'},
-        )
-        self.assertEqual(201, resp.status_code)
-        self.waitUntilSettled()
-
+        # Now work on deleting the request so that it can move to the
+        # hold state.
         requests = self.get_url(
             'api/tenant/tenant-one/nodeset-requests').json()
         self.assertEqual(len(requests), 1)
         self.assertEqual(request.uuid, requests[0]['uuid'])
-
         # Test that unauthenticated access fails
         resp = self.delete_url(
             f"api/tenant/tenant-one/nodeset-requests/{requests[0]['uuid']}",
@@ -2035,12 +2196,26 @@ class TestWebProviders(LauncherBaseTestCase, WebMixin):
         self.assertEqual(204, resp.status_code)
         self.waitUntilSettled()
 
-        ctx = self.createZKContext(None)
         for _ in iterate_timeout(10, "request to be deleted"):
             try:
                 request.refresh(ctx)
             except NoNodeError:
                 break
+
+        node = self.launcher.api.nodes_cache.getItem(nodes[0]['uuid'])
+        for _ in iterate_timeout(10, "node to hold"):
+            node.refresh(ctx)
+            if node.state == node.State.HOLD:
+                break
+
+        resp = self.put_url(
+            f"api/tenant/tenant-one/nodes/{nodes[0]['uuid']}",
+            headers={'Authorization': 'Bearer %s' % token},
+            json={'state': 'used'},
+        )
+        self.assertEqual(201, resp.status_code)
+        self.waitUntilSettled()
+
         for _ in iterate_timeout(10, "node to be deleted"):
             try:
                 node.refresh(ctx)
@@ -3155,7 +3330,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) - 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         resp = self.post_url(
             "api/tenant/tenant-one/project/org/project/autohold",
@@ -3190,7 +3365,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-six', 'tenant-ten', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         resp = self.post_url(
             "api/tenant/tenant-one/project/org/project/autohold",
@@ -3230,7 +3405,8 @@ class TestTenantScopedWebApi(BaseTestWeb):
                 'change': None,
                 'ref': None,
                 'node_hold_expiration': None}
-        good_token = jwt.encode(good_authz, key='NoDanaOnlyZuul',
+        good_token = jwt.encode(good_authz,
+                                key='ThisIsABadSecretOnlyUsedForTesting',
                                 algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/project/org/project/autohold',
@@ -3258,7 +3434,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/project/org/project/autohold',
@@ -3357,7 +3533,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
         self._test_autohold(args, code=400)
 
     def _init_autohold_delete(self, authz):
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
 
         self.addAutohold('tenant-one', 'review.example.com/org/project',
@@ -3392,7 +3568,8 @@ class TestTenantScopedWebApi(BaseTestWeb):
                          'admin': ['tenant-two', ]
                      },
                      'exp': int(time.time()) + 3600}
-        bad_token = jwt.encode(bad_authz, key='NoDanaOnlyZuul',
+        bad_token = jwt.encode(bad_authz,
+                               key='ThisIsABadSecretOnlyUsedForTesting',
                                algorithm='HS256')
         resp = self.delete_url(
             "api/tenant/tenant-one/autohold/%s" % request_id,
@@ -3410,7 +3587,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        bad_token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        bad_token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                                algorithm='HS256')
         resp = self.delete_url(
             "api/tenant/tenant-one/autohold/invalidid",
@@ -3450,7 +3627,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         path = "api/tenant/%(tenant)s/project/%(project)s/enqueue"
         enqueue_args = {'tenant': 'tenant-one',
@@ -3502,7 +3679,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(path % enqueue_args,
                             headers={'Authorization': 'Bearer %s' % token},
@@ -3546,7 +3723,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         path = "api/tenant/%(tenant)s/project/%(project)s/dequeue"
         dequeue_args = {'tenant': 'tenant-one',
@@ -3663,7 +3840,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/promote',
@@ -3751,7 +3928,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/promote',
@@ -3842,7 +4019,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/promote',
@@ -3890,7 +4067,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                      'admin': ['tenant-one'],
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.get_url(
             'api/tenant/tenant-one/authorizations',
@@ -3902,7 +4079,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
         self.assertTrue(data['zuul']['scope'] == ['tenant-one'], data)
         # change tenant
         authz['zuul']['admin'] = ['tenant-whatever', ]
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.get_url(
             'api/tenant/tenant-one/authorizations',
@@ -3932,7 +4109,7 @@ class TestTenantScopedWebApi(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         args = {
             'trigger_queue_paused': True,
@@ -4036,7 +4213,7 @@ class TestTenantScopedWebApiWithAccessRules(TestTenantScopedWebApi):
                      'admin': ['tenant-one'],
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.get_url(
             'api/tenant/tenant-one/authorizations',
@@ -4048,7 +4225,7 @@ class TestTenantScopedWebApiWithAccessRules(TestTenantScopedWebApi):
         self.assertTrue(data['zuul']['scope'] == ['tenant-one'], data)
         # change tenant
         authz['zuul']['admin'] = ['tenant-whatever', ]
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         # The superclass verifies that the authorizations returned
         # correctly do not include the new tenant.  However in this
@@ -4079,7 +4256,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
                      'admin': ['tenant-one', ],
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/project/org/project/autohold',
@@ -4102,7 +4279,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
             enqueue_args = {'tenant': 'tenant-one',
                             'project': project, }
 
-            token = jwt.encode(authz, key='NoDanaOnlyZuul',
+            token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                                algorithm='HS256')
             req = self.post_url(path % enqueue_args,
                                 headers={'Authorization': 'Bearer %s' % token},
@@ -4146,7 +4323,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
                  'sub': 'melnitz',
                  'groups': ['ghostbusters', 'secretary'],
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         path = "api/tenant/%(tenant)s/project/%(project)s/enqueue"
         enqueue_args = {'tenant': 'tenant-one',
@@ -4172,7 +4349,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
                  'vehicle': {
                      'car': 'ecto-1'},
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         path = "api/tenant/%(tenant)s/project/%(project)s/enqueue"
         enqueue_args = {'tenant': 'tenant-one',
@@ -4200,7 +4377,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
                   'pipeline': 'gate', }
 
         def _test_project_enqueue_with_authz(authz, expected):
-            token = jwt.encode(authz, key='NoDanaOnlyZuul',
+            token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                                algorithm='HS256')
             req = self.post_url(path % enqueue_args,
                                 headers={'Authorization': 'Bearer %s' % token},
@@ -4230,7 +4407,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
                  'sub': 'testuser',
                  'zuul': {'admin': admin_tenants},
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.get_url('/api/tenant/tenant-one/authorizations',
                            headers={'Authorization': 'Bearer %s' % token})
@@ -4268,7 +4445,7 @@ class TestTenantScopedWebApiWithAuthRules(BaseTestWeb):
         for test_user in users:
             authz = test_user['authz']
             authz['exp'] = int(time.time()) + 3600
-            token = jwt.encode(authz, key='NoDanaOnlyZuul',
+            token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                                algorithm='HS256')
             req = self.get_url('/api/tenant/tenant-one/authorizations',
                                headers={'Authorization': 'Bearer %s' % token})
@@ -4308,7 +4485,7 @@ class TestTenantScopedWebApiTokenWithExpiry(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         resp = self.post_url(
             "api/tenant/tenant-one/project/org/project/autohold",
@@ -4344,7 +4521,7 @@ class TestTenantScopedWebApiTokenWithExpiry(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 7200,
                  'iat': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         resp = self.post_url(
             "api/tenant/tenant-one/project/org/project/autohold",
@@ -4380,7 +4557,7 @@ class TestTenantScopedWebApiTokenWithExpiry(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         time.sleep(10)
         resp = self.post_url(
@@ -4424,7 +4601,7 @@ class TestTenantScopedWebApiTokenWithExpiry(BaseTestWeb):
                  },
                  'exp': int(time.time()) + 3600,
                  'iat': int(time.time())}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         req = self.post_url(
             'api/tenant/tenant-one/project/org/project/autohold',
@@ -4448,6 +4625,443 @@ class TestTenantScopedWebApiTokenWithExpiry(BaseTestWeb):
         self.assertEqual('project-test2', ah_request['job'])
         self.assertEqual(".*", ah_request['ref_filter'])
         self.assertEqual("some reason", ah_request['reason'])
+
+
+class TestTenantScopedWebApiWithRBAC(BaseTestWeb):
+    config_file = 'zuul-admin-web-no-override.conf'
+    tenant_config_file = 'config/authorization/single-tenant/rbac.yaml'
+
+    def test_rbac_read_access(self):
+        """Test explicit read access"""
+        # Generate some build records in the db.
+        self.add_base_changes()
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+
+        path = 'api/tenant/tenant-one/builds' \
+               '?project=org/project&job_name=project-test1'
+
+        def _test_builds_get_with_authz(authz, expected):
+            token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                               algorithm='HS256')
+            req = self.get_url(path,
+                               headers={'Authorization': 'Bearer %s' % token})
+            if expected == 200:
+                build_query = req.json()
+                self.assertEqual(len(build_query), 1)
+                self.assertEqual(build_query[0]['job_name'], 'project-test1')
+                self.assertEqual(build_query[0]['pipeline'], 'gate')
+                self.assertEqual(build_query[0]['result'], 'SUCCESS')
+            else:
+                self.assertEqual(expected, req.status_code, req.text)
+
+        # Authorized sub
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'venkman',
+                 'exp': int(time.time()) + 3600}
+        _test_builds_get_with_authz(authz, 200)
+        # Unauthorized sub
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'exp': int(time.time()) + 3600}
+        _test_builds_get_with_authz(authz, 403)
+        # Authorized group
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        _test_builds_get_with_authz(authz, 200)
+
+    def test_rbac_enqueue_permissions(self):
+        """Test that rbac rules defined on tenant are checked"""
+        path = "api/tenant/%(tenant)s/project/%(project)s/enqueue"
+
+        def _test_project_enqueue_with_authz(i, project, authz, expected):
+            f_ch = self.fake_gerrit.addFakeChange(project, 'master',
+                                                  '%s %i' % (project, i))
+            f_ch.addApproval('Code-Review', 2)
+            f_ch.addApproval('Approved', 1)
+            change = {'trigger': 'gerrit',
+                      'change': '%i,1' % i,
+                      'pipeline': 'gate', }
+            enqueue_args = {'tenant': 'tenant-one',
+                            'project': project, }
+
+            token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                               algorithm='HS256')
+            req = self.post_url(path % enqueue_args,
+                                headers={'Authorization': 'Bearer %s' % token},
+                                json=change)
+            self.assertEqual(expected, req.status_code, req.text)
+            self.waitUntilSettled()
+
+        i = 0
+        for p in ['org/project', 'org/project1', 'org/project2']:
+            i += 1
+            # Authorized sub
+            authz = {'iss': 'zuul_operator',
+                     'aud': 'zuul.example.com',
+                     'sub': 'venkman',
+                     'exp': int(time.time()) + 3600}
+            _test_project_enqueue_with_authz(i, p, authz, 200)
+            i += 1
+            # Unauthorized sub
+            authz = {'iss': 'zuul_operator',
+                     'aud': 'zuul.example.com',
+                     'sub': 'vigo',
+                     'exp': int(time.time()) + 3600}
+            _test_project_enqueue_with_authz(i, p, authz, 403)
+            i += 1
+            # Authorized group
+            authz = {'iss': 'zuul_operator',
+                     'aud': 'zuul.example.com',
+                     'sub': 'vigo',
+                     'groups': ['ghostbusters'],
+                     'exp': int(time.time()) + 3600}
+            _test_project_enqueue_with_authz(i, p, authz, 200)
+            i += 1
+            # unauthorized project
+            authz = {'iss': 'zuul_operator',
+                     'aud': 'zuul.example.com',
+                     'sub': 'vigo',
+                     'groups': ['ghostbusters2'],
+                     'exp': int(time.time()) + 3600}
+            _test_project_enqueue_with_authz(i, p, authz, 403)
+        self.waitUntilSettled()
+
+    def test_rbac_dequeue(self):
+        """Test that rbac rules for dequeue actions are respected"""
+        start_builds = len(self.builds)
+        self.create_branch('org/project', 'stable')
+        self.fake_gerrit.addEvent(
+            self.fake_gerrit.getFakeBranchCreatedEvent(
+                'org/project', 'stable'))
+        self.executor_server.hold_jobs_in_build = True
+        self.commitConfigUpdate('common-config', 'layouts/timer.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+
+        for _ in iterate_timeout(30, 'Wait for a build on hold'):
+            if len(self.builds) > start_builds:
+                break
+        self.waitUntilSettled()
+
+        # First check non matching role conditions (ref does not match)
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters2'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        path = "api/tenant/%(tenant)s/project/%(project)s/dequeue"
+        dequeue_args = {'tenant': 'tenant-one',
+                        'project': 'org/project', }
+        change = {'ref': 'refs/heads/stable',
+                  'pipeline': 'periodic', }
+        req = self.post_url(path % dequeue_args,
+                            headers={'Authorization': 'Bearer %s' % token},
+                            json=change)
+        # Request has failed and jobs are still held.
+        self.assertEqual(403, req.status_code, req.text)
+        self.waitUntilSettled()
+        assert len(self.builds) > start_builds
+
+        # Now check that the request succeeds with matching role conditions
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        path = "api/tenant/%(tenant)s/project/%(project)s/dequeue"
+        dequeue_args = {'tenant': 'tenant-one',
+                        'project': 'org/project', }
+        change = {'ref': 'refs/heads/stable',
+                  'pipeline': 'periodic', }
+        req = self.post_url(path % dequeue_args,
+                            headers={'Authorization': 'Bearer %s' % token},
+                            json=change)
+        self.assertEqual(200, req.status_code, req.text)
+        data = req.json()
+        self.assertEqual(True, data)
+        self.waitUntilSettled()
+
+        self.commitConfigUpdate('common-config',
+                                'layouts/no-timer.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
+        self.assertEqual(self.countJobResults(self.history, 'ABORTED'), 1)
+
+    def test_rbac_authorizations(self):
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        # Check root authorizations
+        path = "api/authorizations"
+        req = self.post_url(path,
+                            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(200, req.status_code)
+        auths = req.json()['zuul']
+        self.assertEqual(auths['scope'], ['<root>'])
+        self.assertTrue(auths['permissions']['read'])
+
+        # Check tenant scoped authorizations
+        path = "api/tenant/tenant-one/authorizations"
+        req = self.post_url(path,
+                            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(200, req.status_code)
+        auths = req.json()['zuul']
+        self.assertEqual(auths['scope'], ['tenant-one'])
+        self.assertTrue(auths['permissions']['read'])
+        self.assertTrue(auths['permissions']['enqueue'])
+        self.assertTrue(auths['permissions']['dequeue'])
+        self.assertTrue(auths['permissions']['autohold'])
+        self.assertTrue(auths['permissions']['set-tenant-state'])
+        self.assertTrue(auths['permissions']['build-image'])
+        self.assertTrue(auths['permissions']['delete-image-build-artifact'])
+
+        # Ensure we 403 when using an invalid user
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'notauser',
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        path = "api/tenant/tenant-one/authorizations"
+        req = self.post_url(path,
+                            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(403, req.status_code)
+
+    def test_rbac_autohold(self):
+        """Test autoholds work with rbac authz"""
+
+        def _test_autohold_with_authz(project, job, authz, expected):
+            path = '/api/tenant/%(tenant)s/project/%(project)s/autohold'
+            autohold = {'job': job,
+                        'count': 1,
+                        'change': None,
+                        'ref': '.*',
+                        'reason': 'Testing RBAC',
+                        'node_hold_expiration': 0}
+            autohold_args = {'tenant': 'tenant-one',
+                             'project': project, }
+
+            token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                               algorithm='HS256')
+            req = self.post_url(path % autohold_args,
+                                headers={'Authorization': 'Bearer %s' % token},
+                                json=autohold)
+            self.assertEqual(expected, req.status_code, req.text)
+            self.waitUntilSettled()
+
+        # Unauthorized sub
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'exp': int(time.time()) + 3600}
+        _test_autohold_with_authz('org/project', 'project-test1', authz, 403)
+        # Unauthorized group
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters2'],
+                 'exp': int(time.time()) + 3600}
+        _test_autohold_with_authz('org/project', 'project-test1', authz, 403)
+        # Authorized group
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        _test_autohold_with_authz('org/project', 'project-test1', authz, 200)
+
+        # Check the resulting autohold exists (and get its id for deletion)
+        path = '/api/tenant/%(tenant)s/project/%(project)s/autohold'
+        autohold_args = {'tenant': 'tenant-one',
+                         'project': 'org/project'}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        req = self.get_url(path % autohold_args,
+                           headers={'Authorization': 'Bearer %s' % token})
+        request_id = req.json()[0]['id']
+        self.assertEqual('0000000000', request_id)
+
+        def _test_delete_autohold_with_authz(request_id, authz, expected):
+            path = '/api/tenant/%(tenant)s/autohold/%(request_id)s'
+            delete_args = {'tenant': 'tenant-one',
+                           'request_id': request_id}
+            token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                               algorithm='HS256')
+            req = self.get_url(path % delete_args,
+                               headers={'Authorization': 'Bearer %s' % token})
+            self.assertEqual(expected, req.status_code)
+
+        # Now try to delete the autohold
+        # Unauthorized sub
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'exp': int(time.time()) + 3600}
+        _test_delete_autohold_with_authz(request_id, authz, 403)
+        # Authorized group
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        _test_delete_autohold_with_authz(request_id, authz, 200)
+
+    def test_rbac_set_state(self):
+        """Test rbac roles are honored by state_post requests"""
+        path = '/api/tenant/%(tenant)s/state'
+        state_post_args = {'tenant': 'tenant-one'}
+        state_post = {'trigger_queue_paused': True,
+                      'reason': 'rbac testing'}
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters2'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        # Check a request that doesn't match any roles due to bad credentials
+        req = self.post_url(path % state_post_args,
+                            headers={'Authorization': 'Bearer %s' % token},
+                            json=state_post)
+        self.assertEqual(403, req.status_code, req.text)
+
+        # Now check a request that does match credentials
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        req = self.post_url(path % state_post_args,
+                            headers={'Authorization': 'Bearer %s' % token},
+                            json=state_post)
+        self.assertEqual(200, req.status_code, req.text)
+        # Check the tenant state in zookeeper
+        tqs_path = TENANT_EVENT_STATE.format(tenant='tenant-one')
+        tqs = zuul.model.TenantEventState(tqs_path)
+        ctx = self.createZKContext(None)
+        tqs.refresh(ctx)
+        tqs = tqs.toDict()
+        self.assertTrue(tqs['trigger_queue_paused'])
+        self.assertEqual(tqs['reason'], 'rbac testing')
+
+    def test_rbac_build_image(self):
+        path = 'api/tenant/%(tenant)s/image/%(image)s/build'
+        image_build_args = {'tenant': 'tenant-one',
+                            'image': 'testimage'}
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters2'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        # Check a request that doesn't match any roles due to bad credentials
+        req = self.post_url(path % image_build_args,
+                            headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(403, req.status_code, req.text)
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        # Now check a request with valid credentials
+        image_build_args = {'tenant': 'tenant-one',
+                            'image': 'testimage'}
+        req = self.post_url(path % image_build_args,
+                            headers={'Authorization': 'Bearer %s' % token})
+        # The 404 response with the image not found error indicates we
+        # successfully authenticated and were authorized, but the image
+        # simply isn't in this zuul tenant.
+        self.assertEqual(404, req.status_code, req.text)
+        self.assertIn('Image not found in tenant', req.text)
+
+    def test_rbac_delete_image_build_artifact(self):
+        path = '/api/tenant/%(tenant)s/image-build-artifact/%(artifact_id)s'
+        delete_args = {'tenant': 'tenant-one',
+                       'artifact_id': '123456'}
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters2'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        # Check a request that doesn't match any roles due to bad credentials
+        req = self.delete_url(path % delete_args,
+                              headers={'Authorization': 'Bearer %s' % token})
+        self.assertEqual(403, req.status_code, req.text)
+        # Now check a request with valid credentials
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        req = self.delete_url(path % delete_args,
+                              headers={'Authorization': 'Bearer %s' % token})
+        # The 404 response with the image build artifact not found error
+        # indicates we successfully authenticated and were authorized, but the
+        # image build artifact simply isn't in this zuul tenant.
+        self.assertEqual(404, req.status_code, req.text)
+        self.assertIn('Image build artifact not found in tenant', req.text)
+
+    def test_rbac_invalid_json(self):
+        """Test behavior of bad requests prior to auth validation"""
+        authz = {'iss': 'zuul_operator',
+                 'aud': 'zuul.example.com',
+                 'sub': 'vigo',
+                 'groups': ['ghostbusters'],
+                 'exp': int(time.time()) + 3600}
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
+                           algorithm='HS256')
+        path = '/api/tenant/%(tenant)s/project/%(project)s/autohold'
+        autohold_args = {'tenant': 'tenant-one',
+                         'project': 'org/project', }
+        autohold = {'job': 'project-test1',
+                    'count': 1,
+                    'change': None,
+                    'ref': '.*',
+                    'reason': 'Testing RBAC',
+                    'node_hold_expiration': 0}
+        headers = {
+            'Authorization': 'Bearer %s' % token,
+            'Content-Type': 'application/json'
+        }
+        full_path = urllib.parse.urljoin(self.base_url, path % autohold_args)
+        raw_json = json.dumps(autohold)
+
+        # Ensure everything is happy if the json is valid
+        req = requests.post(full_path, headers=headers, data=raw_json)
+        self.assertEqual(200, req.status_code)
+
+        # Edit the raw_json to make it invalid json
+        raw_json = raw_json[1:-1]
+        req = requests.post(full_path, headers=headers, data=raw_json)
+        self.assertEqual(400, req.status_code)
+        self.assertIn('Invalid JSON document', req.text)
 
 
 class TestHeldAttributeInBuildInfo(BaseTestWeb):
@@ -4526,7 +5140,7 @@ class TestCLIViaWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         p = subprocess.Popen(
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
@@ -4565,7 +5179,7 @@ class TestCLIViaWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         p = subprocess.Popen(
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
@@ -4594,7 +5208,7 @@ class TestCLIViaWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         p = subprocess.Popen(
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
@@ -4633,7 +5247,7 @@ class TestCLIViaWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         p = subprocess.Popen(
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
@@ -4683,7 +5297,7 @@ class TestCLIViaWebApi(BaseTestWeb):
                      'admin': ['tenant-one', ]
                  },
                  'exp': int(time.time()) + 3600}
-        token = jwt.encode(authz, key='NoDanaOnlyZuul',
+        token = jwt.encode(authz, key='ThisIsABadSecretOnlyUsedForTesting',
                            algorithm='HS256')
         p = subprocess.Popen(
             [os.path.join(sys.prefix, 'bin/zuul-admin'),
@@ -4906,6 +5520,12 @@ class TestWebApiAccessRules(BaseTestWeb):
                 info['info']['capabilities']['auth']['read_protected'])
 
 
+class TestWebApiRBACReadAccess(TestWebApiAccessRules):
+    # Test read-level access restrictions
+    config_file = 'zuul-admin-web.conf'
+    tenant_config_file = 'config/access-rules/main-rbac.yaml'
+
+
 class TestWebOIDCJobs(BaseTestWeb):
     tenant_config_file = 'config/secrets/main.yaml'
 
@@ -4960,7 +5580,7 @@ class TestWebOIDCEndpoints(BaseTestWeb):
         # Make sure the fist signning key is created
         keystore.getLatestOidcSigningKeys(algorithm="RS256")
 
-        jwks_data = self.get_url('oidc/.well-known/jwks').json()
+        jwks_data = self.get_url('oidc/jwks').json()
         self.assertEqual(len(jwks_data["keys"]), 1)
         for idx, key in enumerate(jwks_data["keys"]):
             self._validate_oidc_key(key, expected_kid=f'RS256-{idx}')
@@ -4976,22 +5596,26 @@ class TestWebOIDCEndpoints(BaseTestWeb):
             if len(test_keys.keys) == 2:
                 break
 
-        jwks_data = self.get_url('oidc/.well-known/jwks').json()
+        jwks_data = self.get_url('oidc/jwks').json()
         self.assertEqual(len(jwks_data["keys"]), 2)
         for idx, key in enumerate(jwks_data["keys"]):
             self._validate_oidc_key(key, expected_kid=f'RS256-{idx}')
 
     def _test_oidc_endpoints(self, tenant_name, expected_webroot):
-        well_known_url = 'oidc/.well-known'
         if tenant_name:
-            well_known_url = f'oidc/{tenant_name}/.well-known'
+            root = f'oidc/tenant/{tenant_name}/'
+            jwks = f'{root}jwks'
+        else:
+            root = ''
+            jwks = 'oidc/jwks'
+        well_known_url = f'{root}.well-known'
 
         # Test that the openid-configuration content is correct
         config_data = self.get_url(
             f'{well_known_url}/openid-configuration').json()
         self.assertEqual(config_data['issuer'], expected_webroot)
         self.assertEqual(config_data['jwks_uri'],
-                         f'{expected_webroot}/oidc/.well-known/jwks')
+                         f'{expected_webroot}/oidc/jwks')
         self.assertEqual(config_data['claims_supported'],
                          ['aud', 'iat', 'iss', 'name', 'sub', 'custom'])
         self.assertEqual(config_data['response_types_supported'], ['id_token'])
@@ -5000,10 +5624,26 @@ class TestWebOIDCEndpoints(BaseTestWeb):
         self.assertEqual(config_data['subject_types_supported'], ['public'])
 
         # Test that the jwks content is correct
-        jwks_data = self.get_url(f'{well_known_url}/jwks').json()
+        jwks_data = self.get_url(jwks).json()
         self.assertEqual(len(jwks_data["keys"]), 1)
         key = jwks_data["keys"][0]
         self._validate_oidc_key(key)
+
+        # Test that these similar urls don't work
+        well_known_url = f'{root}oidc/.well-known'
+        with testtools.ExpectedException(requests.exceptions.JSONDecodeError):
+            config_data = self.get_url(
+                f'{well_known_url}/openid-configuration').json()
+        with testtools.ExpectedException(requests.exceptions.JSONDecodeError):
+            config_data = self.get_url('jwks').json()
+
+        # Test backwards compat (remove after zuul 13)
+        well_known_url = 'oidc/.well-known'
+        if tenant_name:
+            well_known_url = f'oidc/{tenant_name}/.well-known'
+        jwks_data = self.get_url(
+            f'{well_known_url}/jwks').json()
+        self.assertEqual(len(jwks_data["keys"]), 1)
 
     def _validate_oidc_key(self, key, expected_kid='RS256-0'):
         jwk = jwt.PyJWK.from_dict(key)

@@ -41,7 +41,10 @@ class BaseSource(object, metaclass=abc.ABCMeta):
     def isMerged(self, change, head=None):
         """Determine if change is merged.
 
-        If head is provided the change is checked if it is at head."""
+        If head is provided the change is checked if it is at head.
+
+        Return False, True, or the merged commit sha if available.
+        """
 
     @abc.abstractmethod
     def canMerge(self, change, allow_needs, event=None, allow_refresh=False):

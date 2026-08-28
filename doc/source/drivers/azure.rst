@@ -1,11 +1,9 @@
-:orphan:
-
 :title: Azure Driver
 
 Azure
 =====
 
-Zuul can use Azure as a source for test nodes.
+Zuul can use Azure as a source for build nodes.
 
 Before using the Azure driver, make sure you have created a service
 principal.
@@ -82,7 +80,7 @@ The supported options in ``zuul.conf`` connections are:
       The Microsoft Entra client ID for the account.  Required unless
       :attr:`<azure connection>.shared_credentials_file` is set.
 
-   .. attr:: client_secret_id
+   .. attr:: client_secret
 
       The shared secret for the principal.  Required unless
       :attr:`<azure connection>.shared_credentials_file` or

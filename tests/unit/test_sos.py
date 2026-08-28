@@ -1162,7 +1162,8 @@ class TestScaleOutSchedulerMultiTenant(ZuulTestCase):
         self.assertIn('tenant-two', second.sched.abide.tenants)
 
         self.log.debug("Freeze scheduler-1")
-        with second.sched.layout_update_lock:
+        with (second.sched.layout_update_lock,
+              second.sched.run_handler_lock):
             self.log.debug("Reconfigure scheduler-0")
             self.newTenantConfig('config/two-tenant/one-tenant.yaml')
             first.smartReconfigure(command_socket=True)

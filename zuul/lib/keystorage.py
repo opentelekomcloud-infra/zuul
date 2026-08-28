@@ -53,7 +53,7 @@ class OIDCSigningKeysCache(ZuulTreeCache):
         obj._updateFromRaw(self._zk_context, data, zstat, None)
 
     def parsePath(self, path):
-        return self._formatKey(path.split('/')[-1]), True
+        return (self._formatKey(path.split('/')[-1]), True, None)
 
     def getSigningKeys(self, algorithm):
         return self._cached_objects.get(self._formatKey(algorithm))

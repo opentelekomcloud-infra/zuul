@@ -778,6 +778,7 @@ class GitlabConnection(ZKChangeCacheMixin, ZKBranchCacheMixin, BaseConnection):
         change.title = change.mr['title']
         change.open = change.mr['state'] == 'opened'
         change.is_merged = change.mr['state'] == 'merged'
+        change.merge_commit_sha = change.mr.get('merge_commit_sha')
         # Can be "can_be_merged"
         change.merge_status = change.mr['merge_status']
         # Blocking discussions - not properly documented parameter

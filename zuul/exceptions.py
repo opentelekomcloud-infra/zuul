@@ -294,6 +294,17 @@ class DuplicateGroupError(ConfigurationSyntaxError):
         super(DuplicateGroupError, self).__init__(message)
 
 
+class ReporterJobNotPermittedError(ConfigurationSyntaxError):
+    zuul_error_name = 'Reporter Job Not Permitted'
+
+    def __init__(self, project):
+        message = textwrap.dedent(f"""\
+        The project {project} is not permitted to configure a
+        reporter job.""")
+        message = textwrap.fill(message)
+        super().__init__(message)
+
+
 class ProjectNotFoundError(ConfigurationSyntaxError):
     zuul_error_name = 'Project Not Found'
 
@@ -373,6 +384,28 @@ class ProjectNotPermittedError(ConfigurationSyntaxError):
         permitted is that of the project itself.""")
         message = textwrap.fill(message)
         super(ProjectNotPermittedError, self).__init__(message)
+
+
+class AuthZRuleNotFoundError(ConfigurationSyntaxError):
+    zuul_error_name = 'AuthZ Rule Not Found'
+
+    def __init__(self, authz_rule):
+        message = textwrap.dedent("""\
+        The Authorization Rule "{authz_rule}" was not found.  All
+        RBAC role mappings must reference valid AuthZ Rules.""")
+        message = textwrap.fill(message.format(authz_rule=authz_rule))
+        super(AuthZRuleNotFoundError, self).__init__(message)
+
+
+class AuthZRoleNotFoundError(ConfigurationSyntaxError):
+    zuul_error_name = 'AuthZ Role Not Found'
+
+    def __init__(self, authz_role):
+        message = textwrap.dedent("""\
+        The Authorization Role "{authz_role}" was not found.  All
+        RBAC role mappings must reference valid AuthZ Roles.""")
+        message = textwrap.fill(message.format(authz_role=authz_role))
+        super(AuthZRoleNotFoundError, self).__init__(message)
 
 
 class GlobalSemaphoreNotFoundError(ConfigurationSyntaxError):

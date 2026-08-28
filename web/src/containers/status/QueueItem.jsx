@@ -55,6 +55,7 @@ import {
   JobLink,
   JobResultOrStatus,
 } from './MiscComponents'
+import { isAuthorized } from '../../Misc'
 
 import QueueItemProgress from './QueueItemProgress'
 
@@ -326,6 +327,12 @@ PromoteModal.propTypes = {
 }
 
 function QueueItem({ item, pipeline, tenant, user, jobsExpanded }) {
+  /* pipeline is allowed to be null only to support the legacy
+   * ChangeStatus page (at status/change/...) where we don't know the
+   * pipeline of the changes returned by the api.  Whatever replaces
+   * that page should include pipeline information so that we regain
+   * full functionality here.
+   */
   const [isAdminActionsOpen, setIsAdminActionsOpen] = useState(false)
   const [isDequeueModalOpen, setIsDequeueModalOpen] = useState(false)
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false)
@@ -439,28 +446,36 @@ function QueueItem({ item, pipeline, tenant, user, jobsExpanded }) {
 
   const times = calculateQueueItemTimes(item)
 
-  const adminActions = [
-    <DropdownItem
-      key="dequeue"
-      icon={<BanIcon style={{
-        color: 'var(--pf-global--danger-color--100)',
-      }} />}
-      description="Stop all jobs for this change"
-      onClick={() => showDequeueModal()}
-    >
-      Dequeue
-    </DropdownItem>,
-    <DropdownItem
-      key="promote"
-      icon={<AngleDoubleUpIcon style={{
-        color: 'var(--pf-global--default-color--200)',
-      }} />}
-      description="Promote this change to the top of the queue"
-      onClick={() => showPromoteModal()}
-    >
-      Promote
-    </DropdownItem>
-  ]
+  const adminActions = []
+
+  if (isAuthorized(user, 'dequeue')) {
+    adminActions.push(
+      <DropdownItem
+        key="dequeue"
+        icon={<BanIcon style={{
+          color: 'var(--pf-global--danger-color--100)',
+        }} />}
+        description="Stop all jobs for this change"
+        onClick={() => showDequeueModal()}
+      >
+        Dequeue
+      </DropdownItem>
+    )
+  }
+  if (isAuthorized(user, 'promote')) {
+    adminActions.push(
+      <DropdownItem
+        key="promote"
+        icon={<AngleDoubleUpIcon style={{
+          color: 'var(--pf-global--default-color--200)',
+        }} />}
+        description="Promote this change to the top of the queue"
+        onClick={() => showPromoteModal()}
+      >
+        Promote
+      </DropdownItem>
+    )
+  }
 
   return (
     <>
@@ -468,8 +483,8 @@ function QueueItem({ item, pipeline, tenant, user, jobsExpanded }) {
         <CardHeader>
           {item.live === true ?
             <CardActions>
-              <FilterDropdown item={item} pipeline={pipeline} />
-              {user.isAdmin && user.scope.indexOf(tenant.name) !== -1 ?
+              {pipeline && <FilterDropdown item={item} pipeline={pipeline} />}
+              {pipeline && (adminActions.length > 0) ?
                 <Dropdown
                   className="zuul-admin-dropdown"
                   onSelect={onSelect}

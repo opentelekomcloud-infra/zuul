@@ -46,6 +46,7 @@ import {
   OutlinedClockIcon,
   PackageIcon,
   RedoIcon,
+  TopologyIcon,
   WrenchIcon
 } from '@patternfly/react-icons'
 
@@ -116,6 +117,18 @@ class JobVariant extends React.Component {
       status.push({
         icon: <LockedIcon />,
         name: 'Protected'
+      })
+    }
+    if (variant.type === 'initializer') {
+      status.push({
+        icon: <TopologyIcon />,
+        name: 'Initializer'
+      })
+    }
+    if (variant.type === 'reporter') {
+      status.push({
+        icon: <TopologyIcon />,
+        name: 'Reporter'
       })
     }
 
@@ -249,14 +262,20 @@ class JobVariant extends React.Component {
 
     })
     const jobInfosList = [
-      'required_projects', 'dependencies', 'files', 'irrelevant_files', 'roles'
+      'required_projects',
+      'dependencies',
+      'files',
+      'irrelevant_files',
+      'roles',
+      'include_projects',
+      'exclude_projects'
     ]
     jobInfosList.forEach(key => {
       let label = key
       let nice_label = key
       let values = variant[key]
 
-      if (values.length === 0) {
+      if (!values || values.length === 0) {
         return
       }
       const items = (

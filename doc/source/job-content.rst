@@ -49,11 +49,13 @@ of these git repos to ensure that the job results reflect the proposed
 future state that Zuul is testing, and all dependencies are present.
 
 The git repositories will have a remote ``origin`` with refs pointing
-to the previous change in the speculative state. This means that e.g.
-a ``git diff origin/<branch>..<branch>`` will show the changes being
-tested. Note that the ``origin`` URL is set to a bogus value
-(``file:///dev/null``) and can not be used for updating the repository
-state; the local repositories are guaranteed to be up to date.
+to the previous speculative state, i.e., the state of the repository
+before the speculative merge of any changes in the current queue item.
+This means that e.g.  a ``git diff origin/<branch>..<branch>`` will
+show the changes being tested. Note that the ``origin`` URL is set to
+a bogus value (``file:///dev/null``) and can not be used for updating
+the repository state; the local repositories are guaranteed to be up
+to date.
 
 The repositories will be placed on the filesystem in directories
 corresponding with the canonical hostname of their source connection.
@@ -70,7 +72,7 @@ in this format.
 
 Note that these git repositories are located on the executor; in order
 to be useful to most kinds of jobs, they will need to be present on
-the test nodes.  The ``base`` job in the standard library (see
+the build nodes.  The ``base`` job in the standard library (see
 `zuul-base-jobs documentation`_ for details) contains a
 pre-playbook which copies the repositories to all of the job's nodes.
 It is recommended to always inherit from this base job to ensure that
@@ -842,6 +844,15 @@ The following variables related to the queue item are available:
          Change
             The topic of the change (if any).
 
+      .. var:: merge_commit_id
+
+         This field is present only for reporter jobs run for Changes
+         when those changes are being merged.  This may not be
+         available for all sources (currently supported for Gerrit,
+         GitHub, and GitLab).
+
+         The git sha of the target branch after the change was merged.
+
    .. var:: buildset_refs
       :type: list
 
@@ -1001,6 +1012,15 @@ The following variables related to the queue item are available:
 
          Change
             The topic of the change (if any).
+
+      .. var:: merge_commit_id
+
+         This field is present only for reporter jobs run for Changes
+         when those changes are being merged.  This may not be
+         available for all sources (currently supported for Gerrit,
+         GitHub, and GitLab).
+
+         The git sha of the target branch after the change was merged.
 
 Job
 ~~~
@@ -1836,6 +1856,6 @@ A job build may have the following status:
   One of the build dependencies failed and this job was not executed.
 
 **NODE_FAILURE**
-  The test instance provider was unable to fulfill the nodeset request.
-  This can happen if Nodepool is unable to provide the requested node(s)
-  for the request.
+  The :ref:`provider` was unable to fulfill the nodeset request.  This
+  can happen if Zuul (or Nodepool) is unable to provide the requested
+  node(s) for the request.

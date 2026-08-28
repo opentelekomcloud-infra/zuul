@@ -208,23 +208,39 @@ class AzureProviderImage(BaseProviderImage):
             """,
         ), 'spec'): azure_gallery_image,
     })
+    main_cloud_schema = assemble(
+        BaseProviderImage.cloud_schema,
+        azure_cloud_schema,
+        inheritable_azure_image_schema,
+    )
+    internal_main_cloud_schema = assemble(
+        main_cloud_schema,
+        provider_schema.internal_base_image,
+    )
+    cloud_schema_exclusion = RequiredExclusive(
+        'image_id', 'image_reference', 'image_filter',
+        'community_gallery_image', 'shared_gallery_image',
+        msg=('Provide one of "image-id", '
+             '"image-reference", "image-filter", '
+             '"community-gallery-image", or '
+             '"shared-gallery-image" keys'))
     cloud_schema = vs.All(
-        assemble(
-            BaseProviderImage.cloud_schema,
-            azure_cloud_schema,
-            inheritable_azure_image_schema,
-        ),
-        RequiredExclusive(
-            'image_id', 'image_reference', 'image_filter',
-            'community_gallery_image', 'shared_gallery_image',
-            msg=('Provide one of "image-id", '
-                 '"image-reference", "image-filter", '
-                 '"community-gallery-image", or '
-                 '"shared-gallery-image" keys'))
+        main_cloud_schema,
+        cloud_schema_exclusion,
+    )
+    internal_cloud_schema = vs.All(
+        internal_main_cloud_schema,
+        cloud_schema_exclusion,
+        extra=vs.ALLOW_EXTRA,
     )
     zuul_schema = assemble(
         BaseProviderImage.zuul_schema,
         inheritable_azure_image_schema,
+    )
+    internal_zuul_schema = assemble(
+        zuul_schema,
+        provider_schema.internal_base_image,
+        extra=vs.ALLOW_EXTRA,
     )
     inheritable_cloud_schema = assemble(
         BaseProviderImage.inheritable_cloud_schema,
@@ -236,6 +252,11 @@ class AzureProviderImage(BaseProviderImage):
     )
     schema = vs.Union(
         cloud_schema, zuul_schema,
+        discriminant=discriminate(
+            lambda val, alt: val['type'] == alt['type'].validators[0])
+    )
+    internal_schema = vs.Union(
+        internal_cloud_schema, internal_zuul_schema,
         discriminant=discriminate(
             lambda val, alt: val['type'] == alt['type'].validators[0])
     )
@@ -320,6 +341,11 @@ class AzureProviderFlavor(BaseProviderFlavor):
         AzureProviderImage.inheritable_azure_image_schema,
         azure_flavor_schema,
     )
+    internal_schema = assemble(
+        schema,
+        provider_schema.internal_base_flavor,
+        extra=vs.ALLOW_EXTRA,
+    )
 
 
 class AzureProviderLabel(BaseProviderLabel):
@@ -395,33 +421,62 @@ class AzureProviderLabel(BaseProviderLabel):
         azure_label_schema,
     )
 
+    main_schema = assemble(
+        BaseProviderLabel.schema,
+        AzureProviderImage.inheritable_azure_image_schema,
+        provider_schema.host_key_checking,
+        azure_label_schema,
+    )
+
+    internal_main_schema = assemble(
+        main_schema,
+        provider_schema.internal_base_label,
+        extra=vs.ALLOW_EXTRA,
+    )
+
+    main_schema_exclusion = RequiredExclusive(
+        'subnet_id', 'subnet_reference',
+        msg=('Provide one of "subnet-id" or '
+             '"subnet-reference" keys'))
+
     schema = vs.All(
-        assemble(
-            BaseProviderLabel.schema,
-            AzureProviderImage.inheritable_azure_image_schema,
-            provider_schema.host_key_checking,
-            azure_label_schema,
-        ),
-        RequiredExclusive(
-            'subnet_id', 'subnet_reference',
-            msg=('Provide one of "subnet-id" or '
-                 '"subnet-reference" keys'))
+        main_schema,
+        main_schema_exclusion,
+    )
+
+    internal_schema = vs.All(
+        internal_main_schema,
+        main_schema_exclusion,
     )
 
     image_flavor_inheritable_schema = assemble(
         AzureProviderImage.inheritable_azure_image_schema,
     )
 
+    def __init__(self, label_config, provider_config):
+        self.subnet_id = None
+        self.subnet_reference = None
+        super().__init__(label_config, provider_config)
+
 
 class AzureProviderSchema(BaseProviderSchema):
-    def getLabelSchema(self):
-        return AzureProviderLabel.schema
+    def getLabelSchema(self, internal=False):
+        if internal:
+            return AzureProviderLabel.internal_schema
+        else:
+            return AzureProviderLabel.schema
 
-    def getImageSchema(self):
-        return AzureProviderImage.schema
+    def getImageSchema(self, internal=False):
+        if internal:
+            return AzureProviderImage.internal_schema
+        else:
+            return AzureProviderImage.schema
 
-    def getFlavorSchema(self):
-        return AzureProviderFlavor.schema
+    def getFlavorSchema(self, internal=False):
+        if internal:
+            return AzureProviderFlavor.internal_schema
+        else:
+            return AzureProviderFlavor.schema
 
     def getInheritableLabelSchema(self):
         return AzureProviderLabel.inheritable_schema
@@ -438,8 +493,11 @@ class AzureProviderSchema(BaseProviderSchema):
     def getInheritableFlavorSchema(self):
         return AzureProviderFlavor.inheritable_schema
 
-    def getProviderSchema(self):
-        schema = super().getProviderSchema()
+    def getZuulImageSchema(self):
+        return AzureProviderImage.zuul_schema
+
+    def getProviderSchema(self, internal=False):
+        schema = super().getProviderSchema(internal)
 
         resource_limits = {
             Optional(
@@ -501,6 +559,7 @@ class AzureProviderSchema(BaseProviderSchema):
 class AzureProvider(BaseProvider, subclass_id='azure'):
     log = logging.getLogger("zuul.AzureProvider")
     schema = AzureProviderSchema().getProviderSchema()
+    internal_schema = AzureProviderSchema().getProviderSchema(internal=True)
 
     @property
     def endpoint(self):

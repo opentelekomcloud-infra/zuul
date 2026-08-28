@@ -1,4 +1,4 @@
-# Copyright 2024 Acme Gating, LLC
+# Copyright 2024-2026 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -65,6 +65,11 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
         ))}),
         doc="These are the attributes available for a cloud image.",
     )
+    internal_cloud_schema = assemble(
+        cloud_schema,
+        provider_schema.internal_base_image,
+        extra=vs.ALLOW_EXTRA,
+    )
     zuul_schema = assemble(
         provider_schema.common_image,
         provider_schema.common_image_zuul,
@@ -78,8 +83,18 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
         ))}),
         doc="These are the attributes available for a Zuul image.",
     )
+    internal_zuul_schema = assemble(
+        zuul_schema,
+        provider_schema.internal_base_image,
+        extra=vs.ALLOW_EXTRA,
+    )
     schema = vs.Union(
         cloud_schema, zuul_schema,
+        discriminant=discriminate(
+            lambda val, alt: val['type'] == alt['type'].validators[0])
+    )
+    internal_schema = vs.Union(
+        internal_cloud_schema, internal_zuul_schema,
         discriminant=discriminate(
             lambda val, alt: val['type'] == alt['type'].validators[0])
     )
@@ -90,7 +105,7 @@ class BaseProviderImage(CNameMixin, metaclass=abc.ABCMeta):
 
     def __init__(self, image_config, provider_config):
         new_config = image_config.copy()
-        self.__dict__.update(self.schema(new_config))
+        self.__dict__.update(self.internal_schema(new_config))
 
 
 class BaseProviderFlavor(CNameMixin, metaclass=abc.ABCMeta):
@@ -101,10 +116,15 @@ class BaseProviderFlavor(CNameMixin, metaclass=abc.ABCMeta):
         provider_schema.common_flavor,
         provider_schema.base_flavor,
     )
+    internal_schema = assemble(
+        schema,
+        provider_schema.internal_base_flavor,
+        extra=vs.ALLOW_EXTRA,
+    )
 
     def __init__(self, flavor_config, provider_config):
         new_config = flavor_config.copy()
-        self.__dict__.update(self.schema(new_config))
+        self.__dict__.update(self.internal_schema(new_config))
 
 
 class BaseProviderLabel(CNameMixin, metaclass=abc.ABCMeta):
@@ -115,11 +135,16 @@ class BaseProviderLabel(CNameMixin, metaclass=abc.ABCMeta):
         provider_schema.common_label,
         provider_schema.base_label,
     )
+    internal_schema = assemble(
+        schema,
+        provider_schema.internal_base_label,
+        extra=vs.ALLOW_EXTRA,
+    )
     image_flavor_inheritable_schema = assemble()
 
     def __init__(self, label_config, provider_config):
         new_config = label_config.copy()
-        self.__dict__.update(self.schema(new_config))
+        self.__dict__.update(self.internal_schema(new_config))
 
     def __repr__(self):
         return (f"<{self.__class__.__name__} "
@@ -283,14 +308,23 @@ class BaseProviderEndpoint(metaclass=abc.ABCMeta):
 
 
 class BaseProviderSchema(metaclass=abc.ABCMeta):
-    def getLabelSchema(self):
-        return BaseProviderLabel.schema
+    def getLabelSchema(self, internal=False):
+        if internal:
+            return BaseProviderLabel.internal_schema
+        else:
+            return BaseProviderLabel.schema
 
-    def getImageSchema(self):
-        return BaseProviderImage.schema
+    def getImageSchema(self, internal=False):
+        if internal:
+            return BaseProviderImage.internal_schema
+        else:
+            return BaseProviderImage.schema
 
-    def getFlavorSchema(self):
-        return BaseProviderFlavor.schema
+    def getFlavorSchema(self, internal=False):
+        if internal:
+            return BaseProviderFlavor.internal_schema
+        else:
+            return BaseProviderFlavor.schema
 
     def getInheritableLabelSchema(self):
         return BaseProviderLabel.inheritable_schema
@@ -307,7 +341,16 @@ class BaseProviderSchema(metaclass=abc.ABCMeta):
     def getInheritableFlavorSchema(self):
         return BaseProviderFlavor.inheritable_schema
 
-    def getProviderSchema(self):
+    def getZuulImageSchema(self):
+        return BaseProviderImage.zuul_schema
+
+    def getImageConfigKeys(self):
+        schema = self.getZuulImageSchema()
+        for key in schema.schema.keys():
+            if key.config:
+                yield key
+
+    def getProviderSchema(self, internal=False):
         schema = vs.Schema({
             '_source_context': model.SourceContext,
             '_start_mark': model.ZuulMark,
@@ -325,15 +368,15 @@ class BaseProviderSchema(metaclass=abc.ABCMeta):
             Required(
                 'labels',
                 doc="""A list of labels associated with this provider.""",
-            ): [self.getLabelSchema()],
+            ): [self.getLabelSchema(internal)],
             Required(
                 'images',
                 doc="""A list of images associated with this provider.""",
-            ): [self.getImageSchema()],
+            ): [self.getImageSchema(internal)],
             Required(
                 'flavors',
                 doc="""A list of flavors associated with this provider.""",
-            ): [self.getFlavorSchema()],
+            ): [self.getFlavorSchema(internal)],
             Optional(
                 'label-defaults',
                 doc="""\
@@ -481,6 +524,7 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
 
     """Base class for provider."""
     schema = BaseProviderSchema().getProviderSchema()
+    internal_schema = BaseProviderSchema().getProviderSchema(internal=True)
 
     def __init__(self, *args):
         super().__init__()
@@ -541,17 +585,28 @@ class BaseProvider(zkobject.PolymorphicZKObjectMixin,
         )
         return obj
 
-    def getProviderSchema(self):
-        return self.schema
+    def getProviderSchema(self, internal=False):
+        if internal:
+            return self.internal_schema
+        else:
+            return self.schema
 
     def parseConfig(self, config, connection):
-        schema = self.getProviderSchema()
+        schema = self.getProviderSchema(internal=True)
         ret = schema(config)
         images = self.parseImages(config, connection)
         flavors = self.parseFlavors(config, connection)
         labels = self.parseLabels(config, connection)
         for label in labels.values():
-            label.inheritFrom(images[label.image], flavors[label.flavor])
+            image = images.get(label.image)
+            if image is None:
+                raise Exception(
+                    f'Image "{label.image}" is not attached to provider')
+            flavor = flavors.get(label.flavor)
+            if flavor is None:
+                raise Exception(
+                    f'Flavor "{label.flavor}" is not attached to provider')
+            label.inheritFrom(image, flavor)
         ret.update(dict(
             images=images,
             flavors=flavors,

@@ -258,6 +258,7 @@ class ZKBranchCacheMixin:
 
         project = self.source.getProject(event.project_name)
         if event.branch:
+            ltime = None
             if event.branch_deleted:
                 # We currently cannot determine if a deleted branch was
                 # protected so we need to assume it was. GitHub/GitLab don't
@@ -266,15 +267,19 @@ class ZKBranchCacheMixin:
                 # know if branch protection has been disabled before deletion
                 # of the branch.
                 # FIXME(tobiash): Find a way to handle that case
-                self.updateProjectBranches(project, event)
+                ltime = self.updateProjectBranches(project, event)
             elif event.branch_created:
                 # In GitHub, a new branch never can be protected
                 # because that needs to be configured after it has
                 # been created.  Other drivers could optimize this,
                 # but for the moment, implement the lowest common
                 # denominator and clear the cache so that we query.
-                self.updateProjectBranches(project, event)
-            event.branch_cache_ltime = self._branch_cache.ltime
+                ltime = self.updateProjectBranches(project, event)
+
+            # Our required ltime should either be the current ltime of
+            # the branch cache, or, if we performed an update, then
+            # the ltime of that update.
+            event.branch_cache_ltime = ltime or self._branch_cache.ltime
         return event
 
     def updateProjectBranches(self, project, zuul_event_id=None):
@@ -284,6 +289,8 @@ class ZKBranchCacheMixin:
             The project for which the branches are returned.
         :param zuul_event_id:
             Unique id associated to the handled event.
+
+        :returns: The ltime of the branch cache update.
         """
         log = get_annotated_logger(self.log, event=zuul_event_id)
 
@@ -294,17 +301,16 @@ class ZKBranchCacheMixin:
             # Update them if we have them
             valid_flags, branch_infos = self._fetchProjectBranches(
                 project, required_flags)
-            self._branch_cache.setProjectBranches(
-                project.name, valid_flags, branch_infos)
-
+        else:
+            valid_flags = None
+            branch_infos = None
         merge_modes = self._fetchProjectMergeModes(project)
-        self._branch_cache.setProjectMergeModes(
-            project.name, merge_modes)
-
         default_branch = self._fetchProjectDefaultBranch(project)
-        self._branch_cache.setProjectDefaultBranch(
-            project.name, default_branch)
+        ltime = self._branch_cache.setAllProjectData(
+            project.name, valid_flags, branch_infos,
+            merge_modes, default_branch)
         log.info("Updated branches for %s", project.name)
+        return ltime
 
     def getProjectBranches(self, project, tenant, min_ltime=-1):
         """Get the branch names for the given project.
@@ -531,8 +537,8 @@ class ZKBranchCacheMixin:
                 self.log.info("Project %s branch %s protected state "
                               "changed to %s",
                               project_name, event.branch, protected)
-                self._branch_cache.setProtected(project_name, event.branch,
-                                                protected)
+                self._branch_cache.setProtected(
+                    project_name, event.branch, protected)
                 event.branch_cache_ltime = self._branch_cache.ltime
 
             event.branch_protected = protected
@@ -712,8 +718,13 @@ class BaseThreadPoolEventConnector:
                 if not self._event_forward_queue[0].done():
                     return
                 future = self._event_forward_queue.popleft()
-                events, connection_event = future.result()
+                (events, connection_event, zuul_event_id,
+                 event_type) = future.result()
                 try:
+                    if not events:
+                        log = get_annotated_logger(self.log, zuul_event_id)
+                        log.debug('Nothing to be forwarded, '
+                                  'event type: %s', event_type)
                     for event in events:
                         self.connection.logEvent(event)
                         if isinstance(event, model.DequeueEvent):

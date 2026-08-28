@@ -70,12 +70,15 @@ class OpenstackProviderImage(BaseProviderImage):
             """,
             default=True): bool,
     })
-    cloud_schema = vs.All(
-        assemble(
-            BaseProviderImage.cloud_schema,
-            openstack_cloud_schema,
-            inheritable_openstack_image_schema,
-        ),
+    cloud_schema = assemble(
+        BaseProviderImage.cloud_schema,
+        openstack_cloud_schema,
+        inheritable_openstack_image_schema,
+    )
+    internal_cloud_schema = assemble(
+        cloud_schema,
+        provider_schema.internal_base_image,
+        extra=vs.ALLOW_EXTRA,
     )
     inheritable_openstack_zuul_schema = vs.Schema({
         Optional(
@@ -91,6 +94,11 @@ class OpenstackProviderImage(BaseProviderImage):
         inheritable_openstack_image_schema,
         inheritable_openstack_zuul_schema,
     )
+    internal_zuul_schema = assemble(
+        zuul_schema,
+        provider_schema.internal_base_image,
+        extra=vs.ALLOW_EXTRA,
+    )
     inheritable_cloud_schema = assemble(
         BaseProviderImage.inheritable_cloud_schema,
         inheritable_openstack_image_schema,
@@ -102,6 +110,11 @@ class OpenstackProviderImage(BaseProviderImage):
     )
     schema = vs.Union(
         cloud_schema, zuul_schema,
+        discriminant=discriminate(
+            lambda val, alt: val['type'] == alt['type'].validators[0])
+    )
+    internal_schema = vs.Union(
+        internal_cloud_schema, internal_zuul_schema,
         discriminant=discriminate(
             lambda val, alt: val['type'] == alt['type'].validators[0])
     )
@@ -141,6 +154,11 @@ class OpenstackProviderFlavor(BaseProviderFlavor):
         provider_schema.cloud_flavor,
         OpenstackProviderImage.inheritable_openstack_image_schema,
         openstack_flavor_schema,
+    )
+    internal_schema = assemble(
+        schema,
+        provider_schema.internal_base_flavor,
+        extra=vs.ALLOW_EXTRA,
     )
 
 
@@ -193,17 +211,31 @@ class OpenstackProviderLabel(BaseProviderLabel):
         provider_schema.ssh_label,
         inheritable_openstack_label_schema,
     )
+    internal_schema = assemble(
+        schema,
+        provider_schema.internal_base_label,
+        extra=vs.ALLOW_EXTRA,
+    )
 
 
 class OpenstackProviderSchema(BaseProviderSchema):
-    def getLabelSchema(self):
-        return OpenstackProviderLabel.schema
+    def getLabelSchema(self, internal=False):
+        if internal:
+            return OpenstackProviderLabel.internal_schema
+        else:
+            return OpenstackProviderLabel.schema
 
-    def getImageSchema(self):
-        return OpenstackProviderImage.schema
+    def getImageSchema(self, internal=False):
+        if internal:
+            return OpenstackProviderImage.internal_schema
+        else:
+            return OpenstackProviderImage.schema
 
-    def getFlavorSchema(self):
-        return OpenstackProviderFlavor.schema
+    def getFlavorSchema(self, internal=False):
+        if internal:
+            return OpenstackProviderFlavor.internal_schema
+        else:
+            return OpenstackProviderFlavor.schema
 
     def getInheritableLabelSchema(self):
         return OpenstackProviderLabel.inheritable_schema
@@ -220,8 +252,11 @@ class OpenstackProviderSchema(BaseProviderSchema):
     def getInheritableFlavorSchema(self):
         return OpenstackProviderFlavor.inheritable_schema
 
-    def getProviderSchema(self):
-        schema = super().getProviderSchema()
+    def getZuulImageSchema(self):
+        return OpenstackProviderImage.zuul_schema
+
+    def getProviderSchema(self, internal=False):
+        schema = super().getProviderSchema(internal)
 
         resource_limits = {
             Optional(
@@ -302,6 +337,8 @@ class OpenstackProviderSchema(BaseProviderSchema):
 class OpenstackProvider(BaseProvider, subclass_id='openstack'):
     log = logging.getLogger("zuul.OpenstackProvider")
     schema = OpenstackProviderSchema().getProviderSchema()
+    internal_schema = OpenstackProviderSchema().getProviderSchema(
+        internal=True)
 
     @property
     def endpoint(self):

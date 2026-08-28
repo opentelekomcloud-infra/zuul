@@ -254,10 +254,21 @@ class TestAwsDriver(AwsBaseTest):
     def test_aws_node_lifecycle(self):
         self._test_node_lifecycle('debian-normal')
 
+    def check_dedicated_host_node_attrs(self, pnode):
+        self.assertTrue(pnode.node_properties['host_id'].startswith('h-'))
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    @driver_config('aws', node_checks=check_dedicated_host_node_attrs)
+    def test_aws_node_lifecycle_dedicated_host(self):
+        self._test_node_lifecycle('debian-dedicated')
+
     def check_spot_node_attrs(self, pnode):
         # The basic test above sets few options; we set many more
         # options in the spot check (so that we don't have run a test
         # for every option).
+        self.assertEqual(
+            'enabled',
+            self.run_instances_calls[0]['CpuOptions']['NestedVirtualization'])
         self.assertEqual(
             'spot',
             self.run_instances_calls[0]['InstanceMarketOptions']['MarketType'])
@@ -281,6 +292,7 @@ class TestAwsDriver(AwsBaseTest):
             self.run_instances_calls[0]['BlockDeviceMappings'][0]['Ebs']
             ['Encrypted'], True)
         self.assertTrue(pnode.node_properties['spot'])
+        self.assertTrue(pnode.node_properties['instance_id'].startswith('i-'))
         instance = self.ec2_client.describe_instance_attribute(
             InstanceId=pnode.aws_instance_id,
             Attribute='userData',
@@ -303,6 +315,7 @@ class TestAwsDriver(AwsBaseTest):
             self.create_fleet_calls[0]['OnDemandOptions'][
                 'AllocationStrategy'])
         self.assertTrue(pnode.node_properties['fleet'])
+        self.assertTrue(pnode.node_properties['instance_id'].startswith('i-'))
         instance = self.ec2_client.describe_instance_attribute(
             InstanceId=pnode.aws_instance_id,
             Attribute='userData',
@@ -345,6 +358,39 @@ class TestAwsDriver(AwsBaseTest):
             if len(launch_templates) == 0:
                 break
 
+    @simple_layout('layouts/aws/fleet-multi-flavor.yaml',
+                   enable_nodepool=True)
+    def test_aws_launch_templates_nested_virtualization(self):
+        self.waitUntilSettled()
+
+        provider = self.launcher._getProvider(
+            'tenant-one', 'aws-us-east-1-main')
+        endpoint = provider.getEndpoint()
+        template_names = endpoint.provider_label_template_names[
+            provider.canonical_name]
+
+        expected_nested_virt = {
+            'debian-no-nested-virt': False,
+            'debian-with-nested-virt': True,
+        }
+        launch_templates = self.ec2_client.describe_launch_templates()[
+            'LaunchTemplates']
+        self.assertEqual(len(expected_nested_virt), len(launch_templates))
+
+        for label_name, nested_virtualization in expected_nested_virt.items():
+            launch_template_name = template_names[label_name]
+            launch_template = \
+                self.ec2_client.describe_launch_template_versions(
+                    LaunchTemplateName=launch_template_name,
+                    Versions=['$Latest'])[
+                        'LaunchTemplateVersions'][0]['LaunchTemplateData']
+            if nested_virtualization:
+                self.assertEqual(
+                    'enabled',
+                    launch_template['CpuOptions']['NestedVirtualization'])
+            else:
+                self.assertNotIn('CpuOptions', launch_template)
+
     @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
     @driver_config('aws', ec2_quotas={
         'L-1216C47A': 2,
@@ -374,6 +420,12 @@ class TestAwsDriver(AwsBaseTest):
         AwsBaseTest.debian_return_data,
     )
     def test_aws_diskimage_snapshot_resume(self):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
 
         system_id = self.launcher.system.system_id
@@ -457,6 +509,12 @@ class TestAwsDriver(AwsBaseTest):
         AwsBaseTest.debian_return_data,
     )
     def test_aws_diskimage_image_resume(self):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
 
         system_id = self.launcher.system.system_id
@@ -602,6 +660,16 @@ class TestAwsDriver(AwsBaseTest):
         self._test_diskimage(expected_uploads=2)
         self.assertEqual(1, len(self.copy_image_calls))
 
+        self.launcher._runStats()
+        self.assertReportedStat('zuul.uploads.state.ready',
+                                value='2', kind='g')
+        iname = 'review_example_com%2Forg%2Fcommon-config_debian-local'
+        for region in ('us-east-1', 'us-west-1'):
+            self.assertReportedStat(
+                f'zuul.image.{iname}.upload.aws_aws-{region}.state.ready',
+                value='1',
+                kind='g')
+
     @simple_layout('layouts/aws/nodepool-image-copy.yaml',
                    enable_nodepool=True)
     @return_data(
@@ -613,6 +681,12 @@ class TestAwsDriver(AwsBaseTest):
         bucket = self.s3.Bucket('zuul')
         bucket.put_object(Body=ImageMocksFixture.raw_body.encode('utf8'),
                           Key='image.raw')
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
 
         west_provider = self.launcher._getProvider(
@@ -1003,6 +1077,16 @@ class TestAwsDriver(AwsBaseTest):
         self.assertFalse(hasattr(dc, 'import_method'))
         self.waitUntilSettled()
 
+    @simple_layout('layouts/aws/nodepool-error-provider.yaml',
+                   enable_nodepool=True)
+    def test_aws_config_error_provider(self):
+        # Test a syntax error in validateConfig
+        layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
+        self.assertEqual(1, len(layout.loading_errors))
+        self.assertIn('Label "debian-normal": spot instances can not '
+                      'be used on dedicated hosts',
+                      layout.loading_errors[0].error)
+
 
 class TestAwsSnapshot(AnsibleZuulTestCase, AwsBaseTest):
     tenant_config_file = 'config/snapshot/main.yaml'
@@ -1046,6 +1130,12 @@ class TestAwsSnapshot(AnsibleZuulTestCase, AwsBaseTest):
                     return uploads
 
     def test_snapshot_e2e(self):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
         image_cname = 'review.example.com%2Fcommon-config/debian-local'
         # We have an image, that's good enough for this test.

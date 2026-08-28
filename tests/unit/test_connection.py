@@ -94,7 +94,7 @@ class TestSQLConnectionMysql(ZuulTestCase):
         self.assertEqual(9, len(insp.get_columns(ref_table)))
         self.assertEqual(12, len(insp.get_columns(buildset_table)))
         self.assertEqual(2, len(insp.get_columns(buildset_ref_table)))
-        self.assertEqual(14, len(insp.get_columns(build_table)))
+        self.assertEqual(15, len(insp.get_columns(build_table)))
         self.assertEqual(5, len(insp.get_columns(artifact_table)))
         self.assertEqual(3, len(insp.get_columns(provides_table)))
         self.assertEqual(5, len(insp.get_columns(build_event_table)))
@@ -824,6 +824,8 @@ class TestMQTTConnection(ZuulTestCase):
         self.assertIn('uuid', mqtt_payload)
         self.assertEqual(dependent_test_job['dependencies'], ['test'])
         self.assertIn('test', dependent_test_job['job_dependencies'])
+        self.assertEqual(mqtt_payload['tenant_web_root'],
+                         'https://tenant.example.com/t/tenant-one/')
 
         changes = mqtt_payload['changes']
         self.assertEqual(len(changes), 1)

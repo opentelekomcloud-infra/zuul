@@ -272,13 +272,6 @@ class TestLauncher(LauncherBaseTestCase):
                 if count is None or count == len(uploads):
                     return uploads
 
-    def _waitForLauncherLayoutSync(self, tenant='tenant-one'):
-        for _ in iterate_timeout(
-                30, "scheduler and launcher to have the same layout"):
-            if (self.scheds.first.sched.local_layout_state.get(tenant) ==
-                self.launcher.local_layout_state.get(tenant)):
-                break
-
     def _waitForNoChildren(self, path):
         for _ in iterate_timeout(10, f"empty path {path}"):
             znodes = self.zk_client.client.get_children('/zuul/nodeset/locks')
@@ -297,100 +290,13 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual(errors[idx].name, 'Unknown Connection')
         self.assertIn('provider stanza', errors[idx].error)
 
-    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
-    @return_data(
-        'build-debian-local-image',
-        'refs/heads/master',
-        LauncherBaseTestCase.debian_return_data,
-    )
-    @return_data(
-        'build-ubuntu-local-image',
-        'refs/heads/master',
-        LauncherBaseTestCase.ubuntu_return_data,
-    )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
-                return_value="test_external_id")
-    def test_launcher_missing_image_build(self, mock_image_upload_run):
-        self.waitUntilSettled()
-        self.assertHistory([
-            dict(name='build-debian-local-image', result='SUCCESS'),
-            dict(name='build-ubuntu-local-image', result='SUCCESS'),
-        ], ordered=False)
-        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
-
-        for _ in iterate_timeout(
-                30, "scheduler and launcher to have the same layout"):
-            if (self.scheds.first.sched.local_layout_state.get("tenant-one") ==
-                self.launcher.local_layout_state.get("tenant-one")):
-                break
-
-        # The build should not run again because the image is no
-        # longer missing
-        self.waitUntilSettled()
-        self.assertHistory([
-            dict(name='build-debian-local-image', result='SUCCESS'),
-            dict(name='build-ubuntu-local-image', result='SUCCESS'),
-        ], ordered=False)
-        for name in [
-                'review.example.com%2Forg%2Fcommon-config/debian-local',
-                'review.example.com%2Forg%2Fcommon-config/ubuntu-local',
-        ]:
-            artifacts = self._waitForArtifacts(name, 1)
-            self.assertEqual('raw', artifacts[0].format)
-            self.assertTrue(artifacts[0].validated)
-            uploads = self.launcher.image_upload_registry.getUploadsForImage(
-                name)
-            self.assertEqual(1, len(uploads))
-            self.assertEqual(artifacts[0].uuid, uploads[0].artifact_uuid)
-            self.assertEqual("test_external_id", uploads[0].external_id)
-            self.assertTrue(uploads[0].validated)
-
-        build = self.getJobFromHistory('build-debian-local-image')
-        formats = build.parameters['zuul']['image_formats']
-        self.assertEqual(['raw'], formats)
-        self.assertEqual(
-            'debian-local', build.parameters['zuul']['image_build_name'])
-
-        build = self.getJobFromHistory('build-ubuntu-local-image')
-        formats = build.parameters['zuul']['image_formats']
-        self.assertEqual(['raw'], formats)
-        self.assertEqual(
-            'ubuntu-local', build.parameters['zuul']['image_build_name'])
-
-        repo_name = 'review_example_com%2Forg%2Fcommon-config'
-        endpoint = 'aws_aws-us-east-1'
-        image_names = ['debian-local', 'ubuntu-local']
-        for image in image_names:
-            self.assertReportedStat(
-                f'zuul.image.{repo_name}_{image}.upload'
-                f'.{endpoint}.duration', kind='ms')
-
-        for image in image_names:
-            self.assertReportedStat(
-                f'zuul.image.{repo_name}_{image}.upload'
-                f'.{endpoint}.state.ready', kind='g', value='1')
-            for state in model.ImageUpload.STATES:
-                self.assertReportedStat(
-                    f'zuul.image.{repo_name}_{image}.upload'
-                    f'.{endpoint}.state.{state}', kind='g')
-
-        self.assertReportedStat(
-            'zuul.uploads.state.ready', kind='g', value='2')
-
-    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
-    @return_data(
-        'build-debian-local-image',
-        'refs/heads/master',
-        LauncherBaseTestCase.debian_return_data,
-    )
-    @return_data(
-        'build-ubuntu-local-image',
-        'refs/heads/master',
-        LauncherBaseTestCase.ubuntu_return_data,
-    )
-    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
-                return_value="test_external_id")
-    def test_launcher_image_expire(self, mock_image_upload_run):
+    def _test_launcher_image_expire(self, count):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
@@ -460,10 +366,46 @@ class TestLauncher(LauncherBaseTestCase):
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
             dict(name='build-ubuntu-local-image', result='SUCCESS'),
         ], ordered=False)
-        artifacts3 = self._waitForArtifacts(image_cname, 2)
+        artifacts3 = self._waitForArtifacts(image_cname, count)
         artifacts3_uuids = set([x.uuid for x in artifacts3])
-        self.assertFalse(artifacts3_uuids.isdisjoint(artifacts2_uuids))
-        self.assertTrue(artifacts3_uuids.isdisjoint(artifacts1_uuids))
+        if count == 2:
+            self.assertFalse(artifacts3_uuids.isdisjoint(artifacts2_uuids))
+            self.assertTrue(artifacts3_uuids.isdisjoint(artifacts1_uuids))
+        else:
+            self.assertTrue(artifacts2_uuids < artifacts3_uuids)
+
+    @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @return_data(
+        'build-ubuntu-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.ubuntu_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="test_external_id")
+    def test_launcher_image_expire(self, mock_image_upload_run):
+        self._test_launcher_image_expire(count=2)
+
+    @simple_layout('layouts/nodepool-image-retain-count.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @return_data(
+        'build-ubuntu-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.ubuntu_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="test_external_id")
+    def test_launcher_image_expire_retain_count(self, mock_image_upload_run):
+        self._test_launcher_image_expire(count=3)
 
     @simple_layout('layouts/nodepool-image-no-validate.yaml',
                    enable_nodepool=True)
@@ -477,6 +419,12 @@ class TestLauncher(LauncherBaseTestCase):
     def test_launcher_image_no_validation(self, mock_uploadimage):
         # Test a two-stage image-build where we don't actually run the
         # validate stage (so all artifacts should be un-validated).
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
@@ -506,6 +454,76 @@ class TestLauncher(LauncherBaseTestCase):
         self.assertEqual("test_external_id", uploads[0].external_id)
         self.assertFalse(uploads[0].validated)
 
+    @simple_layout('layouts/nodepool-image-no-validate.yaml',
+                   enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="test_external_id")
+    def test_launcher_image_expire_no_validation(self, mock_uploadimage):
+        # Test a two-stage image-build where we don't actually run the
+        # validate stage (so all artifacts should be un-validated).
+        # Test that we expire the unvalidated images.
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
+        self.waitUntilSettled()
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-debian-local-image', result='SUCCESS'),
+        ])
+
+        name = 'review.example.com%2Forg%2Fcommon-config/debian-local'
+        artifacts = self._waitForArtifacts(name, 2)
+        self.assertEqual('raw', artifacts[0].format)
+        self.assertFalse(artifacts[0].validated)
+        self.assertFalse(artifacts[1].validated)
+        uploads = self.launcher.image_upload_registry.getUploadsForImage(
+            name)
+        self.assertEqual(2, len(uploads))
+        self.assertFalse(uploads[0].validated)
+        self.assertFalse(uploads[1].validated)
+        upload_ids_1 = [u.uuid for u in uploads]
+
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-debian-local-image', result='SUCCESS'),
+        ])
+        # We should still only have two, because one of the old ones
+        # should be deleted.
+        artifacts = self._waitForArtifacts(name, 2)
+        self.assertEqual('raw', artifacts[0].format)
+        self.assertFalse(artifacts[0].validated)
+        self.assertFalse(artifacts[1].validated)
+        uploads = self.launcher.image_upload_registry.getUploadsForImage(
+            name)
+        self.assertEqual(2, len(uploads))
+        self.assertFalse(uploads[0].validated)
+        self.assertFalse(uploads[1].validated)
+        upload_ids_2 = [u.uuid for u in uploads]
+        self.assertNotEqual(upload_ids_1, upload_ids_2)
+
     @simple_layout('layouts/nodepool-image-validate.yaml',
                    enable_nodepool=True)
     @return_data(
@@ -518,6 +536,12 @@ class TestLauncher(LauncherBaseTestCase):
         # Test a two-stage image-build where we do run the validate
         # stage.
         self.executor_server.hold_jobs_in_build = True
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
 
         # Use distinct AMI IDs for each expected upload and
@@ -578,6 +602,7 @@ class TestLauncher(LauncherBaseTestCase):
             self.assertEqual(artifact.uuid, upload.artifact_uuid)
             self.assertIn(upload.external_id, upload_ids)
             self.assertTrue(upload.validated)
+            self.assertIsNotNone(upload.build_uuid)
 
     @simple_layout('layouts/nodepool-image-validate.yaml',
                    enable_nodepool=True)
@@ -591,6 +616,12 @@ class TestLauncher(LauncherBaseTestCase):
     def test_launcher_image_validation_failure(self, mock_image_upload_run):
         # Test a two-stage image-build where the validate stage fails.
         self.executor_server.hold_jobs_in_build = True
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
 
         self.executor_server.release('build-debian-local-image')
@@ -629,11 +660,18 @@ class TestLauncher(LauncherBaseTestCase):
         for upload in uploads:
             self.assertEqual(artifact.uuid, upload.artifact_uuid)
             self.assertFalse(upload.validated)
+            self.assertIsNotNone(upload.build_uuid)
 
     @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_launcher_crashed_upload(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
         provider = self.launcher._getProvider(
             'tenant-one', 'aws-us-east-1-main')
@@ -682,6 +720,12 @@ class TestLauncher(LauncherBaseTestCase):
     def test_launcher_no_multiple_uploads(self, mock_image_upload_run):
         # Make sure that we don't enqueue multiple upload jobs for the
         # same pending uploads
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
         provider = self.launcher._getProvider(
             'tenant-one', 'aws-us-east-1-main')
@@ -773,7 +817,12 @@ class TestLauncher(LauncherBaseTestCase):
     def test_launcher_image_signed_url(self, mock_image_upload_run):
         # If the image is uploaded using a signed url, it will not
         # permit a HEAD request; this tests the GET range fallback.
-
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
@@ -799,6 +848,12 @@ class TestLauncher(LauncherBaseTestCase):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="test_external_id")
     def test_launcher_image_cleanup(self, mock_image_upload_run):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
@@ -882,6 +937,26 @@ class TestLauncher(LauncherBaseTestCase):
         self._waitForNoChildren('/zuul/nodeset/requests')
         self._waitForNoChildren('/zuul/nodes/locks')
         self._waitForNoChildren('/zuul/nodes/nodes')
+
+    @simple_layout('layouts/nodepool.yaml', enable_nodepool=True)
+    def test_zuul_node_data(self):
+        self.executor_server.hold_jobs_in_build = True
+
+        A = self.fake_gerrit.addFakeChange('org/project', 'master', 'A')
+        self.fake_gerrit.addEvent(A.getPatchsetCreatedEvent(1))
+        self.waitUntilSettled()
+
+        build = self.getBuildByName('check-job')
+        inv_path = os.path.join(build.jobdir.root, 'ansible', 'inventory.yaml')
+        with open(inv_path, 'r') as f:
+            inventory = yaml.safe_load(f)
+        instance_id = (inventory['all']['hosts']['controller']['zuul_node']
+                                ['node_properties']['instance_id'])
+        self.assertTrue(instance_id.startswith('i-'))
+
+        self.executor_server.hold_jobs_in_build = False
+        self.executor_server.release()
+        self.waitUntilSettled()
 
     @simple_layout('layouts/nodepool-image-attrs.yaml', enable_nodepool=True)
     def test_node_image_attributes(self):
@@ -1151,8 +1226,12 @@ class TestLauncher(LauncherBaseTestCase):
                 self.launcher.local_layout_state.get("tenant-one")):
                 break
 
-        # The build should not run again because the image is no
-        # longer missing
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/project',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='test-job', result='SUCCESS', changes='1,1'),
@@ -1807,6 +1886,48 @@ class TestLauncher(LauncherBaseTestCase):
             ctx, path=model.ProviderNode._getPath(request.nodes[0]))
         self.assertEqual(['fake key fake base64'], node.host_keys)
 
+    @simple_layout('layouts/nodepool-image-hash.yaml', enable_nodepool=True)
+    @return_data(
+        'build-debian-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.debian_return_data,
+    )
+    @return_data(
+        'build-ubuntu-local-image',
+        'refs/heads/master',
+        LauncherBaseTestCase.ubuntu_return_data,
+    )
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
+                return_value="ami-1e749f67")
+    def test_image_hash(self, mock_uploadimage):
+        # Test that we avoid uploads of duplicate image hashes
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
+        self.waitUntilSettled()
+        self.assertHistory([
+            dict(name='build-debian-local-image', result='SUCCESS'),
+            dict(name='build-ubuntu-local-image', result='SUCCESS'),
+        ], ordered=False)
+
+        for _ in iterate_timeout(60, "upload to complete"):
+            uploads = self.launcher.image_upload_registry.getUploadsForImage(
+                'review.example.com%2Forg%2Fcommon-config/debian-local')
+            self.assertEqual(1, len(uploads))
+            pending1 = [u for u in uploads if u.external_id is None]
+
+            uploads = self.launcher.image_upload_registry.getUploadsForImage(
+                'review.example.com%2Forg%2Fcommon-config/ubuntu-local')
+            self.assertEqual(2, len(uploads))
+            pending2 = [u for u in uploads if u.external_id is None]
+            if not (pending1 or pending2):
+                break
+        # The above ensures that we have 1 debian upload (its hash is
+        # identical) and 2 ubuntu uploads (different hashes).
+
     @simple_layout('layouts/nodepool-image.yaml', enable_nodepool=True)
     @return_data(
         'build-debian-local-image',
@@ -1824,6 +1945,12 @@ class TestLauncher(LauncherBaseTestCase):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="ami-1e749f67")
     def test_image_build_node_lifecycle(self, mock_uploadimage):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled()
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
@@ -1894,6 +2021,12 @@ class TestLauncher(LauncherBaseTestCase):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageUploadJob.run',
                 return_value="ami-1e749f67")
     def test_image_delete_lifecycle(self, mock_uploadimage):
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled("phase1")
         # Initialize some values for later
 
@@ -1922,7 +2055,7 @@ class TestLauncher(LauncherBaseTestCase):
             'org/common-config',
             'layouts/launcher-image-lifecycle/phase2.yaml')
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
-        self._waitForLauncherLayoutSync()
+        self.waitForLauncherLayoutSync()
 
         self.waitUntilSettled("phase2")
         uploads = self._waitForUploads(image_cname)
@@ -1947,7 +2080,7 @@ class TestLauncher(LauncherBaseTestCase):
             'org/common-config',
             'layouts/launcher-image-lifecycle/phase3.yaml')
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
-        self._waitForLauncherLayoutSync()
+        self.waitForLauncherLayoutSync()
 
         self.waitUntilSettled("phase3")
         uploads = self._waitForUploads(image_cname)
@@ -1972,7 +2105,7 @@ class TestLauncher(LauncherBaseTestCase):
             'org/common-config',
             'layouts/launcher-image-lifecycle/phase4.yaml')
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
-        self._waitForLauncherLayoutSync()
+        self.waitForLauncherLayoutSync()
 
         self.waitUntilSettled("phase4")
         uploads = self._waitForUploads(image_cname)
@@ -1987,7 +2120,7 @@ class TestLauncher(LauncherBaseTestCase):
             'org/common-config',
             'layouts/launcher-image-lifecycle/phase5.yaml')
         self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
-        self._waitForLauncherLayoutSync()
+        self.waitForLauncherLayoutSync()
 
         self.waitUntilSettled("phase5")
         uploads = self._waitForUploads(image_cname, count=0)
@@ -2421,6 +2554,69 @@ class TestLauncher(LauncherBaseTestCase):
                     break
 
 
+class TestLauncherTenantLimits(LauncherBaseTestCase):
+    # We use a multi-tenant config here to make sure we don't end up
+    # using provider objects from different tenants during provider
+    # selection.
+    tenant_config_file = "config/launcher-multi-tenant/main.yaml"
+
+    def test_label_max_nodes_single_tenant(self):
+        self.commitConfigUpdate(
+            'common-config',
+            'config/launcher-multi-tenant/git/'
+            'common-config/zuul-max-nodes.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitForLauncherLayoutSync()
+
+        ctx = self.createZKContext(None)
+
+        # Request 2 nodes that will reach our tenant max-nodes
+        request1 = self.requestNodes(['debian-normal'])
+        self.assertEqual(request1.State.FULFILLED, request1.state)
+
+        request2 = self.requestNodes(['debian-normal'])
+        self.assertEqual(request2.State.FULFILLED, request2.state)
+        node2 = model.ProviderNode.fromZK(
+            ctx, path=model.ProviderNode._getPath(request2.nodes[0]))
+
+        # Request one more which will wait for capacity
+        request3 = self.requestNodes(['debian-normal'], timeout=0)
+        time.sleep(5)
+        request3.refresh(ctx)
+        self.assertEqual(request3.State.REQUESTED, request3.state)
+
+        # Delete the second node
+        with node2.locked(ctx):
+            request2.delete(ctx)
+            with node2.activeContext(ctx):
+                node2.setState(node2.State.USED)
+
+        # Wait for the third to be created once we have capacity
+        for _ in iterate_timeout(60, "request is fulfilled"):
+            request3.refresh(ctx)
+            if request3.state == request2.State.FULFILLED:
+                break
+
+    def test_label_max_nodes_two_tenants(self):
+        self.commitConfigUpdate(
+            'common-config',
+            'config/launcher-multi-tenant/git/'
+            'common-config/zuul-max-nodes.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitForLauncherLayoutSync()
+
+        # Request 2 nodes that will reach our tenant max-nodes
+        request1 = self.requestNodes(['debian-normal'])
+        self.assertEqual(request1.State.FULFILLED, request1.state)
+
+        request2 = self.requestNodes(['debian-normal'])
+        self.assertEqual(request2.State.FULFILLED, request2.state)
+
+        # Request one more in a different tenant, it should be fulfilled
+        request3 = self.requestNodes(['debian-normal'], tenant="tenant-two")
+        self.assertEqual(request3.State.FULFILLED, request3.state)
+
+
 class TestLauncherLocality(LauncherBaseTestCase):
     # We use a multi-tenant config here to make sure we don't end up
     # using provider objects from different tenants during provider
@@ -2671,6 +2867,12 @@ class TestLauncherUpload(LauncherBaseTestCase):
     def test_launcher_image_expire_failed_upload(self):
         # This tests that we correctly expire the uploads and artifact
         # for an image artifact with no successful uploads.
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/org/common-config',
+            'master',
+            ['debian-local', 'ubuntu-local'],
+        )
         self.waitUntilSettled("start")
         self.assertHistory([
             dict(name='build-debian-local-image', result='SUCCESS'),
@@ -3570,10 +3772,67 @@ class TestSnapshot(AnsibleZuulTestCase, LauncherBaseTestCase):
     @mock.patch('zuul.driver.aws.awsendpoint.AwsImageImportJob.run',
                 return_value="test_external_id")
     def test_snapshot_e2e(self, import_mock):
+        self.executor_server.keep_jobdir = True
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local'],
+        )
         self.waitUntilSettled()
         image_cname = 'review.example.com%2Fcommon-config/debian-local'
         # We have an image, that's good enough for this test.
         self._waitForUploads(image_cname, 1)
+        # Check the result from the DB since snapshot failures
+        # override the playbook result.
+        connection = self.scheds.first.sched.sql.connection
+        builds = connection.getBuilds()
+        self.assertEqual(1, len(builds))
+        self.assertEqual('SUCCESS', builds[0].result)
+
+        build = self.getJobFromHistory(
+            'build-debian-local-image', result='SUCCESS')
+        with open(build.jobdir.job_output_file) as f:
+            output = f.read()
+            self.log.debug(output)
+        self.assertIn('Waiting for snapshots', output)
+
+        sql = self.scheds.first.connections.getSqlConnection()
+        with sql.getSession() as db:
+            build = list(reversed(db.getBuilds()))[0]
+            self.assertEqual(len(build.build_events), 2)
+            self.assertEqual(
+                build.build_events[0].event_type, "snapshot started")
+            self.assertEqual(
+                build.build_events[1].event_type, "snapshot completed")
+
+    @mock.patch('zuul.driver.aws.awsendpoint.AwsImageImportJob.run',
+                return_value="test_external_id")
+    @okay_tracebacks('_checkNodeSnapshot')
+    def test_snapshot_failure_e2e(self, import_mock):
+        self.commitConfigUpdate(
+            "common-config",
+            'config/snapshot/git/common-config/timeout.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+
+        def advance(self):
+            self.state = "not start"
+        self.patch(zuul.driver.aws.awsendpoint.AwsSnapshotStateMachine,
+                   'advance',
+                   advance)
+
+        self.addImageBuildEvent(
+            'tenant-one',
+            'review.example.com/common-config',
+            'master',
+            ['debian-local'],
+        )
+        self.waitUntilSettled()
+        connection = self.scheds.first.sched.sql.connection
+        builds = connection.getBuilds()
+        self.assertEqual(1, len(builds))
+        self.assertEqual('SNAPSHOT_FAILURE', builds[0].result)
 
 
 class TestSubnodesAndReuse(LauncherBaseTestCase):
@@ -4049,3 +4308,129 @@ class TestSubnodesAndReuse(LauncherBaseTestCase):
                     sub1.request_id == request1.uuid and
                     sub2.request_id == request2.uuid):
                     break
+
+    @simple_layout('layouts/nodepool-reuse.yaml', enable_nodepool=True)
+    def test_reuse_deactivate(self):
+        # Deactivate a reusable node and make sure it's deleted.
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.State.FULFILLED, request.state)
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(1, len(nodes))
+        node = nodes[0]
+        # Get a copy so we're not modifying the launcher's
+        node = model.ProviderNode.fromZK(ctx, path=node.getPath())
+
+        client = LauncherClient(self.zk_client, None)
+        client.setNextNodeState(node, node.State.OUTDATED,
+                                cache=self.launcher.api.nodes_cache)
+
+        with node.locked(ctx):
+            with node.activeContext(ctx):
+                request.delete(ctx)
+                node.setState(node.State.USED)
+
+        for _ in iterate_timeout(10, "node to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
+                break
+
+    @simple_layout('layouts/nodepool-subnodes-reuse.yaml',
+                   enable_nodepool=True)
+    def test_subnodes_reuse_deactivate_subnode(self):
+        # Deactivate a reusable subnode and make sure it's deleted
+        # (but not the main node).
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.State.FULFILLED, request.state)
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(3, len(nodes))
+        # Get a list with the main node first and the subnode last
+        nodes.sort(key=lambda x: len(x.subnodes))
+        nodes.reverse()
+        main = nodes[0]
+        sub1 = nodes[1]
+        sub2 = nodes[2]
+        # Get a copy so we're not modifying the launcher's
+        main = model.ProviderNode.fromZK(ctx, path=main.getPath())
+        sub1 = model.ProviderNode.fromZK(ctx, path=sub1.getPath())
+        sub2 = model.ProviderNode.fromZK(ctx, path=sub2.getPath())
+        node = sub2
+        other = sub1
+
+        client = LauncherClient(self.zk_client, None)
+        client.setNextNodeState(node, node.State.OUTDATED,
+                                cache=self.launcher.api.nodes_cache)
+
+        with node.locked(ctx):
+            with node.activeContext(ctx):
+                request.delete(ctx)
+                node.setState(node.State.USED)
+
+        for _ in iterate_timeout(10, "node to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
+                break
+
+        # Main and other subnode should still exist
+        main.refresh(ctx)
+        other.refresh(ctx)
+
+    @simple_layout('layouts/nodepool-subnodes-reuse.yaml',
+                   enable_nodepool=True)
+    def test_subnodes_reuse_deactivate_main(self):
+        # Deactivate the main node with subnodes and make sure they
+        # are all deleted.
+        ctx = self.createZKContext(None)
+        request = self.requestNodes(['debian-normal'])
+        self.assertEqual(request.State.FULFILLED, request.state)
+
+        nodes = self.launcher.api.nodes_cache.getItems()
+        self.assertEqual(3, len(nodes))
+        # Get a list with the main node first and the subnode last
+        nodes.sort(key=lambda x: len(x.subnodes))
+        nodes.reverse()
+        main = nodes[0]
+        sub1 = nodes[1]
+        sub2 = nodes[2]
+        # Get a copy so we're not modifying the launcher's
+        main = model.ProviderNode.fromZK(ctx, path=main.getPath())
+        sub1 = model.ProviderNode.fromZK(ctx, path=sub1.getPath())
+        sub2 = model.ProviderNode.fromZK(ctx, path=sub2.getPath())
+        node = sub2
+        other = sub1
+
+        client = LauncherClient(self.zk_client, None)
+
+        with node.locked(ctx):
+            with node.activeContext(ctx):
+                request.delete(ctx)
+                node.setState(node.State.USED)
+
+            client.setNextNodeState(main, main.State.OUTDATED,
+                                    cache=self.launcher.api.nodes_cache)
+
+            for _ in iterate_timeout(10, "other subnode to be deleted"):
+                try:
+                    other.refresh(ctx)
+                except NoNodeError:
+                    break
+
+            # Main and in-use node should still exist
+            main.refresh(ctx)
+            node.refresh(ctx)
+
+        for _ in iterate_timeout(10, "used subnode to be deleted"):
+            try:
+                node.refresh(ctx)
+            except NoNodeError:
+                break
+        for _ in iterate_timeout(10, "main node to be deleted"):
+            try:
+                main.refresh(ctx)
+            except NoNodeError:
+                break

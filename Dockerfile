@@ -21,17 +21,48 @@ ARG IMAGE_FLAVOR=
 # Base images, defined as separate stages to allow for mirror selection or
 # downstream customization via named contexts when built with docker buildx.
 
-FROM quay.io/opendevorg/python-base:3.11-bookworm${IMAGE_FLAVOR} AS zuul-base
+FROM artifactory.devops.telekom.de/dhi.io/python:3.13-debian13-dev${IMAGE_FLAVOR} AS zuul-base
 
 # This is a mirror of:
 # FROM docker.io/library/node:22-bookworm AS node-base
-FROM quay.io/opendevmirror/node:22-bookworm AS node-base
+FROM artifactory.devops.telekom.de/dhi.io/node:22-debian13-dev AS node-base
 
 # This is a mirror of:
 # FROM golang:1.22-bookworm AS go-base
-FROM quay.io/opendevmirror/golang:1.22-bookworm AS go-base
+FROM artifactory.devops.telekom.de/dhi.io/golang:1.26-debian13-dev AS go-base
 
-FROM quay.io/opendevorg/python-builder:3.11-bookworm AS builder-base
+# Python builder stage: hardened python base with build-tool dependencies
+# and build scripts from docker/ directory (no external python-builder image).
+FROM artifactory.devops.telekom.de/dhi.io/python:3.13-debian13-dev AS builder-base
+ENV DEBIAN_FRONTEND=noninteractive
+# PEP 668: allow pip to install packages in the system Python
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+
+# Install build-tool dependencies
+# bindep: binary dependency resolver (used by assemble script)
+# build:  wheel builder (used by assemble script)
+# wheel:  pip wheel backend (used by assemble script)
+# git:    needed by pbr (used during wheel building)
+# which:  needed by _setup_hook.py (subprocess.call(['which', 'yarn']))
+# gzip:   needed by tar xvfz to extract openshift client archive
+# python3-venv: provides ensurepip for venv creation (needed by assemble script)
+# NOTE: python3-venv MUST be installed before pip packages, because it
+# removes python-3.13 packages (7 to remove) which destroys pip site-packages.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git which gzip python3-venv && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    pip install --no-cache-dir --break-system-packages bindep build wheel
+
+# Install build scripts (from opendevorg/python-builder, Apache 2.0)
+COPY docker/assemble /usr/local/bin/assemble
+COPY docker/get-extras-packages /usr/local/bin/get-extras-packages
+COPY docker/install-from-bindep /output/install-from-bindep
+
+# Make scripts executable
+RUN chmod +x /usr/local/bin/assemble /usr/local/bin/get-extras-packages /output/install-from-bindep
+
+# End of builder-base definition
 
 FROM node-base AS js-builder
 
@@ -39,12 +70,13 @@ COPY web /tmp/src
 # Explicitly run the Javascript build
 RUN cd /tmp/src && yarn install --frozen-lockfile && yarn list && yarn build
 
-# We need skopeo >=v1.14.0 to negotioate with newer docker; once this
+# We need skopeo >=v1.14.0 to negotiate with newer docker; once this
 # is available in debian we can drop the custom build.
 FROM go-base AS go-builder
 
-# Keep this in sync with zuul-jobs ensure-skopeo
-ARG SKOPEO_VERSION=v1.14.2
+# Updated skopeo version to pick up security fixes.
+# Keeping the custom build since skopeo is not yet available in Debian.
+ARG SKOPEO_VERSION=v1.24.0
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get -y install libgpgme-dev libassuan-dev \
@@ -52,6 +84,13 @@ RUN apt-get update && \
     git clone https://github.com/containers/skopeo /go/src/github.com/containers/skopeo &&\
     cd /go/src/github.com/containers/skopeo && \
     git checkout $SKOPEO_VERSION && \
+    # Update vulnerable Go dependencies for CVE fixes:
+    # - google.golang.org/grpc v1.82.0 -> v1.82.1 (GHSA-hrxh-6v49-42gf)
+    # All other Go module CVEs are from transitive podman.io deps;
+    # Go stdlib CVEs fixed by using go-base (Go 1.26.7)
+    sed -i 's/google.golang.org\/grpc v1.82.0/google.golang.org\/grpc v1.82.1/' go.mod && \
+    go mod tidy && \
+    go mod vendor && \
     make bin/skopeo
 
 FROM builder-base AS builder
@@ -62,8 +101,8 @@ ARG REACT_APP_ZUUL_API
 # Optional flag to enable React Service Worker. (set to true to enable)
 ARG REACT_APP_ENABLE_SERVICE_WORKER
 # Kubectl/Openshift version/sha
-ARG OPENSHIFT_URL=https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.11.20/openshift-client-linux-4.11.20.tar.gz
-ARG OPENSHIFT_SHA=74f252c812932425ca19636b2be168df8fe57b114af6b114283975e67d987d11
+ARG OPENSHIFT_URL=https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable-4.20/openshift-client-linux-4.20.33.tar.gz
+ARG OPENSHIFT_SHA=62590b81cc4a3b03cee7da156cd85170bec319b36c89495747ee6503b54237a9
 ARG PBR_VERSION=
 
 COPY . /tmp/src
@@ -88,10 +127,10 @@ FROM zuul-base AS zuul
 ENV DEBIAN_FRONTEND=noninteractive
 ARG IMAGE_FLAVOR=
 
-COPY --from=builder /output/ /output
-RUN /output/install-from-bindep zuul_base \
-  && rm -rf /output \
-  && useradd -u 10001 -m -d /var/lib/zuul -c "Zuul Daemon" zuul \
+RUN --mount=from=builder,source=/output,target=/output \
+  /output/install-from-bindep zuul_base
+
+RUN useradd -u 10001 -m -d /var/lib/zuul -c "Zuul Daemon" zuul \
 # This enables git protocol v2 which is more efficient at negotiating
 # refs.  This can be removed after the images are built with git 2.26
 # where it becomes the default.
@@ -109,7 +148,10 @@ CMD ["/usr/local/bin/zuul"]
 
 FROM zuul AS zuul-executor
 ENV DEBIAN_FRONTEND=noninteractive
-COPY --from=builder /usr/local/lib/zuul/ /usr/local/lib/zuul
+# In the hardened python image (debian13), python is installed at /usr and
+# zuul-manage-ansible creates its ansible venvs at $sys.exec_prefix/lib/zuul —
+# copy them to the matching runtime location.
+COPY --from=builder /usr/lib/zuul/ /usr/lib/zuul
 COPY --from=builder /tmp/openshift-install/oc /usr/local/bin/oc
 COPY --from=go-builder /go/src/github.com/containers/skopeo/bin/skopeo /usr/local/bin/skopeo
 COPY --from=go-builder /go/src/github.com/containers/skopeo/default-policy.json /etc/containers/policy.json
@@ -121,9 +163,13 @@ RUN ln -s /usr/local/bin/oc /usr/local/bin/kubectl
 # install skopeo; in the interim, this installes the runtime
 # dependencies.
 RUN apt-get update \
-  && apt-get install -y libgpgme11 libdevmapper1.02.1 \
+  && apt-get install -y libgpgme11t64 libdevmapper1.02.1 \
   && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  # bwrap unconditionally binds /etc/localtime and /etc/ld.so.cache —\
+  # create/regenerate them so the hardened image works with bubblewrap.\
+  && ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime \
+  && ldconfig
 
 CMD ["/usr/local/bin/zuul-executor", "-f"]
 

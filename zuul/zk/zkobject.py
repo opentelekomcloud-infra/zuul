@@ -156,6 +156,7 @@ class ZKObject:
     io_reader_class = sharding.RawZKIO
     io_writer_class = sharding.RawZKIO
     truncate_on_create = False
+    create_on_save = False
     delete_on_error = False
     log_error_missing = True
     makepath = True
@@ -383,6 +384,11 @@ class ZKObject:
             return None
         return zstat.mzxid
 
+    @staticmethod
+    def getZKObjectMetadata(data):
+        # Only ExpanableZKObjects implement this
+        return None
+
     # Private methods below
 
     @classmethod
@@ -400,11 +406,28 @@ class ZKObject:
         # Don't support any arguments in constructor to force us to go
         # through a save or restore path.
         super().__init__()
-        self._set(_active_context=None)
+        self._set(
+            _active_context=None,
+            _zkobject_metadata=None,
+        )
+
+    @classmethod
+    def _getIOReadStreamFactory(cls, context, path):
+        def factory():
+            return cls.io_reader_class(context.client, path)
+        return factory
+
+    def _getIOWriteStreamFactory(self, context, path, create, version):
+        def factory():
+            return self.io_writer_class(context.client, path,
+                                        create=create,
+                                        makepath=self.makepath,
+                                        version=version)
+        return factory
 
     @staticmethod
-    def _retryableLoad(io_class, context, path):
-        with io_class(context.client, path) as stream:
+    def _retryableLoad(context, io_factory):
+        with io_factory() as stream:
             compressed_data = stream.read()
             zstat = stream.zstat
         context.cumulative_read_time += stream.cumulative_read_time
@@ -424,9 +447,9 @@ class ZKObject:
         if context.sessionIsInvalid():
             raise Exception("ZooKeeper session or lock not valid")
         try:
+            io_factory = cls._getIOReadStreamFactory(context, path)
             compressed_data, zstat = cls._retry(context, cls._retryableLoad,
-                                                cls.io_reader_class,
-                                                context, path)
+                                                context, io_factory)
             context.profileEvent('get', path)
         except Exception as exc:
             if cls.log_error_missing or not isinstance(exc, NoNodeError):
@@ -446,9 +469,10 @@ class ZKObject:
     def _updateFromRaw(self, context, raw_data, zstat, extra):
         try:
             self._set(_zkobject_hash=None)
-            data = self._decompressData(raw_data)
+            metadata, data = self._decompressData(raw_data)
             self._set(**self.deserialize(data, context, extra))
             self._set(_zstat=zstat,
+                      _zkobject_metadata=metadata,
                       _zkobject_hash=hash(data),
                       _zkobject_compressed_size=len(raw_data),
                       _zkobject_uncompressed_size=len(data))
@@ -463,18 +487,18 @@ class ZKObject:
 
     @classmethod
     def _decompressData(cls, raw_data):
+        # Return metadata, data
+        # metadata is only used by ExpandableZKObject
         try:
-            return zlib.decompress(raw_data)
+            return None, zlib.decompress(raw_data)
         except zlib.error:
             # Fallback for old, uncompressed data
-            return raw_data
+            return None, raw_data
 
     @staticmethod
-    def _retryableSave(io_class, context, create, makepath, path, data,
-                       version):
+    def _retryableSave(context, io_factory, data):
         zstat = None
-        with io_class(context.client, path, create=create, makepath=makepath,
-                      version=version) as stream:
+        with io_factory() as stream:
             stream.truncate(0)
             stream.write(data)
             stream.flush()
@@ -499,14 +523,17 @@ class ZKObject:
                 context.profileEvent('exists', path)
                 if exists is not None:
                     raise NodeExistsError
+            if self.create_on_save:
+                create = True
             zstat = getattr(self, '_zstat', None)
             if zstat is not None:
                 version = self._zstat.version
             else:
                 version = -1
+            io_factory = self._getIOWriteStreamFactory(
+                context, path, create, version)
             zstat = self._retry(context, self._retryableSave,
-                                self.io_writer_class, context, create,
-                                self.makepath, path, compressed_data, version)
+                                context, io_factory, compressed_data)
             context.profileEvent('set', path)
         except Exception:
             context.log.error(
@@ -516,6 +543,7 @@ class ZKObject:
                   _zkobject_hash=hash(data),
                   _zkobject_compressed_size=len(compressed_data),
                   _zkobject_uncompressed_size=len(data),
+                  create_on_save=False,
                   )
 
     def __setattr__(self, name, value):
@@ -542,7 +570,7 @@ class ShardedZKObject(ZKObject):
     io_writer_class = sharding.BufferedShardWriter
 
 
-class LockableZKObject(ZKObject):
+class LockableZKObjectMixin(abc.ABC):
     _lock = None
     _deleted = False
 
@@ -606,9 +634,10 @@ class LockableZKObject(ZKObject):
                 time.sleep(1)
 
     @contextmanager
-    def locked(self, context, blocking=True, timeout=None):
-        if not (lock := self.acquireLock(context, blocking=blocking,
-                                         timeout=timeout)):
+    def locked(self, context, blocking=True, timeout=None, ensure_path=None):
+        if not (lock := self.acquireLock(
+                context, blocking=blocking,
+                timeout=timeout, ensure_path=ensure_path)):
             raise LockException(f"Failed to acquire lock on {self}")
         try:
             yield lock
@@ -619,19 +648,22 @@ class LockableZKObject(ZKObject):
                 context.log.exception("Failed to release lock on %s", self)
 
     def acquireLock(self, context, blocking=True, timeout=None,
-                    identifier=None):
+                    identifier=None, ensure_path=None):
+        # For most objects, we create the lock path when we create the
+        # object in ZK, so there is no need to ensure the path on
+        # lock.  Setting ensure_path to false lets us avoid
+        # re-creating the lock if the object was deleted behind our
+        # back.
+        if ensure_path is None:
+            ensure_path = False
         have_lock = False
         lock = None
         path = self.getLockPath()
         identifier = identifier or context.default_lock_identifier
         try:
-            # We create the lock path when we create the object in ZK,
-            # so there is no need to ensure the path on lock.  This
-            # lets us avoid re-creating the lock if the object was
-            # deleted behind our back.
             lock = SessionAwareLock(context.client, path,
                                     identifier=identifier,
-                                    ensure_path=False)
+                                    ensure_path=ensure_path)
             have_lock = lock.acquire(blocking, timeout)
         except NoNodeError:
             # Request disappeared
@@ -663,7 +695,7 @@ class LockableZKObject(ZKObject):
 
     def delete(self, context):
         super().delete(context)
-        self._set(_deleted=True)
+        self._set(_deleted=True, _zstat=None)
         # Most lockable zkobjects are deleted while holding the lock,
         # so we let releaseLock delete the lock path.  But for those
         # that aren't, we should delete the lock path now.
@@ -677,6 +709,10 @@ class LockableZKObject(ZKObject):
         if self._lock is None:
             return False
         return self._lock.is_still_valid()
+
+
+class LockableZKObject(LockableZKObjectMixin, ZKObject):
+    pass
 
 
 class PolymorphicZKObjectMixin(abc.ABC):
@@ -743,3 +779,40 @@ class PolymorphicZKObjectMixin(abc.ABC):
         return super(
             PolymorphicZKObjectMixin, klass)._fromRaw(
                 context, raw_data, zstat, extra, **kw)
+
+
+class ExpandableZKObject(ZKObject):
+    # If the node exists when we create we normally error, unless this
+    # is set, in which case we proceed and truncate.
+    truncate_on_create = False
+    # Normally we delete nodes which have syntax errors.
+    delete_on_error = True
+    io_reader_class = sharding.RawExpandableIO
+    io_writer_class = sharding.RawExpandableIO
+
+    @classmethod
+    def _getIOReadStreamFactory(cls, context, path):
+        def factory():
+            metadata = sharding.ObjectMetadata()
+            return cls.io_reader_class(context.client, path,
+                                       metadata=metadata)
+        return factory
+
+    def _getIOWriteStreamFactory(self, context, path, create, version):
+        def factory():
+            return self.io_writer_class(context.client, path,
+                                        create=create,
+                                        makepath=self.makepath,
+                                        version=version,
+                                        metadata=self._zkobject_metadata)
+
+        return factory
+
+    @staticmethod
+    def getZKObjectMetadata(data):
+        # Return the metadata and the remainder
+        return sharding.ObjectMetadata.fromRaw(data)
+
+
+class ExpandableLockableZKObject(LockableZKObjectMixin, ExpandableZKObject):
+    pass

@@ -10,6 +10,7 @@ Service Administration
    configuration
    drivers/index
    tenants
+   build-nodes
    operation
    authentication
    monitoring

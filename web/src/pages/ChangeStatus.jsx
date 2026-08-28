@@ -18,9 +18,8 @@ import { connect } from 'react-redux'
 import { PageSection, PageSectionVariants } from '@patternfly/react-core'
 
 import { fetchChangeIfNeeded } from '../actions/change'
-import ItemPanel from '../containers/status/ItemPanel'
 import { Fetchable } from '../containers/Fetching'
-
+import QueueItem from '../containers/status/QueueItem'
 
 class ChangeStatusPage extends React.Component {
   static propTypes = {
@@ -74,10 +73,7 @@ class ChangeStatusPage extends React.Component {
         </PageSection>
         {itemlist && itemlist.map((item, idx) => (
           <div className='row zuul-change-content' key={idx}>
-            <ItemPanel
-              globalExpanded={true}
-              item={item}
-            />
+            <QueueItem item={item} jobsExpanded={true} />
           </div>
         ))}
       </PageSection>)

@@ -70,8 +70,6 @@ class SparsePaths(enum.Enum):
 
 
 class Repo(object):
-    commit_re = re.compile(r'^commit ([0-9a-f]{40})$')
-    diff_re = re.compile(r'^@@ -\d+,\d \+(\d+),\d @@$')
     retry_attempts = 3
     retry_interval = 30
 
@@ -832,8 +830,20 @@ class Repo(object):
                 #     commit should be backed out
                 head = repo.commit("HEAD")
                 parent = head.parents[0]
-                if not any(head.diff(parent)) and \
-                        any(fetch_head.diff(fetch_head.parents[0])):
+                fetch_parent = fetch_head.parents[0]
+                head_diff = repo.git.diff(
+                    f"{parent}..{head}",
+                    name_only=True, no_color=True, z=True)
+                if not head_diff:
+                    fetch_head_diff = repo.git.diff(
+                        f"{fetch_parent}..{fetch_head}",
+                        name_only=True, no_color=True, z=True)
+                else:
+                    # We don't need to check the fetch_head diff in
+                    # this case
+                    fetch_head_diff = None
+
+                if not head_diff and fetch_head_diff:
                     log.debug("%s was already applied. Removing it", ref)
                     self._checkout(repo, None, parent)
                     op = zuul.model.MergeOp(comment=f"Already applied {ref}")
@@ -996,24 +1006,6 @@ class Repo(object):
             # the Git config as part of the URL.
             self.remote_url = None
             raise
-
-    def mapLine(self, commit, filename, lineno, zuul_event_id=None):
-        # Trace the specified line back to the specified commit and
-        # return the line number in that commit.
-        cur_commit = None
-        with self.createRepoObject(zuul_event_id) as repo:
-            out = repo.git.log(L='%s,%s:%s' % (lineno, lineno, filename))
-        for l in out.split('\n'):
-            if cur_commit is None:
-                m = self.commit_re.match(l)
-                if m:
-                    if m.group(1) == commit:
-                        cur_commit = commit
-                continue
-            m = self.diff_re.match(l)
-            if m:
-                return int(m.group(1))
-        return None
 
     def contains(self, hexsha, zuul_event_id=None):
         with self.createRepoObject(zuul_event_id) as repo:
@@ -1344,8 +1336,9 @@ class Merger(object):
         orig_hexsha = repo.revParse('FETCH_HEAD')
         return orig_hexsha, hexsha
 
-    def _mergeItem(self, item, recent, repo_state, zuul_event_id,
-                   ops, branches=None, process_worker=None):
+    def _mergeItem(self, item, recent, recent_by_item, repo_state,
+                   zuul_event_id, ops, branches=None,
+                   process_worker=None):
         log = get_annotated_logger(self.log, zuul_event_id)
         log.debug("Processing ref %s for project %s/%s / %s uuid %s" %
                   (item['ref'], item['connection'],
@@ -1353,6 +1346,17 @@ class Merger(object):
                    item['buildset_uuid']))
         repo = self.getRepo(item['connection'], item['project'])
         key = (item['connection'], item['project'], item['branch'])
+
+        # The buildset_uuid in the merge list lets us determine which
+        # queue items the merge item (change) belongs to.  Now that
+        # queue items have UUIDs, we should probably use that, but
+        # they are equivalent for this purpose.
+        item_id = item['buildset_uuid']
+        if item_id not in recent_by_item:
+            # We don't need any history older than the current item.
+            recent_by_item.clear()
+            recent_by_item[item_id] = recent.copy()
+        item_recent = recent_by_item[item_id]
 
         # We need to merge the change
         # Get the most recent commit for this project-branch
@@ -1385,7 +1389,10 @@ class Merger(object):
             # Set origin branch to the rev of the current (speculative) base.
             # This allows tools to determine the commits that are part of a
             # change by looking at origin/master..master.
-            repo.setRemoteRef(item['branch'], base,
+            # Within a single queue item, we set the speculative base
+            # to the previous item.
+            origin_base = item_recent.get(key) or base
+            repo.setRemoteRef(item['branch'], origin_base,
                               zuul_event_id=zuul_event_id)
 
         # Merge the change
@@ -1419,6 +1426,7 @@ class Merger(object):
         # connection+project+branch -> commit
         if recent is None:
             recent = {}
+        recent_by_item = {}
         hexsha = None
         # tuple(connection, project, branch) -> dict(config state)
         read_files = OrderedDict()
@@ -1444,7 +1452,8 @@ class Merger(object):
                           (item["number"], item["patchset"]))
                 try:
                     orig_hexsha, hexsha = self._mergeItem(
-                        item, recent, repo_state, zuul_event_id, ops,
+                        item, recent, recent_by_item, repo_state,
+                        zuul_event_id, ops,
                         branches=branches,
                         process_worker=process_worker)
                 except BrokenProcessPool:

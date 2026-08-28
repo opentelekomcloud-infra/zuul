@@ -1,11 +1,9 @@
-:orphan:
-
 :title: Static Driver
 
 Static
 ======
 
-Zuul can use statically defined nodes as a source for test nodes.
+Zuul can use statically defined nodes as a source for build nodes.
 These can be real hardware or virtual machines that are managed
 externally to Zuul.
 

@@ -42,7 +42,6 @@ class SystemEventsPage extends React.Component {
     tenantStatusReady: PropTypes.bool,
     history: PropTypes.object,
     location: PropTypes.object,
-    timezone: PropTypes.string,
   }
 
   constructor(props) {
@@ -75,8 +74,7 @@ class SystemEventsPage extends React.Component {
 
   componentDidUpdate (prevProps) {
     if (
-      this.props.tenant.name !== prevProps.tenant.name ||
-      this.props.timezone !== prevProps.timezone
+      this.props.tenant.name !== prevProps.tenant.name
     ) {
       this.updateData(this.state.filters)
     }

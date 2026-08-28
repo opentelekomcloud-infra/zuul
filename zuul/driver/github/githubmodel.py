@@ -41,9 +41,11 @@ class PullRequest(Change):
         self.mergeable = True
         self.review_decision = None
         self.unresolved_conversations = None
+        self.unsigned_commits = None
         self.required_contexts = set()
         self.contexts = set()
         self.branch_protected = False
+        self.merge_commit_sha = None
 
     @property
     def status(self):
@@ -79,6 +81,7 @@ class PullRequest(Change):
             "mergeable": self.mergeable,
             "review_decision": self.review_decision,
             "unresolved_conversations": self.unresolved_conversations,
+            "unsigned_commits": self.unsigned_commits,
             "required_contexts": list(self.required_contexts),
             "contexts": list(self.contexts),
             "branch_protected": self.branch_protected,
@@ -97,6 +100,7 @@ class PullRequest(Change):
         self.mergeable = data.get("mergeable", True)
         self.review_decision = data.get("review_decision")
         self.unresolved_conversations = data.get("unresolved_conversations")
+        self.unsigned_commits = data.get("unsigned_commits")
         self.required_contexts = set(data.get("required_contexts", []))
         self.contexts = set(tuple(c) for c in data.get("contexts", []))
         self.branch_protected = data.get("branch_protected", False)
@@ -107,6 +111,7 @@ class GithubTriggerEvent(TriggerEvent):
         super(GithubTriggerEvent, self).__init__()
         self.title = None
         self.label = None
+        self.permission = None
         self.unlabel = None
         self.action = None
         self.delivery = None
@@ -121,6 +126,7 @@ class GithubTriggerEvent(TriggerEvent):
         d = super().toDict()
         d["title"] = self.title
         d["label"] = self.label
+        d["permission"] = self.permission
         d["unlabel"] = self.unlabel
         d["action"] = self.action
         d["delivery"] = self.delivery
@@ -136,6 +142,7 @@ class GithubTriggerEvent(TriggerEvent):
         super().updateFromDict(d)
         self.title = d["title"]
         self.label = d["label"]
+        self.permission = d.get("permission")
         self.unlabel = d["unlabel"]
         self.action = d["action"]
         self.delivery = d["delivery"]
@@ -180,12 +187,18 @@ class GithubTriggerEvent(TriggerEvent):
 
 
 class GithubEventFilter(EventFilter):
+    _perm_mapping = {
+        'read': 0,
+        'write': 1,
+        'admin': 2,
+    }
+
     def __init__(self, connection_name, trigger, types=[],
                  branches=[], refs=[], comments=[], actions=[],
                  labels=[], unlabels=[], states=[], statuses=[],
-                 required_statuses=[], check_runs=[],
-                 ignore_deletes=True,
-                 require=None, reject=None, debug=None):
+                 required_statuses=[], check_runs=[], permission=None,
+                 ignore_deletes=True, require=None, reject=None,
+                 debug=None):
 
         EventFilter.__init__(self, connection_name, trigger, debug)
 
@@ -214,6 +227,7 @@ class GithubEventFilter(EventFilter):
         self.refs = refs
         self.comments = comments
         self.actions = actions
+        self.permission = permission
         self.labels = labels
         self.unlabels = unlabels
         self.states = states
@@ -238,6 +252,8 @@ class GithubEventFilter(EventFilter):
             ret += ' actions: %s' % ', '.join(self.actions)
         if self.check_runs:
             ret += ' check_runs: %s' % ','.join(self.check_runs)
+        if self.permission:
+            ret += ' permission: %s' % self.permission
         if self.labels:
             ret += ' labels: %s' % ', '.join(self.labels)
         if self.unlabels:
@@ -321,6 +337,14 @@ class GithubEventFilter(EventFilter):
             if not check_run_found:
                 return FalseWithReason("Check runs %s do not match %s" % (
                     self.check_runs, event.check_run))
+
+        if self.permission:
+            required_perm = self._perm_mapping[self.permission]
+            event_perm = self._perm_mapping[event.permission]
+            if event_perm < required_perm:
+                return FalseWithReason(
+                    "User with %s does not mach required permission %s" % (
+                        event.permission, self.permission))
 
         # labels are ORed
         if self.labels and event.label not in self.labels:

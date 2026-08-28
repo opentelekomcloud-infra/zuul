@@ -50,10 +50,6 @@ class ZuulTreeCache(abc.ABC):
     event_log = logging.getLogger("zuul.zk.cache.event")
     qsize_warning_threshold = 1024
 
-    # Sentinel object that can be returned from preCacheHook to not
-    # update the current object.
-    STOP_OBJECT_UPDATE = object()
-
     def __init__(self, zk_client, root, async_worker=True):
         """Use watchers to keep a cache of local objects up to date.
 
@@ -168,7 +164,6 @@ class ZuulTreeCache(abc.ABC):
                     AddWatchMode.PERSISTENT_RECURSIVE)
                 self.client.ensure_path(self.root)
                 self._walkTree()
-                self._ready.set()
                 # Transfer sentinel events
                 for (old_queue, new_queue) in [
                         (old_event_queue, self._event_queue),
@@ -182,6 +177,8 @@ class ZuulTreeCache(abc.ABC):
                                 new_queue.put(x)
                         except queue.Empty:
                             break
+                self.waitForSync()
+                self._ready.set()
                 self.log.debug("Cache at %s is ready", self.root)
             except Exception:
                 self.log.exception("Error initializing cache at %s", self.root)
@@ -270,7 +267,7 @@ class ZuulTreeCache(abc.ABC):
             # fetch anything.
             fetch = False
 
-        key, should_fetch = self.parsePath(event.path)
+        key, should_fetch, shard_index = self.parsePath(event.path)
 
         if ((not should_fetch) and event.type != EventType.NONE
                 and event.path != self.sync_path):
@@ -285,9 +282,9 @@ class ZuulTreeCache(abc.ABC):
         else:
             future = None
         if self._async_worker:
-            self._playback_queue.put((event, future, key))
+            self._playback_queue.put((event, future, key, shard_index))
         else:
-            self._handlePlayback(event, future, key)
+            self._handlePlayback(event, future, key, shard_index)
 
     def _playbackWorker(self):
         while not (self._stopped or self._stop_workers):
@@ -309,14 +306,14 @@ class ZuulTreeCache(abc.ABC):
                         self.root, qsize)
                     self._last_playback_warning = now
 
-            event, future, key = item
+            event, future, key, shard_index = item
             try:
-                self._handlePlayback(event, future, key)
+                self._handlePlayback(event, future, key, shard_index)
             except Exception:
                 self.log.exception("Error playing back event %s:", event)
             self._playback_queue.task_done()
 
-    def _handlePlayback(self, event, future, key):
+    def _handlePlayback(self, event, future, key, shard_index):
         # self.event_log.debug("Cache playback event %s", event)
         exists = None
         data, stat = None, None
@@ -354,8 +351,6 @@ class ZuulTreeCache(abc.ABC):
         elif (event.type == EventType.DELETED):
             exists = False
 
-        self._max_zxid = max(zxid, self._max_zxid)
-
         # Keep the cached paths up to date
         if exists:
             self._cached_paths.add(event.path)
@@ -363,27 +358,39 @@ class ZuulTreeCache(abc.ABC):
             self._cached_paths.discard(event.path)
 
         # Some caches have special handling for certain sub-objects
-        if (self.preCacheHook(event, exists, data, stat)
-                == self.STOP_OBJECT_UPDATE):
-            return
+        self.preCacheHook(event, exists, data, stat)
 
         # If we don't actually cache this kind of object, return now
         if key is None:
+            self._max_zxid = max(zxid, self._max_zxid)
             return
 
         obj = None
         if data:
+            data = self.manageShard(key, data, shard_index)
+            if data is None:
+                # Don't update the zxid for incomplete shards
+                return
+            self._max_zxid = max(zxid, self._max_zxid)
             # Perform an in-place update of the cached object if possible
             obj = self._cached_objects.get(key)
             if obj:
                 # Don't update to older data
                 # Don't update a locked object
-                if (stat.mzxid > obj._zstat.mzxid and
+                if obj_zstat := getattr(obj, '_zstat'):
+                    old_mzxid = obj_zstat.mzxid
+                else:
+                    old_mzxid = -1
+                # TODO: we may need a thread lock here to make sure
+                # that the next few lines don't race with a
+                # lock+save+unlock series of calls in another thread.
+                if (stat.mzxid > old_mzxid and
                     getattr(obj, 'lock', None) is None):
                     self.updateFromRaw(obj, key, data, stat)
             else:
                 obj = self.objectFromRaw(key, data, stat)
-                self._cached_objects[key] = obj
+                if obj is not None:
+                    self._cached_objects[key] = obj
         else:
             try:
                 obj = self._cached_objects[key]
@@ -431,9 +438,6 @@ class ZuulTreeCache(abc.ABC):
         Otherwise, it indicates whether or not the EventType would
         cause the node to exist in ZK.
 
-        Return sentinel STOP_OBJECT_UPDATE to skip the object update
-        step.
-
         :param EventType event: The event.
         :param bool exists: Whether the object exists in ZK.
         :param bytes data: data when fetched, else None
@@ -456,11 +460,13 @@ class ZuulTreeCache(abc.ABC):
         A convention is to use a tuple of relevant path components as
         the key.
 
-        Returns a tuple: (key, should_fetch)
+        Returns a tuple: (key, should_fetch, shard_index)
 
         Return a key of None to indicate the path is not relevant to the cache.
         The should_fetch return value indicates whether the cache should
           fetch the contents of the path.
+        The shard_index should be None or an integer indicating which shard
+          this is, if the object is sharded.
         """
         return None
 
@@ -489,3 +495,17 @@ class ZuulTreeCache(abc.ABC):
         :param Zstat stat: The zstat of the znode.
         """
         pass
+
+    def manageShard(self, key, data, shard_index):
+        """Handle sharded objects
+
+        This method may manipulate the data to handle sharding.
+        Return the complete data for processing if it's ready,
+        otherwise return None.
+
+        :param object key: The key as returned by parsePath.
+        :param dict data: The raw data.
+        :param int shard_index: The shard index as returned by parsePath.
+
+        """
+        return data

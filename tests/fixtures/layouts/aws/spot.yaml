@@ -58,6 +58,7 @@
       - name: normal
         instance-type: t3.medium
         market-type: spot
+        nested-virtualization: true
     images:
       - name: debian
         image-id: ami-1e749f67

@@ -51,6 +51,7 @@ from zuul.exceptions import (
     PreTimeoutExceedsTimeoutError,
     ProjectNotFoundError,
     ProjectNotPermittedError,
+    ReporterJobNotPermittedError,
     UnknownConnection,
 )
 from zuul.lib.re2util import filter_allowed_disallowed
@@ -889,20 +890,36 @@ class PipelineState(zkobject.ZKObject):
             queues.append(queue)
 
         if hasattr(self.manager, "change_queue_managers"):
-            # Clear out references to old queues
+            # Perform a quick check to see if the queue objects in ZK
+            # are different than the ones we have in memory.
+            managed_queues = set()
             for cq_manager in self.manager.change_queue_managers:
-                cq_manager.created_for_branches.clear()
+                managed_queues |= set(cq_manager.created_for_branches.values())
 
-            # Add queues to matching change queue managers
-            for queue in queues:
-                project_cname, branch = queue.project_branches[0]
+            # Only if they are different, perform the more expensive
+            # calculation below to realign them.
+            if managed_queues != set(queues):
+                # Clear out references to old queues
                 for cq_manager in self.manager.change_queue_managers:
-                    managed_projects = {
-                        p.canonical_name for p in cq_manager.projects
-                    }
-                    if project_cname in managed_projects:
-                        cq_manager.created_for_branches[branch] = queue
-                        break
+                    cq_manager.created_for_branches.clear()
+
+                # Add queues to matching change queue managers
+                for queue in queues:
+                    cq_manager = None
+                    if queue.name:
+                        cq_manager = self.manager.named_queue_managers.get(
+                            queue.name)
+                    if cq_manager is None:
+                        # If the queue has no name, then it is an
+                        # implied per-project all-branches queue.
+                        # There will be only one project, so use that
+                        # project to find the queue manager.
+                        queue_project_name = queue.project_branches[0][0]
+                        cq_manager = self.manager.default_queue_managers.get(
+                            queue_project_name)
+                    if cq_manager is not None:
+                        for project_name, branch in queue.project_branches:
+                            cq_manager.created_for_branches[branch] = queue
 
         data.update({
             "queues": queues,
@@ -1523,6 +1540,7 @@ class ImageUpload(zkobject.LockableZKObject):
             uuid=None,  # A random UUID for the image upload
             canonical_name=None,
             artifact_uuid=None,  # The UUID of the ImageBuildArtifact
+            build_uuid=None,  # The UUID of the validate job
             endpoint_name=None,
             providers=None,
             config_hash=None,
@@ -1538,9 +1556,12 @@ class ImageUpload(zkobject.LockableZKObject):
             lock_holder=None,
         )
 
-    def copy(self, context):
+    def copy(self, context, attempt=None):
         upload_uuid = uuid.uuid4().hex
-        attempt = self.attempt + 1
+        if attempt is None:
+            attempt = self.attempt + 1
+        else:
+            attempt = attempt
         return ImageUpload.new(
             context,
             uuid=upload_uuid,
@@ -1588,6 +1609,7 @@ class ImageUpload(zkobject.LockableZKObject):
             uuid=self.uuid,
             canonical_name=self.canonical_name,
             artifact_uuid=self.artifact_uuid,
+            build_uuid=self.build_uuid,
             endpoint_name=self.endpoint_name,
             providers=self.providers,
             config_hash=self.config_hash,
@@ -1608,7 +1630,9 @@ class ImageUpload(zkobject.LockableZKObject):
             return True
 
         endpoint = provider.getEndpoint()
-        return (self.config_hash == image.config_hash and
+        # MODEL_API: remove image.config_hash check after zuul 15
+        return ((self.config_hash == image.config_hash or
+                 self.config_hash == image.zuul_config_hash) and
                 endpoint.canonical_name == self.endpoint_name)
 
 
@@ -1625,10 +1649,17 @@ class Image(ConfigObject):
         self.description = description
 
     @property
+    def project_canonical_name(self):
+        return self.source_context.project_canonical_name
+
+    @property
+    def branch(self):
+        return self.source_context.branch
+
+    @property
     def canonical_name(self):
         return '/'.join([
-            urllib.parse.quote_plus(
-                self.source_context.project_canonical_name),
+            urllib.parse.quote_plus(self.project_canonical_name),
             urllib.parse.quote_plus(self.name),
         ])
 
@@ -1645,14 +1676,6 @@ class Image(ConfigObject):
                 self.type == other.type and
                 self.description == other.description)
 
-    @property
-    def project_canonical_name(self):
-        return self.source_context.project_canonical_name
-
-    @property
-    def branch(self):
-        return self.source_context.branch
-
     def toDict(self):
         return {
             'project_canonical_name': self.project_canonical_name,
@@ -1664,9 +1687,7 @@ class Image(ConfigObject):
 
     def toConfig(self):
         return {
-            'project_canonical_name': self.project_canonical_name,
             'name': self.name,
-            'branch': self.branch,
             'type': self.type,
             'description': self.description,
         }
@@ -1684,10 +1705,13 @@ class Flavor(ConfigObject):
         self.description = description
 
     @property
+    def project_canonical_name(self):
+        return self.source_context.project_canonical_name
+
+    @property
     def canonical_name(self):
         return '/'.join([
-            urllib.parse.quote_plus(
-                self.source_context.project_canonical_name),
+            urllib.parse.quote_plus(self.project_canonical_name),
             urllib.parse.quote_plus(self.name),
         ])
 
@@ -1704,17 +1728,14 @@ class Flavor(ConfigObject):
                 self.description == other.description)
 
     def toDict(self):
-        sc = self.source_context
         return {
-            'project_canonical_name': sc.project_canonical_name,
+            'project_canonical_name': self.project_canonical_name,
             'name': self.name,
             'description': self.description,
         }
 
     def toConfig(self):
-        sc = self.source_context
         return {
-            'project_canonical_name': sc.project_canonical_name,
             'name': self.name,
             'description': self.description,
         }
@@ -1727,7 +1748,7 @@ class Label(ConfigObject):
     """
 
     def __init__(self, name, image, flavor, description, min_ready,
-                 max_ready_age, max_age, min_retention_time):
+                 max_ready_age, max_age, max_nodes, min_retention_time):
         super().__init__()
         self.name = name
         self.image = image
@@ -1736,13 +1757,17 @@ class Label(ConfigObject):
         self.min_ready = min_ready
         self.max_ready_age = max_ready_age
         self.max_age = max_age
+        self.max_nodes = max_nodes
         self.min_retention_time = min_retention_time
+
+    @property
+    def project_canonical_name(self):
+        return self.source_context.project_canonical_name
 
     @property
     def canonical_name(self):
         return '/'.join([
-            urllib.parse.quote_plus(
-                self.source_context.project_canonical_name),
+            urllib.parse.quote_plus(self.project_canonical_name),
             urllib.parse.quote_plus(self.name),
         ])
 
@@ -1762,12 +1787,12 @@ class Label(ConfigObject):
                 self.min_ready == other.min_ready and
                 self.max_ready_age == other.max_ready_age and
                 self.max_age == other.max_age and
+                self.max_nodes == other.max_nodes and
                 self.min_retention_time == other.min_retention_time)
 
     def toDict(self):
-        sc = self.source_context
         return {
-            'project_canonical_name': sc.project_canonical_name,
+            'project_canonical_name': self.project_canonical_name,
             'name': self.name,
             'image': self.image,
             'flavor': self.flavor,
@@ -1775,20 +1800,20 @@ class Label(ConfigObject):
             'min_ready': self.min_ready,
             'max_ready_age': self.max_ready_age,
             'max_age': self.max_age,
+            'max_nodes': self.max_nodes,
             'min_retention_time': self.min_retention_time,
         }
 
     def toConfig(self):
-        sc = self.source_context
         return {
-            'project_canonical_name': sc.project_canonical_name,
             'name': self.name,
             'image': self.image,
             'flavor': self.flavor,
             'description': self.description,
-            'min-ready': self.min_ready,
+            # min-ready is only permitted at the top level
             'max-ready-age': self.max_ready_age,
             'max-age': self.max_age,
+            # max-nodes is only permitted at the top level
             'min-retention-time': self.min_retention_time,
         }
 
@@ -2043,35 +2068,71 @@ class ProviderConfig(ConfigObject):
             config = ProviderConfig.applyConfig(
                 config, section, layout, schema_class)
 
-        # Set config hashes
-        image_hashes = {}
         for image in config.get('images', []):
             # Handle default inheritance for any non-final images.
             if not image.get('final'):
                 ProviderConfig.updateFromDefaults(
                     image, config.get('image-defaults', {}),
                     layout.images, None, schema_class)
-            # This is used for identifying unique image configurations
-            # across multiple providers.
-            image['config_hash'] = hashlib.sha256(
-                json.dumps(image, sort_keys=True).encode("utf8")).hexdigest()
-            image_hashes[image['name']] = image['config_hash']
-        flavor_hashes = {}
         flavor_defaults_schema = schema_class.getInheritableFlavorSchema()
         for flavor in config.get('flavors', []):
             if not flavor.get('final'):
                 ProviderConfig.updateFromDefaults(
                     flavor, config.get('flavor-defaults', {}),
                     layout.flavors, flavor_defaults_schema)
-            flavor['config_hash'] = hashlib.sha256(
-                json.dumps(flavor, sort_keys=True).encode("utf8")).hexdigest()
-            flavor_hashes[flavor['name']] = flavor['config_hash']
         label_defaults_schema = schema_class.getInheritableLabelSchema()
         for label in config.get('labels', []):
             if not label.get('final'):
                 ProviderConfig.updateFromDefaults(
                     label, config.get('label-defaults', {}),
                     layout.labels, label_defaults_schema)
+
+        # Validate the overall schema
+        schema = connection.driver.getProviderSchema()
+        schema(config)
+
+        # Set internal attributes
+        self._setInternalAttributes(layout, config, schema_class)
+
+        # Make sure the launcher will be able to parse this
+        internal_schema = connection.driver.getProviderSchema(internal=True)
+        internal_schema(config)
+
+        return config
+
+    def _setInternalAttributes(self, layout, config, schema_class):
+        # Set config hashes
+        image_hashes = {}
+        zuul_image_hash_keys = set(schema_class.getImageConfigKeys())
+        for image in config.get('images', []):
+            # This is used for identifying unique image configurations
+            # across multiple providers.
+            image_object = layout.images[image['name']]
+            zuul_image_hash_dict = {
+                k: v for k, v in image.items() if k in zuul_image_hash_keys
+            }
+            # This is used for detecting identical uploaded content
+            image['zuul_config_hash'] = hashlib.sha256(
+                json.dumps(zuul_image_hash_dict, sort_keys=True).encode(
+                    "utf8")).hexdigest()
+            # This is used for detecting identical label configuration
+            image['config_hash'] = hashlib.sha256(
+                json.dumps(image, sort_keys=True).encode(
+                    "utf8")).hexdigest()
+            image['project_canonical_name'] =\
+                image_object.project_canonical_name
+            image['branch'] = image_object.branch
+            image_hashes[image['name']] = image['config_hash']
+        flavor_hashes = {}
+        for flavor in config.get('flavors', []):
+            flavor_object = layout.flavors[flavor['name']]
+            flavor['config_hash'] = hashlib.sha256(
+                json.dumps(flavor, sort_keys=True).encode("utf8")).hexdigest()
+            flavor['project_canonical_name'] =\
+                flavor_object.project_canonical_name
+            flavor_hashes[flavor['name']] = flavor['config_hash']
+        for label in config.get('labels', []):
+            label_object = layout.labels[label['name']]
             try:
                 label['config_hash'] = self._getLabelConfigHash(
                     label, image_hashes, flavor_hashes)
@@ -2079,11 +2140,10 @@ class ProviderConfig(ConfigObject):
                 # We might miss some flavor or label, but this will be
                 # caught later during config validation.
                 label['config_hash'] = None
-
-        # Validate the overall schema
-        schema = connection.driver.getProviderSchema()
-        schema(config)
-        return config
+            label['project_canonical_name'] =\
+                label_object.project_canonical_name
+            label['min-ready'] = label_object.min_ready
+            label['max-nodes'] = label_object.max_nodes
 
     def _getLabelConfigHash(self, label, image_hashes, flavor_hashes):
         label_hash = hashlib.sha256(
@@ -2853,6 +2913,8 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         snapshot._set(node=self)
         assignment = ProviderNodeAssignment()
         assignment._set(node=self)
+        lifecycle = ProviderNodeLifecycle()
+        lifecycle._set(node=self)
         self._set(
             uuid=uuid4().hex,
             zuul_event_id=None,
@@ -2912,6 +2974,7 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             nodescan_request=None,
             snapshot=snapshot,
             assignment=assignment,
+            lifecycle=lifecycle,
             # Attributes set by the launcher
             _lscores=None,
         )
@@ -2985,6 +3048,28 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             pass
         self.assignment._clear()
 
+    @property
+    def next_state(self):
+        if self.lifecycle.getZKVersion() is not None:
+            return self.lifecycle.next_state
+        return None
+
+    def setNextState(self, context, next_state):
+        if self.lifecycle.getZKVersion() is not None:
+            self.lifecycle.updateAttributes(
+                context,
+                next_state=next_state)
+        else:
+            self.lifecycle._set(next_state=next_state)
+            self.lifecycle.internalCreate(context)
+
+    def clearNextState(self, context):
+        try:
+            self.lifecycle.delete(context)
+        except NoNodeError:
+            pass
+        self.lifecycle._clear()
+
     def deserialize(self, raw, context, extra=None):
         # Update our UUID first so that our subnode paths are accurate
         data = super().deserialize(raw, context)
@@ -2993,6 +3078,10 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
             self.assignment.refresh(context)
         except NoNodeError:
             self.assignment._clear()
+        try:
+            self.lifecycle.refresh(context)
+        except NoNodeError:
+            self.lifecycle._clear()
         resources = data.get('quota') or {}
         data['quota'] = QuotaInformation(**resources)
         # TODO: remove this backwards compat code at any time
@@ -3128,6 +3217,17 @@ class ProviderNode(zkobject.PolymorphicZKObjectMixin,
         self.snapshot.internalCreate(context)
 
 
+class SnapshotStatus:
+    class Type(StrEnum):
+        MESSAGE = "message"
+        STARTED = "started"
+        COMPLETED = "completed"
+
+    def __init__(self, kind, message=None):
+        self.type = kind
+        self.message = message
+
+
 class ProviderNodeSnapshot(zkobject.LockableZKObject):
     # We don't want to re-create the node in case it was deleted
     makepath = False
@@ -3215,6 +3315,48 @@ class ProviderNodeAssignment(zkobject.ZKObject):
             request_id=None,
             min_request_version=None,
             tenant_name=None,
+        )
+
+
+class ProviderNodeLifecycle(zkobject.ZKObject):
+    # We don't want to re-create the node in case it was deleted
+    makepath = False
+    log_error_missing = False
+    LIFECYCLE_PATH = 'lifecycle'
+
+    # This object allows us to request that a node be deleted or
+    # otherwise removed from service without locking it.  That allows
+    # us to request that an in-use reusable node be deleted at the
+    # completion of its service, main nodes to be deleted when all
+    # subnodes are finished, and static nodes to be kept out of
+    # service.
+
+    # There is no locking for this since it is only ever set by user
+    # interaction, and any conflict resolution (either first or last
+    # wins) is acceptable.
+
+    def __init__(self):
+        super().__init__()
+        self._set(
+            next_state=None,
+            # Not serialized
+            node=None,
+        )
+
+    def getPath(self):
+        return f"{self.node.getPath()}/{self.LIFECYCLE_PATH}"
+
+    def serialize(self, context):
+        data = dict(
+            next_state=self.next_state,
+        )
+        return json.dumps(data, sort_keys=True).encode("utf-8")
+
+    def _clear(self):
+        # Internal method used to reset values on deletion.
+        self._set(
+            next_state=None,
+            _zstat=None,
         )
 
 
@@ -3737,6 +3879,8 @@ class FrozenJob(zkobject.ZKObject):
                   'pre_timeout',
                   'post_timeout',
                   'required_projects',
+                  'include_projects',
+                  'exclude_projects',
                   'semaphores',
                   'tags',
                   'timeout',
@@ -3949,6 +4093,10 @@ class FrozenJob(zkobject.ZKObject):
         # MODEL_API <= 33
         data.setdefault('pre_timeout', None)
 
+        # MODEL_API <= 36
+        data.setdefault('include_projects', None)
+        data.setdefault('exclude_projects', None)
+
         for job_data_key in self.job_data_attributes:
             job_data = data.pop(job_data_key, None)
             if job_data:
@@ -4139,6 +4287,46 @@ class FrozenJob(zkobject.ZKObject):
 
         return True
 
+    def includesProject(self, project, change, item):
+        # project is a Project object
+        include = False
+        if self.include_projects is None:
+            include = True
+        else:
+            for (ptype, pname) in self.include_projects:
+                include = False
+                if ptype == 'name':
+                    if pname == project.canonical_name:
+                        include = True
+                elif ptype == 'change':
+                    if change.project.canonical_name == project.canonical_name:
+                        include = True
+                elif ptype == 'item':
+                    for item_change in item.changes:
+                        if (item_change.project.canonical_name ==
+                            project.canonical_name):
+                            include = True
+                            break
+                if include:
+                    break
+        if not include:
+            return False
+        if self.exclude_projects is None:
+            return True
+        for (ptype, pname) in self.exclude_projects:
+            if ptype == 'name':
+                if pname == project.canonical_name:
+                    return False
+            elif ptype == 'change':
+                if change.project.canonical_name == project.canonical_name:
+                    return False
+            elif ptype == 'item':
+                for item_change in item.changes:
+                    if (item_change.project.canonical_name ==
+                        project.canonical_name):
+                        return False
+        return True
+
 
 class Job(ConfigObject):
     """A Job represents the defintion of actions to perform.
@@ -4182,6 +4370,10 @@ class Job(ConfigObject):
         d['required_projects'] = []
         for project in self.required_projects.values():
             d['required_projects'].append(project.toDict())
+        d['include_projects'] = self._makeIncludeExcludeProjectsList(
+            self.include_projects)
+        d['exclude_projects'] = self._makeIncludeExcludeProjectsList(
+            self.exclude_projects)
         d['semaphores'] = [s.toDict() for s in self.semaphores]
         d['variables'] = self.variables
         d['extra_variables'] = self.extra_variables
@@ -4290,6 +4482,8 @@ class Job(ConfigObject):
             protected=None,
             roles=(),
             required_projects={},
+            include_projects=None,
+            exclude_projects=None,
             allowed_projects=None,
             override_branch=None,
             override_checkout=None,
@@ -4314,6 +4508,8 @@ class Job(ConfigObject):
         override_control['group_variables'] = False
         override_control['include_vars'] = False
         override_control['required_projects'] = False
+        override_control['include_projects'] = False
+        override_control['exclude_projects'] = False
         override_control['failure_output'] = False
 
         final_control = defaultdict(lambda: False)
@@ -4347,6 +4543,18 @@ class Job(ConfigObject):
         self.attributes.update(self.other_attributes)
 
         self.name = name
+
+    def _makeIncludeExcludeProjectsList(self, projects):
+        # Used by toDict
+        if projects is None:
+            return None
+        ret = []
+        for ptype, pname in projects:
+            p = {'type': ptype}
+            if ptype == 'name':
+                p['name'] = pname
+            ret.append(p)
+        return ret
 
     def _getAffectedProjects(self, tenant):
         """
@@ -4627,6 +4835,38 @@ class Job(ConfigObject):
             raise ProjectNotFoundError(unknown_projects)
         return new_projects
 
+    def _resolveIncludeExcludeProjects(self, layout, projects):
+        new_projects = set()
+        unknown_projects = []
+        for p in projects:
+            ptype, pname = p
+            # We only need to resolve "name" types
+            if ptype == 'name':
+                (trusted, project) = layout.tenant.getProject(
+                    pname)
+                if project is None:
+                    unknown_projects.append(pname)
+                    continue
+                p = ('name', project.canonical_name)
+            new_projects.add(p)
+        if unknown_projects:
+            raise ProjectNotFoundError(unknown_projects)
+        return new_projects
+
+    def _resolveIncludeProjects(self, layout):
+        if self.include_projects is None:
+            return None
+        return self._resolveIncludeExcludeProjects(
+            layout,
+            self.include_projects)
+
+    def _resolveExcludeProjects(self, layout):
+        if self.exclude_projects is None:
+            return None
+        return self._resolveIncludeExcludeProjects(
+            layout,
+            self.exclude_projects)
+
     def _resolveAllowedProjects(self, layout):
         # This method does the inverse of other resolve methods: it
         # returns the unqualified project name even if the input is
@@ -4700,6 +4940,10 @@ class Job(ConfigObject):
             self.allowed_projects = set([self.source_context.project_name])
         if self._get('required_projects'):
             self.required_projects = self._resolveRequiredProjects(layout)
+        if self._get('include_projects'):
+            self.include_projects = self._resolveIncludeProjects(layout)
+        if self._get('exclude_projects'):
+            self.exclude_projects = self._resolveExcludeProjects(layout)
         if self._get('include_vars'):
             self.include_vars = self._resolveIncludeVars(layout)
         if self._get('roles'):
@@ -4960,6 +5204,43 @@ class Job(ConfigObject):
         required_projects.update(other._resolveRequiredProjects(layout))
         self.required_projects = required_projects
 
+    def _updateIncludeExclude(self, other, this_projects, other_projects,
+                              override, layout):
+        if override:
+            projects = other_projects
+        else:
+            projects = this_projects
+        if projects is not None:
+            projects = set(projects)
+        if projects is None and other_projects is not None:
+            projects = set()
+        if other_projects is not None and not override:
+            projects.update(other._resolveIncludeExcludeProjects(
+                layout, other_projects))
+        if projects is not None:
+            projects = list(projects)
+        return projects
+
+    def updateIncludeProjects(self, other, layout):
+        self._handleFinalControl(other, 'include_projects')
+        self.include_projects = self._updateIncludeExclude(
+            other,
+            self.include_projects,
+            other.include_projects,
+            other.override_control['include_projects'],
+            layout,
+        )
+
+    def updateExcludeProjects(self, other, layout):
+        self._handleFinalControl(other, 'exclude_projects')
+        self.exclude_projects = self._updateIncludeExclude(
+            other,
+            self.exclude_projects,
+            other.exclude_projects,
+            other.override_control['exclude_projects'],
+            layout,
+        )
+
     def updateAllowedProjects(self, other, layout):
         other_allowed_projects = other._resolveAllowedProjects(layout)
         if self._get('allowed_projects') is not None:
@@ -5044,7 +5325,8 @@ class Job(ConfigObject):
                 if k not in set(['pre_run', 'run', 'post_run', 'cleanup_run',
                                  'roles', 'variables', 'extra_variables',
                                  'host_variables', 'group_variables',
-                                 'required_projects', 'allowed_projects',
+                                 'required_projects', 'include_projects',
+                                 'exclude_projects', 'allowed_projects',
                                  'semaphores', 'failure_output',
                                  'include_vars']):
                     setattr(self, k, other._get(k))
@@ -5164,6 +5446,10 @@ class Job(ConfigObject):
             self.updateIncludeVars(other, layout)
         if other._get('required_projects') is not None:
             self.updateRequiredProjects(other, layout)
+        if other._get('include_projects') is not None:
+            self.updateIncludeProjects(other, layout)
+        if other._get('exclude_projects') is not None:
+            self.updateExcludeProjects(other, layout)
         if other._get('allowed_projects') is not None:
             self.updateAllowedProjects(other, layout)
         if other._get('semaphores') is not None:
@@ -5929,6 +6215,8 @@ class BuildReference:
 class BuildEvent:
     TYPE_PAUSED = "paused"
     TYPE_RESUMED = "resumed"
+    TYPE_SNAPSHOT_STARTED = "snapshot started"
+    TYPE_SNAPSHOT_COMPLETED = "snapshot completed"
 
     def __init__(self, event_time, event_type, description=None):
         self.event_time = event_time
@@ -5991,6 +6279,7 @@ class Build(zkobject.ZKObject):
             # A list of build events like paused, resume, ...
             events=[],
             pre_fail=False,
+            snapshotting=False,
         )
 
     def serialize(self, context):
@@ -6007,6 +6296,7 @@ class Build(zkobject.ZKObject):
             "paused": self.paused,
             "pre_fail": self.pre_fail,
             "retry": self.retry,
+            "snapshotting": self.snapshotting,
             "held": self.held,
             "unreachable": self.unreachable,
             "zuul_event_id": self.zuul_event_id,
@@ -6832,6 +7122,9 @@ class QueueItem(zkobject.ZKObject):
 
     log = logging.getLogger("zuul.QueueItem")
 
+    class State(StrEnum):
+        PENDING = "pending"
+
     def __init__(self):
         super().__init__()
         self._set(
@@ -6858,7 +7151,11 @@ class QueueItem(zkobject.ZKObject):
             _cached_sql_results={},
             event=None,  # Info about the event that lead to this queue item
             debug=False,
-            # Additional container for connection specifig information to be
+            reporter_jobs_state=None,
+            # Change.cache_key -> sha for any changes in this item
+            # that were merged
+            merged_change_shas={},
+            # Additional container for connection specific information to be
             # used by reporters throughout the lifecycle
             dynamic_state=defaultdict(dict),
         )
@@ -6940,6 +7237,8 @@ class QueueItem(zkobject.ZKObject):
             "dynamic_state": self.dynamic_state,
             "first_job_start_time": self.first_job_start_time,
             "debug": self.debug,
+            "reporter_jobs_state": self.reporter_jobs_state,
+            "merged_change_shas": self.merged_change_shas,
         }
         return json.dumps(data, sort_keys=True).encode("utf8")
 
@@ -7067,10 +7366,16 @@ class QueueItem(zkobject.ZKObject):
         """Returns True if the item has a job graph."""
         return self.current_build_set.job_graph is not None
 
-    def getJobs(self):
+    def getJobs(self, include_reporter=None):
         if not self.live or not self.current_build_set.job_graph:
             return []
-        return self.current_build_set.job_graph.getJobs()
+        if include_reporter is None:
+            include_reporter = bool(self.reporter_jobs_state)
+        ret = []
+        for job in self.current_build_set.job_graph.getJobs():
+            if include_reporter or job.type != 'reporter':
+                ret.append(job)
+        return ret
 
     def getJob(self, job_uuid):
         return self.current_build_set.job_graph.getJobFromUuid(job_uuid)
@@ -7081,6 +7386,22 @@ class QueueItem(zkobject.ZKObject):
         while item_ahead:
             yield item_ahead
             item_ahead = item_ahead.item_ahead
+
+    def getReporterJobs(self):
+        if not self.live or not self.current_build_set.job_graph:
+            return []
+        ret = []
+        for job in self.current_build_set.job_graph.getJobs():
+            if job.type == 'reporter':
+                ret.append(job)
+        return ret
+
+    def areAllReporterJobsComplete(self):
+        for job in self.getReporterJobs():
+            build = self.current_build_set.getBuild(job)
+            if not build or not build.result:
+                return False
+        return True
 
     def areAllChangesMerged(self):
         for change in self.changes:
@@ -7109,7 +7430,7 @@ class QueueItem(zkobject.ZKObject):
                 return False
         return True
 
-    def didAllJobsSucceed(self):
+    def _didAllJobsSucceed(self, jobs):
         """Check if all jobs have completed with status SUCCESS.
 
         Return True if all voting jobs have completed with status
@@ -7123,7 +7444,7 @@ class QueueItem(zkobject.ZKObject):
             return False
 
         all_jobs_skipped = True
-        for job in self.getJobs():
+        for job in jobs:
             build = self.current_build_set.getBuild(job)
             if build:
                 # If the build ran, record whether or not it was skipped
@@ -7144,6 +7465,12 @@ class QueueItem(zkobject.ZKObject):
             return False
 
         return True
+
+    def didAllJobsSucceed(self):
+        return self._didAllJobsSucceed(self.getJobs())
+
+    def didAllReporterJobsSucceed(self):
+        return self._didAllJobsSucceed(self.getReporterJobs())
 
     def hasAnyJobFailed(self):
         """Check if any jobs have finished with a non-success result.
@@ -7414,22 +7741,21 @@ class QueueItem(zkobject.ZKObject):
 
     def findJobsToRun(self, semaphore_handler):
         torun = []
-        if not self.live:
-            return []
-        if not self.current_build_set.job_graph:
-            return []
+        item_jobs = list(self.getJobs())
+        if not item_jobs:
+            return torun
         if self.item_ahead:
             # Only run jobs if any 'hold' jobs on the change ahead
             # have completed successfully.
             if self.item_ahead.isHoldingFollowingChanges():
-                return []
+                return torun
 
         job_graph = self.current_build_set.job_graph
         failed_job_ids = set()  # Jobs that run and failed
         ignored_job_ids = set()  # Jobs that were skipped or canceled
         unexecuted_job_ids = set()  # Jobs that were not started yet
         jobs_not_started = set()
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             build = self.current_build_set.getBuild(job)
             if build:
                 if build.result == 'SUCCESS' or build.paused:
@@ -7442,7 +7768,7 @@ class QueueItem(zkobject.ZKObject):
                 unexecuted_job_ids.add(job.uuid)
                 jobs_not_started.add(job)
 
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             if job not in jobs_not_started:
                 continue
             if not self.jobRequirementsReady(job):
@@ -7479,20 +7805,19 @@ class QueueItem(zkobject.ZKObject):
     def findJobsToRequest(self, semaphore_handler):
         build_set = self.current_build_set
         toreq = []
-        if not self.live:
-            return []
-        if not self.current_build_set.job_graph:
-            return []
+        item_jobs = list(self.getJobs())
+        if not item_jobs:
+            return toreq
         if self.item_ahead:
             if self.item_ahead.isHoldingFollowingChanges():
-                return []
+                return toreq
 
         job_graph = self.current_build_set.job_graph
         failed_job_ids = set()       # Jobs that run and failed
         ignored_job_ids = set()      # Jobs that were skipped or canceled
         unexecuted_job_ids = set()   # Jobs that were not started yet
         jobs_not_requested = set()
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             build = build_set.getBuild(job)
             if build and (build.result == 'SUCCESS' or build.paused):
                 pass
@@ -7518,7 +7843,7 @@ class QueueItem(zkobject.ZKObject):
 
         # Attempt to request nodes for jobs in the order jobs appear
         # in configuration.
-        for job in job_graph.getJobs():
+        for job in item_jobs:
             if job not in jobs_not_requested:
                 continue
             if not self.jobRequirementsReady(job):
@@ -7843,7 +8168,7 @@ class QueueItem(zkobject.ZKObject):
         ret['enqueue_time'] = int(self.enqueue_time * 1000)
         ret['jobs'] = []
         max_remaining = 0
-        for job in self.getJobs():
+        for job in self.getJobs(include_reporter=True):
             now = time.time()
             build = self.current_build_set.getBuild(job)
             elapsed = None
@@ -7901,6 +8226,7 @@ class QueueItem(zkobject.ZKObject):
                 'paused': build.paused if build else None,
                 'pre_fail': build.pre_fail if build else None,
                 'retry': build.retry if build else None,
+                'snapshotting': build.snapshotting if build else None,
                 'tries': self.current_build_set.getTries(job),
                 'queued': job.queued,
                 'waiting_status': waiting_status,
@@ -7977,10 +8303,14 @@ class QueueItem(zkobject.ZKObject):
         project_cn = change.project.canonical_name
 
         for iv in job.include_vars:
-            _, iv_project = layout.tenant.getProject(iv.project_name)
-            if iv_project is None:
-                raise ProjectNotFoundError(iv.project_name)
-            if iv_project.canonical_name in (project_cn, None):
+            if iv.project_name is not None:
+                _, iv_project = layout.tenant.getProject(iv.project_name)
+                if iv_project is None:
+                    raise ProjectNotFoundError(iv.project_name)
+                iv_project_cn = iv_project.canonical_name
+            else:
+                iv_project_cn = project_cn
+            if iv_project_cn == project_cn:
                 # Either the include-vars explicitly matches this
                 # change's project, or we are instructed to look in
                 # the Zuul project, which is this change's project.
@@ -7990,7 +8320,9 @@ class QueueItem(zkobject.ZKObject):
                     return True
 
         for pb in job.all_playbooks:
-            if pb.source_context.project_canonical_name == project_cn:
+            # noop job playbook has no source context
+            if (pb.source_context and
+                pb.source_context.project_canonical_name == project_cn):
                 if pb.path in files:
                     log.debug("Playbook %s is altered in this change",
                               pb.path)
@@ -9237,6 +9569,7 @@ class TenantProjectConfig(object):
         # A list of project names/regexes that this project is allowed
         # to configure
         self.configure_projects = None
+        self.allow_reporter_jobs = None
 
     def canConfigureProject(self, other_tpc, validation_only=False):
         if self.trusted:
@@ -9708,6 +10041,7 @@ class UnparsedAbideConfig(object):
         self.ltime = -1
         self.tenants = {}
         self.authz_rules = []
+        self.authz_roles = []
         self.semaphores = []
         self.api_roots = []
 
@@ -9715,6 +10049,7 @@ class UnparsedAbideConfig(object):
         if isinstance(conf, UnparsedAbideConfig):
             self.tenants.update(conf.tenants)
             self.authz_rules.extend(conf.authz_rules)
+            self.authz_roles.extend(conf.authz_roles)
             self.semaphores.extend(conf.semaphores)
             self.api_roots.extend(conf.api_roots)
             if len(self.api_roots) > 1:
@@ -9740,6 +10075,8 @@ class UnparsedAbideConfig(object):
                 self.authz_rules.append(value)
             elif key == 'authorization-rule':
                 self.authz_rules.append(value)
+            elif key == 'role':
+                self.authz_roles.append(value)
             elif key == 'global-semaphore':
                 self.semaphores.append(value)
             elif key == 'api-root':
@@ -9757,6 +10094,7 @@ class UnparsedAbideConfig(object):
             "api_roots": self.api_roots,
         }
         d["authz_rules"] = self.authz_rules
+        d["authz_roles"] = self.authz_roles
         return d
 
     @classmethod
@@ -9768,6 +10106,7 @@ class UnparsedAbideConfig(object):
         unparsed_abide.authz_rules = data.get('authz_rules',
                                               data.get('admin_rules',
                                                        []))
+        unparsed_abide.authz_roles = data.get('authz_roles', [])
         unparsed_abide.semaphores = data.get("semaphores", [])
         unparsed_abide.api_roots = data.get("api_roots", [])
         return unparsed_abide
@@ -10009,6 +10348,7 @@ class Layout(object):
         noop.parent = noop.BASE_JOB_MARKER
         noop.deduplicate = True
         noop.run = (PlaybookContext(None, 'noop.yaml', [], [], []),)
+        noop.final = True
         self.jobs = {'noop': [noop]}
         self.nodesets = {}
         self.secrets = {}
@@ -10041,6 +10381,12 @@ class Layout(object):
         # exception; ignore the return value.
         if job.required_projects:
             job._resolveRequiredProjects(self)
+
+        if job.include_projects:
+            job._resolveIncludeProjects(self)
+
+        if job.exclude_projects:
+            job._resolveExcludeProjects(self)
 
         if job.include_vars:
             job._resolveIncludeVars(self)
@@ -10268,14 +10614,14 @@ class Layout(object):
         return pt
 
     def addProjectConfig(self, project_canonical_name, project_config):
-        for job in project_config.embeddedJobs():
-            self._checkAddJob(job)
-
         source_tpc = self.tenant.getTPC(
             project_config.source_context.project_canonical_name)
         this_tpc = self.tenant.getTPC(project_canonical_name)
         if not source_tpc.canConfigureProject(this_tpc):
             raise ProjectNotPermittedError()
+
+        for job in project_config.embeddedJobs():
+            self._checkAddJob(job)
 
         if project_canonical_name in self.project_configs:
             self.project_configs[project_canonical_name].append(project_config)
@@ -10539,6 +10885,7 @@ class Layout(object):
             # Whether the change matches any of the project pipeline
             # variants
             matched = False
+            reporter_job_ok = False
             for variant in job_list.jobs[jobname]:
                 if variant.changeMatchesBranch(self.tenant, change):
                     final_job.applyVariant(variant, self, semaphore_handler)
@@ -10551,6 +10898,13 @@ class Layout(object):
                         # useful to allow untrusted jobs with secrets
                         # to be run in other untrusted projects.
                         final_job.ignore_allowed_projects = True
+                    if not reporter_job_ok and final_job.type == 'reporter':
+                        source_tpc = self.tenant.getTPC(
+                            variant.source_context.project_canonical_name)
+                        if not source_tpc.allow_reporter_jobs:
+                            raise ReporterJobNotPermittedError(
+                                source_tpc.project)
+                        reporter_job_ok = True
                     matched = True
                     log.debug("Pipeline variant %s matched %s",
                               repr(variant), change)
@@ -10716,14 +11070,20 @@ class Semaphore(ConfigObject):
 
 
 class Queue(ConfigObject):
-    def __init__(self, name, per_branch=False,
+    class Type(StrEnum):
+        ALL_BRANCHES = 'all-branches'
+        PER_BRANCH = 'per-branch'
+        BRANCH_ASSIGNED = 'branch-assigned'
+
+    def __init__(self, name,
                  allow_circular_dependencies=False,
-                 dependencies_by_topic=False):
+                 dependencies_by_topic=False,
+                 type=None):
         super().__init__()
         self.name = name
-        self.per_branch = per_branch
         self.allow_circular_dependencies = allow_circular_dependencies
         self.dependencies_by_topic = dependencies_by_topic
+        self.type = type
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -10733,11 +11093,11 @@ class Queue(ConfigObject):
             return False
         return (
             self.name == other.name and
-            self.per_branch == other.per_branch and
             self.allow_circular_dependencies ==
             other.allow_circular_dependencies and
             self.dependencies_by_topic ==
-            other.dependencies_by_topic
+            other.dependencies_by_topic and
+            self.type == other.type
         )
 
 
@@ -11129,11 +11489,12 @@ class TenantTPCRegistry:
 class Abide(object):
     def __init__(self):
         self.authz_rules = {}
+        self.authz_roles = {}
         self.semaphores = {}
         self.tenants = {}
         self.tenant_lock = threading.Lock()
         # tenant -> TenantTPCRegistry
-        self.tpc_registry = defaultdict(TenantTPCRegistry)
+        self.tpc_registry = {}
         # project -> branch -> ConfigObjectCache
         self.config_object_cache = {}
         self.api_root = None
@@ -11144,8 +11505,14 @@ class Abide(object):
         except KeyError:
             pass
 
+    def hasTPCRegistry(self, tenant_name):
+        return tenant_name in self.tpc_registry
+
     def getTPCRegistry(self, tenant_name):
-        return self.tpc_registry[tenant_name]
+        r = self.tpc_registry.get(tenant_name)
+        if r is None:
+            return TenantTPCRegistry()
+        return r
 
     def setTPCRegistry(self, tenant_name, tpc_registry):
         self.tpc_registry[tenant_name] = tpc_registry
@@ -11153,7 +11520,7 @@ class Abide(object):
     def getAllTPCs(self, tenant_name):
         # Hold a reference to the registry to make sure it doesn't
         # change between the two calls below.
-        registry = self.tpc_registry[tenant_name]
+        registry = self.getTPCRegistry(tenant_name)
         return list(itertools.chain(
             itertools.chain.from_iterable(
                 registry.config_tpcs.values()),
@@ -11511,6 +11878,68 @@ class AuthZRuleTree(object):
 
     def __repr__(self):
         return '<AuthZRuleTree [ %s ]>' % self.ruletree
+
+
+class AuthZRole(object):
+    admin = False
+
+    def __init__(self, conf):
+        self.name = conf['name']
+        self.permissions = conf['permissions']
+
+    def __call__(self, permission, params):
+        return False
+
+
+class AuthZAdminRole(AuthZRole):
+    # Special role that always returns true to checks to enable admin action
+    admin = True
+
+    def __init__(self, *args, **kwargs):
+        self.name = 'admin'
+        self.permissions = {'admin': True}
+
+    def __call__(self, permission, params):
+        return True
+
+
+class AuthZReadRole(AuthZRole):
+    # Special role that limits access to read only endpoints
+    admin = False
+
+    def __init__(self, *args, **kwargs):
+        self.name = 'read'
+        self.permissions = {'read': True}
+
+    def __call__(self, permission, params):
+        return True
+
+
+class AuthZConfigRole(AuthZRole):
+    # Roles that are configured in the zuul config
+
+    # Admin in this case really means has permission to do more than read.
+    # If we have a configured role explicitly allowing something then that
+    # rule has permission to do more than read. This is "admin" while we
+    # carry the old backward compatbile code.
+    admin = True
+
+    def __call__(self, permission, params):
+        if permission:
+            for perm, conditions in self.permissions.items():
+                if permission == perm:
+                    if conditions is True:
+                        return True
+                    elif conditions and isinstance(conditions, dict):
+                        for cond, val in conditions['conditions'].items():
+                            if not params.get(cond) == val:
+                                return False
+                        return True
+        elif self.permissions.get('read'):
+            # If we are called with permission=None we're checking
+            # read access.
+            return True
+        return False
 
 
 class TenantEventState(zkobject.ZKObject):

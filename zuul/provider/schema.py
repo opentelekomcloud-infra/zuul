@@ -1,4 +1,4 @@
-# Copyright 2024 Acme Gating, LLC
+# Copyright 2024-2026 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -116,8 +116,6 @@ common_label = vs.Schema({
 # The label attributes that can appear in a section/provider label or
 # a standalone label (but not in the section body).
 base_label = vs.Schema({
-    Required('project_canonical_name'): str,
-    Required('config_hash'): str,
     Required(
         'name',
         doc="""\
@@ -141,19 +139,13 @@ base_label = vs.Schema({
         The flavor to use with this label.
         """,
     ): Nullable(str),
-    Optional(
-        'min-ready',
-        doc="""\
-        Minimum number of instances that should be in a ready
-        state. Zuul always creates more nodes as necessary in
-        response to demand, but setting ``min-ready`` can speed
-        processing by attempting to keep nodes on-hand and ready for
-        immedate use.  This is best-effort based on available
-        capacity and is not a guaranteed allocation.  The default of 0
-        means that Zuul will only create nodes of this label when
-        there is demand.
-        """,
-        default=0): int,
+})
+
+internal_base_label = vs.Schema({
+    Required('project_canonical_name'): str,
+    Required('config_hash'): vs.Any(None, str),
+    Optional('min-ready', default=None): vs.Any(None, int),
+    Optional('max-nodes', default=None): vs.Any(None, int),
 })
 
 # Azure doesn't take a key-name, so this is separate.
@@ -194,12 +186,14 @@ ssh_label = assemble(
 common_image = vs.Schema({
     Optional(
         'username',
+        config=False,
         doc="""\
         The username Zuul should use when connecting to the node.
         """,
     ): Nullable(str),
     Optional(
         'connection-type',
+        config=False,
         doc="""\
         The connection type that a consumer should use when connecting
         to the node.
@@ -212,6 +206,7 @@ common_image = vs.Schema({
     )),
     Optional(
         'connection-port',
+        config=False,
         doc="""\
         The port that Zuul should use when connecting to the node.
         For most nodes this is not necessary. This defaults to 22 when
@@ -219,6 +214,7 @@ common_image = vs.Schema({
     ): Nullable(int),
     Optional(
         'python-path',
+        config=False,
         doc="""\
         The path of the default python interpreter.  Used by Zuul to set
         ``ansible_python_interpreter``.  The special value ``auto`` will
@@ -227,6 +223,7 @@ common_image = vs.Schema({
     ): Nullable(str),
     Optional(
         'shell-type',
+        config=False,
         doc="""\
         The shell type of the node's default shell executable. Used by Zuul
         to set ``ansible_shell_type``. This setting should only be used
@@ -242,12 +239,14 @@ common_image = vs.Schema({
     ): Nullable(str),
     Optional(
         'import-timeout',
+        config=False,
         doc="""\
         The limit on the amount of time a successful image import can
         take.""",
         default=300): int,
     Optional(
         'final',
+        config=False,
         doc="""\
         Whether the configuration of the label may be updated
         by values in label-defaults or overidden with a new definition
@@ -280,6 +279,7 @@ cloud_image = vs.Schema({
 common_image_zuul = vs.Schema({
     Optional(
         'upload-methods',
+        config=False,
         doc="""\
         An ordered list of methods to use when creating an image in
         the provider.""",
@@ -307,15 +307,27 @@ common_image_zuul = vs.Schema({
         """,
         default=dict,
     ): {str: str},
+    Optional(
+        'retain-count',
+        config=False,
+        doc="""\
+        How many images to keep available.  As new images are created,
+        the most recent `retain-count` validated images will be kept
+        available.  Keeping more than one image available allows
+        tenant admins to choose to fall-back on older images in case
+        new images exhibit problems.  The most recent (and therefore,
+        in-use) image is included in the count.  So a `retain-count`
+        of 1 means to only keep the current in-use image; a count of 2
+        means to keep one extra image as a backup.
+        """,
+        default=2,
+    ): vs.All(int, vs.Range(min=1))
 })
 
 # The image attributes that, in addition to those above, can appear in
 # a section/provider image or a standalone image (but not in the
 # section body).
 base_image = vs.Schema({
-    Required('project_canonical_name'): str,
-    Required('config_hash'): str,
-    Required('branch', doc="UNDOCUMENTED"): str,
     Required(
         'name',
         doc="""\
@@ -324,6 +336,7 @@ base_image = vs.Schema({
     ): str,
     Optional(
         'description',
+        config=False,
         doc="""\
         A textual description of the image for reference purposes.""",
     ): Nullable(str),
@@ -339,13 +352,18 @@ base_image = vs.Schema({
     ),
 })
 
+internal_base_image = vs.Schema({
+    Required('project_canonical_name'): str,
+    Required('config_hash'): str,
+    Optional('zuul_config_hash', default=None): vs.Any(None, str),
+    Required('branch'): str,
+})
+
 # Flavors
 
 # The flavor attributes that can appear in a section/provider flavor or
 # a standalone flavor (but not in the section body).
 base_flavor = vs.Schema({
-    Required('project_canonical_name'): str,
-    Required('config_hash'): str,
     Required(
         'name',
         doc="""\
@@ -357,6 +375,11 @@ base_flavor = vs.Schema({
         doc="""\
         A textual description of the image for reference purposes.""",
     ): Nullable(str),
+})
+
+internal_base_flavor = vs.Schema({
+    Required('project_canonical_name'): str,
+    Required('config_hash'): str,
 })
 
 common_flavor = vs.Schema({

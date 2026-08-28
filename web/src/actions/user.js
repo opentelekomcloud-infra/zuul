@@ -18,6 +18,8 @@ import { USER_ACL_FAIL, USER_ACL_REQUEST, USER_ACL_SUCCESS } from './auth'
 
 export const USER_LOGGED_IN = 'USER_LOGGED_IN'
 export const USER_LOGGED_OUT = 'USER_LOGGED_OUT'
+export const USER_BROADCAST_WAIT_START = 'USER_BROADCAST_WAIT_START'
+export const USER_BROADCAST_WAIT_FINISH = 'USER_BROADCAST_WAIT_FINISH'
 
 // Access tokens are not necessary JWTs (Google OAUTH uses a custom format)
 // check the access token, if it isn't a JWT, use the ID token
@@ -56,6 +58,7 @@ export const userLoggedOut = () => (dispatch) => {
 const fetchUserACLSuccess = (json) => ({
   type: USER_ACL_SUCCESS,
   isAdmin: json.zuul.admin,
+  permissions: json.zuul.permissions,
   scope: json.zuul.scope,
 })
 
@@ -73,4 +76,16 @@ export const fetchUserACL = (tenant) => (dispatch) => {
     .catch(error => {
       dispatch(fetchUserACLFail(error))
     })
+}
+
+export const userBroadcastWaitStart = () => (dispatch) => {
+  dispatch({
+    type: USER_BROADCAST_WAIT_START,
+  })
+}
+
+export const userBroadcastWaitFinish = () => (dispatch) => {
+  dispatch({
+    type: USER_BROADCAST_WAIT_FINISH,
+  })
 }

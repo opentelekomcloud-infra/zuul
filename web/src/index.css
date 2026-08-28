@@ -723,6 +723,9 @@ a.refresh {
 .zuul-log-output {
     color: black;
 }
+.zuul-log-message {
+    white-space: pre;
+}
 
 .zuul-log-output a,
 .zuul-log-output a:hover {
@@ -857,6 +860,7 @@ pre.version {
     padding: 10px;
     border: 1px solid #bbb;
     margin-bottom: 8px;
+    overflow-x: scroll;
 }
 
 .zuul-console-dark pre {
@@ -866,6 +870,7 @@ pre.version {
     padding: 10px;
     border: 1px solid white;
     margin-bottom: 8px;
+    overflow-x: scroll;
 }
 
 /* Increase the font size slightly for the JSON tree to match the text */
@@ -1032,6 +1037,7 @@ details.foldable[open] summary::before {
   padding: 10px;
   border: 1px solid #bbb;
   margin-bottom: 8px;
+  overflow-x: scroll;
 }
 
 .zuul-build-output-dark {
@@ -1041,6 +1047,7 @@ details.foldable[open] summary::before {
   padding: 10px;
   border: 1px solid white;
   margin-bottom: 8px;
+  overflow-x: scroll;
 }
 
 .pf-theme-dark .zuul-log-sev-0 {
@@ -1089,4 +1096,14 @@ details.foldable[open] summary::before {
 
 .sort-toolbar {
     padding: 0 !important;
+}
+
+/* The treeview components are buttons, but we frequently render text
+   that we want to copy out of them.  Override the cursor and
+   selection to allow that (since it's not normally allowed in a
+   button). */
+
+.pf-c-tree-view__node-text {
+    user-select: text;
+    cursor: text;
 }

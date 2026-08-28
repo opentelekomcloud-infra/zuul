@@ -27,6 +27,7 @@ import moment_tz from 'moment-timezone'
 import {
   PageSection,
   PageSectionVariants,
+  Tooltip,
 } from '@patternfly/react-core'
 import {
   BuildIcon,
@@ -40,6 +41,7 @@ import {
 import {
   formatProviderName,
   getNodeStyle,
+  isAuthorized,
 } from '../Misc'
 import {
   IconProperty,
@@ -56,6 +58,7 @@ class NodesPage extends React.Component {
     tenant: PropTypes.object,
     user: PropTypes.object,
     remoteData: PropTypes.object,
+    timezone: PropTypes.string,
     dispatch: PropTypes.func
   }
 
@@ -96,7 +99,17 @@ class NodesPage extends React.Component {
   renderNodeState(node) {
     const style = getNodeStyle(node)
 
-    return <span style={{color:style.color}}>{node.state}</span>
+    // 2192 is right arrow
+    return (
+      <>
+        <span style={{color:style.color}}>{node.state}</span>
+        {node.next_state &&
+         (<>
+            \u2192 <span style={{color:style.color}}>{node.next_state}</span>
+          </>)
+        }
+      </>
+    )
   }
 
   render () {
@@ -160,17 +173,31 @@ class NodesPage extends React.Component {
           {title: node.id, props: {column: 'ID'}},
           {title: node.type.join(','), props: {column: 'Label' }},
           {title: this.renderNodeState(node), props: {column: 'State'}},
-          {title: state_time.fromNow(), props: {column: 'Age'}},
+          {
+            title: <Tooltip
+                     content={
+                       moment_tz
+                         .utc(state_time)
+                         .tz(this.props.timezone)
+                         .format('YYYY-MM-DD HH:mm:ss')}>
+                     <span>{state_time.fromNow()}</span>
+                    </Tooltip>,
+            props: {column: 'Age'}
+          },
           {title: node.lock_holder, props: {column: 'Locked'}},
           {title: formatProviderName(node.provider), props: {column: 'Provider'}},
           {title: node.comment, props: {column: 'Comment'}},
         ]
-      if (node.uuid && this.props.user.isAdmin && this.props.user.scope.indexOf(this.props.tenant.name) !== -1) {
+      if (node.uuid && isAuthorized(this.props.user, 'modify-node')) {
         r.push({title:
                 <ActionsColumn items={[
                   {
                     title: 'Set to HOLD',
                     onClick: () => this.handleStateChange(node.uuid, 'hold')
+                  },
+                  {
+                    title: 'Set to OUTDATED',
+                    onClick: () => this.handleStateChange(node.uuid, 'outdated')
                   },
                   {
                     title: 'Set to USED',
@@ -210,4 +237,5 @@ export default connect(state => ({
   tenant: state.tenant,
   remoteData: state.nodes,
   user: state.user,
+  timezone: state.timezone,
 }))(NodesPage)

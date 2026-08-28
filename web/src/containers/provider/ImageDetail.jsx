@@ -26,6 +26,7 @@ import {
 import PropTypes from 'prop-types'
 import { addNotification, addApiError } from '../../actions/notifications'
 import { buildImage } from '../../api'
+import { isAuthorized } from '../../Misc'
 
 function ProviderDetail(props) {
   const {image} = props
@@ -71,6 +72,16 @@ function ProviderDetail(props) {
     )
   }
 
+  const buildArtifacts = image.build_artifacts ? image.build_artifacts : []
+  const buildTenantArtifacts = buildArtifacts.filter(
+    (x) => x.build_tenant
+  )
+  // If there are build artifacts, but none of them were built in this
+  // tenant, then this tenant is probably not responsible for building
+  // them.  Hide the button in that case.
+  const hideBuildButton = (
+    buildArtifacts.length > 0 && buildTenantArtifacts.length == 0
+  )
   return (
     <>
       <DescriptionList isHorizontal
@@ -102,7 +113,9 @@ function ProviderDetail(props) {
         </DescriptionListGroup>
       </DescriptionList>
 
-      {(user.isAdmin && user.scope.indexOf(tenant.name) !== -1) &&
+      {isAuthorized(user, 'build-image') &&
+       image.type === 'zuul' &&
+       !hideBuildButton &&
        <Button onClick={() => {setShowBuildModal(true)}}>
          Build Image
        </Button>

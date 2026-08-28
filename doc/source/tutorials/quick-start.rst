@@ -18,8 +18,8 @@ This tutorial supplies a working Gerrit for code review, though the
 concepts you will learn apply equally to GitHub.
 
 .. note:: Even if you don't ultimately intend to use Gerrit, you are
-	  encouraged to follow this tutorial to learn how to set up
-	  and use Zuul.
+          encouraged to follow this tutorial to learn how to set up
+          and use Zuul.
 
 At the end of the tutorial, you will find further information about
 how to configure your Zuul to interact with GitHub.
@@ -52,7 +52,7 @@ Clone the Zuul repository:
    git clone https://opendev.org/zuul/zuul
 
 Then cd into the directory containing this document, and run
-docker compose in order to start Zuul, Nodepool and Gerrit.
+docker compose in order to start Zuul and Gerrit.
 
 .. code-block:: shell
 
@@ -74,14 +74,14 @@ complete, you will have the following services running:
 
 * Zookeeper
 * Gerrit
-* Nodepool Launcher
 * Zuul Scheduler
 * Zuul Web Server
 * Zuul Executor
+* Zuul Launcher
 * Apache HTTPD
 
-And a long-running static test node used by Nodepool and Zuul upon
-which to run tests.
+And a long-running static test node used by Zuul upon which to run
+tests.
 
 The Zuul scheduler is configured to connect to Gerrit via a connection
 named ``gerrit``.  Zuul can interact with as many systems as
@@ -236,6 +236,16 @@ projects to those pipelines (with no jobs), copy the following file
 into ``zuul.d/projects.yaml``:
 
 .. literalinclude:: /examples/zuul-config/zuul.d/projects.yaml
+   :language: yaml
+
+To set up the environment for running jobs, we will need to configure
+a provider along with any other necessary settings.  In this tutorial,
+we will be using the static test node that is already running via
+Docker Compose.  This provider will define the connection details for
+the node, allowing Zuul to schedule jobs to it.  Copy the following
+into ``zuul.d/providers.yaml``:
+
+.. literalinclude:: /examples/zuul-config/zuul.d/providers.yaml
    :language: yaml
 
 Every real job (i.e., all jobs other than ``noop``) must inherit from a
@@ -533,10 +543,10 @@ You now have a Zuul system up and running, congratulations!
 
 The Zuul community would love to hear about how you plan to use Zuul.
 Please take a few moments to fill out the `Zuul User Survey
-<https://www.surveymonkey.com/r/K2B2MWL>`_ to provide feedback and
-information around your deployment.  All information is confidential
-to the OpenStack Foundation unless you designate that it can be
-public.
+<https://openinfrafoundation.formstack.com/forms/zuul_user_survey>`_
+to provide feedback and information around your deployment.  All
+information is confidential to the OpenInfra Foundation unless you
+designate that it can be public.
 
 If you would like to make further changes to Zuul, its configuration
 files are located in the ``zuul/doc/source/examples`` directory

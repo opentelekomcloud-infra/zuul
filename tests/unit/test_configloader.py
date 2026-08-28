@@ -22,8 +22,10 @@ from configparser import ConfigParser
 from zuul import model
 from zuul.lib.ansible import AnsibleManager
 from zuul.configloader import (
-    AuthorizationRuleParser, ConfigLoader, safe_load_yaml
+    AuthorizationRuleParser, AuthorizationRoleParser,
+    ConfigLoader, safe_load_yaml
 )
+from zuul.exceptions import AuthZRoleNotFoundError, AuthZRuleNotFoundError
 from zuul.model import Abide, MergeRequest, SourceContext
 from zuul.zk.locks import tenant_read_lock
 
@@ -239,7 +241,12 @@ class TestTenantSimple(TenantParserTestCase):
             # except for what needs to be refreshed from the files
             # cache in ZK.
             self.log.debug("Thaw scheduler-1")
-            self.waitUntilSettled()
+            state_one = first.sched.local_layout_state.get("tenant-one")
+            for _ in iterate_timeout(
+                    10, "all schedulers to have the same layout state"):
+                if (second.sched.local_layout_state.get(
+                        "tenant-one") == state_one):
+                    break
             self.log.debug("Layout update logs:")
             for x in update_logs.output:
                 self.log.debug(x)
@@ -1145,6 +1152,142 @@ class TestAuthorizationRuleParserWithTemplating(ZuulTestCase):
         self.assertTrue(rules['tenant-admin-complex'](claims_2, tenant_two))
 
 
+class TestAuthorizationRoleParser(ZuulTestCase):
+    tenant_config_file = 'config/tenant-parser/rbac.yaml'
+
+    def test_roles_are_loaded(self):
+        roles = self.scheds.first.sched.abide.authz_roles
+        self.assertTrue('admin' in roles,
+                        self.scheds.first.sched.abide)
+        self.assertTrue('read' in roles,
+                        self.scheds.first.sched.abide)
+        self.assertTrue('enqueue' in roles,
+                        self.scheds.first.sched.abide)
+        self.assertTrue(roles['enqueue'].permissions['enqueue'])
+        self.assertTrue('dequeue1' in roles,
+                        self.scheds.first.sched.abide)
+        self.assertEqual(
+            roles['dequeue1'].permissions['dequeue']['conditions'],
+            {'project': 'org/project'})
+        self.assertTrue('dequeue2' in roles,
+                        self.scheds.first.sched.abide)
+        self.assertEqual(
+            roles['dequeue2'].permissions['dequeue']['conditions'],
+            {'ref': 'refs/heads/stable/foo'})
+        self.assertTrue('dequeue3' in roles,
+                        self.scheds.first.sched.abide)
+        self.assertEqual(
+            roles['dequeue3'].permissions['dequeue']['conditions'],
+            {'project': 'org/project',
+             'ref': 'refs/heads/stable/foo'})
+        self.assertTrue('build_image' in roles,
+                        self.scheds.first.sched.abide)
+        self.assertTrue(roles['build_image'].permissions['build-image'])
+
+    def test_invalid_override_of_reserved_roles(self):
+        # Check that valid names are fine
+        role = {'name': 'enqueue',
+                'permissions': {'enqueue': True}
+               }
+        AuthorizationRoleParser().fromYaml(role)
+        # Now check that the two reserved role names can't be overridden.
+        role = {'name': 'admin',
+                'permissions': {'enqueue': True}
+               }
+        self.assertRaises(vs.error.MultipleInvalid,
+                          AuthorizationRoleParser().fromYaml, role)
+        role = {'name': 'read',
+                'permissions': {'enqueue': True}
+               }
+        self.assertRaises(vs.error.MultipleInvalid,
+                          AuthorizationRoleParser().fromYaml, role)
+
+    def test_invalid_rbac_conditions(self):
+        # Check valid conditions
+        role = {
+            'name': 'enqueue',
+            'permissions': {
+                'enqueue': {
+                    'conditions': {
+                        'project': 'foo/bar',
+                        'ref': 'refs/heads/featuretesting'
+                    }
+                }
+            }
+        }
+        AuthorizationRoleParser().fromYaml(role)
+        # Now check extra invalid conditions
+        role['permissions']['enqueue']['conditions']['job'] = 'atestjob'
+        self.assertRaises(vs.error.MultipleInvalid,
+                          AuthorizationRoleParser().fromYaml, role)
+        # Now check the lack of conditions
+        del role['permissions']['enqueue']['conditions']['project']
+        del role['permissions']['enqueue']['conditions']['ref']
+        del role['permissions']['enqueue']['conditions']['job']
+        self.assertRaises(vs.error.MultipleInvalid,
+                          AuthorizationRoleParser().fromYaml, role)
+
+    def test_role_shouldnt_have_conditions(self):
+        # Check that conditions don't apply to some permissions
+        role = {
+            'name': 'autohold',
+            'permissions': {
+                'autohold': {
+                    'conditions': {
+                        'project': 'foo/bar',
+                    }
+                }
+            }
+        }
+        self.assertRaises(vs.error.MultipleInvalid,
+                          AuthorizationRoleParser().fromYaml, role)
+        # Now check valid role construction
+        role['permissions']['autohold'] = True
+        AuthorizationRoleParser().fromYaml(role)
+
+
+class TestTenantInvalidRoleInRoleMappings(ZuulTestCase):
+    tenant_config_file = 'config/tenant-parser/invalid_role_rbac.yaml'
+
+    # This test raises a config error during the startup of the test
+    # case which makes the first scheduler fail during its startup.
+    # The second (or any additional) scheduler won't even run as the
+    # startup is serialized in tests/base.py.
+    # Thus it doesn't make sense to execute this test with multiple
+    # schedulers.
+    scheduler_count = 1
+
+    def setUp(self):
+        err = 'The Authorization Role "not_a_valid_role" was not found.'
+        with testtools.ExpectedException(AuthZRoleNotFoundError, err):
+            super().setUp()
+
+    def test_tenant_invalid_role_in_role_mappings(self):
+        # The magic is in setUp
+        pass
+
+
+class TestTenantInvalidRuleInRoleMappings(ZuulTestCase):
+    tenant_config_file = 'config/tenant-parser/invalid_rule_rbac.yaml'
+
+    # This test raises a config error during the startup of the test
+    # case which makes the first scheduler fail during its startup.
+    # The second (or any additional) scheduler won't even run as the
+    # startup is serialized in tests/base.py.
+    # Thus it doesn't make sense to execute this test with multiple
+    # schedulers.
+    scheduler_count = 1
+
+    def setUp(self):
+        err = 'The Authorization Rule "auth-rule-three" was not found.'
+        with testtools.ExpectedException(AuthZRuleNotFoundError, err):
+            super().setUp()
+
+    def test_tenant_invalid_rule_in_role_mappings(self):
+        # The magic is in setUp
+        pass
+
+
 class TestTenantExtra(TenantParserTestCase):
     tenant_config_file = 'config/tenant-parser/extra.yaml'
 
@@ -1291,6 +1434,46 @@ class TestTenantDuplicate(TenantParserTestCase):
     def test_tenant_dupe(self):
         # The magic is in setUp
         pass
+
+
+class TestTenantTPCLoadingFailure(TenantParserTestCase):
+    tenant_config_file = ('config/tenant-parser/'
+                          'simple.yaml')
+    scheduler_count = 1
+
+    @okay_tracebacks('may not configure')
+    def test_tenant_tpc_loading_failure(self):
+        # This tests the behavior when we fail to load TPCs,
+        # especially after a previously successful loading.  If we
+        # fail to fully load information about a tenant, it can be
+        # dangerous to proceed with run loop or cleanup handling in
+        # the scheduler.
+
+        # The test starts with a valid configuration.  This next
+        # configuration raises an error during TPC loading
+        self.newTenantConfig('config/tenant-parser/'
+                             'superproject-config-project.yaml')
+        self.scheds.execute(lambda app: app.sched.reconfigure(app.config))
+        self.waitUntilSettled()
+
+        # Counter-intuitively, the tenant *is* up to date on this
+        # scheduler.  We are running with the previous configuration
+        # since the new one didn't load.
+        self.assertTrue(
+            self.scheds.first.sched.isTenantLayoutUpToDate('tenant-one')
+        )
+
+        # Start a second scheduler which will not have the benefit of
+        # a config in memory.
+        app = self.createScheduler()
+        app.start()
+        self.assertEqual(len(self.scheds), 2)
+
+        # In this case, the layout is not up to date since we don't
+        # have anything to fall back on.
+        self.assertFalse(
+            app.sched.isTenantLayoutUpToDate('tenant-one')
+        )
 
 
 class TestTenantSuperprojectConfigProject(TenantParserTestCase):
@@ -1705,10 +1888,50 @@ class TestNodepoolConfig(LauncherBaseTestCase):
         tenant = self.scheds.first.sched.abide.tenants.get('tenant-one')
         self.assertTrue('newprovider' in tenant.layout.providers)
 
+    @simple_layout('layouts/nodepool-error-provider.yaml',
+                   enable_nodepool=True)
+    def test_nodepool_config_error_provider(self):
+        # Test a provider referencing an image unattached to it.
+        layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
+        self.assertEqual(1, len(layout.loading_errors))
+        self.assertIn('Image "debian" is not attached to provider',
+                      layout.loading_errors[0].error)
+
+    @simple_layout('layouts/nodepool-error-provider2.yaml',
+                   enable_nodepool=True)
+    def test_nodepool_config_error_provider2(self):
+        # Test a syntax error deep in the provider construct
+        layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
+        self.assertEqual(1, len(layout.loading_errors))
+        self.assertIn("not a valid value @ data['flavors'][0]['foo']",
+                      layout.loading_errors[0].error)
+
+    @simple_layout('layouts/nodepool-error-provider3.yaml',
+                   enable_nodepool=True)
+    def test_nodepool_config_error_provider3(self):
+        # Test a syntax error at the top of the provider construct
+        layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
+        self.assertEqual(1, len(layout.loading_errors))
+        self.assertIn("expected a dictionary for dictionary "
+                      "value @ data['object-storage']",
+                      layout.loading_errors[0].error)
+
     @simple_layout('layouts/nodepool-provider-flavors.yaml',
                    enable_nodepool=True)
     def test_nodepool_provider_flavors(self):
         layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
         self.assertEqual(1, len(layout.loading_errors))
         self.assertIn('Flavor configuration not permitted in',
+                      layout.loading_errors[0].error)
+
+    @simple_layout('layouts/nodepool-internal-attrs.yaml',
+                   enable_nodepool=True)
+    def test_nodepool_internal_attrs(self):
+        # Test that an attempt to set an internal attribute fails
+        # schema validation.
+        layout = self.scheds.first.sched.abide.tenants.get('tenant-one').layout
+        self.assertEqual(1, len(layout.loading_errors))
+        self.assertIn('extra keys not allowed',
+                      layout.loading_errors[0].error)
+        self.assertIn('project_canonical_name',
                       layout.loading_errors[0].error)

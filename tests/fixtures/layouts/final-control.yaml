@@ -26,6 +26,8 @@
       files: {final: true}
       irrelevant-files: {final: true}
       required-projects: {final: true}
+      include-projects: {final: true}
+      exclude-projects: {final: true}
       vars: {final: true}
       extra-vars: {final: true}
       host-vars: {final: true}
@@ -60,6 +62,14 @@
 - job:
     name: test-required-projects
     required-projects: ['org/project1']
+
+- job:
+    name: test-include-projects
+    include-projects: ['org/project1']
+
+- job:
+    name: test-exclude-projects
+    exclude-projects: ['org/project1']
 
 - job:
     name: test-vars

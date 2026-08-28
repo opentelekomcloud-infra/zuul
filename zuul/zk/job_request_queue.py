@@ -121,13 +121,13 @@ class JobRequestCache(ZuulTreeCache):
         fetch = False
         parts = self._parsePath(path)
         if parts is None:
-            return (key, fetch)
+            return (key, fetch, None)
         if len(parts) != 2:
-            return (key, fetch)
+            return (key, fetch, None)
         if parts[0] == 'requests':
             key = (parts[0], parts[1])
             fetch = True
-        return (key, fetch)
+        return (key, fetch, None)
 
     def preCacheHook(self, event, exists, data=None, stat=None):
         parts = self._parsePath(event.path)

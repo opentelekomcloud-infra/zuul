@@ -32,6 +32,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 import boto3
 import botocore.exceptions
+import botocore.session
+import botocore.utils
+from botocore.credentials import AssumeRoleWithWebIdentityProvider
 
 from zuul import exceptions
 from zuul.driver.aws.awsmodel import AwsResource, AwsInstance
@@ -231,6 +234,7 @@ class AwsCreateStateMachine(statemachine.StateMachine):
             state = self.host['State'].lower()
             if state == 'available':
                 self.node.aws_dedicated_host_id = self.host['HostId']
+                self.node.node_properties['host_id'] = self.host['HostId']
                 self.state = self.INSTANCE_CREATING_START
             elif state in [
                     'permanent-failure', 'released',
@@ -255,6 +259,7 @@ class AwsCreateStateMachine(statemachine.StateMachine):
                 return
             self.instance = instance
             self.node.aws_instance_id = instance['InstanceId']
+            self.node.node_properties['instance_id'] = instance['InstanceId']
             self.state = self.INSTANCE_CREATING
 
         if self.state == self.INSTANCE_CREATING:
@@ -601,13 +606,59 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         self.not_our_images = set()
         self.not_our_snapshots = set()
 
-    def _getClients(self):
-        # A separate method for unit tests
-        self.aws = boto3.Session(
+    def _getSessionFromCredentials(self):
+        return boto3.Session(
             aws_access_key_id=self.connection.access_key_id,
             aws_secret_access_key=self.connection.secret_access_key,
             profile_name=self.connection.profile,
         )
+
+    def _getSessionFromWebIdentity(self):
+        # Boto3 does not allow passing web_identity_token_file as a
+        # constructor argument to the boto3.Session object, so we
+        # create the identity provider ourselves and add it to the
+        # botocore session.  This allows us to benefit from the
+        # automatic token refresh without needing to use a config file
+        # or environment variables (though those are supported as
+        # well).
+        botocore_session = botocore.session.Session()
+        profile = self.connection.profile or 'default'
+        config = {
+            'profiles': {
+                profile: {
+                    'role_arn': self.connection.role_arn,
+                    'web_identity_token_file':
+                    self.connection.web_identity_token_file,
+                }
+            }
+        }
+
+        # Based on code in botocore/credentials.py (ASL2)
+        def client_creator(service_name, **kwargs):
+            create_client_kwargs = {'region_name': self.region}
+            create_client_kwargs.update(**kwargs)
+            return botocore.utils.create_nested_client(
+                botocore_session, service_name, **create_client_kwargs
+            )
+        cache = {}
+        id_provider = AssumeRoleWithWebIdentityProvider(
+            load_config=lambda: config,
+            client_creator=client_creator,
+            cache=cache,
+            profile_name=profile,
+            disable_env_vars=False,
+        )
+        resolver = botocore_session.get_component('credential_provider')
+        first = resolver.providers[0].METHOD
+        resolver.insert_before(first, id_provider)
+        return boto3.Session(botocore_session=botocore_session)
+
+    def _getClients(self):
+        # A separate method for unit tests
+        if self.connection.role_arn:
+            self.aws = self._getSessionFromWebIdentity()
+        else:
+            self.aws = self._getSessionFromCredentials()
         self.ec2_client = self.aws.client("ec2", region_name=self.region)
         self.s3 = self.aws.resource('s3', region_name=self.region)
         self.s3_client = self.aws.client('s3', region_name=self.region)
@@ -733,8 +784,9 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
     def listResources(self, providers):
         bucket_names = set()
         for provider in providers:
-            if bn := provider.object_storage.get('bucket_name'):
-                bucket_names.add(bn)
+            if provider.object_storage:
+                if bn := provider.object_storage.get('bucket_name'):
+                    bucket_names.add(bn)
         self._tagSnapshots()
         self._tagAmis()
 
@@ -1913,7 +1965,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             # Create launch templates only for labels which use fleet
             if not flavor.fleet:
                 continue
-            fleet_labels.append(label)
+            fleet_labels.append((label, flavor))
 
         self.log.info("Creating launch templates")
         # Include the provider name here so that identical templates
@@ -1935,7 +1987,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         label_template_names = {}
 
         created = False
-        for label in fleet_labels:
+        for label, flavor in fleet_labels:
             template_data = {
                 'KeyName': label.key_name,
                 'MaintenanceOptions': {
@@ -1957,6 +2009,11 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                     'HttpTokens': 'optional',
                     'HttpEndpoint': 'enabled',
                     'HttpProtocolIpv6': 'enabled',
+                }
+
+            if flavor.nested_virtualization:
+                template_data['CpuOptions'] = {
+                    'NestedVirtualization': 'enabled'
                 }
 
             if label.userdata:
@@ -2176,6 +2233,11 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
         if flavor.public_ipv6:
             args['NetworkInterfaces'][0]['Ipv6AddressCount'] = 1
 
+        if flavor.nested_virtualization:
+            args['CpuOptions'] = {
+                'NestedVirtualization': 'enabled'
+            }
+
         if label.userdata:
             args['UserData'] = label.userdata
 
@@ -2322,7 +2384,8 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
                 log.debug("Deleting instance %s", del_id)
             count = len(ids)
             with self.rate_limiter(log.debug, f"Deleted {count} instances"):
-                self.ec2_client.terminate_instances(InstanceIds=ids)
+                self.ec2_client.terminate_instances(
+                    InstanceIds=ids, SkipOsShutdown=True)
 
         if not self._running:
             return
@@ -2367,7 +2430,7 @@ class AwsProviderEndpoint(BaseProviderEndpoint):
             with self.rate_limiter(log.debug, "Deleted instance"):
                 log.debug(f"Deleting instance {external_id}")
                 self.ec2_client.terminate_instances(
-                    InstanceIds=[instance['InstanceId']])
+                    InstanceIds=[instance['InstanceId']], SkipOsShutdown=True)
         else:
             self.delete_instance_queue.put((external_id, log))
         return instance
