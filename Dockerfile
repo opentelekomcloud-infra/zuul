@@ -21,15 +21,15 @@ ARG IMAGE_FLAVOR=
 # Base images, defined as separate stages to allow for mirror selection or
 # downstream customization via named contexts when built with docker buildx.
 
-FROM quay.io/opendevorg/python-base:3.11-bookworm${IMAGE_FLAVOR} AS zuul-base
+FROM artifactory.devops.telekom.de/dhi.io/python:3.11-debian12-dev${IMAGE_FLAVOR} AS zuul-base
 
 # This is a mirror of:
 # FROM docker.io/library/node:22-bookworm AS node-base
-FROM quay.io/opendevmirror/node:22-bookworm AS node-base
+FROM artifactory.devops.telekom.de/dhi.io/node:22-debian13-dev AS node-base
 
 # This is a mirror of:
 # FROM golang:1.22-bookworm AS go-base
-FROM quay.io/opendevmirror/golang:1.22-bookworm AS go-base
+FROM artifactory.devops.telekom.de/dhi.io/golang:1.26-debian13-dev AS go-base
 
 FROM quay.io/opendevorg/python-builder:3.11-bookworm AS builder-base
 
@@ -123,7 +123,11 @@ RUN ln -s /usr/local/bin/oc /usr/local/bin/kubectl
 RUN apt-get update \
   && apt-get install -y libgpgme11 libdevmapper1.02.1 \
   && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  # bwrap unconditionally binds /etc/localtime and /etc/ld.so.cache —
+  # create/regenerate them so the hardened image works with bubblewrap.
+  && ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime \
+  && ldconfig
 
 CMD ["/usr/local/bin/zuul-executor", "-f"]
 
