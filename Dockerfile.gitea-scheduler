@@ -1,7 +1,20 @@
 # Dockerfile for Zuul with Gitea driver
 # Based on existing OTC Zuul image
 
-FROM quay.io/opentelekomcloud/zuul-scheduler:13.1.1
+# Each gitea-vN image is built FROM its PREDECESSOR, not from the 13.1.1 base.
+# That is deliberate: rebuilding from 13.1.1 drops the accumulated fixes and
+# regresses the alembic revision, which is how v8/v9 were left unable to start
+# (the web had already migrated the DB past their revisions). Override when
+# building the next tag, e.g.
+#   podman build -f Dockerfile.gitea-scheduler \
+#     --build-arg BASE_IMAGE=quay.io/opentelekomcloud/zuul-scheduler:13.1.1-gitea-v13 \
+#     -t quay.io/opentelekomcloud/zuul-scheduler:13.1.1-gitea-v14 .
+#
+# The default below is the LATEST SHIPPED TAG, not the 13.1.1 base, so that a
+# build with no --build-arg is merely stale rather than DB-regressing. Bump it
+# whenever a new gitea-vN scheduler is shipped.
+ARG BASE_IMAGE=quay.io/opentelekomcloud/zuul-scheduler:13.1.1-gitea-v13
+FROM ${BASE_IMAGE}
 
 USER root
 
