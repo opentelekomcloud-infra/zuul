@@ -199,7 +199,7 @@ class Streamer:
             except Exception:
                 if self.stopped:
                     return None
-                if logger_retries % 10 == 0:
+                if logger_retries % 100 == 0:
                     self.callback._log("[%s] Waiting on logger" % self.host)
                 logger_retries += 1
                 time.sleep(0.1)

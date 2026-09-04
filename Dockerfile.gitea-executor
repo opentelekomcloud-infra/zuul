@@ -1,0 +1,29 @@
+# Dockerfile for Zuul Executor with Gitea driver
+FROM quay.io/opentelekomcloud/zuul-executor:13.1.1
+
+USER root
+
+# Copy Gitea driver source files
+COPY zuul/driver/gitea/ /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/
+COPY zuul/lib/connections.py /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py
+
+# Copy GitHub driver fix (merge-mode fallback for missing API fields)
+COPY zuul/driver/github/githubconnection.py /usr/local/lib/python3.11/site-packages/zuul/driver/github/githubconnection.py
+
+# Copy zuul_stream callback fix (reduced "Waiting on logger" noise)
+COPY zuul/ansible/base/callback/zuul_stream.py /usr/local/lib/python3.11/site-packages/zuul/ansible/base/callback/zuul_stream.py
+
+# Ensure proper permissions
+RUN chown -R zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/ && \
+    chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py && \
+    chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/driver/github/githubconnection.py && \
+    chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/ansible/base/callback/zuul_stream.py && \
+    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/*.py && \
+    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py && \
+    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/driver/github/githubconnection.py && \
+    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/ansible/base/callback/zuul_stream.py
+
+USER zuul
+
+# Verify driver can be imported
+RUN python3 -c "from zuul.driver.gitea import GiteaDriver; print('Gitea driver loaded successfully')"

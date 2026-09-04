@@ -1,0 +1,51 @@
+# Dockerfile for Zuul with Gitea driver
+# Based on existing OTC Zuul image
+
+# Each gitea-vN image is built FROM its PREDECESSOR, not from the 13.1.1 base.
+# That is deliberate: rebuilding from 13.1.1 drops the accumulated fixes and
+# regresses the alembic revision, which is how v8/v9 were left unable to start
+# (the web had already migrated the DB past their revisions). Override when
+# building the next tag, e.g.
+#   podman build -f Dockerfile.gitea-scheduler \
+#     --build-arg BASE_IMAGE=quay.io/opentelekomcloud/zuul-scheduler:13.1.1-gitea-v13 \
+#     -t quay.io/opentelekomcloud/zuul-scheduler:13.1.1-gitea-v14 .
+#
+# The default below is the LATEST SHIPPED TAG, not the 13.1.1 base, so that a
+# build with no --build-arg is merely stale rather than DB-regressing. Bump it
+# whenever a new gitea-vN scheduler is shipped.
+ARG BASE_IMAGE=quay.io/opentelekomcloud/zuul-scheduler:13.1.1-gitea-v13
+FROM ${BASE_IMAGE}
+
+USER root
+
+# Fix security vulnerabilities by upgrading packages
+RUN pip3 install --upgrade --no-cache-dir \
+    'pip>=25.3' \
+    'setuptools>=78.1.1' \
+    'wheel>=0.46.2' \
+    'urllib3>=2.6.3' \
+    'pyasn1>=0.6.2' \
+    'protobuf>=6.0.0'
+
+# Copy Gitea driver source files
+COPY zuul/driver/gitea/ /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/
+COPY zuul/lib/connections.py /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py
+COPY zuul/configloader.py /usr/local/lib/python3.11/site-packages/zuul/configloader.py
+
+# Copy GitHub driver fix (merge-mode fallback for missing API fields)
+COPY zuul/driver/github/githubconnection.py /usr/local/lib/python3.11/site-packages/zuul/driver/github/githubconnection.py
+
+# Ensure proper permissions
+RUN chown -R zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/ && \
+    chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py && \
+    chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/configloader.py && \
+    chown zuul:zuul /usr/local/lib/python3.11/site-packages/zuul/driver/github/githubconnection.py && \
+    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/driver/gitea/*.py && \
+    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/lib/connections.py && \
+    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/configloader.py && \
+    chmod 644 /usr/local/lib/python3.11/site-packages/zuul/driver/github/githubconnection.py
+
+USER zuul
+
+# Verify driver can be imported
+RUN python3 -c "import zuul.driver.gitea; print('Gitea driver loaded successfully')"
