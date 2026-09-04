@@ -345,7 +345,32 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         """Fetch pull request from Gitea API and create Change object"""
         number = int(change_key.stable_id)
         change = self._change_cache.get(change_key)
-        if change and not refresh:
+        # A cached change may only be trusted when the key pins it to a
+        # specific head SHA.
+        #
+        # GiteaSource.getChangeKey() builds the key revision from the event's
+        # patchset, but comment events (a plain "recheck") carry no patchset,
+        # so their key revision is None. Every such event therefore hits the
+        # same revision-less cache entry, which keeps whatever head was current
+        # the first time the PR was seen. After a force-push (rebase or amend)
+        # that entry is stale and nothing ever refreshes it: _updateChange --
+        # which already handles a moved head correctly -- is never reached
+        # because of the early return below.
+        #
+        # The visible damage is in the reporter: GiteaReporter.setCommitStatus
+        # posts to `change.patchset`, so the gitea/check status lands on the
+        # pre-rebase commit. That commit is no longer the PR head, so the PR
+        # shows no gitea/check at all and stays pending forever -- which also
+        # makes branch protection impossible to satisfy. Observed on
+        # docs/doc-exports PRs 1849 and 1982: Zuul reported against a commit
+        # from four days earlier while the jobs themselves passed.
+        #
+        # So re-fetch whenever the key does not pin a revision. Keys that do
+        # (push/sync events and dependency resolution) keep the cheap cache
+        # path, and this costs one extra API call per recheck.
+        key_revision = getattr(change_key, 'revision', None)
+        pinned = bool(key_revision) and key_revision != 'None'
+        if change and not refresh and pinned:
             return change
 
         project = self.source.getProject(change_key.project_name)
