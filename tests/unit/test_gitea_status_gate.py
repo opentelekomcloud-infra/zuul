@@ -177,6 +177,23 @@ class TestSetCommitStatusEmitsEvent(unittest.TestCase):
         self.assertEqual("refs/pull/1945/head", event.ref)
         self.assertEqual("gitea-vm", event.connection_name)
 
+    def test_login_comes_from_the_created_status(self):
+        # The token may not be allowed to GET /user (403 in prod); the POST
+        # response carries the creator, and that login must be used so the
+        # event matches the "login:context:state" strings on change.status.
+        conn = make_connection()
+        conn._api_user_login = None
+        conn._makeRequest = mock.Mock(side_effect=[
+            {"id": 1, "context": "gitea/check", "status": "success",
+             "creator": {"login": "zuul"}},
+            RuntimeError("GET /user must not be needed"),
+        ])
+        conn.setCommitStatus("docs/doc-exports", SHA, "success",
+                             context="gitea/check", change=make_pr())
+        _, event = conn.sched.addTriggerEvent.call_args[0]
+        self.assertEqual("zuul:gitea/check:success", event.status)
+        self.assertEqual("zuul", conn._api_user_login)
+
     def test_pending_status_emits_nothing(self):
         conn = make_connection()
         conn.setCommitStatus("docs/doc-exports", SHA, "pending",

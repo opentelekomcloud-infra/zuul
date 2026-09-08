@@ -699,10 +699,19 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
             if description:
                 data['description'] = description
 
-            self._makeRequest('POST', f'/repos/{project_name}/statuses/{sha}', json=data)
+            result = self._makeRequest(
+                'POST', f'/repos/{project_name}/statuses/{sha}', json=data)
             self.log.info("Set commit status for %s/%s: %s (context: %s)",
                          project_name, sha[:8], state, context)
-            self._emitStatusEvent(project_name, sha, context, state, change)
+            # The created status carries its creator; that is the login the
+            # combined-status endpoint reports too, so both sides of a
+            # "login:context:state" filter agree without a GET /user call
+            # (which the token may not be allowed to make).
+            login = ((result or {}).get('creator') or {}).get('login')
+            if login:
+                self._api_user_login = login
+            self._emitStatusEvent(project_name, sha, context, state, change,
+                                  login=login)
         except Exception as e:
             self.log.error("Failed to set commit status for %s/%s: %s",
                           project_name, sha[:8], e)
@@ -831,17 +840,19 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
     def _getApiUserLogin(self):
         """Login of the account behind api_token (cached)."""
         login = getattr(self, '_api_user_login', None)
-        if login is None:
+        if not login:
             try:
                 data = self._makeRequest('GET', '/user') or {}
                 login = data.get('login') or ''
             except Exception as e:
                 self.log.warning("Failed to look up API user: %s", e)
                 login = ''
-            self._api_user_login = login
+            if login:
+                self._api_user_login = login
         return login
 
-    def _emitStatusEvent(self, project_name, sha, context, state, change=None):
+    def _emitStatusEvent(self, project_name, sha, context, state, change=None,
+                         login=None):
         """Synthesize a ``gt_pull_request`` / ``status`` trigger event.
 
         Gitea does not send a webhook when a commit status is created, and
@@ -878,7 +889,9 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         event.connection_name = self.connection_name
         event.type = 'gt_pull_request'
         event.action = 'status'
-        event.status = '%s:%s:%s' % (self._getApiUserLogin(), context, state)
+        if not login:
+            login = self._getApiUserLogin()
+        event.status = '%s:%s:%s' % (login, context, state)
         event.project_hostname = self.canonical_hostname
         event.project_name = project_name
         event.change_number = number

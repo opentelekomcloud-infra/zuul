@@ -13,7 +13,7 @@
 # The default below is the LATEST SHIPPED TAG, not the 13.1.1 base, so that a
 # build with no --build-arg is merely stale rather than DB-regressing. Bump it
 # whenever a new gitea-vN scheduler is shipped.
-ARG BASE_IMAGE=quay.io/opentelekomcloud/zuul-scheduler:13.1.1-gitea-v13
+ARG BASE_IMAGE=quay.io/opentelekomcloud/zuul-scheduler:13.1.1-gitea-v14
 FROM ${BASE_IMAGE}
 
 USER root
