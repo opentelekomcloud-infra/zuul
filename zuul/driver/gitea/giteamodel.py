@@ -12,10 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import re2
+
 from zuul.model import Change
 from zuul.model import EventFilter
+from zuul.model import FalseWithReason
 from zuul.model import RefFilter
 from zuul.model import TriggerEvent
+from zuul.driver.util import to_list
 
 EMPTY_GIT_REF = '0' * 40  # git sha of all zeros, used during creates/deletes
 
@@ -39,6 +43,10 @@ class PullRequest(Change):
         self.enable_status_check = False
         self.required_contexts = []
         self.approved = False
+        # Latest commit status per context on the PR head, formatted like the
+        # GitHub driver: "<creator login>:<context>:<state>", so pipeline
+        # require/reject "status" filters work the same way for both drivers.
+        self.status = []
 
     def __repr__(self):
         r = ['<Change 0x%x' % id(self)]
@@ -74,6 +82,7 @@ class PullRequest(Change):
             "enable_status_check": self.enable_status_check,
             "required_contexts": self.required_contexts,
             "approved": self.approved,
+            "status": self.status,
         })
         return d
 
@@ -92,6 +101,7 @@ class PullRequest(Change):
         self.enable_status_check = data.get("enable_status_check", False)
         self.required_contexts = data.get("required_contexts", [])
         self.approved = data.get("approved", False)
+        self.status = data.get("status", [])
 
     def isUpdateOf(self, other):
         if (self.project == other.project and
@@ -118,6 +128,10 @@ class GiteaTriggerEvent(TriggerEvent):
         self.commits = []
         self.tag = None
         self.message_edited = None  # Track if PR description was edited
+        # "<creator login>:<context>:<state>" for action=status events.
+        # Gitea has no commit-status webhook; GiteaConnection.setCommitStatus
+        # synthesizes these when Zuul itself posts a status.
+        self.status = None
 
     def toDict(self):
         d = super().toDict()
@@ -131,6 +145,7 @@ class GiteaTriggerEvent(TriggerEvent):
         d["change_number"] = self.change_number
         d["commits"] = self.commits
         d["tag"] = self.tag
+        d["status"] = self.status
         return d
 
     def updateFromDict(self, d):
@@ -145,6 +160,7 @@ class GiteaTriggerEvent(TriggerEvent):
         self.change_number = d["change_number"]
         self.commits = d.get("commits", [])
         self.tag = d.get("tag")
+        self.status = d.get("status")
 
     def _repr(self):
         r = [super(GiteaTriggerEvent, self)._repr()]
@@ -159,6 +175,8 @@ class GiteaTriggerEvent(TriggerEvent):
             r.append("unlabel:%s" % self.unlabel)
         if self.state:
             r.append("state:%s" % self.state)
+        if self.status:
+            r.append("status:%s" % self.status)
         return ' '.join(r)
 
     def isPatchsetCreated(self):
@@ -182,13 +200,17 @@ class GiteaEventFilter(EventFilter):
     def __init__(
             self, connection_name, trigger, types=None, actions=None,
             branches=[], comments=None, refs=None, labels=None, unlabels=None,
-            states=None, ignore_deletes=True, debug=None):
+            states=None, statuses=None, ignore_deletes=True, debug=None):
         super().__init__(connection_name, trigger, debug)
 
         types = types if types is not None else []
         refs = refs if refs is not None else []
         comments = comments if comments is not None else []
         states = states if states is not None else []
+        statuses = statuses if statuses is not None else []
+
+        self._statuses = [x.pattern for x in statuses]
+        self.statuses = statuses
 
         self._refs = [x.pattern for x in refs]
         self.refs = refs
@@ -230,6 +252,8 @@ class GiteaEventFilter(EventFilter):
             ret += ' unlabels: %s' % ', '.join(str(u) for u in self.unlabels)
         if self._states:
             ret += ' states: %s' % ', '.join(str(s) for s in self._states)
+        if self._statuses:
+            ret += ' statuses: %s' % ', '.join(str(s) for s in self._statuses)
         ret += '>'
 
         return ret
@@ -333,9 +357,171 @@ class GiteaEventFilter(EventFilter):
             if not matches_state:
                 return False
 
+        # statuses are ORed (only meaningful for action=status events)
+        if self.statuses:
+            matches_status = False
+            event_status = getattr(event, 'status', None)
+            if event_status:
+                for status_re in self.statuses:
+                    if status_re.match(event_status):
+                        matches_status = True
+                        break
+            if not matches_status:
+                return False
+
         return True
 
 
 class GiteaRefFilter(RefFilter):
-    """Ref filter for Gitea refs"""
-    pass
+    """Pipeline require/reject filter for Gitea pull requests.
+
+    Mirrors the GitHub driver's GithubRefFilter for the attributes the Gitea
+    driver tracks: status, label, open, merged, current-patchset, approved.
+    """
+
+    def __init__(self, connection_name, statuses=None, reject_statuses=None,
+                 labels=None, reject_labels=None,
+                 open=None, merged=None, current_patchset=None,
+                 approved=None, reject_open=None, reject_merged=None,
+                 reject_current_patchset=None, reject_approved=None):
+        RefFilter.__init__(self, connection_name)
+        self.required_statuses = list(statuses or [])
+        self.reject_statuses = list(reject_statuses or [])
+        self.required_labels = list(labels or [])
+        self.reject_labels = list(reject_labels or [])
+        self.open = (not reject_open) if reject_open is not None else open
+        self.merged = ((not reject_merged) if reject_merged is not None
+                       else merged)
+        self.current_patchset = ((not reject_current_patchset)
+                                 if reject_current_patchset is not None
+                                 else current_patchset)
+        self.approved = ((not reject_approved) if reject_approved is not None
+                         else approved)
+
+    @classmethod
+    def requiresFromConfig(cls, connection_name, config):
+        return cls(
+            connection_name=connection_name,
+            statuses=to_list(config.get('status')),
+            labels=to_list(config.get('label')),
+            open=config.get('open'),
+            merged=config.get('merged'),
+            current_patchset=config.get('current-patchset'),
+            approved=config.get('approved'),
+        )
+
+    @classmethod
+    def rejectFromConfig(cls, connection_name, config):
+        return cls(
+            connection_name=connection_name,
+            reject_statuses=to_list(config.get('status')),
+            reject_labels=to_list(config.get('label')),
+            reject_open=config.get('open'),
+            reject_merged=config.get('merged'),
+            reject_current_patchset=config.get('current-patchset'),
+            reject_approved=config.get('approved'),
+        )
+
+    def __repr__(self):
+        ret = '<GiteaRefFilter connection_name: %s' % self.connection_name
+        if self.required_statuses:
+            ret += ' status: %s' % self.required_statuses
+        if self.reject_statuses:
+            ret += ' reject-status: %s' % self.reject_statuses
+        if self.required_labels:
+            ret += ' labels: %s' % self.required_labels
+        if self.reject_labels:
+            ret += ' reject-labels: %s' % self.reject_labels
+        for name in ('open', 'merged', 'current_patchset', 'approved'):
+            val = getattr(self, name)
+            if val is not None:
+                ret += ' %s: %s' % (name.replace('_', '-'), val)
+        return ret + '>'
+
+    def matchesStatuses(self, change):
+        if not (self.required_statuses or self.reject_statuses):
+            return True
+        if not hasattr(change, 'number'):
+            return FalseWithReason("Can not match statuses without PR")
+        change_status = getattr(change, 'status', None) or []
+        if self.required_statuses:
+            # ORed: any change status matching any required pattern
+            matched = False
+            for required in self.required_statuses:
+                for status in change_status:
+                    if re2.fullmatch(required, status):
+                        matched = True
+                        break
+                if matched:
+                    break
+            if not matched:
+                return FalseWithReason(
+                    "Required statuses %s do not match %s" % (
+                        self.required_statuses, change_status))
+        for rejected in self.reject_statuses:
+            for status in change_status:
+                if re2.fullmatch(rejected, status):
+                    return FalseWithReason(
+                        "Reject statuses %s match %s" % (
+                            self.reject_statuses, change_status))
+        return True
+
+    def matchesLabels(self, change):
+        if not (self.required_labels or self.reject_labels):
+            return True
+        if not hasattr(change, 'number'):
+            return FalseWithReason("Can not match labels without PR")
+        change_labels = getattr(change, 'labels', None) or []
+        for label in self.required_labels:
+            if label not in change_labels:
+                return FalseWithReason(
+                    "Required labels %s do not match %s" % (
+                        self.required_labels, change_labels))
+        for label in self.reject_labels:
+            if label in change_labels:
+                return FalseWithReason(
+                    "Reject labels %s match %s" % (
+                        self.reject_labels, change_labels))
+        return True
+
+    def matches(self, change):
+        if self.open is not None:
+            if not hasattr(change, 'open'):
+                return FalseWithReason("Change is not a PR")
+            if self.open != bool(change.open):
+                return FalseWithReason(
+                    "Change does not match open requirement %s" % self.open)
+
+        if self.merged is not None:
+            if not hasattr(change, 'is_merged'):
+                return FalseWithReason("Change is not a PR")
+            if self.merged != bool(change.is_merged):
+                return FalseWithReason(
+                    "Change does not match merged requirement %s" %
+                    self.merged)
+
+        if self.current_patchset is not None:
+            if not hasattr(change, 'is_current_patchset'):
+                return FalseWithReason("Change is not a PR")
+            if self.current_patchset != bool(change.is_current_patchset):
+                return FalseWithReason(
+                    "Change does not match current-patchset requirement "
+                    "%s" % self.current_patchset)
+
+        if self.approved is not None:
+            if not hasattr(change, 'number'):
+                return FalseWithReason("Change is not a PR")
+            if self.approved != bool(getattr(change, 'approved', False)):
+                return FalseWithReason(
+                    "Change does not match approved requirement %s" %
+                    self.approved)
+
+        result = self.matchesStatuses(change)
+        if not result:
+            return result
+
+        result = self.matchesLabels(change)
+        if not result:
+            return result
+
+        return True

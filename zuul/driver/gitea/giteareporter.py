@@ -120,7 +120,8 @@ class GiteaReporter(BaseReporter):
         try:
             # Match upstream parameter order: project, sha, state, url, description, context
             self.connection.setCommitStatus(
-                project, sha, state, url, description, context)
+                project, sha, state, url, description, context,
+                change=change)
         except Exception as e:
             self.log.error("Failed to set commit status: %s", e)
             return str(e)
@@ -215,7 +216,25 @@ class GiteaReporter(BaseReporter):
             log.exception(
                 'Merge attempt of change %s failed: %s' %
                 (change, str(e)))
+            # Zuul records MERGE_FAILURE without running any reporter, so
+            # without this comment the PR shows "Build succeeded" and silently
+            # stays open. Tell the author what happened and how to recover.
+            try:
+                self.connection.commentPull(
+                    project, pr_number, self._formatMergeFailure(e))
+            except Exception as ce:
+                log.warning('Failed to comment merge failure on %s: %s',
+                            change, ce)
             return str(e)
+
+    def _formatMergeFailure(self, error):
+        return (
+            "Merge failed after a successful gate run.\n\n"
+            "    %s\n\n"
+            "Zuul could not merge this pull request. If Gitea reports a "
+            "missing or failed required status check on the head commit, "
+            "comment `recheck` to run it; the gate re-runs automatically once "
+            "the check succeeds (or comment `regate`)." % error)
 
     def _formatMergeMessage(self, change):
         """Format merge commit message with review information"""

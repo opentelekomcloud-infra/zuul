@@ -18,6 +18,7 @@ import urllib.parse
 import voluptuous as v
 from zuul.source import BaseSource
 from zuul.model import Project, ChangeKey, Branch, Ref, Tag
+from zuul.driver.gitea.giteamodel import GiteaRefFilter
 
 
 def getRequireSchema():
@@ -26,6 +27,7 @@ def getRequireSchema():
         'status': v.Any(str, [str]),
         'open': bool,
         'merged': bool,
+        'current-patchset': bool,
         'approved': bool,
         'label': v.Any(str, [str]),
     }
@@ -38,6 +40,7 @@ def getRejectSchema():
         'status': v.Any(str, [str]),
         'open': bool,
         'merged': bool,
+        'current-patchset': bool,
         'approved': bool,
         'label': v.Any(str, [str]),
     }
@@ -276,13 +279,13 @@ class GiteaSource(BaseSource):
 
     def getRequireFilters(self, config, parse_context):
         """Get require filters from config"""
-        # TODO: Implement filter parsing
-        return []
+        return [GiteaRefFilter.requiresFromConfig(
+            self.connection.connection_name, config)]
 
     def getRejectFilters(self, config, parse_context):
         """Get reject filters from config"""
-        # TODO: Implement filter parsing
-        return []
+        return [GiteaRefFilter.rejectFromConfig(
+            self.connection.connection_name, config)]
 
     def canMerge(self, change, allow_needs, event=None, allow_refresh=False):
         """Determine if change can merge"""

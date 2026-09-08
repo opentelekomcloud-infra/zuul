@@ -561,6 +561,12 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         change.mergeable = pr_data.get('mergeable', True)
         change.merge_commit_sha = pr_data.get('merge_commit_sha')
 
+        # Latest commit status per context on the head, GitHub-driver format
+        # ("login:context:state") so pipeline require/reject status filters
+        # can be evaluated (e.g. require gitea/check success before gate).
+        change.status = self._getCommitStatusList(
+            change.project.name, head_sha)
+
         # Fetch and store reviews for this PR
         self._updateReviews(change)
 
@@ -668,7 +674,8 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
             self.log.warning("Failed to get PR files, using empty list: %s", e)
             return []
 
-    def setCommitStatus(self, project_name, sha, state, url=None, description=None, context=None):
+    def setCommitStatus(self, project_name, sha, state, url=None, description=None, context=None,
+                        change=None):
         """Set commit status on Gitea
 
         Args:
@@ -678,6 +685,8 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
             url: Optional URL for the status
             description: Optional description text
             context: Status context (e.g., 'preprod/check')
+            change: Optional PullRequest the status belongs to; used to
+                synthesize a status trigger event (see _emitStatusEvent)
         """
         try:
             data = {
@@ -693,6 +702,7 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
             self._makeRequest('POST', f'/repos/{project_name}/statuses/{sha}', json=data)
             self.log.info("Set commit status for %s/%s: %s (context: %s)",
                          project_name, sha[:8], state, context)
+            self._emitStatusEvent(project_name, sha, context, state, change)
         except Exception as e:
             self.log.error("Failed to set commit status for %s/%s: %s",
                           project_name, sha[:8], e)
@@ -768,9 +778,116 @@ class GiteaConnection(ZKBranchCacheMixin, BaseConnection):
         except MergeFailure:
             raise
         except Exception as e:
+            detail = str(e)
+            response = getattr(e, 'response', None)
+            if response is not None:
+                try:
+                    body = response.json()
+                    if isinstance(body, dict) and body.get('message'):
+                        detail = '%s: %s' % (detail, body['message'])
+                except Exception:
+                    pass
             self.log.error("Failed to merge PR %s#%s: %s",
-                          project_name, pr_number, e)
-            raise MergeFailure(f"Failed to merge PR {project_name}#{pr_number}: {str(e)}")
+                          project_name, pr_number, detail)
+            raise MergeFailure(f"Failed to merge PR {project_name}#{pr_number}: {detail}")
+
+    def getCombinedStatus(self, project_name, sha):
+        """Get the combined commit status (latest status per context).
+
+        Uses GET /repos/{owner}/{repo}/commits/{ref}/status, which returns one
+        entry per context, so it is not affected by the pagination of the
+        raw statuses list.
+        """
+        try:
+            data = self._makeRequest(
+                'GET', f'/repos/{project_name}/commits/{sha}/status')
+            return data or {}
+        except Exception as e:
+            self.log.warning("Failed to get combined status for %s/%s: %s",
+                             project_name, sha[:8], e)
+            return {}
+
+    def _getCommitStatusList(self, project_name, sha):
+        """Return ["<login>:<context>:<state>", ...] for the head sha.
+
+        Same format as the GitHub driver's change.status so pipeline
+        require/reject ``status`` filters behave identically.
+        """
+        if not sha:
+            return []
+        result = []
+        seen = set()
+        for status in self.getCombinedStatus(project_name, sha).get(
+                'statuses', []) or []:
+            context = status.get('context') or ''
+            if context in seen:
+                continue
+            seen.add(context)
+            login = (status.get('creator') or {}).get('login') or ''
+            result.append('%s:%s:%s' % (
+                login, context, status.get('status') or ''))
+        return result
+
+    def _getApiUserLogin(self):
+        """Login of the account behind api_token (cached)."""
+        login = getattr(self, '_api_user_login', None)
+        if login is None:
+            try:
+                data = self._makeRequest('GET', '/user') or {}
+                login = data.get('login') or ''
+            except Exception as e:
+                self.log.warning("Failed to look up API user: %s", e)
+                login = ''
+            self._api_user_login = login
+        return login
+
+    def _emitStatusEvent(self, project_name, sha, context, state, change=None):
+        """Synthesize a ``gt_pull_request`` / ``status`` trigger event.
+
+        Gitea does not send a webhook when a commit status is created, and
+        Zuul is the author of the statuses its pipelines care about. Emit the
+        event GitHub would have delivered so a pipeline can trigger on and
+        require e.g. ``zuul:gitea/check:success`` -- otherwise a PR that is
+        approved and labelled before its check finished never enters gate,
+        and Gitea refuses the merge for lack of the required status.
+        """
+        if state == 'pending' or not context:
+            return
+        if not getattr(self, 'sched', None):
+            return
+        number = getattr(change, 'number', None) if change is not None else None
+        branch = getattr(change, 'branch', None) if change is not None else None
+        if number is None:
+            numbers = self._sha_pr_cache.get(project_name, sha)
+            if len(numbers) != 1:
+                self.log.debug(
+                    "Not emitting status event for %s/%s: %d PRs known for sha",
+                    project_name, sha[:8], len(numbers))
+                return
+            number = next(iter(numbers))
+        if not branch:
+            try:
+                pr = self.getPullRequest(project_name, number) or {}
+                branch = pr.get('base', {}).get('ref')
+            except Exception as e:
+                self.log.warning("Failed to resolve base branch for %s#%s: %s",
+                                 project_name, number, e)
+
+        event = GiteaTriggerEvent()
+        event.zuul_event_id = str(uuid.uuid4())
+        event.connection_name = self.connection_name
+        event.type = 'gt_pull_request'
+        event.action = 'status'
+        event.status = '%s:%s:%s' % (self._getApiUserLogin(), context, state)
+        event.project_hostname = self.canonical_hostname
+        event.project_name = project_name
+        event.change_number = number
+        event.branch = branch
+        event.ref = 'refs/pull/%s/head' % number
+        event.patchset = sha
+        event.timestamp = time.time()
+        self.log.info("Emitting synthesized status event %s", event)
+        self.sched.addTriggerEvent(self.driver_name, event)
 
     def getBranchProtection(self, project_name, branch_name, zuul_event_id=None):
         """Get branch protection settings from Gitea API

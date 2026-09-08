@@ -28,6 +28,9 @@ def getSchema():
         'label': v.Any(str, [str]),
         'unlabel': v.Any(str, [str]),
         'state': v.Any(str, [str]),  # For review events (approved, comment, request_changes)
+        # For action=status events: "<login>:<context>:<state>" regex, e.g.
+        # "zuul:gitea/check:success" (synthesized when Zuul posts a status).
+        'status': v.Any(str, [str]),
     }
     return gitea_trigger
 
@@ -69,6 +72,10 @@ class GiteaTrigger(BaseTrigger):
                 states = [make_regex(x, pcontext)
                          for x in to_list(attr)]
 
+            with pcontext.confAttr(trigger, 'status') as attr:
+                statuses = [make_regex(x, pcontext)
+                            for x in to_list(attr)]
+
             f = GiteaEventFilter(
                 connection_name=connection_name,
                 trigger=self,
@@ -80,6 +87,7 @@ class GiteaTrigger(BaseTrigger):
                 labels=labels,
                 unlabels=unlabels,
                 states=states,
+                statuses=statuses,
             )
             efilters.append(f)
 
