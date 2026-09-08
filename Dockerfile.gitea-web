@@ -1,5 +1,13 @@
 # Dockerfile for Zuul Web with Gitea driver
-FROM quay.io/opentelekomcloud/zuul-web:13.1.1
+# The shipped gitea-vN web images are built FROM their predecessor (see the
+# scheduler Dockerfile and system-config's kustomization comment): building from
+# the 13.1.1 base would drop everything the earlier vN carried. Pass the
+# predecessor explicitly:
+#   podman build -f Dockerfile.gitea-web \
+#     --build-arg BASE_IMAGE=quay.io/opentelekomcloud/zuul-web:13.1.1-gitea-v9 \
+#     -t quay.io/opentelekomcloud/zuul-web:13.1.1-gitea-v10 .
+ARG BASE_IMAGE=quay.io/opentelekomcloud/zuul-web:13.1.1-gitea-v9
+FROM ${BASE_IMAGE}
 
 USER root
 
