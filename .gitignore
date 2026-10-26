@@ -1,5 +1,6 @@
 *.sw?
 *.egg
+*.eggs
 *.egg-info
 *.pyc
 *.retry

@@ -85,6 +85,7 @@ from zuul.driver.nullwrap import NullwrapDriver
 from zuul.driver.mqtt import MQTTDriver
 from zuul.driver.pagure import PagureDriver
 from zuul.driver.gitlab import GitlabDriver
+from zuul.driver.gitea import GiteaDriver
 from zuul.driver.gerrit import GerritDriver
 from zuul.driver.elasticsearch import ElasticsearchDriver
 from zuul.driver.aws import AwsDriver
@@ -124,6 +125,7 @@ from zuul.lib.logutil import get_annotated_logger
 
 from tests.util import FIXTURE_DIR
 import tests.fakegerrit
+import tests.fakegitea
 import tests.fakegithub
 import tests.fakegitlab
 import tests.fakepagure
@@ -466,6 +468,29 @@ class GitlabDriverMock(GitlabDriver):
         return connection
 
 
+class GiteaDriverMock(GiteaDriver):
+    def __init__(self, registry, test_config, config, upstream_root,
+                 additional_event_queues):
+        super(GiteaDriverMock, self).__init__()
+        self.registry = registry
+        self.changes = test_config.changes
+        self.config = config
+        self.upstream_root = upstream_root
+        self.additional_event_queues = additional_event_queues
+
+    def getConnection(self, name, config):
+        server = config.get('server', 'gitea.test')
+        db = self.changes.getServerChangeDB(server)
+        connection = tests.fakegitea.FakeGiteaConnection(
+            self, name, config,
+            changes_db=db,
+            upstream_root=self.upstream_root)
+        setattr(self.registry, 'fake_' + name, connection)
+        registerProjects(connection.source.name, connection,
+                         self.config)
+        return connection
+
+
 class TestConnectionRegistry(ConnectionRegistry):
     def __init__(self, config, test_config,
                  additional_event_queues, upstream_root,
@@ -490,6 +515,8 @@ class TestConnectionRegistry(ConnectionRegistry):
         self.registerDriver(PagureDriverMock(
             self, test_config, upstream_root, additional_event_queues))
         self.registerDriver(GitlabDriverMock(
+            self, test_config, config, upstream_root, additional_event_queues))
+        self.registerDriver(GiteaDriverMock(
             self, test_config, config, upstream_root, additional_event_queues))
         self.registerDriver(ElasticsearchDriver())
         self.registerDriver(AwsDriver())
