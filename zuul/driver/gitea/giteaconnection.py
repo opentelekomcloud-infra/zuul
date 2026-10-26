@@ -1480,6 +1480,13 @@ class GiteaEventConnector(threading.Thread):
         event.oldrev = payload.get('before')
         event.timestamp = time.time()
 
+        if event.ref and event.ref.startswith('refs/heads/'):
+            # Sets branch_updated/created/deleted; without it the scheduler
+            # never reconfigures after a zuul.yaml change lands.
+            self.connection.clearConnectionCacheOnBranchEvent(event)
+        else:
+            event.branch = None
+
         return event
 
     def _handlePullRequestReviewEvent(self, payload):
